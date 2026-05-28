@@ -23,9 +23,6 @@ class PeftEncoderRuntimePayloadConfig(Protocol):
     def backbone_payload(self) -> Mapping[str, str | int]:
         """State/update payload에 기록할 backbone/tokenizer snapshot."""
 
-    def lora_config_payload(self) -> Mapping[str, str | int | float | bool]:
-        """State/update payload에 기록할 LoRA config snapshot."""
-
     def peft_adapter_config_payload(self) -> Mapping[str, object]:
         """State/update payload에 기록할 PEFT adapter config snapshot."""
 
@@ -72,7 +69,6 @@ def _as_peft_encoder_runtime_config(
     if not isinstance(runtime_config, PeftEncoderRuntimePayloadConfig):
         raise TypeError(
             "PEFT text encoder runtime compatibility requires "
-            "backbone_payload(), lora_config_payload(), and "
-            "peft_adapter_config_payload()."
+            "backbone_payload() and peft_adapter_config_payload()."
         )
     return runtime_config

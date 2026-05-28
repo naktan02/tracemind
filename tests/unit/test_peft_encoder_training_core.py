@@ -24,7 +24,7 @@ from methods.adaptation.peft_text_encoder.training.loops import (
     train_query_ssl_classifier,
 )
 from methods.adaptation.peft_text_encoder.training.modeling import (
-    PeftEncoderTextClassifier,
+    PeftTextEncoderWithLinearHead,
 )
 
 resolve_fixed_pseudo_label_diagnostic_threshold = (
@@ -80,7 +80,7 @@ def test_pseudo_label_diagnostic_threshold_marks_fixed_threshold_only() -> None:
 
 def test_peft_encoder_text_classifier_train_step_and_evaluation() -> None:
     torch.manual_seed(7)
-    model = PeftEncoderTextClassifier(
+    model = PeftTextEncoderWithLinearHead(
         backbone=_TinyBackbone(),
         hidden_size=3,
         num_labels=2,
@@ -212,7 +212,7 @@ def _build_unlabeled_loader() -> DataLoader[dict[str, torch.Tensor]]:
 
 def test_query_ssl_training_stops_at_max_train_steps() -> None:
     torch.manual_seed(7)
-    model = PeftEncoderTextClassifier(
+    model = PeftTextEncoderWithLinearHead(
         backbone=_TinyBackbone(),
         hidden_size=3,
         num_labels=2,
@@ -244,7 +244,7 @@ def test_query_ssl_training_stops_at_max_train_steps() -> None:
 
 def test_query_ssl_training_loads_initial_state_after_dataset_config() -> None:
     torch.manual_seed(7)
-    model = PeftEncoderTextClassifier(
+    model = PeftTextEncoderWithLinearHead(
         backbone=_TinyBackbone(),
         hidden_size=3,
         num_labels=2,
@@ -282,7 +282,7 @@ def test_query_ssl_training_loads_initial_state_after_dataset_config() -> None:
 
 def test_fedprox_proximal_loss_uses_round_start_snapshot() -> None:
     torch.manual_seed(7)
-    model = PeftEncoderTextClassifier(
+    model = PeftTextEncoderWithLinearHead(
         backbone=_TinyBackbone(),
         hidden_size=3,
         num_labels=2,
@@ -308,7 +308,7 @@ def test_fedprox_proximal_loss_uses_round_start_snapshot() -> None:
 
 def test_query_ssl_training_records_fedprox_proximal_loss() -> None:
     torch.manual_seed(7)
-    model = PeftEncoderTextClassifier(
+    model = PeftTextEncoderWithLinearHead(
         backbone=_TinyBackbone(),
         hidden_size=3,
         num_labels=2,
@@ -345,7 +345,7 @@ def test_query_ssl_training_resume_checkpoint_continues_remaining_steps(
 ) -> None:
     torch.manual_seed(7)
     checkpoint_dir = tmp_path / "checkpoints"
-    model = PeftEncoderTextClassifier(
+    model = PeftTextEncoderWithLinearHead(
         backbone=_TinyBackbone(),
         hidden_size=3,
         num_labels=2,
@@ -373,7 +373,7 @@ def test_query_ssl_training_resume_checkpoint_continues_remaining_steps(
     )
     checkpoint_path = checkpoint_dir / "latest_training_checkpoint.pt"
 
-    resumed_model = PeftEncoderTextClassifier(
+    resumed_model = PeftTextEncoderWithLinearHead(
         backbone=_TinyBackbone(),
         hidden_size=3,
         num_labels=2,

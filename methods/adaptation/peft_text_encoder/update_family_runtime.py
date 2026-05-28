@@ -177,7 +177,6 @@ def _require_peft_encoder_runtime_payload(
         "peft_adapter_artifact_ref",
         "classifier_head_artifact_ref",
         "backbone_payload",
-        "lora_config_payload",
         "peft_adapter_config_payload",
     )
     missing = [

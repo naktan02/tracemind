@@ -45,15 +45,15 @@ from methods.federated_ssl.fedmatch.partitioned_local_training import (
 )
 from methods.ssl.algorithms.fixmatch.fixmatch import FixMatchAlgorithm
 
-build_adapter_classifier_delta_bundle = (
-    partitioned_deltas.build_adapter_classifier_delta_bundle
+build_adapter_linear_head_delta_bundle = (
+    partitioned_deltas.build_adapter_linear_head_delta_bundle
 )
 build_peft_encoder_partition_delta_from_parameter_deltas = (
     partitioned_deltas.build_peft_encoder_partition_delta_from_parameter_deltas
 )
 diff_parameter_snapshots = partitioned_deltas.diff_parameter_snapshots
-project_adapter_classifier_delta_bundle_to_peft_partition_delta = (
-    partitioned_deltas.project_adapter_classifier_delta_bundle_to_peft_partition_delta
+project_adapter_linear_head_delta_bundle_to_peft_partition_delta = (
+    partitioned_deltas.project_adapter_linear_head_delta_bundle_to_peft_partition_delta
 )
 snapshot_trainable_parameter_tensors = (
     partitioned_deltas.snapshot_trainable_parameter_tensors
@@ -230,7 +230,7 @@ def test_fedmatch_peft_encoder_partitioned_step_records_sigma_then_psi_delta() -
     }
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = training_loop.run_partitioned_adapter_classifier_step(
+    result = training_loop.run_partitioned_adapter_linear_head_step(
         model=model,
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
@@ -271,19 +271,19 @@ def test_fedmatch_peft_encoder_partitioned_step_records_sigma_then_psi_delta() -
     )
 
 
-def test_adapter_classifier_delta_bundle_projects_to_peft_partition_delta() -> None:
+def test_adapter_linear_head_delta_bundle_projects_to_peft_partition_delta() -> None:
     parameter_deltas = {
         "encoder_lora.weight": torch.tensor([[0.1, -0.2], [0.3, 0.4]]),
         "classifier.weight": torch.tensor([[0.5, 0.6], [-0.1, 0.2]]),
         "classifier.bias": torch.tensor([0.05, -0.07]),
     }
 
-    bundle = build_adapter_classifier_delta_bundle(
+    bundle = build_adapter_linear_head_delta_bundle(
         partition_name=FEDMATCH_SIGMA_PARTITION,
         parameter_deltas=parameter_deltas,
         labels=("anxiety", "normal"),
     )
-    payload = project_adapter_classifier_delta_bundle_to_peft_partition_delta(
+    payload = project_adapter_linear_head_delta_bundle_to_peft_partition_delta(
         bundle=bundle,
         labels=("anxiety", "normal"),
     )
@@ -322,7 +322,7 @@ def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
         "strong_attention_mask": torch.ones(2, 3),
     }
 
-    result = training_loop.run_partitioned_adapter_classifier_step(
+    result = training_loop.run_partitioned_adapter_linear_head_step(
         model=model,
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
@@ -382,7 +382,7 @@ def test_fedmatch_partitioned_step_forwards_strong_view_only_for_confident_rows(
     sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
     psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
 
-    result = training_loop.run_partitioned_adapter_classifier_step(
+    result = training_loop.run_partitioned_adapter_linear_head_step(
         model=model,
         labeled_batch={
             "input_ids": torch.tensor([[1.0, 0.0, 0.5]]),
@@ -467,7 +467,7 @@ def test_fedmatch_partitioned_step_requests_helper_probs_only_for_confident_rows
     sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
     psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
 
-    result = training_loop.run_partitioned_adapter_classifier_step(
+    result = training_loop.run_partitioned_adapter_linear_head_step(
         model=model,
         labeled_batch={
             "input_ids": torch.tensor([[1.0, 0.0, 0.5]]),
@@ -518,7 +518,7 @@ def test_fedmatch_peft_single_model_regularizer_does_not_shrink_full_parameters(
     }
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = training_loop.run_partitioned_adapter_classifier_step(
+    result = training_loop.run_partitioned_adapter_linear_head_step(
         model=model,
         labeled_batch=None,
         unlabeled_batch=unlabeled_batch,
@@ -564,7 +564,7 @@ def test_physical_fedmatch_step_updates_separate_sigma_and_psi_partitions() -> N
         FEDMATCH_PSI_PARTITION,
     )
 
-    result = training_loop.run_physical_partitioned_adapter_classifier_step(
+    result = training_loop.run_physical_partitioned_adapter_linear_head_step(
         model=model,
         labeled_batch={
             "input_ids": torch.tensor([[1.0, 0.0, 0.5], [0.0, 1.0, 0.5]]),
@@ -640,7 +640,7 @@ def test_physical_fedmatch_unsupervised_regularizer_keeps_sigma_fixed() -> None:
         FEDMATCH_PSI_PARTITION,
     )
 
-    result = training_loop.run_physical_partitioned_adapter_classifier_step(
+    result = training_loop.run_physical_partitioned_adapter_linear_head_step(
         model=model,
         labeled_batch=None,
         unlabeled_batch={
@@ -744,7 +744,7 @@ def test_physical_fedmatch_training_returns_cumulative_partitioned_delta() -> No
         max_steps=2,
     )
 
-    result = training_loop.train_physical_partitioned_adapter_classifier(
+    result = training_loop.train_physical_partitioned_adapter_linear_head(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,
@@ -773,13 +773,13 @@ def test_physical_fedmatch_training_returns_cumulative_partitioned_delta() -> No
 
 
 def test_physical_fedmatch_training_accepts_full_text_classifier_partitions() -> None:
-    model = ptm.PartitionedTrainableTextClassifierModules(
+    model = ptm.PartitionedTrainableTextEncoderHeadModules(
         partitions=(
-            ptm.TextClassifierPartitionSpec(
+            ptm.TextEncoderHeadPartitionSpec(
                 partition_name=FEDMATCH_SIGMA_PARTITION,
                 module=TinyLoraClassifier(),
             ),
-            ptm.TextClassifierPartitionSpec(
+            ptm.TextEncoderHeadPartitionSpec(
                 partition_name=FEDMATCH_PSI_PARTITION,
                 module=TinyLoraClassifier(),
             ),
@@ -834,7 +834,7 @@ def test_physical_fedmatch_training_accepts_full_text_classifier_partitions() ->
         max_steps=1,
     )
 
-    result = training_loop.train_physical_partitioned_adapter_classifier(
+    result = training_loop.train_physical_partitioned_adapter_linear_head(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,
@@ -860,15 +860,15 @@ def test_physical_fedmatch_training_accepts_full_text_classifier_partitions() ->
 
 
 def test_physical_fedmatch_confidence_uses_sigma_plus_psi_forward() -> None:
-    model = ptm.PartitionedTrainableTextClassifierModules(
+    model = ptm.PartitionedTrainableTextEncoderHeadModules(
         partitions=(
-            ptm.TextClassifierPartitionSpec(
+            ptm.TextEncoderHeadPartitionSpec(
                 partition_name=FEDMATCH_SIGMA_PARTITION,
                 module=TinyLinearLogitClassifier(
                     torch.tensor([[5.0, 0.0, 0.0], [-5.0, 0.0, 0.0]])
                 ),
             ),
-            ptm.TextClassifierPartitionSpec(
+            ptm.TextEncoderHeadPartitionSpec(
                 partition_name=FEDMATCH_PSI_PARTITION,
                 module=TinyLinearLogitClassifier(torch.zeros(2, 3)),
             ),
@@ -883,7 +883,7 @@ def test_physical_fedmatch_confidence_uses_sigma_plus_psi_forward() -> None:
         lambda_l1=0.0,
     )
 
-    result = training_loop.run_physical_partitioned_adapter_classifier_step(
+    result = training_loop.run_physical_partitioned_adapter_linear_head_step(
         model=model,
         labeled_batch=None,
         unlabeled_batch={
@@ -920,13 +920,13 @@ def test_physical_fedmatch_confidence_uses_sigma_plus_psi_forward() -> None:
 
 
 def test_physical_fedmatch_full_text_partition_rejects_key_mismatch() -> None:
-    model = ptm.PartitionedTrainableTextClassifierModules(
+    model = ptm.PartitionedTrainableTextEncoderHeadModules(
         partitions=(
-            ptm.TextClassifierPartitionSpec(
+            ptm.TextEncoderHeadPartitionSpec(
                 partition_name=FEDMATCH_SIGMA_PARTITION,
                 module=TinyLoraClassifier(),
             ),
-            ptm.TextClassifierPartitionSpec(
+            ptm.TextEncoderHeadPartitionSpec(
                 partition_name=FEDMATCH_PSI_PARTITION,
                 module=TinyMismatchedPartitionClassifier(),
             ),
@@ -942,7 +942,7 @@ def test_physical_fedmatch_full_text_partition_rejects_key_mismatch() -> None:
     )
 
     with pytest.raises(ValueError, match="same parameter keys"):
-        training_loop.run_physical_partitioned_adapter_classifier_step(
+        training_loop.run_physical_partitioned_adapter_linear_head_step(
             model=model,
             labeled_batch=None,
             unlabeled_batch={
@@ -1018,7 +1018,7 @@ def test_fedmatch_peft_training_returns_cumulative_partitioned_delta() -> None:
     )
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = training_loop.train_partitioned_adapter_classifier(
+    result = training_loop.train_partitioned_adapter_linear_head(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,
@@ -1097,7 +1097,7 @@ def test_fedmatch_labels_at_server_training_uploads_only_psi_partition() -> None
         max_steps=1,
     )
 
-    result = training_loop.train_partitioned_adapter_classifier(
+    result = training_loop.train_partitioned_adapter_linear_head(
         model=model,
         train_loader=None,
         unlabeled_loader=unlabeled_loader,
@@ -1355,8 +1355,8 @@ def test_partitioned_c2s_projection_returns_post_upload_client_snapshot() -> Non
     ].peft_parameters["encoder_lora.weight"] == pytest.approx([0.0, 0.30])
 
 
-def _build_physical_partitioned_model() -> ptm.PartitionedTrainableAdapterClassifier:
-    return ptm.PartitionedTrainableAdapterClassifier(
+def _build_physical_partitioned_model() -> ptm.PartitionedTrainableAdapterLinearHead:
+    return ptm.PartitionedTrainableAdapterLinearHead(
         feature_extractor=TinyFrozenFeatureExtractor(),
         partitions=(
             _physical_partition_spec(FEDMATCH_SIGMA_PARTITION, weight_scale=1.0),
@@ -1369,7 +1369,7 @@ def _physical_partition_spec(
     partition_name: str,
     *,
     weight_scale: float,
-) -> ptm.AdapterClassifierPartitionSpec:
+) -> ptm.AdapterLinearHeadPartitionSpec:
     adapter = nn.Linear(3, 3, bias=False)
     classifier = nn.Linear(3, 2)
     with torch.no_grad():
@@ -1383,7 +1383,7 @@ def _physical_partition_spec(
             )
         )
         classifier.bias.copy_(torch.tensor([0.05, -0.05]))
-    return ptm.AdapterClassifierPartitionSpec(
+    return ptm.AdapterLinearHeadPartitionSpec(
         partition_name=partition_name,
         adapter=adapter,
         classifier=classifier,

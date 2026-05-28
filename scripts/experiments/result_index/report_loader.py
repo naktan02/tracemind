@@ -356,7 +356,7 @@ def _peft_adapter_config_from_backbone(backbone: dict[str, Any]) -> dict[str, An
     if current:
         parameters = as_mapping(current.get("parameters"))
         return {**parameters, **current}
-    return as_mapping(backbone.get("lora"))
+    return {}
 
 
 def _optional_bool(value: object) -> bool | None:

@@ -1,1 +1,1 @@
-"""PEFT encoder text classifier training primitives."""
+"""PEFT encoder text encoder/head training primitives."""

@@ -12,7 +12,7 @@ from methods.adaptation.peft_text_encoder.config import (
 
 @dataclass(slots=True)
 class FederatedPeftEncoderRuntimeConfig:
-    """PEFT encoder head simulation bootstrap에 필요한 fixed scaffold snapshot."""
+    """PEFT text encoder/head simulation bootstrap에 필요한 fixed scaffold snapshot."""
 
     training_backend_config: PeftEncoderTrainingBackendConfig
     artifact_format: str = "simulation_peft_classifier_state_ref"
@@ -51,14 +51,9 @@ class FederatedPeftEncoderRuntimeConfig:
         )
 
     def backbone_payload(self) -> dict[str, str | int]:
-        """shared PEFT encoder head state에 넣을 backbone/tokenizer snapshot."""
+        """shared PEFT text encoder/head state에 넣을 backbone/tokenizer snapshot."""
 
         return self.training_backend_config.to_backbone_payload()
-
-    def lora_config_payload(self) -> dict[str, str | int | float | bool]:
-        """PEFT adapter mechanism이 LoRA일 때 쓰는 config snapshot."""
-
-        return self.training_backend_config.to_lora_config_payload()
 
     def peft_adapter_config_payload(self) -> dict[str, object]:
         """shared peft_classifier state에 넣을 PEFT mechanism config snapshot."""
@@ -69,7 +64,7 @@ class FederatedPeftEncoderRuntimeConfig:
 def build_peft_encoder_round_runtime_payloads(
     round_runtime_mapping: Mapping[str, object],
 ) -> dict[str, object]:
-    """Hydra round_runtime mapping에서 PEFT encoder head payload를 만든다."""
+    """Hydra round_runtime mapping에서 PEFT text encoder/head payload를 만든다."""
 
     payload_key = _runtime_payload_key(round_runtime_mapping)
     runtime_payloads = _required_runtime_payloads(round_runtime_mapping)

@@ -1,4 +1,4 @@
-"""PEFT encoder classifier initial shared state construction."""
+"""PEFT text encoder/head initial shared state construction."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 
 
 class PeftEncoderInitialStateConfig(Protocol):
-    """Initial shared state 생성에 필요한 PEFT encoder classifier config surface."""
+    """Initial shared state 생성에 필요한 PEFT text encoder/head config surface."""
 
     artifact_format: str
     peft_adapter_artifact_ref: str | None
@@ -20,9 +20,6 @@ class PeftEncoderInitialStateConfig(Protocol):
 
     def backbone_payload(self) -> Mapping[str, str | int]:
         """State payload에 기록할 backbone/tokenizer snapshot."""
-
-    def lora_config_payload(self) -> Mapping[str, str | int | float | bool]:
-        """State payload에 기록할 LoRA config snapshot."""
 
     def peft_adapter_config_payload(self) -> Mapping[str, object]:
         """State payload에 기록할 PEFT adapter config snapshot."""
@@ -37,7 +34,7 @@ def build_initial_peft_classifier_state(
     labels: Sequence[str],
     updated_at: datetime,
 ) -> PeftClassifierState:
-    """simulation/runtime bootstrap용 PEFT encoder head initial state를 만든다."""
+    """simulation/runtime bootstrap용 PEFT text encoder/head initial state를 만든다."""
 
     return PeftClassifierState(
         model_id=model_id,

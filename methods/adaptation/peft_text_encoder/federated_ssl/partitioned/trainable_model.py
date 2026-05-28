@@ -25,7 +25,7 @@ class TextFeatureExtractor(Protocol):
         """Return pooled features for adapter/head partitions."""
 
 
-class PartitionedTrainableTextClassifier(Protocol):
+class PartitionedTrainableTextEncoderHead(Protocol):
     """Partition별 trainable classifier forward/update surface."""
 
     def forward_partition(
@@ -81,7 +81,7 @@ class TrainableAdapterPartitionPlan:
 
 
 @dataclass(frozen=True, slots=True)
-class AdapterClassifierPartitionSpec:
+class AdapterLinearHeadPartitionSpec:
     """One physical adapter/head partition module pair."""
 
     partition_name: str
@@ -93,8 +93,8 @@ class AdapterClassifierPartitionSpec:
 
 
 @dataclass(frozen=True, slots=True)
-class TextClassifierPartitionSpec:
-    """One full text-classifier module owned by a physical partition."""
+class TextEncoderHeadPartitionSpec:
+    """One full text-encoder/head module owned by a physical partition."""
 
     partition_name: str
     module: nn.Module
@@ -103,8 +103,8 @@ class TextClassifierPartitionSpec:
         _normalize_partition_name(self.partition_name)
 
 
-class AdapterClassifierPartition(nn.Module):
-    """Trainable adapter and classifier head for a single partition."""
+class AdapterLinearHeadPartition(nn.Module):
+    """Trainable adapter and linear head for a single partition."""
 
     def __init__(self, *, adapter: nn.Module, classifier: nn.Module) -> None:
         super().__init__()
@@ -116,18 +116,19 @@ class AdapterClassifierPartition(nn.Module):
         return self.classifier(adapted)
 
 
-class PartitionedTrainableTextClassifierModules(nn.Module):
-    """Physical partitions backed by full text-classifier modules.
+class PartitionedTrainableTextEncoderHeadModules(nn.Module):
+    """Physical partitions backed by full text-encoder/head modules.
 
-    이 wrapper는 PEFT adapter가 transformer 내부에 붙는 `PeftEncoderTextClassifier` 같은
-    모델을 partition 단위로 감싼다. feature-space adapter를 새로 가정하지 않고,
-    각 partition module이 자기 forward와 trainable parameter 이름을 소유한다.
+    이 wrapper는 PEFT adapter가 transformer 내부에 붙는
+    `PeftTextEncoderWithLinearHead` 같은 모델을 partition 단위로 감싼다.
+    feature-space adapter를 새로 가정하지 않고, 각 partition module이 자기
+    forward와 trainable parameter 이름을 소유한다.
     """
 
     def __init__(
         self,
         *,
-        partitions: Sequence[TextClassifierPartitionSpec],
+        partitions: Sequence[TextEncoderHeadPartitionSpec],
         composition_policy: str = PARTITION_COMPOSITION_SUM_LOGITS,
     ) -> None:
         super().__init__()
@@ -141,7 +142,7 @@ class PartitionedTrainableTextClassifierModules(nn.Module):
         if len(self.partitions) != len(partitions):
             raise ValueError("partitions must not contain duplicate names.")
         if not self.partitions:
-            raise ValueError("at least one text-classifier partition is required.")
+            raise ValueError("at least one text-encoder/head partition is required.")
 
     def forward_partition(
         self,
@@ -224,7 +225,7 @@ class PartitionedTrainableTextClassifierModules(nn.Module):
             return self.partitions[normalized]
         except KeyError as error:
             raise ValueError(
-                f"Unknown text-classifier partition: {normalized}"
+                f"Unknown text-encoder/head partition: {normalized}"
             ) from error
 
     def partition_parameters(self, partition_name: str) -> tuple[nn.Parameter, ...]:
@@ -249,7 +250,7 @@ class PartitionedTrainableTextClassifierModules(nn.Module):
         return tuple(self.partitions.keys())
 
 
-class PartitionedTrainableAdapterClassifier(nn.Module):
+class PartitionedTrainableAdapterLinearHead(nn.Module):
     """Frozen backbone plus physical adapter/head partitions.
 
     이 primitive는 FedMatch의 `sigma/psi` 의미를 알지 않는다. caller가 넘긴
@@ -261,7 +262,7 @@ class PartitionedTrainableAdapterClassifier(nn.Module):
         self,
         *,
         feature_extractor: TextFeatureExtractor,
-        partitions: Sequence[AdapterClassifierPartitionSpec],
+        partitions: Sequence[AdapterLinearHeadPartitionSpec],
         composition_policy: str = PARTITION_COMPOSITION_SUM_LOGITS,
     ) -> None:
         super().__init__()
@@ -272,7 +273,7 @@ class PartitionedTrainableAdapterClassifier(nn.Module):
         self.partitions = nn.ModuleDict(
             {
                 _normalize_partition_name(spec.partition_name): (
-                    AdapterClassifierPartition(
+                    AdapterLinearHeadPartition(
                         adapter=spec.adapter,
                         classifier=spec.classifier,
                     )
@@ -374,7 +375,7 @@ class PartitionedTrainableAdapterClassifier(nn.Module):
             )
         return features.detach()
 
-    def require_partition(self, partition_name: str) -> AdapterClassifierPartition:
+    def require_partition(self, partition_name: str) -> AdapterLinearHeadPartition:
         normalized = _normalize_partition_name(partition_name)
         try:
             return self.partitions[normalized]
@@ -414,7 +415,7 @@ class PartitionedTrainableAdapterClassifier(nn.Module):
 
 
 def snapshot_partition_parameters(
-    model: PartitionedTrainableAdapterClassifier,
+    model: PartitionedTrainableAdapterLinearHead,
     partition_name: str,
 ) -> dict[str, Tensor]:
     """Detached clone snapshot for one physical partition."""
@@ -426,7 +427,7 @@ def snapshot_partition_parameters(
 
 
 def snapshot_partition_parameter_tensors(
-    model: PartitionedTrainableTextClassifier,
+    model: PartitionedTrainableTextEncoderHead,
     partition_name: str,
 ) -> dict[str, Tensor]:
     """Detached clone snapshot keyed by names local to one partition."""

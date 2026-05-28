@@ -1,4 +1,4 @@
-"""PEFT encoder head local update core."""
+"""PEFT text encoder/head local update core."""
 
 from __future__ import annotations
 
@@ -54,9 +54,6 @@ class PeftEncoderUpdateConfig(Protocol):
     def to_backbone_payload(self) -> Mapping[str, str | int]:
         """Shared payload에 기록할 backbone/tokenizer snapshot을 반환한다."""
 
-    def to_lora_config_payload(self) -> Mapping[str, str | int | float | bool]:
-        """Shared payload에 기록할 LoRA config snapshot을 반환한다."""
-
     def to_peft_adapter_config_payload(self) -> Mapping[str, object]:
         """Shared payload에 기록할 PEFT adapter config snapshot을 반환한다."""
 
@@ -94,7 +91,7 @@ def resolve_peft_encoder_label_schema(
     missing_labels = sorted({row.label for row in rows} - set(labels))
     if missing_labels:
         raise ValueError(
-            "PEFT encoder classifier label_schema must include accepted labels: "
+            "PEFT text encoder/head label_schema must include accepted labels: "
             f"{missing_labels}."
         )
     return labels
@@ -151,7 +148,7 @@ def build_peft_encoder_delta_payload_from_artifacts(
         raise ValueError("example_count must be positive.")
     if config.payload_adapter_kind != PEFT_CLASSIFIER_ADAPTER_KIND:
         raise ValueError(
-            "PEFT encoder head update builder only supports "
+            "PEFT text encoder/head update builder only supports "
             f"peft_classifier payloads, got {config.payload_adapter_kind!r}."
         )
     return make_peft_classifier_delta_payload(

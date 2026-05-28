@@ -1,4 +1,4 @@
-"""PEFT encoder classifier family의 partitioned local training loop."""
+"""PEFT text encoder/head family의 partitioned local training loop."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from ...training.loops import (
     build_optimizer,
     trainable_model_parameters,
 )
-from ...training.modeling import PeftEncoderTextClassifier
+from ...training.modeling import PeftTextEncoderWithLinearHead
 from ...training.optimizer_step import run_optimizer_loss_step
 from ...training.partitioned_deltas import (
     build_peft_encoder_partition_delta_from_parameter_deltas,
@@ -46,7 +46,7 @@ from . import trainable_model as ptm
 
 
 @dataclass(frozen=True, slots=True)
-class PartitionedAdapterClassifierStepResult:
+class PartitionedAdapterLinearHeadStepResult:
     """한 step에서 분리 적용한 partition delta와 loss 진단."""
 
     supervised: TensorLocalObjectiveResult
@@ -57,7 +57,7 @@ class PartitionedAdapterClassifierStepResult:
 
 
 @dataclass(frozen=True, slots=True)
-class PartitionedAdapterClassifierTrainingResult:
+class PartitionedAdapterLinearHeadTrainingResult:
     """partitioned local loop 결과와 누적 partition delta."""
 
     metrics: Mapping[str, float]
@@ -75,9 +75,9 @@ class HelperWeakProbabilityProvider(Protocol):
         """helper weak-view 확률을 반환한다."""
 
 
-def train_partitioned_adapter_classifier(
+def train_partitioned_adapter_linear_head(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     train_loader: DataLoader[dict[str, Any]] | None,
     unlabeled_loader: DataLoader[dict[str, Any]],
     labels: Sequence[str],
@@ -96,7 +96,7 @@ def train_partitioned_adapter_classifier(
     unsupervised_partition: str,
     emit_sigma_partition: bool = True,
     metric_prefix: str = "partitioned",
-) -> PartitionedAdapterClassifierTrainingResult:
+) -> PartitionedAdapterLinearHeadTrainingResult:
     """supervised/unsupervised partitioned step을 budget만큼 실행한다."""
 
     if use_supervised_steps and train_loader is None:
@@ -151,7 +151,7 @@ def train_partitioned_adapter_classifier(
                 batch=unlabeled_batch,
                 device=device,
             )
-            step_result = run_partitioned_adapter_classifier_step(
+            step_result = run_partitioned_adapter_linear_head_step(
                 model=model,
                 labeled_batch=(
                     None
@@ -220,7 +220,7 @@ def train_partitioned_adapter_classifier(
         if completed_steps >= total_steps:
             break
 
-    return PartitionedAdapterClassifierTrainingResult(
+    return PartitionedAdapterLinearHeadTrainingResult(
         metrics=scalar_metrics.average_record(
             denominator=completed_steps,
             key_prefix="train_",
@@ -250,9 +250,9 @@ def train_partitioned_adapter_classifier(
     )
 
 
-def train_physical_partitioned_adapter_classifier(
+def train_physical_partitioned_adapter_linear_head(
     *,
-    model: ptm.PartitionedTrainableTextClassifier,
+    model: ptm.PartitionedTrainableTextEncoderHead,
     train_loader: DataLoader[dict[str, Any]] | None,
     unlabeled_loader: DataLoader[dict[str, Any]],
     labels: Sequence[str],
@@ -270,7 +270,7 @@ def train_physical_partitioned_adapter_classifier(
     use_supervised_steps: bool = True,
     emit_supervised_partition: bool = True,
     metric_prefix: str = "partitioned",
-) -> PartitionedAdapterClassifierTrainingResult:
+) -> PartitionedAdapterLinearHeadTrainingResult:
     """physical trainable partition loop를 budget만큼 실행한다.
 
     이 함수는 FedMatch 이름이나 concrete PEFT adapter 종류를 해석하지 않는다.
@@ -331,7 +331,7 @@ def train_physical_partitioned_adapter_classifier(
                 loader=unlabeled_loader,
                 iterator=unlabeled_iterator,
             )
-            step_result = run_physical_partitioned_adapter_classifier_step(
+            step_result = run_physical_partitioned_adapter_linear_head_step(
                 model=model,
                 labeled_batch=(
                     None
@@ -397,7 +397,7 @@ def train_physical_partitioned_adapter_classifier(
         if completed_steps >= total_steps:
             break
 
-    return PartitionedAdapterClassifierTrainingResult(
+    return PartitionedAdapterLinearHeadTrainingResult(
         metrics=scalar_metrics.average_record(
             denominator=completed_steps,
             key_prefix="train_",
@@ -427,7 +427,7 @@ def train_physical_partitioned_adapter_classifier(
     )
 
 
-def run_partitioned_adapter_classifier_step(
+def run_partitioned_adapter_linear_head_step(
     *,
     model: TextBatchClassifier,
     labeled_batch: Mapping[str, Tensor] | None,
@@ -440,10 +440,10 @@ def run_partitioned_adapter_classifier_step(
     enable_inter_client_consistency: bool = True,
     apply_supervised_step: bool = True,
     max_grad_norm: float = 0.0,
-) -> PartitionedAdapterClassifierStepResult:
+) -> PartitionedAdapterLinearHeadStepResult:
     """원본 FedMatch처럼 supervised와 unsupervised update를 분리 적용한다.
 
-    TraceMind의 PEFT encoder classifier 모델은 실제 parameter를 `sigma + psi`로 두 벌
+    TraceMind의 PEFT text encoder/head 모델은 실제 parameter를 `sigma + psi`로 두 벌
     보관하지 않는다. 같은 trainable tensor에 두 step을 순차 적용하고,
     sub-step delta를 `sigma`/`psi` partition으로 기록한다.
     """
@@ -502,7 +502,7 @@ def run_partitioned_adapter_classifier_step(
         before=after_supervised,
     )
 
-    return PartitionedAdapterClassifierStepResult(
+    return PartitionedAdapterLinearHeadStepResult(
         supervised=supervised,
         unsupervised=unsupervised,
         sigma_parameter_deltas=sigma_parameter_deltas,
@@ -514,9 +514,9 @@ def run_partitioned_adapter_classifier_step(
     )
 
 
-def run_physical_partitioned_adapter_classifier_step(
+def run_physical_partitioned_adapter_linear_head_step(
     *,
-    model: ptm.PartitionedTrainableTextClassifier,
+    model: ptm.PartitionedTrainableTextEncoderHead,
     labeled_batch: Mapping[str, Tensor] | None,
     unlabeled_batch: Mapping[str, Tensor],
     objective: PartitionedTensorLocalObjective,
@@ -528,7 +528,7 @@ def run_physical_partitioned_adapter_classifier_step(
     enable_inter_client_consistency: bool = True,
     apply_supervised_step: bool = True,
     max_grad_norm: float = 0.0,
-) -> PartitionedAdapterClassifierStepResult:
+) -> PartitionedAdapterLinearHeadStepResult:
     """원본 의미의 sigma/psi를 물리적으로 분리한 partition에 적용한다.
 
     frozen backbone은 공유하고 adapter/head trainable state만 partition별로
@@ -595,7 +595,7 @@ def run_physical_partitioned_adapter_classifier_step(
         before=before_psi,
     )
 
-    return PartitionedAdapterClassifierStepResult(
+    return PartitionedAdapterLinearHeadStepResult(
         supervised=supervised,
         unsupervised=unsupervised,
         sigma_parameter_deltas=sigma_parameter_deltas,
@@ -642,7 +642,7 @@ def _apply_supervised_objective_step(
 
 def _apply_physical_supervised_objective_step(
     *,
-    model: ptm.PartitionedTrainableTextClassifier,
+    model: ptm.PartitionedTrainableTextEncoderHead,
     partition_name: str,
     composed_partition_names: Sequence[str],
     labeled_batch: Mapping[str, Tensor],
@@ -757,7 +757,7 @@ def _apply_unsupervised_objective_step(
 
 def _apply_physical_unsupervised_objective_step(
     *,
-    model: ptm.PartitionedTrainableTextClassifier,
+    model: ptm.PartitionedTrainableTextEncoderHead,
     sigma_partition_snapshot: Mapping[str, Tensor],
     supervised_partition: str,
     unsupervised_partition: str,
@@ -876,7 +876,7 @@ def _forward_selected_strong_view(
 
 def _forward_selected_physical_strong_view(
     *,
-    model: ptm.PartitionedTrainableTextClassifier,
+    model: ptm.PartitionedTrainableTextEncoderHead,
     partition_names: Sequence[str],
     trainable_partition_name: str,
     unlabeled_batch: Mapping[str, Tensor],
@@ -940,14 +940,14 @@ def _as_torch_module(model: TextBatchClassifier) -> nn.Module:
     return model  # type: ignore[return-value]
 
 
-def _train_if_module(model: ptm.PartitionedTrainableTextClassifier) -> None:
+def _train_if_module(model: ptm.PartitionedTrainableTextEncoderHead) -> None:
     if isinstance(model, nn.Module):
         model.train()
 
 
 def _build_partition_optimizer(
     *,
-    model: ptm.PartitionedTrainableTextClassifier,
+    model: ptm.PartitionedTrainableTextEncoderHead,
     partition_name: str,
     learning_rate: float,
     classifier_learning_rate: float,

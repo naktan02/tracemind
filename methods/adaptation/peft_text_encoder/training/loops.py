@@ -1,4 +1,4 @@
-"""PEFT encoder classifier scaffold 학습/평가 유틸리티."""
+"""PEFT text encoder/head scaffold 학습/평가 유틸리티."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ from .batching import (
     move_tensor_batch_to_device,
     next_cycling_batch,
 )
-from .modeling import PeftEncoderTextClassifier
+from .modeling import PeftTextEncoderWithLinearHead
 from .optimizer_step import run_optimizer_loss_step
 from .scalar_metrics import ScalarMetricAccumulator
 from .step_budget import (
@@ -60,7 +60,7 @@ def set_seed(seed: int) -> None:
 
 def evaluate_classifier(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     dataloader: DataLoader[dict[str, torch.Tensor]],
     categories: list[str],
     device: str,
@@ -114,12 +114,12 @@ def evaluate_classifier(
 
 def build_optimizer(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     learning_rate: float,
     classifier_learning_rate: float,
     weight_decay: float,
 ) -> torch.optim.Optimizer:
-    """LoRA 파라미터와 classifier 파라미터를 분리해 optimizer를 만든다."""
+    """PEFT adapter 파라미터와 linear head 파라미터를 분리해 optimizer를 만든다."""
 
     classifier_params = []
     lora_params = []
@@ -157,7 +157,7 @@ def trainable_model_parameters(model: nn.Module) -> tuple[nn.Parameter, ...]:
 
 def train_classifier(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     train_loader: DataLoader[dict[str, torch.Tensor]],
     selection_loader: DataLoader[dict[str, torch.Tensor]],
     categories: list[str],
@@ -170,8 +170,8 @@ def train_classifier(
     log_every_steps: int,
     max_train_steps: int | None = None,
     proximal_mu: float = 0.0,
-) -> tuple[PeftEncoderTextClassifier, list[dict[str, Any]], dict[str, Any]]:
-    """Supervised PEFT encoder classifier scaffold를 학습한다."""
+) -> tuple[PeftTextEncoderWithLinearHead, list[dict[str, Any]], dict[str, Any]]:
+    """Supervised PEFT text encoder/head scaffold를 학습한다."""
 
     optimizer = build_optimizer(
         model=model,
@@ -289,7 +289,7 @@ def _format_running_scalars(
 
 def train_query_ssl_classifier(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     train_loader: DataLoader[dict[str, Any]],
     unlabeled_loader: DataLoader[dict[str, Any]],
     selection_loader: DataLoader[dict[str, torch.Tensor]],
@@ -308,7 +308,7 @@ def train_query_ssl_classifier(
     resume_checkpoint_output_dir: str | Path | None = None,
     resume_checkpoint_every_epochs: int = 0,
     proximal_mu: float = 0.0,
-) -> tuple[PeftEncoderTextClassifier, list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[PeftTextEncoderWithLinearHead, list[dict[str, Any]], dict[str, Any]]:
     """Query SSL algorithm을 epoch-based query adaptation scaffold에 얹어 학습한다."""
 
     algorithm.validate_loaders(

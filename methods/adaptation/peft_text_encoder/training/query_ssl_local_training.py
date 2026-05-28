@@ -1,4 +1,4 @@
-"""Query SSL PEFT encoder head local training core."""
+"""Query SSL PEFT text encoder/head local training core."""
 
 from __future__ import annotations
 
@@ -62,8 +62,8 @@ from .delta_extraction import (
 )
 from .loops import set_seed, train_query_ssl_classifier
 from .modeling import (
-    PeftEncoderTextClassifier,
-    build_peft_encoder_text_classifier_from_config,
+    PeftTextEncoderWithLinearHead,
+    build_peft_text_encoder_with_linear_head_from_config,
 )
 from .pseudo_label_diagnostics import (
     build_final_snapshot_pseudo_label_quality,
@@ -82,7 +82,7 @@ class QuerySslPeftEncoderObjectiveRuntimeConfig(Protocol):
 
 
 class PeftEncoderTrainerRuntimeConfig(Protocol):
-    """PEFT encoder classifier 모델 로딩/학습 core가 필요한 runtime config surface."""
+    """PEFT text encoder/head 모델 로딩/학습 core가 필요한 runtime config surface."""
 
     device: str
     classifier_dropout: float
@@ -183,7 +183,7 @@ def run_query_ssl_peft_encoder_training_core(
     algorithm = descriptor.build_algorithm(query_ssl_config.parameters)
     effective_labels = tuple(str(label) for label in labels)
     if not effective_labels:
-        raise ValueError("PEFT encoder classifier label schema must not be empty.")
+        raise ValueError("PEFT text encoder/head label schema must not be empty.")
     _validate_labeled_rows_have_known_labels(
         rows=effective_labeled_rows,
         labels=effective_labels,
@@ -375,8 +375,8 @@ def _build_peft_encoder_model(
     peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
-) -> tuple[PeftEncoderTextClassifier, Any]:
-    return build_peft_encoder_text_classifier_from_config(
+) -> tuple[PeftTextEncoderWithLinearHead, Any]:
+    return build_peft_text_encoder_with_linear_head_from_config(
         labels=[str(label) for label in labels],
         peft_config=peft_config,
         runtime_config=trainer_runtime_config,

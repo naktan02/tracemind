@@ -1,1 +1,1 @@
-"""PEFT encoder text classifier update payload helpers."""
+"""PEFT encoder text encoder/head update payload helpers."""

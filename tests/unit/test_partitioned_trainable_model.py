@@ -123,13 +123,13 @@ def test_partition_parameter_tensors_use_partition_local_names() -> None:
 
 
 def test_full_text_classifier_partition_preserves_trainable_parameter_names() -> None:
-    model = ptm.PartitionedTrainableTextClassifierModules(
+    model = ptm.PartitionedTrainableTextEncoderHeadModules(
         partitions=(
-            ptm.TextClassifierPartitionSpec(
+            ptm.TextEncoderHeadPartitionSpec(
                 partition_name="sigma",
                 module=TinyFullTextClassifier(weight_scale=1.0),
             ),
-            ptm.TextClassifierPartitionSpec(
+            ptm.TextEncoderHeadPartitionSpec(
                 partition_name="psi",
                 module=TinyFullTextClassifier(weight_scale=0.5),
             ),
@@ -196,8 +196,8 @@ def test_parameter_composed_forward_uses_effective_partition_state() -> None:
     assert model.require_partition("psi").adapter.weight.grad is not None
 
 
-def _build_partitioned_model() -> ptm.PartitionedTrainableAdapterClassifier:
-    return ptm.PartitionedTrainableAdapterClassifier(
+def _build_partitioned_model() -> ptm.PartitionedTrainableAdapterLinearHead:
+    return ptm.PartitionedTrainableAdapterLinearHead(
         feature_extractor=TinyFrozenFeatureExtractor(),
         partitions=(
             _partition_spec("sigma", weight_scale=1.0),
@@ -210,7 +210,7 @@ def _partition_spec(
     partition_name: str,
     *,
     weight_scale: float,
-) -> ptm.AdapterClassifierPartitionSpec:
+) -> ptm.AdapterLinearHeadPartitionSpec:
     adapter = nn.Linear(3, 3, bias=False)
     classifier = nn.Linear(3, 2)
     with torch.no_grad():
@@ -224,7 +224,7 @@ def _partition_spec(
             )
         )
         classifier.bias.copy_(torch.tensor([0.05, -0.05]))
-    return ptm.AdapterClassifierPartitionSpec(
+    return ptm.AdapterLinearHeadPartitionSpec(
         partition_name=partition_name,
         adapter=adapter,
         classifier=classifier,

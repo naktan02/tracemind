@@ -1,13 +1,13 @@
 # PEFT Text Encoder
 
-`methods/adaptation/peft_text_encoder/`는 PEFT-adapted text encoder와 task
-classifier head를 함께 학습하는 update family를 소유한다. PEFT mechanism 자체는
-별도 소유자가 있으며, 이 package는 text classifier task payload, training, update
+`methods/adaptation/peft_text_encoder/`는 PEFT-adapted text encoder와 linear
+head를 함께 학습하는 update family를 소유한다. PEFT mechanism 자체는 별도
+소유자가 있으며, 이 package는 text encoder/head task payload, training, update
 materialization, FL SSL execution primitive를 맡는다.
 
 ## 책임
 
-- PEFT adapter가 적용된 text encoder와 classifier head composition
+- PEFT adapter가 적용된 text encoder와 linear head composition
 - supervised/query SSL local training loop와 delta extraction
 - local update payload builder와 artifact materialization
 - FL SSL update-family execution primitive 연결

@@ -1,4 +1,4 @@
-"""PEFT encoder classifier parameter delta extraction helpers."""
+"""PEFT text encoder/head parameter delta extraction helpers."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
 )
 
-from .modeling import PeftEncoderTextClassifier
+from .modeling import PeftTextEncoderWithLinearHead
 
 
 def load_peft_encoder_base_parameters_into_model(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
     device: str,
@@ -78,7 +78,7 @@ def load_peft_encoder_base_parameters_into_model(
 
 def extract_peft_encoder_parameter_deltas(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     base_parameters: PeftEncoderMaterializedState,
     labels: Sequence[str],
 ) -> tuple[dict[str, list[float]], dict[str, list[float]], dict[str, float]]:
@@ -99,7 +99,7 @@ def extract_peft_encoder_parameter_deltas(
 
 def extract_peft_parameter_deltas(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     base_parameters: Mapping[str, Sequence[float]],
 ) -> dict[str, list[float]]:
     """trainable PEFT adapter parameter delta를 flat vector mapping으로 추출한다."""
@@ -127,7 +127,7 @@ def extract_peft_parameter_deltas(
 
 def extract_classifier_head_deltas(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     labels: Sequence[str],
     base_weights: Mapping[str, Sequence[float]],
     base_biases: Mapping[str, float],

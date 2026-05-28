@@ -1,4 +1,4 @@
-"""PEFT text-classifier family의 partitioned objective training bridge."""
+"""PEFT text-encoder/head family의 partitioned objective training bridge."""
 
 from __future__ import annotations
 
@@ -30,8 +30,8 @@ from methods.adaptation.peft_text_encoder.training.delta_extraction import (
 )
 from methods.adaptation.peft_text_encoder.training.loops import set_seed
 from methods.adaptation.peft_text_encoder.training.modeling import (
-    PeftEncoderTextClassifier,
-    build_peft_encoder_text_classifier_from_config,
+    PeftTextEncoderWithLinearHead,
+    build_peft_text_encoder_with_linear_head_from_config,
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
@@ -97,7 +97,7 @@ from .partitioned.budget import (
     resolve_partitioned_local_budget,
 )
 from .partitioned.model_builder import (
-    build_partitioned_peft_encoder_text_classifier_from_config,
+    build_partitioned_peft_text_encoder_with_linear_head_from_config,
 )
 from .partitioned.sparse_sync import (
     PartitionSparseSyncParameters,
@@ -108,9 +108,9 @@ from .partitioned.sparse_sync import (
 )
 from .partitioned.training_loop import (
     HelperWeakProbabilityProvider,
-    PartitionedAdapterClassifierTrainingResult,
-    train_partitioned_adapter_classifier,
-    train_physical_partitioned_adapter_classifier,
+    PartitionedAdapterLinearHeadTrainingResult,
+    train_partitioned_adapter_linear_head,
+    train_physical_partitioned_adapter_linear_head,
 )
 
 PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
@@ -143,7 +143,7 @@ class PartitionedMethodLocalTrainingConfig(Protocol):
 
 
 class PartitionedLocalRuntimePlan(Protocol):
-    """partitioned PEFT text-classifier runtime에 주입되는 method-owned plan."""
+    """partitioned PEFT text-encoder/head runtime에 주입되는 method-owned plan."""
 
     scenario_name: str
     local_supervision_regime: FederatedSslLocalSupervisionRegime
@@ -191,7 +191,7 @@ def run_partitioned_peft_encoder_training_core(
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslPeftEncoderClientTrainingResult:
-    """method-owned partitioned objective를 PEFT text-classifier update로 실행한다."""
+    """method-owned partitioned objective를 PEFT text-encoder/head update로 실행한다."""
 
     effective_labeled_rows = list(labeled_rows)
     effective_unlabeled_rows = list(unlabeled_rows)
@@ -225,7 +225,7 @@ def run_partitioned_peft_encoder_training_core(
         with _measure(timing_recorder, "core_seed_seconds"):
             set_seed(int(seed))
         with _measure(timing_recorder, "core_model_build_seconds"):
-            model, tokenizer = build_peft_encoder_text_classifier_from_config(
+            model, tokenizer = build_peft_text_encoder_with_linear_head_from_config(
                 labels=list(effective_labels),
                 peft_config=peft_config,
                 runtime_config=trainer_runtime_config,
@@ -351,7 +351,7 @@ def run_partitioned_peft_encoder_training_core(
             }
         if uses_physical_partition_runtime:
             partitioned_build = (
-                build_partitioned_peft_encoder_text_classifier_from_config(
+                build_partitioned_peft_text_encoder_with_linear_head_from_config(
                     partition_names=partitioned_runtime_plan.partition_names,
                     labels=effective_labels,
                     base_parameters=base_parameters,
@@ -361,7 +361,7 @@ def run_partitioned_peft_encoder_training_core(
                     runtime_resource_cache=runtime_resource_cache,
                 )
             )
-            training_result = train_physical_partitioned_adapter_classifier(
+            training_result = train_physical_partitioned_adapter_linear_head(
                 model=partitioned_build.model,
                 train_loader=train_loader,
                 unlabeled_loader=unlabeled_loader,
@@ -390,7 +390,7 @@ def run_partitioned_peft_encoder_training_core(
                 metric_prefix=partitioned_runtime_plan.metric_prefix,
             )
             if partition_initialization_metrics:
-                training_result = PartitionedAdapterClassifierTrainingResult(
+                training_result = PartitionedAdapterLinearHeadTrainingResult(
                     metrics={
                         **training_result.metrics,
                         **partition_initialization_metrics,
@@ -439,7 +439,7 @@ def run_partitioned_peft_encoder_training_core(
         else:
             client_partition_parameters = {}
             c2s_sparse_upload_value_count = 0
-            training_result = train_partitioned_adapter_classifier(
+            training_result = train_partitioned_adapter_linear_head(
                 model=model,
                 train_loader=train_loader,
                 unlabeled_loader=unlabeled_loader,
@@ -694,9 +694,9 @@ def _build_psi_query_ssl_algorithm(
 
 def replace_partitioned_training_deltas(
     *,
-    training_result: PartitionedAdapterClassifierTrainingResult,
+    training_result: PartitionedAdapterLinearHeadTrainingResult,
     partition_deltas: Mapping[str, PeftEncoderPartitionDelta],
-) -> PartitionedAdapterClassifierTrainingResult:
+) -> PartitionedAdapterLinearHeadTrainingResult:
     """학습 metric은 유지하고 upload 대상 partition delta만 교체한다."""
 
     return replace(training_result, partition_deltas=partition_deltas)
@@ -706,7 +706,7 @@ def _build_timed_peer_client_snapshot(
     *,
     timing_recorder: TimingRecorder | None,
     client_id: str,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     tokenizer: Any,
     peer_probe_rows: Sequence[LabeledQueryRow] | None,
     labels: Sequence[str],

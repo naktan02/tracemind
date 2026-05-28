@@ -188,8 +188,8 @@ class PeftEncoderTrainingBackendConfig:
             "task_prefix": self.task_prefix,
         }
 
-    def to_lora_config_payload(self) -> dict[str, str | int | float | bool]:
-        """LoRA-compatible shared payload config snapshot."""
+    def to_peft_adapter_parameters_payload(self) -> dict[str, str | int | float | bool]:
+        """PEFT adapter parameter snapshot."""
 
         return {
             "peft_adapter_name": self.peft_adapter_name,
@@ -206,7 +206,7 @@ class PeftEncoderTrainingBackendConfig:
 
         return {
             "peft_adapter_name": self.peft_adapter_name,
-            "parameters": self.to_lora_config_payload(),
+            "parameters": self.to_peft_adapter_parameters_payload(),
         }
 
 

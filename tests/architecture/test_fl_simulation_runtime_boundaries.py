@@ -279,7 +279,7 @@ def test_federated_server_peft_runtime_adapter_keeps_method_core_in_methods() ->
         "run_peft_encoder_supervised_seed_step_core",
         "build_peft_encoder_state_projection",
         "write_peft_encoder_projection_artifacts",
-        "build_peft_encoder_text_classifier_from_config",
+        "build_peft_text_encoder_with_linear_head_from_config",
         "load_peft_encoder_base_parameters_into_model",
         "materialize_base_peft_encoder_state",
         "build_dataloader",

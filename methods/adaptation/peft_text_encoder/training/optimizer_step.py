@@ -1,4 +1,4 @@
-"""PEFT encoder classifier optimizer step lifecycle primitive."""
+"""PEFT text encoder/head optimizer step lifecycle primitive."""
 
 from __future__ import annotations
 

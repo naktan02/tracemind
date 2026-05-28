@@ -1,4 +1,4 @@
-"""PEFT encoder classifier partitioned aggregation state helpers."""
+"""PEFT encoder/head partitioned aggregation state helpers."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from ..update.materialization import PeftEncoderMaterializedState
 def merge_partitioned_peft_encoder_deltas(
     partitions: Mapping[str, PeftEncoderPartitionDelta],
 ) -> PeftEncoderPartitionDelta:
-    """partition별 delta를 하나의 PEFT encoder classifier delta로 합친다.
+    """partition별 delta를 하나의 PEFT text encoder/head delta로 합친다.
 
     같은 parameter key가 여러 partition에 있으면 값을 element-wise로 더한다.
     """
@@ -131,7 +131,7 @@ def _apply_vector_mapping(
         delta_vector = [float(value) for value in deltas.get(key, [])]
         if base_vector and delta_vector and len(base_vector) != len(delta_vector):
             raise ValueError(
-                f"Partitioned PEFT encoder head delta dimension mismatch for {key!r}."
+                f"Partitioned PEFT encoder/head delta dimension mismatch for {key!r}."
             )
         if not base_vector:
             result[key] = delta_vector
@@ -178,7 +178,7 @@ def _merge_vector_mapping(
             continue
         if len(target[normalized_key]) != len(vector):
             raise ValueError(
-                "Partitioned PEFT encoder head deltas must share dimensions per key."
+                "Partitioned PEFT encoder/head deltas must share dimensions per key."
             )
         target[normalized_key] = [
             left + right for left, right in zip(target[normalized_key], vector)

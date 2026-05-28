@@ -18,7 +18,7 @@ from methods.adaptation.peft_text_encoder.training.delta_extraction import (
 from methods.adaptation.peft_text_encoder.training.loops import set_seed
 from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftEncoderModelRuntimeConfig,
-    build_peft_encoder_text_classifier_from_config,
+    build_peft_text_encoder_with_linear_head_from_config,
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     materialize_base_peft_encoder_state,
@@ -54,7 +54,7 @@ def build_peft_encoder_final_projection_artifacts_from_state(
         objective_config=objective_config,
     )
     set_seed(seed)
-    model, tokenizer = build_peft_encoder_text_classifier_from_config(
+    model, tokenizer = build_peft_text_encoder_with_linear_head_from_config(
         labels=labels,
         peft_config=peft_config,
         runtime_config=runtime_config,

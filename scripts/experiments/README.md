@@ -27,7 +27,7 @@
 - `fixed_classifier/`
   - fixed embedding classifier seed 학습과 artifact IO helper를 둔다.
 - `query_peft_ssl/`
-  - 중앙 SSL control과 FL client-local SSL에서 공유 가능한 LoRA 기반 query SSL harness를 둔다.
+  - 중앙 SSL control과 FL client-local SSL에서 공유 가능한 PEFT 기반 query SSL harness를 둔다.
 
 ## 직접 실행하는 entrypoint
 

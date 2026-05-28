@@ -18,7 +18,7 @@ from methods.adaptation.peft_text_encoder.training.loops import (
 )
 from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftEncoderModelRuntimeConfig,
-    build_peft_encoder_text_classifier_from_config,
+    build_peft_text_encoder_with_linear_head_from_config,
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
@@ -64,7 +64,7 @@ def evaluate_peft_encoder_state(
         raise ValueError("PEFT encoder evaluation batch_size must be positive.")
 
     set_seed(int(seed))
-    model, tokenizer = build_peft_encoder_text_classifier_from_config(
+    model, tokenizer = build_peft_text_encoder_with_linear_head_from_config(
         labels=effective_labels,
         peft_config=peft_config,
         runtime_config=runtime_config,
@@ -144,11 +144,11 @@ def evaluate_peft_encoder_validation_payload(
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> dict[str, object]:
-    """FL validation runtime이 넘긴 PEFT encoder head state를 평가한다."""
+    """FL validation runtime이 넘긴 PEFT text encoder/head state를 평가한다."""
 
     if not isinstance(adapter_state, PeftClassifierState):
         raise ValueError(
-            "PEFT encoder head evaluation requires classifier state; "
+            "PEFT text encoder/head evaluation requires classifier state; "
             f"got {type(adapter_state).__name__}."
         )
     return evaluate_peft_encoder_state_payload(
@@ -181,12 +181,12 @@ def evaluate_peft_encoder_simulation_validation_payload(
     scorer_backend_name: str,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> dict[str, object]:
-    """FL simulation이 넘긴 PEFT encoder head state를 평가한다."""
+    """FL simulation이 넘긴 PEFT text encoder/head state를 평가한다."""
 
     state = require_peft_encoder_state(adapter_state)
     if scorer_backend_name not in PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES:
         raise ValueError(
-            "PEFT encoder head validation must use one of "
+            "PEFT text encoder/head validation must use one of "
             f"{PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES!r}: "
             f"{scorer_backend_name!r}."
         )
@@ -218,7 +218,7 @@ def require_peft_encoder_validation_backend(
     if scorer_backend_name in PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES:
         return
     raise ValueError(
-        "PEFT encoder head validation must use one of "
+        "PEFT text encoder/head validation must use one of "
         f"{PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES!r}. "
         f"{prototype_scorer_backend_name!r} is prototype/selection-only "
         "and does not read PEFT encoder/head global state."
@@ -232,7 +232,7 @@ def require_peft_encoder_state(
 
     if not isinstance(adapter_state, PeftClassifierState):
         raise ValueError(
-            "PEFT encoder head evaluation requires classifier state; "
+            "PEFT text encoder/head evaluation requires classifier state; "
             f"got {type(adapter_state).__name__}."
         )
     return adapter_state

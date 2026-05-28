@@ -75,7 +75,7 @@ def compute_peft_encoder_partitioned_delta_average(
     valid_updates = tuple(update for update in updates if update.example_count > 0)
     if not valid_updates:
         raise ValueError(
-            "At least one non-empty partitioned PEFT encoder head update is required."
+            "At least one non-empty partitioned PEFT encoder/head update is required."
         )
 
     partition_counts: list[int] = []
@@ -83,7 +83,7 @@ def compute_peft_encoder_partitioned_delta_average(
     for update in valid_updates:
         if not update.partitions:
             raise ValueError(
-                "partitioned PEFT encoder head update must have partitions."
+                "partitioned PEFT encoder/head update must have partitions."
             )
         merged = merge_partitioned_peft_encoder_deltas(update.partitions)
         partition_counts.append(len(update.partitions))
@@ -167,7 +167,7 @@ def aggregate_peft_encoder_partitioned_delta_average(
         )
     )
     artifact_ref_resolver = context.require_artifact_ref_resolver(
-        context="PEFT encoder head partitioned delta average"
+        context="PEFT encoder/head partitioned delta average"
     )
     peft_adapter_artifact_ref = artifact_ref_resolver.build_ref(
         next_model_revision=context.next_model_revision,
@@ -286,7 +286,7 @@ def _validate_peft_encoder_partitioned_delta_average_overrides(
     )
     if unknown_keys:
         raise ValueError(
-            "Unsupported PEFT encoder head partitioned delta average config key(s): "
+            "Unsupported PEFT encoder/head partitioned delta average config key(s): "
             f"{unknown_keys}."
         )
 
@@ -334,7 +334,7 @@ _register_peft_encoder_partitioned_strategy(
     adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
     state_type=PeftClassifierState,
     update_type=PeftClassifierDelta,
-    context="PEFT encoder head partitioned",
+    context="PEFT encoder/head partitioned",
     aliases=("peft_classifier_partitioned_delta_average",),
     core_function_name=compute_peft_encoder_partitioned_delta_average.__name__,
     aggregate=aggregate_peft_encoder_partitioned_delta_average,

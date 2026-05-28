@@ -70,6 +70,29 @@ def test_load_result_index_records_keeps_peft_track(
     assert records.run.method_name == "fixmatch_usb_v1"
 
 
+def test_load_result_index_records_ignores_removed_backbone_lora_key(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_report(tmp_path)
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    backbone = payload["manifest"]["backbone"]
+    backbone.pop("peft_adapter_config")
+    backbone["lora"] = {
+        "adapter_name": "lora",
+        "rank": 8,
+        "alpha": 16,
+        "dropout": 0.1,
+        "target_modules": "all-linear",
+        "use_rslora": False,
+    }
+    report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.peft_adapter_name is None
+    assert records.run.peft_adapter_rank is None
+
+
 def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) -> None:
     report_path = _write_report(tmp_path)
     db_path = tmp_path / "experiment_results.sqlite"

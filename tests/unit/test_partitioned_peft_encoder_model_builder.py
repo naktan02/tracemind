@@ -29,7 +29,7 @@ class TinyRuntimeConfig:
     trust_remote_code: bool = False
 
 
-class TinyPeftEncoderTextClassifier(nn.Module):
+class TinyPeftTextEncoderWithLinearHead(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.encoder_lora = nn.Linear(3, 3, bias=False)
@@ -51,7 +51,7 @@ def test_partitioned_peft_encoder_builder_loads_base_state_into_each_partition()
     calls: list[tuple[tuple[str, ...], object | None]] = []
     tokenizer = object()
 
-    def classifier_factory(
+    def module_factory(
         *,
         labels: list[str],
         peft_config: PeftEncoderTrainingBackendConfig,
@@ -60,7 +60,7 @@ def test_partitioned_peft_encoder_builder_loads_base_state_into_each_partition()
     ) -> tuple[nn.Module, Any]:
         del peft_config, runtime_config
         calls.append((tuple(labels), runtime_resource_cache))
-        return TinyPeftEncoderTextClassifier(), tokenizer
+        return TinyPeftTextEncoderWithLinearHead(), tokenizer
 
     cache = object()
     base_parameters = PeftEncoderMaterializedState(
@@ -84,14 +84,16 @@ def test_partitioned_peft_encoder_builder_loads_base_state_into_each_partition()
         classifier_head_biases={"anxiety": 0.1, "normal": -0.1},
     )
 
-    result = model_builder.build_partitioned_peft_encoder_text_classifier_from_config(
-        partition_names=("sigma", "psi"),
-        labels=("anxiety", "normal"),
-        base_parameters=base_parameters,
-        peft_config=PeftEncoderTrainingBackendConfig(),
-        runtime_config=TinyRuntimeConfig(),
-        runtime_resource_cache=cache,  # type: ignore[arg-type]
-        classifier_factory=classifier_factory,  # type: ignore[arg-type]
+    result = (
+        model_builder.build_partitioned_peft_text_encoder_with_linear_head_from_config(
+            partition_names=("sigma", "psi"),
+            labels=("anxiety", "normal"),
+            base_parameters=base_parameters,
+            peft_config=PeftEncoderTrainingBackendConfig(),
+            runtime_config=TinyRuntimeConfig(),
+            runtime_resource_cache=cache,  # type: ignore[arg-type]
+            module_factory=module_factory,  # type: ignore[arg-type]
+        )
     )
 
     assert result.partition_names == ("sigma", "psi")
@@ -126,23 +128,23 @@ def test_partitioned_peft_encoder_builder_rejects_invalid_inputs() -> None:
     )
 
     with pytest.raises(ValueError, match="duplicates"):
-        model_builder.build_partitioned_peft_encoder_text_classifier_from_config(
+        model_builder.build_partitioned_peft_text_encoder_with_linear_head_from_config(
             partition_names=("sigma", "sigma"),
             labels=("anxiety", "normal"),
             base_parameters=base_parameters,
             peft_config=PeftEncoderTrainingBackendConfig(),
             runtime_config=TinyRuntimeConfig(),
-            classifier_factory=_unused_classifier_factory,  # type: ignore[arg-type]
+            module_factory=_unused_module_factory,  # type: ignore[arg-type]
         )
 
     with pytest.raises(ValueError, match="labels must not contain duplicates"):
-        model_builder.build_partitioned_peft_encoder_text_classifier_from_config(
+        model_builder.build_partitioned_peft_text_encoder_with_linear_head_from_config(
             partition_names=("sigma", "psi"),
             labels=("anxiety", "anxiety"),
             base_parameters=base_parameters,
             peft_config=PeftEncoderTrainingBackendConfig(),
             runtime_config=TinyRuntimeConfig(),
-            classifier_factory=_unused_classifier_factory,  # type: ignore[arg-type]
+            module_factory=_unused_module_factory,  # type: ignore[arg-type]
         )
 
 
@@ -190,14 +192,16 @@ def test_partitioned_peft_encoder_builder_prefers_partition_base_state() -> None
         )
     }
 
-    result = model_builder.build_partitioned_peft_encoder_text_classifier_from_config(
-        partition_names=("sigma", "psi"),
-        labels=("anxiety", "normal"),
-        base_parameters=base_parameters,
-        base_partition_parameters=partition_base_parameters,
-        peft_config=PeftEncoderTrainingBackendConfig(),
-        runtime_config=TinyRuntimeConfig(),
-        classifier_factory=_tiny_classifier_factory,  # type: ignore[arg-type]
+    result = (
+        model_builder.build_partitioned_peft_text_encoder_with_linear_head_from_config(
+            partition_names=("sigma", "psi"),
+            labels=("anxiety", "normal"),
+            base_parameters=base_parameters,
+            base_partition_parameters=partition_base_parameters,
+            peft_config=PeftEncoderTrainingBackendConfig(),
+            runtime_config=TinyRuntimeConfig(),
+            module_factory=_tiny_module_factory,  # type: ignore[arg-type]
+        )
     )
 
     sigma_parameters = result.model.partition_parameter_tensors("sigma")
@@ -212,7 +216,7 @@ def test_partitioned_peft_encoder_builder_prefers_partition_base_state() -> None
     )
 
 
-def _tiny_classifier_factory(
+def _tiny_module_factory(
     *,
     labels: list[str],
     peft_config: PeftEncoderTrainingBackendConfig,
@@ -220,10 +224,10 @@ def _tiny_classifier_factory(
     runtime_resource_cache: object | None = None,
 ) -> tuple[nn.Module, Any]:
     del labels, peft_config, runtime_config, runtime_resource_cache
-    return TinyPeftEncoderTextClassifier(), object()
+    return TinyPeftTextEncoderWithLinearHead(), object()
 
 
-def _unused_classifier_factory(
+def _unused_module_factory(
     *,
     labels: list[str],
     peft_config: PeftEncoderTrainingBackendConfig,
@@ -231,4 +235,4 @@ def _unused_classifier_factory(
     runtime_resource_cache: object | None = None,
 ) -> tuple[nn.Module, Any]:  # pragma: no cover - validation fails first.
     del labels, peft_config, runtime_config, runtime_resource_cache
-    raise AssertionError("classifier_factory should not be called.")
+    raise AssertionError("module_factory should not be called.")

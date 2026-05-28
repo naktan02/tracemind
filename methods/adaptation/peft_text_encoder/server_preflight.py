@@ -1,4 +1,4 @@
-"""PEFT encoder head server-side update preflight rules."""
+"""PEFT text encoder/head server-side update preflight rules."""
 
 from __future__ import annotations
 
@@ -28,15 +28,15 @@ def require_peft_encoder_update_matches_active_state(
     update_payload: SharedAdapterUpdatePayload,
     active_state: SharedAdapterState,
 ) -> None:
-    """PEFT encoder head update가 active state/manifest와 맞는지 검사한다."""
+    """PEFT text encoder/head update가 active state/manifest와 맞는지 검사한다."""
 
     if not isinstance(update_payload, PeftClassifierDelta):
         raise ValueError(
-            "PEFT encoder head compatibility expects a PEFT classifier delta payload."
+            "PEFT encoder/head compatibility expects a PEFT classifier delta payload."
         )
     if not isinstance(active_state, PeftClassifierState):
         raise ValueError(
-            "PEFT encoder head compatibility expects active PEFT classifier state."
+            "PEFT encoder/head compatibility expects active PEFT classifier state."
         )
 
     _require_equal("model_id", update_payload.model_id, active_state.model_id)
@@ -71,11 +71,11 @@ def require_peft_encoder_update_matches_active_state(
 def require_peft_encoder_update_is_server_materializable(
     update_payload: SharedAdapterUpdatePayload,
 ) -> None:
-    """PEFT encoder head update가 서버 local ref만 갖는지 검사한다."""
+    """PEFT text encoder/head update가 서버 local ref만 갖는지 검사한다."""
 
     if not isinstance(update_payload, PeftClassifierDelta):
         raise ValueError(
-            "PEFT encoder head materialization expects a PEFT classifier delta payload."
+            "PEFT encoder/head materialization expects a PEFT classifier delta payload."
         )
 
     peft_ref_required = _peft_parameter_deltas(update_payload) is None
@@ -98,7 +98,7 @@ def require_peft_encoder_update_is_server_materializable(
     ]
     if unsupported_refs:
         raise ValueError(
-            "PEFT encoder head update uses agent-local artifact ref(s) that the "
+            "PEFT text encoder/head update uses agent-local artifact ref(s) that the "
             "server cannot materialize yet: "
             f"{unsupported_refs}. Upload/materialize them as server-owned refs "
             "or send inline deltas."
@@ -108,7 +108,7 @@ def require_peft_encoder_update_is_server_materializable(
 def _require_equal(field_name: str, actual: object, expected: object) -> None:
     if actual != expected:
         raise ValueError(
-            "PEFT encoder head update is not compatible with the active state: "
+            "PEFT text encoder/head update is not compatible with the active state: "
             f"{field_name} {actual!r} != {expected!r}."
         )
 

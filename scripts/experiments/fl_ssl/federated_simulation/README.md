@@ -291,7 +291,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   loader step 수는 `training_task.batch_size`와
   `query_ssl_method.unlabeled_batch_size`로 바뀐다.
 - 같은 경로의 기본 delta 전송은 `server_uploaded_artifact_ref`다. client update
-  payload에는 LoRA/head inline weight를 싣지 않고 `aggregation_artifact::...` ref를
+  payload에는 PEFT adapter/head inline weight를 싣지 않고 `aggregation_artifact::...` ref를
   남긴다. `inline_delta`는 legacy/debug compatibility 확인용으로만 쓴다.
 - FedMatch처럼 client/server 정책을 함께 소유하는 상위 method는
   `fl_method.composition_mode=method_owned`와

@@ -54,7 +54,7 @@ PeftEncoderDeltaPayload = PeftClassifierDelta
 
 @dataclass(frozen=True, slots=True)
 class PeftEncoderFedAvgUpdate:
-    """main_server boundary와 분리된 PEFT encoder classifier FedAvg 입력."""
+    """main_server boundary와 분리된 PEFT encoder/head FedAvg 입력."""
 
     peft_parameter_deltas: Mapping[str, Sequence[float]]
     classifier_head_weight_deltas: Mapping[str, Sequence[float]]
@@ -67,7 +67,7 @@ class PeftEncoderFedAvgUpdate:
 
 @dataclass(frozen=True, slots=True)
 class PeftEncoderFedAvgResult:
-    """PEFT encoder classifier FedAvg 계산 결과."""
+    """PEFT encoder/head FedAvg 계산 결과."""
 
     peft_parameter_deltas: dict[str, list[float]]
     classifier_head_weight_deltas: dict[str, list[float]]
@@ -89,7 +89,7 @@ def compute_peft_encoder_fedavg(
     valid_updates = tuple(update for update in updates if update.example_count > 0)
     if not valid_updates:
         raise ValueError(
-            "At least one non-empty PEFT encoder head update is required."
+            "At least one non-empty PEFT text encoder/head update is required."
         )
 
     peft_parameter_deltas = weighted_average_vector_mappings(
@@ -158,7 +158,7 @@ def _normalize_classifier_head_weight_deltas(
 ) -> dict[str, Sequence[float]]:
     if set(update.classifier_head_weight_deltas) != set(labels):
         raise ValueError(
-            "PEFT encoder head FedAvg classifier head weight delta keys must match "
+            "PEFT encoder/head FedAvg classifier head weight delta keys must match "
             "label_schema."
         )
     return {
@@ -175,7 +175,7 @@ def _normalize_classifier_head_bias_deltas(
     extra_labels = set(update.classifier_head_bias_deltas) - set(labels)
     if extra_labels:
         raise ValueError(
-            "PEFT encoder head FedAvg bias deltas contain unknown labels: "
+            "PEFT encoder/head FedAvg bias deltas contain unknown labels: "
             f"{sorted(extra_labels)}"
         )
     return {
@@ -206,7 +206,7 @@ def aggregate_peft_encoder_fedavg(
     context: FederatedAggregationContext,
     overrides: Mapping[str, AggregationConfigScalar] | None,
 ) -> FederatedAggregationResult:
-    """PEFT encoder classifier update payload를 FedAvg core 입력으로 변환한다."""
+    """PEFT text encoder/head update payload를 FedAvg core 입력으로 변환한다."""
 
     _validate_peft_encoder_fedavg_overrides(overrides)
 
@@ -226,7 +226,7 @@ def aggregate_peft_encoder_fedavg(
         weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
     )
     artifact_ref_resolver = context.require_artifact_ref_resolver(
-        context="PEFT encoder head FedAvg"
+        context="PEFT encoder/head FedAvg"
     )
     peft_adapter_artifact_ref = artifact_ref_resolver.build_ref(
         next_model_revision=context.next_model_revision,
@@ -289,23 +289,21 @@ def validate_peft_encoder_update_matches_base(
     base_state: PeftEncoderStatePayload,
     payload: PeftEncoderDeltaPayload,
 ) -> None:
-    """PEFT encoder classifier update가 base state와 같은 lineage인지 검증한다."""
+    """PEFT text encoder/head update가 base state와 같은 lineage인지 검증한다."""
 
     if payload.adapter_kind != base_state.adapter_kind:
         raise ValueError(
-            "PEFT encoder head updates must match the base adapter_kind."
+            "PEFT text encoder/head updates must match the base adapter_kind."
         )
     if _payload_snapshot(payload.backbone) != _payload_snapshot(base_state.backbone):
-        raise ValueError(
-            "All PEFT encoder head updates must match the backbone."
-        )
+        raise ValueError("All PEFT text encoder/head updates must match the backbone.")
     if _adapter_config_snapshot(payload) != _adapter_config_snapshot(base_state):
         raise ValueError(
-            "All PEFT encoder head updates must match the adapter config."
+            "All PEFT text encoder/head updates must match the adapter config."
         )
     if payload.labels != base_state.labels:
         raise ValueError(
-            "PEFT encoder head updates must share the base ordered label_schema."
+            "PEFT text encoder/head updates must share the base ordered label_schema."
         )
 
 
@@ -333,7 +331,7 @@ def _validate_peft_encoder_fedavg_overrides(
     )
     if unknown_keys:
         raise ValueError(
-            "Unsupported PEFT encoder head aggregate artifact config key(s): "
+            "Unsupported PEFT text encoder/head aggregate artifact config key(s): "
             f"{unknown_keys}."
         )
 
@@ -378,7 +376,7 @@ _register_peft_encoder_fedavg_strategy(
     adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
     state_type=PeftClassifierState,
     update_type=PeftClassifierDelta,
-    context="PEFT encoder head",
+    context="PEFT text encoder/head",
     aliases=("peft_classifier_fedavg",),
     core_function_name=compute_peft_encoder_fedavg.__name__,
     aggregate=aggregate_peft_encoder_fedavg,

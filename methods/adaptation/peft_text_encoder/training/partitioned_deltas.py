@@ -13,7 +13,7 @@ from methods.adaptation.peft_text_encoder.update.partitioned_delta import (
 
 
 @dataclass(frozen=True, slots=True)
-class AdapterClassifierDeltaBundle:
+class AdapterLinearHeadDeltaBundle:
     """PEFT adapter/head delta를 payload projection 전 내부 표현으로 묶는다."""
 
     partition_name: str
@@ -70,10 +70,10 @@ def build_peft_encoder_partition_delta_from_parameter_deltas(
     parameter_deltas: Mapping[str, Tensor],
     labels: Sequence[str],
 ) -> PeftEncoderPartitionDelta:
-    """trainable parameter delta snapshot을 LoRA/head payload partition으로 바꾼다."""
+    """trainable parameter delta snapshot을 PEFT adapter/head partition으로 바꾼다."""
 
-    return project_adapter_classifier_delta_bundle_to_peft_partition_delta(
-        bundle=build_adapter_classifier_delta_bundle(
+    return project_adapter_linear_head_delta_bundle_to_peft_partition_delta(
+        bundle=build_adapter_linear_head_delta_bundle(
             partition_name=partition_name,
             parameter_deltas=parameter_deltas,
             labels=labels,
@@ -82,12 +82,12 @@ def build_peft_encoder_partition_delta_from_parameter_deltas(
     )
 
 
-def build_adapter_classifier_delta_bundle(
+def build_adapter_linear_head_delta_bundle(
     *,
     partition_name: str,
     parameter_deltas: Mapping[str, Tensor],
     labels: Sequence[str],
-) -> AdapterClassifierDeltaBundle:
+) -> AdapterLinearHeadDeltaBundle:
     """trainable parameter delta를 PEFT adapter/head 내부 bundle로 정규화한다."""
 
     normalized_labels = _normalize_labels(labels)
@@ -110,7 +110,7 @@ def build_adapter_classifier_delta_bundle(
             continue
         adapter_parameter_deltas[name] = detached
 
-    return AdapterClassifierDeltaBundle(
+    return AdapterLinearHeadDeltaBundle(
         partition_name=partition_name,
         adapter_parameter_deltas=adapter_parameter_deltas,
         classifier_head_weight_delta=classifier_head_weight_delta,
@@ -118,9 +118,9 @@ def build_adapter_classifier_delta_bundle(
     )
 
 
-def project_adapter_classifier_delta_bundle_to_peft_partition_delta(
+def project_adapter_linear_head_delta_bundle_to_peft_partition_delta(
     *,
-    bundle: AdapterClassifierDeltaBundle,
+    bundle: AdapterLinearHeadDeltaBundle,
     labels: Sequence[str],
 ) -> PeftEncoderPartitionDelta:
     """내부 adapter/head bundle을 현재 PEFT encoder shared payload로 투영한다."""

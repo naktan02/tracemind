@@ -46,7 +46,7 @@ row에 strict USB형 `text + aug_0 + aug_1`이 없으면 실패하게 하는 설
 `first_aug`는 기존 동작처럼 저장된 후보 중 `aug_0`만 strong view로 학습에
 노출한다.
 기본 실행은 USB식 cold-start 비교에 맞춰 기존 classifier seed를 로드하지 않고,
-LoRA adapter와 classifier head를 새로 초기화한다.
+PEFT adapter와 linear head를 새로 초기화한다.
 학습 예산도 USB처럼 전체 데이터 epoch replay가 아니라 `max_train_steps` 총
 optimizer update 수로 고정한다. `epochs`는 selection 평가/history cadence를
 나누는 단위이며, 기본값은 `3000` steps다.
@@ -274,8 +274,8 @@ projection_manifest=...
 
 주요 파일:
 
-- `adapter_dir`: 학습된 LoRA adapter와 tokenizer.
-- `classifier_path`: classifier head `.pt`.
+- `adapter_dir`: 학습된 PEFT adapter와 tokenizer.
+- `classifier_path`: linear head `.pt`.
 - `manifest`: 실행 설정, method config, history, best selection report.
 - `report_json`: validation/test 결과 전체.
 - `projection_manifest`: eval set별 최종 representation 분포도 artifact 목록.
@@ -309,7 +309,7 @@ projection_manifest=...
 
 - `<eval_set>.projection.jsonl`: `x`, `y`, 실제 label, 예측 label, 정오답,
   top-1 probability.
-- `<eval_set>.projection.png`: 최종 LoRA pooled backbone feature의 2D 분포도.
+- `<eval_set>.projection.png`: 최종 PEFT pooled backbone feature의 2D 분포도.
 
 projection은 UMAP을 우선 사용하고, UMAP 실행이 불가능하면 PCA 또는 zero-pad
 fallback으로 저장하며 fallback 이유를 manifest에 남긴다.

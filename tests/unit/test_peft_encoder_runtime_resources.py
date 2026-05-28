@@ -101,17 +101,21 @@ def test_peft_encoder_model_builder_reuses_runtime_resources(
     peft_config = PeftEncoderTrainingBackendConfig()
     runtime_config = _RuntimeConfig()
 
-    model_a, tokenizer_a = modeling.build_peft_encoder_text_classifier_from_config(
-        labels=["anxiety", "normal"],
-        peft_config=peft_config,
-        runtime_config=runtime_config,
-        runtime_resource_cache=cache,
+    model_a, tokenizer_a = (
+        modeling.build_peft_text_encoder_with_linear_head_from_config(
+            labels=["anxiety", "normal"],
+            peft_config=peft_config,
+            runtime_config=runtime_config,
+            runtime_resource_cache=cache,
+        )
     )
-    model_b, tokenizer_b = modeling.build_peft_encoder_text_classifier_from_config(
-        labels=["anxiety", "normal"],
-        peft_config=peft_config,
-        runtime_config=runtime_config,
-        runtime_resource_cache=cache,
+    model_b, tokenizer_b = (
+        modeling.build_peft_text_encoder_with_linear_head_from_config(
+            labels=["anxiety", "normal"],
+            peft_config=peft_config,
+            runtime_config=runtime_config,
+            runtime_resource_cache=cache,
+        )
     )
 
     assert calls == {"tokenizer": 1, "model": 1}
@@ -188,7 +192,7 @@ def test_peft_encoder_model_builder_uses_peft_adapter_builder(
         ),
     )
 
-    modeling.build_peft_encoder_text_classifier_from_config(
+    modeling.build_peft_text_encoder_with_linear_head_from_config(
         labels=["anxiety", "normal"],
         peft_config=PeftEncoderTrainingBackendConfig(
             peft_adapter_name="fake_adapter",
@@ -211,7 +215,7 @@ def test_load_peft_encoder_base_parameters_does_not_mutate_snapshot() -> None:
             super().__init__()
             self.config = SimpleNamespace(hidden_size=2)
 
-    model = modeling.PeftEncoderTextClassifier(
+    model = modeling.PeftTextEncoderWithLinearHead(
         backbone=_Backbone(),
         hidden_size=2,
         num_labels=2,
@@ -260,7 +264,7 @@ def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
     def _fake_build_model(**_kwargs):
         calls["build"] += 1
         return (
-            peer_predictions.PeftEncoderTextClassifier(
+            peer_predictions.PeftTextEncoderWithLinearHead(
                 backbone=_Backbone(),
                 hidden_size=2,
                 num_labels=2,
@@ -274,7 +278,7 @@ def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
 
     monkeypatch.setattr(
         peer_predictions,
-        "build_peft_encoder_text_classifier_from_config",
+        "build_peft_text_encoder_with_linear_head_from_config",
         _fake_build_model,
     )
     monkeypatch.setattr(

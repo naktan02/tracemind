@@ -1,4 +1,4 @@
-"""PEFT encoder head supervised server seed step primitive."""
+"""PEFT text encoder/head supervised server seed step primitive."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from methods.adaptation.peft_text_encoder.training.loops import (
     train_classifier,
 )
 from methods.adaptation.peft_text_encoder.training.modeling import (
-    build_peft_encoder_text_classifier_from_config,
+    build_peft_text_encoder_with_linear_head_from_config,
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
@@ -56,7 +56,7 @@ def run_peft_encoder_supervised_seed_step_core(
     learning_rate: float,
     gradient_clip_norm: float | None,
 ) -> PeftEncoderSupervisedSeedStepResult:
-    """server-owned labeled seed rows로 PEFT encoder classifier delta를 계산한다."""
+    """server-owned labeled seed rows로 PEFT text encoder/head delta를 계산한다."""
 
     effective_labels = tuple(str(label) for label in labels)
     if not effective_labels:
@@ -69,7 +69,7 @@ def run_peft_encoder_supervised_seed_step_core(
         raise ValueError("supervised_seed_step server batch size must be positive.")
 
     set_seed(int(seed))
-    model, tokenizer = build_peft_encoder_text_classifier_from_config(
+    model, tokenizer = build_peft_text_encoder_with_linear_head_from_config(
         labels=list(effective_labels),
         peft_config=peft_config,
         runtime_config=trainer_runtime_config,

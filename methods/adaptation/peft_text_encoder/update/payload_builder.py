@@ -1,4 +1,4 @@
-"""PEFT encoder head agent runtime update assembly."""
+"""PEFT text encoder/head agent runtime update assembly."""
 
 from __future__ import annotations
 
@@ -143,7 +143,7 @@ def extract_peft_encoder_training_text(
         return translated_text.strip()
 
     raise ValueError(
-        "PEFT encoder head trainer requires raw text or translated text on "
+        "PEFT text encoder/head trainer requires raw text or translated text on "
         "accepted examples. The fixed-embedding-only training path cannot produce "
         "classifier adapter updates."
     )

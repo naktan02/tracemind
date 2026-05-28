@@ -1024,7 +1024,7 @@ def test_peft_method_modules_use_canonical_config_type_name() -> None:
     ]
 
     assert not violations, (
-        "PEFT text-classifier/FedMatch active method modules는 canonical "
+        "PEFT text-encoder/head/FedMatch active method modules는 canonical "
         "PeftEncoderTrainingBackendConfig type 이름을 사용한다. v1 "
         "LoraClassifierTrainingBackendConfig subclass/builder를 다시 만들지 "
         "않는다.\n"
@@ -1047,14 +1047,14 @@ def test_peft_method_modules_use_canonical_model_type_name() -> None:
     ]
 
     assert not violations, (
-        "PEFT text-classifier/FedMatch active method modules는 model/runtime type도 "
-        "PeftEncoderTextClassifier와 PeftEncoderModelRuntimeConfig 이름을 사용한다. "
+        "PEFT text-encoder/head/FedMatch active method modules는 model/runtime type도 "
+        "PeftTextEncoderWithLinearHead와 PeftEncoderModelRuntimeConfig를 쓴다. "
         "LoRA는 PEFT adapter mechanism 이름으로만 남긴다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
 
-def test_partitioned_peft_execution_primitive_uses_adapter_classifier_names() -> None:
+def test_partitioned_peft_execution_primitive_uses_adapter_linear_head_names() -> None:
     legacy_test_path = (
         REPO_ROOT
         / "tests"
@@ -1069,9 +1069,7 @@ def test_partitioned_peft_execution_primitive_uses_adapter_classifier_names() ->
     )
     checked_paths = (
         PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned" / "training_loop.py",
-        PEFT_TEXT_ENCODER_SRC
-        / "federated_ssl"
-        / "partitioned_objective_training.py",
+        PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned_objective_training.py",
         active_test_path,
     )
     forbidden_snippets = (
@@ -1322,7 +1320,7 @@ def test_peft_partition_delta_uses_canonical_internal_type_name() -> None:
     forbidden_snippets = (
         "LoraClassifierPartitionDelta",
         "build_lora_classifier_partition_delta_from_parameter_deltas",
-        "project_adapter_classifier_delta_bundle_to_lora_partition_delta",
+        "project_adapter_linear_head_delta_bundle_to_lora_partition_delta",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
@@ -1816,7 +1814,7 @@ def test_peft_text_encoder_does_not_keep_legacy_lora_pass_through_aliases() -> N
         "LoraClassifierUpdateConfig",
         "LoraClassifierTrainExecutor",
         "require_peft_classifier_runtime_matches_objective",
-        "PeftEncoderTextClassifier =",
+        "PeftTextEncoderWithLinearHead =",
         "upload_agent_local_lora_classifier_update",
         "server_owned_lora_classifier_update_artifact_byte_count",
         "LoraClassifierDeltaArtifactStore",
@@ -2299,7 +2297,7 @@ def test_peft_text_encoder_uses_peft_adapters_axis() -> None:
     )
 
     assert not violations, (
-        "PEFT encoder text classifier는 LoRA/DoRA mechanism을 "
+        "PEFT encoder text encoder/head는 LoRA/DoRA mechanism을 "
         "methods/adaptation/peft_adapters/** 축으로만 참조한다. legacy "
         "methods/adaptation/lora 또는 methods/adaptation/peft 경로에 묶지 않는다.\n"
         f"{_format_violations(violations)}"
@@ -2940,11 +2938,7 @@ def test_scripts_do_not_wrap_shared_labeled_query_rows() -> None:
 
 def test_main_server_round_payload_adapter_package_has_no_concrete_modules() -> None:
     package_root = (
-        MAIN_SERVER_SRC
-        / "services"
-        / "federation"
-        / "rounds"
-        / "payload_adapters"
+        MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "payload_adapters"
     )
     allowed_files = {
         package_root / "__init__.py",

@@ -1,4 +1,4 @@
-"""PEFT encoder classifier FL SSL peer prediction primitive."""
+"""PEFT text encoder/head FL SSL peer prediction primitive."""
 
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.peft_text_encoder.training.modeling import (
-    PeftEncoderTextClassifier,
-    build_peft_encoder_text_classifier_from_config,
+    PeftTextEncoderWithLinearHead,
+    build_peft_text_encoder_with_linear_head_from_config,
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
@@ -55,7 +55,7 @@ class PeftEncoderHelperWeakProbabilityProvider:
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig
     device: str
     runtime_resource_cache: RuntimeResourceCache | None = None
-    _helper_models: tuple[PeftEncoderTextClassifier, ...] | None = field(
+    _helper_models: tuple[PeftTextEncoderWithLinearHead, ...] | None = field(
         default=None,
         init=False,
         repr=False,
@@ -70,7 +70,7 @@ class PeftEncoderHelperWeakProbabilityProvider:
         return 0 if self._helper_models is None else len(self._helper_models)
 
     @property
-    def helper_models(self) -> tuple[PeftEncoderTextClassifier, ...]:
+    def helper_models(self) -> tuple[PeftTextEncoderWithLinearHead, ...]:
         """호출 시점에만 helper model을 GPU에 materialize한다."""
 
         if self._helper_models is None:
@@ -107,7 +107,7 @@ class PeftEncoderHelperWeakProbabilityProvider:
 def build_peft_encoder_peer_client_snapshot(
     *,
     client_id: str,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     tokenizer: Any,
     probe_rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
@@ -145,7 +145,7 @@ def build_peft_encoder_peer_client_snapshot(
 
 def compute_peft_encoder_probe_vector(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     tokenizer: Any,
     probe_rows: Sequence[LabeledQueryRow],
     peft_config: PeftEncoderTrainingBackendConfig,
@@ -191,10 +191,10 @@ def compute_peft_encoder_probe_vector(
 
 def extract_peft_encoder_materialized_state(
     *,
-    model: PeftEncoderTextClassifier,
+    model: PeftTextEncoderWithLinearHead,
     labels: Sequence[str],
 ) -> PeftEncoderMaterializedState:
-    """현재 PEFT encoder classifier trainable state를 materialize한다."""
+    """현재 PEFT text encoder/head trainable state를 materialize한다."""
 
     peft_parameters: dict[str, list[float]] = {}
     for name, parameter in model.named_parameters():
@@ -248,7 +248,7 @@ def build_peft_encoder_helper_probability_provider(
             continue
         if not isinstance(snapshot.payload, PeftEncoderMaterializedState):
             raise TypeError(
-                "PEFT encoder head helper snapshot payload must be "
+                "PEFT text encoder/head helper snapshot payload must be "
                 "PeftEncoderMaterializedState."
             )
         helper_snapshots.append(snapshot)
@@ -271,7 +271,7 @@ def _materialize_helper_model(
     peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
-) -> PeftEncoderTextClassifier:
+) -> PeftTextEncoderWithLinearHead:
     if not isinstance(snapshot.payload, PeftEncoderMaterializedState):
         raise TypeError("snapshot payload must be PeftEncoderMaterializedState.")
     cache_key = _helper_model_cache_key(
@@ -283,13 +283,13 @@ def _materialize_helper_model(
     if runtime_resource_cache is not None:
         cached = runtime_resource_cache.get_resource(cache_key)
         if cached is not None:
-            if not isinstance(cached, PeftEncoderTextClassifier):
+            if not isinstance(cached, PeftTextEncoderWithLinearHead):
                 raise TypeError(
-                    "Cached helper model must be PeftEncoderTextClassifier."
+                    "Cached helper model must be PeftTextEncoderWithLinearHead."
                 )
             return cached
 
-    model, _tokenizer = build_peft_encoder_text_classifier_from_config(
+    model, _tokenizer = build_peft_text_encoder_with_linear_head_from_config(
         labels=list(labels),
         peft_config=peft_config,
         runtime_config=trainer_runtime_config,

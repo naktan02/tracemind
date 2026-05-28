@@ -926,7 +926,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
 
     monkeypatch.setattr(
         supervised_seed_step,
-        "build_peft_encoder_text_classifier_from_config",
+        "build_peft_text_encoder_with_linear_head_from_config",
         _fake_build_model,
     )
     monkeypatch.setattr(

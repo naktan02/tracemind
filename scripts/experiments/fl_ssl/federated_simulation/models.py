@@ -157,7 +157,7 @@ class FederatedDiagnosticViewConfig:
 
 @dataclass(frozen=True, slots=True)
 class FederatedFinalProjectionConfig:
-    """최종 global LoRA representation projection artifact 설정."""
+    """최종 global PEFT representation projection artifact 설정."""
 
     enabled: bool = True
     dataset_names: tuple[str, ...] = ("validation", "test")
