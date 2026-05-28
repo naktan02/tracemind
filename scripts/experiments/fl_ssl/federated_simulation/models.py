@@ -291,11 +291,47 @@ def _optional_str(value: object) -> str | None:
     return normalized or None
 
 
-@dataclass(slots=True)
+def _normalize_round_runtime_name(value: str, *, field_name: str) -> str:
+    normalized = value.strip().lower().replace("-", "_")
+    if not normalized:
+        raise ValueError(f"round_runtime.{field_name} must not be empty.")
+    return normalized
+
+
+def _resolve_payload_adapter_kind(
+    *,
+    payload_adapter_kind: str | None,
+    adapter_family_name: str | None,
+) -> str:
+    resolved_payload_adapter_kind = _optional_str(payload_adapter_kind)
+    legacy_adapter_family_name = _optional_str(adapter_family_name)
+    if resolved_payload_adapter_kind is None:
+        if legacy_adapter_family_name is None:
+            raise ValueError("round_runtime.payload_adapter_kind must not be empty.")
+        return legacy_adapter_family_name
+    if legacy_adapter_family_name is None:
+        return resolved_payload_adapter_kind
+    normalized_payload_adapter_kind = _normalize_round_runtime_name(
+        resolved_payload_adapter_kind,
+        field_name="payload_adapter_kind",
+    )
+    normalized_legacy_adapter_family = _normalize_round_runtime_name(
+        legacy_adapter_family_name,
+        field_name="adapter_family_name",
+    )
+    if normalized_payload_adapter_kind != normalized_legacy_adapter_family:
+        raise ValueError(
+            "round_runtime.payload_adapter_kind and legacy "
+            "round_runtime.adapter_family_name must match when both are provided."
+        )
+    return normalized_payload_adapter_kind
+
+
+@dataclass(slots=True, init=False)
 class FederatedRoundRuntimeConfig:
     """simulation이 사용할 update family와 v1 payload compatibility 설정."""
 
-    adapter_family_name: str
+    payload_adapter_kind: str
     aggregation_backend_name: str
     update_family_name: str
     runtime_payload_key: str | None = None
@@ -307,28 +343,49 @@ class FederatedRoundRuntimeConfig:
     final_projection_builder: str | None = None
     transient_resource_cleaner: str | None = None
 
+    def __init__(
+        self,
+        *,
+        aggregation_backend_name: str,
+        update_family_name: str,
+        payload_adapter_kind: str | None = None,
+        adapter_family_name: str | None = None,
+        runtime_payload_key: str | None = None,
+        runtime_payloads: Mapping[str, object] | None = None,
+        round_runtime_payload_builder: str | None = None,
+        local_objective_executors: tuple[str, ...] = (),
+        initial_state_builder: str | None = None,
+        validation_evaluator: str | None = None,
+        final_projection_builder: str | None = None,
+        transient_resource_cleaner: str | None = None,
+    ) -> None:
+        resolved_payload_adapter_kind = _resolve_payload_adapter_kind(
+            payload_adapter_kind=payload_adapter_kind,
+            adapter_family_name=adapter_family_name,
+        )
+        self.payload_adapter_kind = resolved_payload_adapter_kind
+        self.aggregation_backend_name = aggregation_backend_name
+        self.update_family_name = update_family_name
+        self.runtime_payload_key = runtime_payload_key
+        self.runtime_payloads = dict(runtime_payloads or {})
+        self.round_runtime_payload_builder = round_runtime_payload_builder
+        self.local_objective_executors = local_objective_executors
+        self.initial_state_builder = initial_state_builder
+        self.validation_evaluator = validation_evaluator
+        self.final_projection_builder = final_projection_builder
+        self.transient_resource_cleaner = transient_resource_cleaner
+        self.__post_init__()
+
     def __post_init__(self) -> None:
-        normalized_adapter_family = (
-            self.adapter_family_name.strip()
-            .lower()
-            .replace(
-                "-",
-                "_",
-            )
+        normalized_payload_adapter_kind = _normalize_round_runtime_name(
+            self.payload_adapter_kind,
+            field_name="payload_adapter_kind",
         )
-        if not normalized_adapter_family:
-            raise ValueError("round_runtime.adapter_family_name must not be empty.")
-        normalized_update_family = (
-            self.update_family_name.strip()
-            .lower()
-            .replace(
-                "-",
-                "_",
-            )
+        normalized_update_family = _normalize_round_runtime_name(
+            self.update_family_name,
+            field_name="update_family_name",
         )
-        if not normalized_update_family:
-            raise ValueError("round_runtime.update_family_name must not be empty.")
-        self.adapter_family_name = normalized_adapter_family
+        self.payload_adapter_kind = normalized_payload_adapter_kind
         self.update_family_name = normalized_update_family
         normalized_runtime_payload_key = _optional_str(self.runtime_payload_key)
         if normalized_runtime_payload_key is not None:
@@ -338,10 +395,10 @@ class FederatedRoundRuntimeConfig:
         self.runtime_payload_key = normalized_runtime_payload_key
 
     @property
-    def payload_adapter_kind(self) -> str:
-        """v1 shared payload/aggregation compatibility용 adapter kind."""
+    def adapter_family_name(self) -> str:
+        """legacy config/report 호환 alias."""
 
-        return self.adapter_family_name
+        return self.payload_adapter_kind
 
     def runtime_payload_for_update_family(self) -> object | None:
         """update-family config가 지정한 runtime payload를 반환한다."""

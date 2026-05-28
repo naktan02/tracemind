@@ -324,7 +324,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             margin_threshold=0.0,
         ),
         round_runtime_config=FederatedRoundRuntimeConfig(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             aggregation_backend_name="fedavg",
             update_family_name="peft_text_classifier",
         ),
@@ -672,7 +672,7 @@ def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
                 margin_threshold=0.0,
             ),
             round_runtime_config=FederatedRoundRuntimeConfig(
-                adapter_family_name="peft_classifier",
+                payload_adapter_kind="peft_classifier",
                 aggregation_backend_name="fedavg",
                 update_family_name="peft_text_classifier",
             ),

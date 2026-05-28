@@ -55,7 +55,7 @@ def _assert_manual_fl_runtime_is_compatible(cfg: DictConfig) -> None:
     )
     assert resolve_federated_training_backend_adapter_kind(
         objective_config=objective_config
-    ) == str(cfg.round_runtime.adapter_family_name)
+    ) == str(cfg.round_runtime.payload_adapter_kind)
 
 
 @pytest.mark.parametrize(
@@ -531,7 +531,6 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "clear_peft_encoder_transient_resource_cache"
     )
     assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
-    assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.lora.name == "default"
@@ -768,7 +767,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "methods.adaptation.peft_text_classifier.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     )
-    assert cfg.round_runtime.adapter_family_name == "peft_classifier"
+    assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.report.labeled_ratio == cfg.client_pool_split.labeled_ratio
     assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio
@@ -854,18 +853,13 @@ def test_federated_simulation_method_recipe_axes_are_composable(
 
     for local_profile_name in descriptor.recipe.supported_local_update_profile_names:
         with initialize_config_module(version_base=None, config_module="conf"):
-            local_cfg = compose(
+            compose(
                 config_name="entrypoints/fl_ssl/run_federated_simulation",
                 overrides=[
                     f"strategy_axes/fl/method_descriptor={descriptor.name}",
                     f"strategy_axes/fl/local_update_profile={local_profile_name}",
                 ],
             )
-        local_adapter_kind = resolve_federated_training_backend_adapter_kind(
-            objective_config=TrainingObjectiveConfig.from_mapping(
-                _plain_dict(local_cfg.training_task.objective)
-            )
-        )
         for runtime_pair in descriptor.recipe.supported_runtime_pairs:
             with initialize_config_module(version_base=None, config_module="conf"):
                 cfg = compose(
@@ -873,9 +867,8 @@ def test_federated_simulation_method_recipe_axes_are_composable(
                     overrides=[
                         f"strategy_axes/fl/method_descriptor={descriptor.name}",
                         (f"strategy_axes/fl/local_update_profile={local_profile_name}"),
-                        f"round_runtime.adapter_family_name={local_adapter_kind}",
                         (
-                            "round_runtime.update_family_name="
+                            "strategy_axes/trainable_state/update_family="
                             f"{runtime_pair.update_family_name}"
                         ),
                         "round_runtime.aggregation_backend_name="
@@ -1248,7 +1241,7 @@ def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> N
     assert cfg.shard_policy.alpha == 0.3
     assert cfg.query_ssl_method.name == "flexmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "flexmatch"
-    assert cfg.round_runtime.adapter_family_name == "peft_classifier"
+    assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.fl_data.source_mode == "materialized_client_split"
     assert cfg.fl_data.split_manifest == split_manifest
@@ -1352,7 +1345,7 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
     )
 
     assert cfg.local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
-    assert cfg.round_runtime.adapter_family_name == "peft_classifier"
+    assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert plan.method_name == "manual"
     assert plan.execution_role == "manual_baseline"

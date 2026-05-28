@@ -284,7 +284,7 @@ def test_federated_ssl_registry_supports_test_only_method_extension(
             method_descriptor=dummy_descriptor,
             local_update_profile=local_update_profile,
             local_update_adapter_kind=fixture.TEST_ONLY_ADAPTER_KIND,
-            round_adapter_family_name=fixture.TEST_ONLY_ADAPTER_KIND,
+            round_payload_adapter_kind=fixture.TEST_ONLY_ADAPTER_KIND,
             round_update_family_name=fixture.TEST_ONLY_UPDATE_FAMILY,
             round_aggregation_backend_name=(fixture.TEST_ONLY_AGGREGATION_BACKEND_NAME),
         )
@@ -411,14 +411,14 @@ def test_fl_ssl_compatibility_rejects_adapter_family_drift() -> None:
     validate_federated_ssl_adapter_family_compatibility(
         local_update_profile=profile,
         local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
-        round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+        round_payload_adapter_kind=TEST_ONLY_ADAPTER_KIND,
     )
 
     with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
         validate_federated_ssl_adapter_family_compatibility(
             local_update_profile=profile,
             local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
-            round_adapter_family_name=OTHER_TEST_ONLY_ADAPTER_KIND,
+            round_payload_adapter_kind=OTHER_TEST_ONLY_ADAPTER_KIND,
         )
 
     with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
@@ -427,7 +427,7 @@ def test_fl_ssl_compatibility_rejects_adapter_family_drift() -> None:
                 method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=profile,
                 local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
-                round_adapter_family_name=OTHER_TEST_ONLY_ADAPTER_KIND,
+                round_payload_adapter_kind=OTHER_TEST_ONLY_ADAPTER_KIND,
                 round_update_family_name=OTHER_TEST_ONLY_UPDATE_FAMILY,
                 round_aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )
@@ -447,7 +447,7 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
                 method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=profile,
                 local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
-                round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                round_payload_adapter_kind=TEST_ONLY_ADAPTER_KIND,
                 round_update_family_name=TEST_ONLY_UPDATE_FAMILY,
                 round_aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )
@@ -459,7 +459,7 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
                 method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=None,
                 local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
-                round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                round_payload_adapter_kind=TEST_ONLY_ADAPTER_KIND,
                 round_update_family_name=OTHER_TEST_ONLY_UPDATE_FAMILY,
                 round_aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )
@@ -471,7 +471,7 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
                 method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=None,
                 local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
-                round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                round_payload_adapter_kind=TEST_ONLY_ADAPTER_KIND,
                 round_update_family_name=TEST_ONLY_UPDATE_FAMILY,
                 round_aggregation_backend_name=OTHER_TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )

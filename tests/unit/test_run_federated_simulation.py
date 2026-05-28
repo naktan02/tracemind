@@ -447,7 +447,7 @@ def _legacy_manual_ssl_method_config() -> FederatedSslMethodConfig:
 
 def _default_round_runtime_config(
     *,
-    adapter_family_name: str = "peft_classifier",
+    payload_adapter_kind: str = "peft_classifier",
     update_family_name: str = "peft_text_classifier",
     initial_state_builder: str | None = (
         "methods.adaptation.peft_text_classifier.runtime_family."
@@ -484,7 +484,7 @@ def _default_round_runtime_config(
         )
     )
     return FederatedRoundRuntimeConfig(
-        adapter_family_name=adapter_family_name,
+        payload_adapter_kind=payload_adapter_kind,
         aggregation_backend_name=aggregation_backend_name,
         update_family_name=update_family_name,
         runtime_payload_key=update_family_name if runtime_payload is not None else None,
@@ -778,7 +778,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
     bootstrap_row = _row("seed_1", "server labeled panic", "anxiety")
     active_state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         model_id="mxbai-lora-classifier",
@@ -1040,7 +1040,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
     )
     active_state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         model_id="mxbai-lora-classifier",
@@ -1171,7 +1171,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         seed=42,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
@@ -1323,7 +1323,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     )
     active_state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         model_id="mxbai-lora-classifier",
@@ -1504,7 +1504,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         seed=42,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
@@ -2036,7 +2036,7 @@ def test_simulation_server_runtime_accepts_no_method_descriptor(tmp_path: Path) 
 
 def test_simulation_server_runtime_maps_partitioned_server_update_to_backend() -> None:
     backend_name = resolve_simulation_aggregation_backend_name(
-        adapter_family_name="peft_classifier",
+        payload_adapter_kind="peft_classifier",
         aggregation_backend_name="fedavg",
         capability_plan=_partitioned_server_update_capability_plan(),
     )
@@ -2049,7 +2049,7 @@ def test_simulation_server_runtime_rejects_partitioned_policy_for_non_peft_famil
 ):
     with pytest.raises(ValueError, match="not supported by adapter family"):
         resolve_simulation_aggregation_backend_name(
-            adapter_family_name="unsupported_family",
+            payload_adapter_kind="unsupported_family",
             aggregation_backend_name="fedavg",
             capability_plan=_partitioned_server_update_capability_plan(),
         )
@@ -2064,7 +2064,7 @@ def test_run_simulation_request_rejects_manual_partitioned_update_until_producer
         rounds=0,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
@@ -2159,7 +2159,7 @@ def test_run_simulation_request_rejects_local_update_round_family_drift(
         tmp_path,
         output_name="local_update_round_family_mismatch",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="classifier_head",
+            payload_adapter_kind="classifier_head",
             update_family_name="linear_head",
             initial_state_builder=(
                 "methods.classification.linear_head.bootstrap."
@@ -2200,7 +2200,7 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
         tmp_path,
         output_name="manual_plan_mismatch",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="unsupported_family",
+            payload_adapter_kind="unsupported_family",
             update_family_name="unsupported_family",
             aggregation_backend_name="fedavg",
         ),
@@ -2220,7 +2220,7 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
 def test_build_initial_shared_state_supports_peft_classifier_family() -> None:
     state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         model_id="mxbai-peft-classifier",
@@ -2242,7 +2242,7 @@ def test_build_initial_shared_state_supports_peft_classifier_family() -> None:
 def test_build_initial_shared_state_uses_configured_linear_head_builder() -> None:
     state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="classifier_head",
+            payload_adapter_kind="classifier_head",
             update_family_name="linear_head",
             initial_state_builder=(
                 "methods.classification.linear_head.bootstrap."
@@ -2267,7 +2267,7 @@ def test_build_initial_shared_state_rejects_missing_builder() -> None:
     with pytest.raises(ValueError, match="initial_state_builder is required"):
         build_initial_shared_state(
             round_runtime_config=_default_round_runtime_config(
-                adapter_family_name="future_family",
+                payload_adapter_kind="future_family",
                 initial_state_builder=None,
             ),
             model_id="future-model",
@@ -2283,7 +2283,7 @@ def test_build_initial_shared_state_rejects_builder_without_state() -> None:
     with pytest.raises(ValueError, match="initial_state_builder returned no"):
         build_initial_shared_state(
             round_runtime_config=_default_round_runtime_config(
-                adapter_family_name="future_family",
+                payload_adapter_kind="future_family",
                 update_family_name="future_family",
             ),
             model_id="future-model",
@@ -2325,7 +2325,7 @@ def test_run_simulation_request_rejects_peft_runtime_objective_drift(
         ],
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=drifted_peft_runtime,
         ),
         training_task_config=_default_training_task_config(
@@ -2355,7 +2355,7 @@ def test_run_simulation_request_rejects_missing_peft_runtime_config(
         ],
         model_id="mxbai-lora-classifier",
         round_runtime_config=FederatedRoundRuntimeConfig(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             aggregation_backend_name="fedavg",
             update_family_name="peft_text_classifier",
             initial_state_builder=(
@@ -2407,7 +2407,7 @@ def test_run_simulation_request_bootstraps_peft_classifier_profile(
         validation_rows=validation_rows,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
@@ -2438,7 +2438,7 @@ def test_peft_classifier_validation_rejects_prototype_similarity(tmp_path) -> No
         output_name="lora_prototype_validation_rejected",
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
@@ -2499,7 +2499,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         bootstrap_ratio=1 / 3,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
@@ -2637,7 +2637,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
         bootstrap_ratio=0.5,
         model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
@@ -2730,7 +2730,7 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
         bootstrap_ratio=1 / 3,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
@@ -2765,7 +2765,7 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
             bootstrap_ratio=1 / 3,
             model_id="mxbai-lora-classifier",
             round_runtime_config=_default_round_runtime_config(
-                adapter_family_name="peft_classifier",
+                payload_adapter_kind="peft_classifier",
                 peft_classifier=_peft_runtime_config(),
             ),
             training_task_config=base_request.training_task_config,
@@ -2797,7 +2797,7 @@ def test_run_simulation_request_rejects_unsupported_legacy_local_update_backend(
         ],
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="peft_classifier",
+            payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(

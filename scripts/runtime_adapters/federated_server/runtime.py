@@ -182,7 +182,7 @@ class SimulationServerRuntime:
             adapter_family=build_simulation_round_family(
                 adapter_family_name=round_runtime_config.payload_adapter_kind,
                 aggregation_backend_name=resolve_simulation_aggregation_backend_name(
-                    adapter_family_name=round_runtime_config.payload_adapter_kind,
+                    payload_adapter_kind=round_runtime_config.payload_adapter_kind,
                     aggregation_backend_name=(
                         round_runtime_config.aggregation_backend_name
                     ),
@@ -396,14 +396,14 @@ def _build_simulation_aggregation_backend_overrides(
 
 def resolve_simulation_aggregation_backend_name(
     *,
-    adapter_family_name: str,
+    payload_adapter_kind: str,
     aggregation_backend_name: str,
     capability_plan: FederatedSslCapabilityPlan | None,
 ) -> str:
     """server update policy를 simulation aggregation backend 이름으로 해석한다."""
 
     return resolve_federated_ssl_server_update_backend_name(
-        adapter_family_name=adapter_family_name,
+        adapter_family_name=payload_adapter_kind,
         server_update_policy_name=(
             None
             if capability_plan is None

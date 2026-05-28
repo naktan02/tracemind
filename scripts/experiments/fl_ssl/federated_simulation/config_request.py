@@ -83,7 +83,7 @@ def build_simulation_request_from_config(
     )
     round_runtime_payloads = _build_round_runtime_payloads(cfg.round_runtime)
     round_runtime_config = FederatedRoundRuntimeConfig(
-        adapter_family_name=_resolve_round_payload_adapter_kind(cfg.round_runtime),
+        payload_adapter_kind=_resolve_round_payload_adapter_kind(cfg.round_runtime),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
         update_family_name=str(cfg.round_runtime.update_family_name),
         runtime_payload_key=_optional_config_str(

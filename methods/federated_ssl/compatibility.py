@@ -35,7 +35,7 @@ class FederatedSslProfileCompatibilityContext:
     method_descriptor: FederatedSslMethodDescriptor
     local_update_profile: LocalUpdateProfile | None
     local_update_adapter_kind: str
-    round_adapter_family_name: str
+    round_payload_adapter_kind: str
     round_update_family_name: str
     round_aggregation_backend_name: str
     capability_plan: FederatedSslCapabilityPlan | None = None
@@ -51,10 +51,10 @@ class FederatedSslProfileCompatibilityContext:
         )
         object.__setattr__(
             self,
-            "round_adapter_family_name",
+            "round_payload_adapter_kind",
             normalize_non_empty_str(
-                self.round_adapter_family_name,
-                field_name="round_adapter_family_name",
+                self.round_payload_adapter_kind,
+                field_name="round_payload_adapter_kind",
             ),
         )
         object.__setattr__(
@@ -89,7 +89,7 @@ def validate_federated_ssl_profile_compatibility(
     validate_federated_ssl_adapter_family_compatibility(
         local_update_profile=context.local_update_profile,
         local_update_adapter_kind=context.local_update_adapter_kind,
-        round_adapter_family_name=context.round_adapter_family_name,
+        round_payload_adapter_kind=context.round_payload_adapter_kind,
     )
 
     recipe = context.method_descriptor.recipe
@@ -128,7 +128,7 @@ def validate_federated_ssl_adapter_family_compatibility(
     *,
     local_update_profile: LocalUpdateProfile | None,
     local_update_adapter_kind: str,
-    round_adapter_family_name: str,
+    round_payload_adapter_kind: str,
 ) -> None:
     """local update payload family와 round shared-state family drift를 검증한다."""
 
@@ -136,12 +136,12 @@ def validate_federated_ssl_adapter_family_compatibility(
         local_update_adapter_kind,
         field_name="local_update_adapter_kind",
     )
-    normalized_round_adapter_family_name = normalize_non_empty_str(
-        round_adapter_family_name,
-        field_name="round_adapter_family_name",
+    normalized_round_payload_adapter_kind = normalize_non_empty_str(
+        round_payload_adapter_kind,
+        field_name="round_payload_adapter_kind",
     )
     if normalized_local_adapter_kind.lower() == (
-        normalized_round_adapter_family_name.lower()
+        normalized_round_payload_adapter_kind.lower()
     ):
         return
     profile_name = (
@@ -154,7 +154,7 @@ def validate_federated_ssl_adapter_family_compatibility(
         "must target the same adapter family: "
         f"local_update_profile={profile_name}, "
         f"local_update_adapter_kind={normalized_local_adapter_kind}, "
-        f"round_adapter_family={normalized_round_adapter_family_name}."
+        f"round_payload_adapter_kind={normalized_round_payload_adapter_kind}."
     )
 
 
