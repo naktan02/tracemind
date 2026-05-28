@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 from typing import Any
 
 from methods.common.runtime_resources import RuntimeResourceCache
@@ -18,6 +17,8 @@ from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+
+from .runtime_callable_loader import load_configured_callable
 
 
 def evaluate_simulation_validation(
@@ -62,17 +63,7 @@ def _validation_evaluator_path(round_runtime_config: object) -> str:
 
 
 def _load_validation_evaluator(evaluator_path: str) -> Any:
-    module_name, separator, function_name = evaluator_path.rpartition(".")
-    if not separator or not module_name or not function_name:
-        raise ValueError(
-            "round_runtime.validation_evaluator must be a fully qualified "
-            f"function path: {evaluator_path!r}."
-        )
-    module = import_module(module_name)
-    evaluator = getattr(module, function_name, None)
-    if not callable(evaluator):
-        raise ValueError(
-            "round_runtime.validation_evaluator must point to a callable: "
-            f"{evaluator_path!r}."
-        )
-    return evaluator
+    return load_configured_callable(
+        evaluator_path,
+        field_name="round_runtime.validation_evaluator",
+    )

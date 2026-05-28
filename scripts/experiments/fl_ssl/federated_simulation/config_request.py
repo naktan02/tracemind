@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +60,8 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
+
+from .adapters.runtime_callable_loader import load_configured_callable
 
 
 def build_simulation_request_from_config(
@@ -344,20 +345,10 @@ def _build_round_runtime_payloads(cfg: DictConfig) -> dict[str, object]:
 
 
 def _load_round_runtime_payload_builder(builder_path: str) -> Any:
-    module_name, separator, function_name = builder_path.rpartition(".")
-    if not separator or not module_name or not function_name:
-        raise ValueError(
-            "round_runtime.round_runtime_payload_builder must be a fully qualified "
-            f"function path: {builder_path!r}."
-        )
-    module = import_module(module_name)
-    builder = getattr(module, function_name, None)
-    if not callable(builder):
-        raise ValueError(
-            "round_runtime.round_runtime_payload_builder must point to a callable: "
-            f"{builder_path!r}."
-        )
-    return builder
+    return load_configured_callable(
+        builder_path,
+        field_name="round_runtime.round_runtime_payload_builder",
+    )
 
 
 def _build_execution_plan(cfg: DictConfig) -> FederatedSslExecutionPlan:

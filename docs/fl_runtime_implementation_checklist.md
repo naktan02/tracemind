@@ -6,8 +6,8 @@
 source of truth로 본다.
 최종 method/runtime 구조와 `adapter_family`에서 `update_family`로의 용어 전환은
 `docs/architecture/target-method-runtime-structure.md`를 우선한다. 이 문서의
-`lora_classifier`, `adapter family`, `fedmatch_agreement` 표기는 현행 v1 실행/검증
-표면일 수 있다.
+`lora_classifier`, `adapter family`, `fedmatch_agreement` 표기는 historical
+실행/검증 표면일 수 있다.
 
 ## 현재 상태
 
@@ -19,8 +19,9 @@ source of truth로 본다.
   sweep, report dump, 기존 report artifact metadata verifier를 갖고 있다.
 - 기본 FL SSL baseline은 descriptor 없는 `manual` mode다. report/index에는
   `execution_role=manual_baseline`으로 남기고 `descriptor_name`은 비워 둔다.
-- `diagonal_scale`와 `lora_classifier` adapter family의 FedAvg core/projection은
-  `methods/adaptation/<family>/`에 있다.
+- active FedAvg core/projection은 update-family 소유 경계에 있다.
+  `diagonal_scale`와 `lora_classifier` direct family 구현은 제거된 historical
+  표면으로만 다룬다.
 - 공통 분류 metric 계산은 `methods/evaluation`이 소유하고, FL report는 중앙 SSL과
   같은 metric shape를 재사용한다.
 

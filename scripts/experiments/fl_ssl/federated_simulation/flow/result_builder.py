@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import gc
 import time
-from importlib import import_module
 from typing import Any
 
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
@@ -21,6 +20,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
 
+from ..adapters.runtime_callable_loader import load_configured_callable
 from ..io.final_projection import build_final_projection_artifacts
 from ..io.simulation_report_builder import SimulationReportBuilder
 from ..io.simulation_report_writer import SimulationReportWriter
@@ -169,17 +169,7 @@ def _release_helper_model_cache_before_final_evaluation(
 
 
 def _load_transient_resource_cleaner(cleaner_path: str) -> Any:
-    module_name, separator, function_name = cleaner_path.rpartition(".")
-    if not separator or not module_name or not function_name:
-        raise ValueError(
-            "round_runtime.transient_resource_cleaner must be a fully qualified "
-            f"function path: {cleaner_path!r}."
-        )
-    module = import_module(module_name)
-    cleaner = getattr(module, function_name, None)
-    if not callable(cleaner):
-        raise ValueError(
-            "round_runtime.transient_resource_cleaner must point to a callable: "
-            f"{cleaner_path!r}."
-        )
-    return cleaner
+    return load_configured_callable(
+        cleaner_path,
+        field_name="round_runtime.transient_resource_cleaner",
+    )

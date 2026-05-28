@@ -98,7 +98,7 @@ def _run_query_ssl_peft_encoder_client_round(
     if request.query_ssl_objective_config is None:
         raise ValueError("query_ssl_objective_config is required.")
     if request.round_runtime_config.runtime_payload_for_update_family() is None:
-        raise ValueError("PEFT classifier runtime config is required.")
+        raise ValueError("PEFT text encoder runtime config is required.")
 
     timing = TimingRecorder()
     training_started_at = time.perf_counter()

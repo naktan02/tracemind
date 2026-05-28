@@ -62,13 +62,13 @@ descriptor = FederatedSslMethodDescriptor(
         training_row_source=TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
         runtime_entrypoint=(
             "methods.federated_ssl.fedmatch.partitioned_local_training:"
-            "run_method_owned_peft_classifier_training_core"
+            "run_method_owned_peft_encoder_training_core"
         ),
     ),
     server_step=FederatedSslServerStepSpec(
         server_aggregator_name="round_runtime_aggregation_backend",
         round_policy_name="round_active_pair_only",
-        server_aggregate_hint="fedmatch_peft_classifier_partitioned_delta",
+        server_aggregate_hint="fedmatch_peft_text_encoder_partitioned_delta",
     ),
     round_state_exchange=FederatedSslRoundStateExchangeSpec(
         exchange_name="peer_context",

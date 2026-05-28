@@ -26,7 +26,7 @@
 - 시스템/FL 트랙의 우선 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - 여기서 classifier는 공통 class evidence를 만드는 shared artifact로 본다.
 - `PrototypePack`과 shared adapter 계열 계약은 제거 대상이 아니라 비교 실험/확장 축으로 유지한다.
-- 이 README의 계약은 현재 `시스템/FL runtime`의 source of truth다. 중앙집중형 LoRA 논문 trainer는 별도 실험 레일로 다루며, paper-track scaffold는 `docs/contracts/central_lora_classifier_trainer_contract.md`를 기준으로 본다.
+- 이 README의 계약은 현재 `시스템/FL runtime`의 source of truth다. 중앙집중형 PEFT classifier 논문 trainer는 별도 실험 레일로 다루며, paper-track scaffold는 `docs/contracts/central_peft_classifier_trainer_contract.md`를 기준으로 본다.
 
 ## 주요 파일
 

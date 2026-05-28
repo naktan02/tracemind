@@ -46,7 +46,7 @@ PartitionedMethodLocalTrainingConfig = (
 )
 
 
-def run_method_owned_peft_classifier_training_core(
+def run_method_owned_peft_encoder_training_core(
     *,
     client_id: str,
     seed: int,

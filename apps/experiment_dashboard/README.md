@@ -67,12 +67,12 @@ FL report를 dashboard 전용 view-model로 평탄화한다.
   macro-F1/loss/ECE.
 - `fl_ssl_client_splits`: client별 non-IID labeled/unlabeled label distribution.
 
-기존 LoRA-classifier FL run 중 validation scorer가 `prototype_similarity`인 결과는
+기존 historical LoRA-classifier FL run 중 validation scorer가 `prototype_similarity`인 결과는
 round별 global validation curve가 평평할 수 있다. 이 scorer는 shared
 LoRA/classifier state를 직접 읽지 않기 때문에, client update/aggregation artifact가
 생성돼도 `macro_f1`, `accuracy_top_1`, `loss`가 전 라운드 동일하게 기록될 수 있다.
-새 LoRA-classifier FL run은 `lora_classifier_eval` validation을 사용해야 global
-LoRA/head artifact가 실제 성능 곡선에 반영된다.
+새 PEFT text encoder FL run은 `peft_classifier_eval` validation을 사용해야 global
+PEFT/head artifact가 실제 성능 곡선에 반영된다.
 
 ## 경계
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from importlib import import_module
 from typing import Any
 
 from methods.federated_ssl.capability_plan import (
@@ -17,6 +16,8 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
+
+from .runtime_callable_loader import load_configured_callable
 
 
 def require_supported_server_step(
@@ -73,16 +74,7 @@ def run_server_step_if_supported(
 
 
 def _load_server_step_executor(executor_path: str) -> Any:
-    module_name, separator, function_name = executor_path.rpartition(".")
-    if not separator or not module_name or not function_name:
-        raise ValueError(
-            "server_step_policy.executor must be a fully qualified function path: "
-            f"{executor_path!r}."
-        )
-    module = import_module(module_name)
-    executor = getattr(module, function_name, None)
-    if not callable(executor):
-        raise ValueError(
-            f"server_step_policy.executor must point to a callable: {executor_path!r}."
-        )
-    return executor
+    return load_configured_callable(
+        executor_path,
+        field_name="server_step_policy.executor",
+    )

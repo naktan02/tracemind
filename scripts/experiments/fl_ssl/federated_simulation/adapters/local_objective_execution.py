@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from functools import cache
-from importlib import import_module
 from typing import Any
 
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
@@ -21,6 +19,8 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
+
+from .runtime_callable_loader import load_configured_callable
 
 LocalObjectiveExecutor = Callable[..., ClientRoundExecution | None]
 
@@ -60,19 +60,8 @@ def run_method_or_manual_local_objective_if_supported(
     return None
 
 
-@cache
 def _load_local_objective_executor(executor_path: str) -> LocalObjectiveExecutor:
-    module_name, separator, function_name = executor_path.rpartition(".")
-    if not separator or not module_name or not function_name:
-        raise ValueError(
-            "round_runtime.local_objective_executors entries must be fully "
-            f"qualified function paths: {executor_path!r}."
-        )
-    module = import_module(module_name)
-    executor = getattr(module, function_name, None)
-    if not callable(executor):
-        raise ValueError(
-            "round_runtime.local_objective_executors entries must point to "
-            f"callables: {executor_path!r}."
-        )
-    return executor
+    return load_configured_callable(
+        executor_path,
+        field_name="round_runtime.local_objective_executors entries",
+    )

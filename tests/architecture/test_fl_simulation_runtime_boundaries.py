@@ -76,6 +76,71 @@ def test_fl_simulation_client_training_has_no_adapter_family_literals() -> None:
     )
 
 
+def test_fl_simulation_config_callable_loading_is_centralized() -> None:
+    callable_loader_path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "runtime_callable_loader.py"
+    )
+    checked_paths = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "config_request.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "local_objective_execution.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "server_step_execution.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "evaluation.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "flow"
+        / "result_builder.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "io"
+        / "final_projection.py",
+    )
+    forbidden_snippet = "from importlib import import_module"
+    violations = [
+        _relative_repo_path(path)
+        for path in checked_paths
+        if forbidden_snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert callable_loader_path.exists(), (
+        "round_runtime이 선언한 callable import/validation은 한 helper가 소유한다. "
+        f"missing={_relative_repo_path(callable_loader_path)}"
+    )
+    assert not violations, (
+        "FL simulation adapter들은 config-declared callable을 실행만 하고, "
+        "fully-qualified path 파싱과 import 규칙은 runtime_callable_loader.py에 "
+        "모은다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_fl_single_simulation_entrypoint_stays_thin() -> None:
     path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_federated_simulation.py"
     source = path.read_text(encoding="utf-8")

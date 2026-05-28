@@ -50,14 +50,14 @@ def run_peft_encoder_supervised_seed_step(
     update_family_name = request.round_runtime_config.update_family_name
     if not is_peft_encoder_update_family(update_family_name):
         raise NotImplementedError(
-            "supervised_seed_step currently supports PEFT-backed classifier "
+            "supervised_seed_step currently supports PEFT text encoder "
             "simulation runtime."
         )
     runtime_payload = peft_encoder_runtime_payload(request.round_runtime_config)
     if runtime_payload is None:
-        raise ValueError("PEFT-backed classifier runtime config is required.")
+        raise ValueError("PEFT text encoder runtime config is required.")
     if not isinstance(active.adapter_state, PeftClassifierState):
-        raise ValueError("supervised_seed_step requires active classifier state.")
+        raise ValueError("supervised_seed_step requires active PEFT encoder state.")
     if not bootstrapped.dataset_split.bootstrap_rows:
         raise ValueError("supervised_seed_step requires server bootstrap_rows.")
     if request.ssl_method_config is None:

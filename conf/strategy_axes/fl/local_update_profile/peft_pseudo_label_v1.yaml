@@ -1,6 +1,6 @@
 # @package local_update_profile
 
-# PEFT-classifier family 위에서 classifier logits 기반 pseudo-label selection을
+# PEFT text encoder update family 위에서 classifier logits 기반 pseudo-label selection을
 # 사용한다.
 # LoRA/DoRA 같은 mechanism은 round_runtime.runtime_payloads.peft_text_encoder
 # 아래의 peft_adapter_name으로
@@ -10,7 +10,7 @@ training_scope: adapter_only
 training_backend_name: peft_classifier_trainer
 confidence_threshold: 0.6
 margin_threshold: 0.02
-# selection 경로도 canonical PEFT-classifier family 이름을 기록한다.
+# selection 경로도 canonical PEFT text encoder update-family 이름을 기록한다.
 # LoRA 전용 local update profile leaf는 제거했고, old-run reader compatibility는
 # artifact/report loader 계층에서만 다룬다.
 example_generation_backend_name: peft_classifier_raw_rows
