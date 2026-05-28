@@ -18,6 +18,7 @@ Prototype 분석 실험 runner나 sweep은 `scripts/` 또는 `research/analysis/
 - `thresholding/`: prototype score 기반 static threshold policy, candidate 평가,
   selection rule
 - `evidence/`: prototype score나 score snapshot을 `PseudoLabelEvidence`로 정규화
-- `evaluation.py`: prototype candidate/evidence를 classification evaluation payload로
-  해석하는 평가 core
+- `evaluation.py`: prototype candidate/evidence와 prototype pack row 평가를
+  classification evaluation payload로 해석하는 평가 core
+- `projections.py`: prototype pack을 평가/리포트용 centroid view로 투영하는 helper
 - `training_inputs/`: prototype score 기반 single/multiview 학습 입력 view 계산

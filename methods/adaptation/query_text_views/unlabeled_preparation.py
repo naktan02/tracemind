@@ -1,23 +1,23 @@
-"""Query SSL unlabeled row augmentation preparation and cache."""
+"""Query SSL unlabeled row view preparation core."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 from methods.adaptation.query_text_views.view_rows import (
+    USB_MULTIVIEW_BUILDER_NAME,
+    USB_WEAK_BUILDER_NAME,
+    QuerySslBacktranslationPair,
     attach_usb_multiview_candidate_pair,
     rows_have_usb_multiview_candidates,
     validate_usb_multiview_candidate_rows,
     validate_usb_weak_rows,
-)
-from scripts.runtime_adapters.backtranslation_runtime import (
-    build_nllb_backtranslation_candidate_pairs,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
@@ -27,6 +27,33 @@ from shared.src.contracts.labeled_query_row_contracts import (
 
 QUERY_SSL_AUGMENTER_CACHE_SCHEMA_VERSION = "query_ssl_augmenter_cache.v1"
 QUERY_SSL_AUGMENTER_SUMMARY_SCHEMA_VERSION = "query_ssl_augmenter_summary.v1"
+PRECOMPUTED_USB_CANDIDATES_AUGMENTER = "precomputed_usb_candidates"
+NLLB_BACKTRANSLATION_AUGMENTER = "nllb_backtranslation"
+
+QuerySslCandidatePairBuilder = Callable[
+    [Sequence[str]],
+    Sequence[QuerySslBacktranslationPair],
+]
+QuerySslPreparationEventSink = Callable[[str], None]
+
+
+@dataclass(frozen=True, slots=True)
+class QuerySslAugmenterSettings:
+    """Query SSL strong view source 설정의 typed shape."""
+
+    name: str
+    augmenter_type: str
+    source_lang: str | None = None
+    pivot_languages: tuple[str, ...] = ()
+    model_id: str | None = None
+    revision: str | None = None
+    device: str | None = None
+    local_files_only: bool | None = None
+    batch_size: int | None = None
+    max_new_tokens: int | None = None
+    torch_dtype: str | None = None
+    cache_dir: str | None = None
+    candidate_pair_builder_path: str | None = None
 
 
 @dataclass(slots=True)
@@ -36,6 +63,7 @@ class PreparedQuerySslUnlabeledRows:
     rows: list[LabeledQueryRow]
     mode: str
     cache_hit: bool
+    uses_strong_view_candidates: bool
     prepared_jsonl_path: Path | None = None
     manifest_path: Path | None = None
     summary_path: Path | None = None
@@ -66,49 +94,72 @@ class _AugmentationCacheArtifacts:
     cache_key: str
 
 
-def build_query_ssl_augmenter_manifest(cfg) -> dict[str, object]:
-    """query_ssl_augmenter Hydra group를 run manifest에 남길 canonical shape."""
+def build_query_ssl_augmenter_manifest(
+    settings: QuerySslAugmenterSettings | None,
+) -> dict[str, object]:
+    """query_ssl_augmenter 설정을 run manifest에 남길 canonical shape로 만든다."""
 
-    augmenter_cfg = getattr(cfg, "query_ssl_augmenter", None)
-    if augmenter_cfg is None:
+    if settings is None:
         return {}
 
     manifest: dict[str, object] = {
-        "preset_name": str(augmenter_cfg.name),
-        "augmenter_type": str(augmenter_cfg.augmenter_type),
+        "preset_name": settings.name,
+        "augmenter_type": settings.augmenter_type,
     }
-    if hasattr(augmenter_cfg, "source_lang"):
-        manifest["source_lang"] = str(augmenter_cfg.source_lang)
-    if hasattr(augmenter_cfg, "pivot_languages"):
-        manifest["pivot_languages"] = [
-            str(language) for language in augmenter_cfg.pivot_languages
-        ]
-    if hasattr(augmenter_cfg, "model_id"):
-        manifest["model_id"] = str(augmenter_cfg.model_id)
-    if hasattr(augmenter_cfg, "revision"):
-        manifest["revision"] = str(augmenter_cfg.revision)
-    if hasattr(augmenter_cfg, "device"):
-        manifest["device"] = str(augmenter_cfg.device)
-    if hasattr(augmenter_cfg, "local_files_only"):
-        manifest["local_files_only"] = bool(augmenter_cfg.local_files_only)
-    if hasattr(augmenter_cfg, "batch_size"):
-        manifest["batch_size"] = int(augmenter_cfg.batch_size)
-    if hasattr(augmenter_cfg, "max_new_tokens"):
-        manifest["max_new_tokens"] = int(augmenter_cfg.max_new_tokens)
-    if hasattr(augmenter_cfg, "torch_dtype"):
-        manifest["torch_dtype"] = str(augmenter_cfg.torch_dtype)
-    if hasattr(augmenter_cfg, "cache_dir"):
-        cache_dir = str(augmenter_cfg.cache_dir).strip()
-        manifest["cache_dir"] = cache_dir or None
+    _put_optional_manifest_value(manifest, "source_lang", settings.source_lang)
+    if settings.pivot_languages:
+        manifest["pivot_languages"] = list(settings.pivot_languages)
+    _put_optional_manifest_value(manifest, "model_id", settings.model_id)
+    _put_optional_manifest_value(manifest, "revision", settings.revision)
+    _put_optional_manifest_value(manifest, "device", settings.device)
+    if settings.local_files_only is not None:
+        manifest["local_files_only"] = settings.local_files_only
+    if settings.batch_size is not None:
+        manifest["batch_size"] = settings.batch_size
+    if settings.max_new_tokens is not None:
+        manifest["max_new_tokens"] = settings.max_new_tokens
+    _put_optional_manifest_value(manifest, "torch_dtype", settings.torch_dtype)
+    manifest["cache_dir"] = _normalize_optional_text(settings.cache_dir)
     return manifest
 
 
-def prepare_usb_multiview_unlabeled_rows(
-    cfg,
+def prepare_query_ssl_unlabeled_rows(
+    *,
+    view_builder_name: str,
+    algorithm_name: str,
+    rows: Sequence[LabeledQueryRow],
+    source_jsonl: str | Path | None,
+    augmenter_settings: QuerySslAugmenterSettings | None = None,
+    candidate_pair_builder: QuerySslCandidatePairBuilder | None = None,
+    event_sink: QuerySslPreparationEventSink | None = None,
+) -> PreparedQuerySslUnlabeledRows:
+    """algorithm view surface에 맞춰 중앙 unlabeled rows를 준비한다."""
+
+    if view_builder_name == USB_MULTIVIEW_BUILDER_NAME:
+        return _prepare_usb_multiview_unlabeled_rows(
+            rows=rows,
+            source_jsonl=source_jsonl,
+            algorithm_name=algorithm_name,
+            augmenter_settings=augmenter_settings,
+            candidate_pair_builder=candidate_pair_builder,
+            event_sink=event_sink,
+        )
+    if view_builder_name == USB_WEAK_BUILDER_NAME:
+        return _prepare_usb_weak_unlabeled_rows(
+            rows=rows,
+            algorithm_name=algorithm_name,
+        )
+    raise ValueError(f"Unsupported Query SSL view builder: {view_builder_name}.")
+
+
+def _prepare_usb_multiview_unlabeled_rows(
     *,
     rows: Sequence[LabeledQueryRow],
     source_jsonl: str | Path | None,
     algorithm_name: str,
+    augmenter_settings: QuerySslAugmenterSettings | None,
+    candidate_pair_builder: QuerySslCandidatePairBuilder | None,
+    event_sink: QuerySslPreparationEventSink | None,
 ) -> PreparedQuerySslUnlabeledRows:
     """Strict USB형 multiview unlabeled row를 보장한다."""
 
@@ -118,23 +169,35 @@ def prepare_usb_multiview_unlabeled_rows(
     if rows_have_usb_multiview_candidates(effective_rows):
         return PreparedQuerySslUnlabeledRows(
             rows=effective_rows,
-            mode="precomputed_usb_candidates",
+            mode=PRECOMPUTED_USB_CANDIDATES_AUGMENTER,
             cache_hit=False,
+            uses_strong_view_candidates=True,
         )
 
-    augmenter_type = str(cfg.query_ssl_augmenter.augmenter_type)
-    if augmenter_type == "precomputed_usb_candidates":
+    if augmenter_settings is None:
+        raise ValueError(
+            f"{algorithm_name} requires query_ssl_augmenter settings when "
+            "unlabeled rows do not include both aug_0 and aug_1."
+        )
+    if augmenter_settings.augmenter_type == PRECOMPUTED_USB_CANDIDATES_AUGMENTER:
         raise ValueError(
             f"{algorithm_name} requires each unlabeled row to include both aug_0 "
             "and aug_1 when query_ssl_augmenter is precomputed-only."
         )
-    if augmenter_type != "nllb_backtranslation":
+    if augmenter_settings.augmenter_type != NLLB_BACKTRANSLATION_AUGMENTER:
         raise ValueError(
-            f"Unsupported query_ssl_augmenter.augmenter_type: {augmenter_type}"
+            "Unsupported query_ssl_augmenter.augmenter_type: "
+            f"{augmenter_settings.augmenter_type}"
+        )
+    if candidate_pair_builder is None:
+        raise ValueError(
+            f"{algorithm_name} requires a candidate_pair_builder for "
+            f"{NLLB_BACKTRANSLATION_AUGMENTER} augmentation."
         )
 
     cache_artifacts = _resolve_cache_artifacts(
-        cfg=cfg,
+        algorithm_name=algorithm_name,
+        augmenter_settings=augmenter_settings,
         rows=effective_rows,
         source_jsonl=source_jsonl,
     )
@@ -149,32 +212,33 @@ def prepare_usb_multiview_unlabeled_rows(
             cached_rows,
             context=algorithm_name,
         )
-        print(
+        _emit(
+            event_sink,
             "query_ssl_augmenter=cache_hit "
             f"rows={len(cached_rows)} "
             f"prepared_jsonl={cache_artifacts.jsonl_path}",
-            flush=True,
         )
         return PreparedQuerySslUnlabeledRows(
             rows=cached_rows,
             mode="cache_hit",
             cache_hit=True,
+            uses_strong_view_candidates=True,
             prepared_jsonl_path=cache_artifacts.jsonl_path,
             manifest_path=cache_artifacts.manifest_path,
             summary_path=cache_artifacts.summary_path,
         )
 
-    print(
+    _emit(
+        event_sink,
         "query_ssl_augmenter=generate_strict_usb_candidates "
         f"rows={len(effective_rows)} "
-        f"batch_size={int(cfg.query_ssl_augmenter.batch_size)} "
-        f"model_id={str(cfg.query_ssl_augmenter.model_id)} "
-        f"torch_dtype={str(getattr(cfg.query_ssl_augmenter, 'torch_dtype', 'auto'))} "
-        f"pivots={list(cfg.query_ssl_augmenter.pivot_languages)}",
-        flush=True,
+        f"batch_size={_format_optional_value(augmenter_settings.batch_size)} "
+        f"model_id={_format_optional_value(augmenter_settings.model_id)} "
+        f"torch_dtype={_format_optional_value(augmenter_settings.torch_dtype)} "
+        f"pivots={list(augmenter_settings.pivot_languages)}",
     )
-    candidate_pairs = build_nllb_backtranslation_candidate_pairs(
-        cfg, texts=[str(row["text"]) for row in effective_rows]
+    candidate_pairs = list(
+        candidate_pair_builder([str(row["text"]) for row in effective_rows])
     )
     if len(candidate_pairs) != len(effective_rows):
         raise ValueError(
@@ -192,39 +256,43 @@ def prepare_usb_multiview_unlabeled_rows(
     )
 
     if cache_artifacts is None:
-        print(
+        _emit(
+            event_sink,
             f"query_ssl_augmenter=generated_in_memory rows={len(prepared_rows)}",
-            flush=True,
         )
         return PreparedQuerySslUnlabeledRows(
             rows=prepared_rows,
             mode="generated_in_memory",
             cache_hit=False,
+            uses_strong_view_candidates=True,
         )
 
     _write_cache_artifacts(
         cache_artifacts=cache_artifacts,
         rows=prepared_rows,
         source_jsonl=source_jsonl,
-        query_ssl_augmenter_manifest=build_query_ssl_augmenter_manifest(cfg),
+        query_ssl_augmenter_manifest=build_query_ssl_augmenter_manifest(
+            augmenter_settings
+        ),
     )
-    print(
+    _emit(
+        event_sink,
         "query_ssl_augmenter=generated_and_cached "
         f"rows={len(prepared_rows)} "
         f"prepared_jsonl={cache_artifacts.jsonl_path}",
-        flush=True,
     )
     return PreparedQuerySslUnlabeledRows(
         rows=prepared_rows,
         mode="generated_and_cached",
         cache_hit=False,
+        uses_strong_view_candidates=True,
         prepared_jsonl_path=cache_artifacts.jsonl_path,
         manifest_path=cache_artifacts.manifest_path,
         summary_path=cache_artifacts.summary_path,
     )
 
 
-def prepare_usb_weak_unlabeled_rows(
+def _prepare_usb_weak_unlabeled_rows(
     *,
     rows: Sequence[LabeledQueryRow],
     algorithm_name: str,
@@ -239,30 +307,32 @@ def prepare_usb_weak_unlabeled_rows(
         rows=effective_rows,
         mode="raw_weak_text",
         cache_hit=False,
+        uses_strong_view_candidates=False,
     )
 
 
 def _resolve_cache_artifacts(
     *,
-    cfg,
+    algorithm_name: str,
+    augmenter_settings: QuerySslAugmenterSettings,
     rows: Sequence[LabeledQueryRow],
     source_jsonl: str | Path | None,
 ) -> _AugmentationCacheArtifacts | None:
-    cache_dir = str(getattr(cfg.query_ssl_augmenter, "cache_dir", "") or "").strip()
-    if not cache_dir:
+    cache_dir = _normalize_optional_text(augmenter_settings.cache_dir)
+    if cache_dir is None:
         return None
 
     cache_root = Path(cache_dir)
     cache_root.mkdir(parents=True, exist_ok=True)
-    augmenter_manifest = build_query_ssl_augmenter_manifest(cfg)
+    augmenter_manifest = build_query_ssl_augmenter_manifest(augmenter_settings)
     cache_key = _build_cache_key(
         rows=rows,
         source_jsonl=source_jsonl,
         augmenter_manifest=augmenter_manifest,
     )
     cache_stem = (
-        f"query_ssl_{_slugify(str(cfg.query_ssl_method.algorithm_name))}_"
-        f"{_slugify(str(cfg.query_ssl_augmenter.name))}_{cache_key}"
+        f"query_ssl_{_slugify(algorithm_name)}_"
+        f"{_slugify(augmenter_settings.name)}_{cache_key}"
     )
     jsonl_path = cache_root / f"{cache_stem}.jsonl"
     manifest_path = cache_root / f"{cache_stem}.manifest.json"
@@ -279,7 +349,7 @@ def _build_cache_key(
     *,
     rows: Sequence[LabeledQueryRow],
     source_jsonl: str | Path | None,
-    augmenter_manifest: dict[str, object],
+    augmenter_manifest: Mapping[str, object],
 ) -> str:
     digest = hashlib.sha256()
     for row in rows:
@@ -293,7 +363,7 @@ def _build_cache_key(
     cache_payload = {
         "source_jsonl": None if source_jsonl is None else str(source_jsonl),
         "rows_fingerprint": digest.hexdigest(),
-        "augmenter_manifest": augmenter_manifest,
+        "augmenter_manifest": dict(augmenter_manifest),
     }
     return hashlib.sha256(
         json.dumps(cache_payload, sort_keys=True).encode("utf-8")
@@ -366,6 +436,32 @@ def _build_cache_summary(
         "aug_0_pivot_lang_counts": dict(sorted(aug_0_pivot_lang_counts.items())),
         "aug_1_pivot_lang_counts": dict(sorted(aug_1_pivot_lang_counts.items())),
     }
+
+
+def _put_optional_manifest_value(
+    manifest: dict[str, object],
+    key: str,
+    value: str | None,
+) -> None:
+    normalized_value = _normalize_optional_text(value)
+    if normalized_value is not None:
+        manifest[key] = normalized_value
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _format_optional_value(value: object | None) -> object:
+    return "unset" if value is None else value
+
+
+def _emit(event_sink: QuerySslPreparationEventSink | None, message: str) -> None:
+    if event_sink is not None:
+        event_sink(message)
 
 
 def _slugify(value: str) -> str:

@@ -51,6 +51,7 @@ LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
     SHARED_SRC / "services" / "prototypes" / "prototype_pack_builder.py",
 )
 PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
+PROTOTYPE_SRC = REPO_ROOT / "methods" / "prototype"
 PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
 PEFT_TEXT_ENCODER_SRC = METHODS_SRC / "adaptation" / "peft_text_encoder"
@@ -326,6 +327,22 @@ def test_prototype_builder_core_stays_in_methods_layer() -> None:
     )
 
 
+def test_prototype_projection_and_evaluation_core_stays_in_methods_layer() -> None:
+    forbidden_paths = (
+        SHARED_SRC / "services" / "prototypes" / "projections.py",
+        SCRIPTS_SRC / "prototypes" / "evaluation.py",
+    )
+    existing_paths = [
+        _relative_repo_path(path) for path in forbidden_paths if path.exists()
+    ]
+    assert (PROTOTYPE_SRC / "projections.py").exists()
+    assert not existing_paths, (
+        "prototype projection/evaluation 계산 core는 methods/prototype에 둔다. "
+        "shared는 contract/serialization을, scripts는 artifact workflow만 소유한다.\n"
+        f"{chr(10).join(f'- {path}' for path in existing_paths)}"
+    )
+
+
 def test_prototype_building_keeps_strategy_files_separate() -> None:
     monolith_path = PROTOTYPE_BUILDING_SRC / "build_strategies.py"
     assert not monolith_path.exists(), (
@@ -426,6 +443,37 @@ def test_query_text_views_stays_input_glue_only() -> None:
         "소유한다. PEFT model composition, shared update payload, payload-adapter "
         "materialization은 각 canonical owner에 둔다.\n"
         f"{_format_violations(violations)}"
+    )
+
+
+def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
+    legacy_script_path = (
+        QUERY_PEFT_SSL_SRC / "query_ssl" / "augmentation.py"
+    )
+    view_preparation_path = (
+        QUERY_PEFT_SSL_SRC / "query_ssl" / "view_preparation.py"
+    )
+    source = view_preparation_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        'view_builder_name == "usb_multiview"',
+        'view_builder_name == "usb_weak"',
+        'augmenter_type == "precomputed_usb_candidates"',
+        'augmenter_type != "nllb_backtranslation"',
+        "rows_have_usb_multiview_candidates",
+        "validate_usb_multiview_candidate_rows",
+        "validate_usb_weak_rows",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not legacy_script_path.exists(), (
+        "Query SSL unlabeled row augmentation/view preparation core는 "
+        "methods/adaptation/query_text_views가 소유한다. scripts는 Hydra cfg와 "
+        "runtime callable 주입만 맡긴다."
+    )
+    assert not violations, (
+        "query_peft_ssl script adapter는 USB view builder나 augmentation source "
+        "정책을 직접 분기하지 않는다.\n"
+        f"violations={violations}"
     )
 
 

@@ -313,6 +313,8 @@ Hydra package shape는 기존 runner compatibility를 위해 각각 `cfg.query_s
   - 학습 입력 strong candidate를 어디서 확보할지 결정한다.
   - 기본 `precomputed_usb_candidates_v1`는 이미 JSONL에 저장된
     `text + aug_0 + aug_1`을 읽고, 학습 중 NLLB 역번역을 다시 수행하지 않는다.
+  - 실행 중 생성이 필요한 source는 runtime callable path를 config에 선언하고,
+    script runner는 그 callable을 methods-owned view preparation core에 주입한다.
 - `query_ssl_strong_view_policy`
   - 중앙 SSL entrypoint의 단순 scalar 값이다.
   - 저장된 후보 중 어떤 strong view를 학습 batch에 노출할지 결정한다.

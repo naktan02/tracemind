@@ -6,12 +6,12 @@ import argparse
 import math
 from pathlib import Path
 
-from shared.src.contracts.prototype_contracts import (  # noqa: E402
-    load_prototype_pack_payload,
-)
-from shared.src.services.prototypes.projections import (  # noqa: E402
+from methods.prototype.projections import (  # noqa: E402
     project_category_centroids_by_largest_cluster,
     require_single_category_centroids,
+)
+from shared.src.contracts.prototype_contracts import (  # noqa: E402
+    load_prototype_pack_payload,
 )
 
 

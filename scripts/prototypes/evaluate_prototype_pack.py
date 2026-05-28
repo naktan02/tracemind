@@ -10,8 +10,8 @@ import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
+from methods.prototype.evaluation import evaluate_prototype_pack_rows  # noqa: E402
 from scripts.artifacts.run_artifacts import build_run_dir  # noqa: E402
-from scripts.prototypes.evaluation import evaluate_rows  # noqa: E402
 from scripts.prototypes.io import load_jsonl  # noqa: E402
 from scripts.runtime_adapters.embedding_runtime import (  # noqa: E402
     create_embedding_adapter,
@@ -89,7 +89,7 @@ def main(cfg: DictConfig) -> None:
         rows = load_jsonl(input_jsonl)
         texts = [row["text"] for row in rows]
         embeddings = adapter.embed_texts(texts)
-        evaluation = evaluate_rows(
+        evaluation = evaluate_prototype_pack_rows(
             rows=rows,
             prototypes=prototypes,
             embeddings=embeddings,

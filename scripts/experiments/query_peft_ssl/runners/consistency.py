@@ -15,9 +15,6 @@ from methods.adaptation.query_text_views.query_ssl_views import (
 from methods.ssl.base import QuerySslAlgorithmDescriptor
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from scripts.experiments.query_peft_ssl.io.artifacts import write_run_artifacts
-from scripts.experiments.query_peft_ssl.query_ssl.augmentation import (
-    build_query_ssl_augmenter_manifest,
-)
 from scripts.experiments.query_peft_ssl.query_ssl.common import (
     QuerySslRunContext,
     build_query_ssl_method_manifest,
@@ -26,6 +23,7 @@ from scripts.experiments.query_peft_ssl.query_ssl.common import (
     prepare_query_ssl_run_context,
 )
 from scripts.experiments.query_peft_ssl.query_ssl.view_preparation import (
+    build_query_ssl_augmenter_manifest,
     prepare_query_ssl_unlabeled_rows,
 )
 from scripts.experiments.query_peft_ssl.runtime_metrics import (
@@ -165,7 +163,7 @@ def run_consistency_query_ssl_peft_baseline(
     }
     effective_extra_manifest.update(context.initial_checkpoint_manifest)
     if (
-        descriptor.required_views.view_builder_name == "usb_multiview"
+        prepared_unlabeled_rows.uses_strong_view_candidates
         and getattr(cfg, "query_ssl_augmenter", None) is not None
     ):
         effective_extra_manifest["query_ssl_augmenter"] = (

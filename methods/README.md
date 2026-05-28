@@ -86,6 +86,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   primitive와 classifier-head projection
 - `methods/adaptation/peft_text_encoder/`: PEFT text encoder + classifier head
   update family와 text-specific training/update core
+- `methods/adaptation/query_text_views/`: query-domain text view row 해석,
+  unlabeled view preparation, tokenizer batch glue
 - `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP
   policy core와 registry
 - `methods/evaluation/`: 중앙 SSL과 FL SSL이 공유하는 평가 metric 계산 helper
@@ -96,6 +98,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   server/round policy, method-local variant
 - `methods/prototype/building/`: prototype pack builder와 single/kmeans/dbscan
   생성 전략
+- `methods/prototype/projections.py`: prototype pack을 평가/리포트용 centroid view로
+  투영하는 helper
 - `methods/prototype/scoring/`: prototype similarity와 category score policy 계산
 - `methods/prototype/evidence/`: prototype score를 pseudo-label evidence로 정규화
 - `methods/prototype/training_inputs/`: prototype single/multiview input view 계산

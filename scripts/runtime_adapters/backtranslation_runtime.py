@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+from methods.adaptation.query_text_views.unlabeled_preparation import (
+    QuerySslCandidatePairBuilder,
+)
+
 
 def build_nllb_backtranslation_candidate_pairs_from_params(
     *,
@@ -63,3 +67,14 @@ def build_nllb_backtranslation_candidate_pairs(
         cache_dir=str(cfg.query_ssl_augmenter.cache_dir),
         local_files_only=bool(cfg.query_ssl_augmenter.local_files_only),
     )
+
+
+def build_nllb_backtranslation_candidate_pair_builder(
+    cfg: Any,
+) -> QuerySslCandidatePairBuilder:
+    """Hydra cfg로 Query SSL NLLB candidate pair builder를 만든다."""
+
+    def _build(texts: Sequence[str]) -> Any:
+        return build_nllb_backtranslation_candidate_pairs(cfg, texts=list(texts))
+
+    return _build

@@ -9,6 +9,7 @@ def require_single_category_centroids(
     payload: PrototypePackPayload,
 ) -> dict[str, list[float]]:
     """모든 category가 prototype 하나일 때만 centroid view를 반환한다."""
+
     centroids: dict[str, list[float]] = {}
     multi_categories: list[str] = []
     for category, prototypes in payload.categories.items():
@@ -28,6 +29,7 @@ def project_category_centroids_by_largest_cluster(
     payload: PrototypePackPayload,
 ) -> dict[str, list[float]]:
     """category별 sample_count가 가장 큰 prototype을 대표 centroid로 고른다."""
+
     centroids: dict[str, list[float]] = {}
     for category, prototypes in payload.categories.items():
         if not prototypes:

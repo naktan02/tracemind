@@ -327,6 +327,9 @@ fallback으로 저장하며 fallback 이유를 manifest에 남긴다.
   단순 선택값이면 runner default scalar로 유지하고, parameter set이 생길 때만
   별도 config group 승격을 검토한다.
 
+Query SSL view preparation 정책은 `methods/adaptation/query_text_views/`가 소유한다.
+script runner는 Hydra 설정과 runtime callable을 넘기는 adapter만 맡는다.
+
 방법론이 늘어날 때마다 method-specific Python entrypoint 파일을 계속 추가하는
 방식은 장기 구조로 보지 않는다. method 차이는 Hydra
 `strategy_axes/ssl/consistency_method` 교체로 표현하고, Python entrypoint는 공통

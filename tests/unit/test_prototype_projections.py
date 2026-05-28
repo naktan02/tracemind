@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.services.prototypes.projections import (
+from methods.prototype.projections import (
     project_category_centroids_by_largest_cluster,
     require_single_category_centroids,
 )
+from shared.src.contracts.prototype_contracts import PrototypePackPayload
 
 
 def _single_payload() -> PrototypePackPayload:

@@ -9,6 +9,8 @@ scaffold의 source of truth는
 
 - `data.py`: labeled row와 weak/strong row를 tokenizer batch로 바꾸는 입력 glue
 - `view_rows.py`: weak/original/strong view row 해석과 validation helper
+- `unlabeled_preparation.py`: Query SSL descriptor가 요구하는 view surface에 맞춰
+  unlabeled row를 검증하거나 strong candidate를 생성/재사용하는 준비 core
 - `query_ssl_views.py`: 중앙 SSL과 FL client-local SSL이 공유하는 unlabeled
   view surface별 DataLoader builder
 - `local_training_budget.py`: Query SSL local step/batch budget을 labeled/unlabeled

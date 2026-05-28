@@ -22,6 +22,9 @@ prototype artifact 작업 entrypoint를 모은다.
 3. `seeding.py`
    - embedding adapter 생성과 rebuild 호출을 실제로 수행
 
+평가 metric과 prototype projection 계산 core는 `methods/prototype/`가 소유한다.
+이 폴더의 entrypoint는 artifact load/write, runtime adapter 호출, 표 출력만 맡는다.
+
 ## 바로 조절 가능한 축
 
 - `embedding`

@@ -13,6 +13,101 @@ from methods.evaluation.classification_report import (
     build_classification_evaluation_report,
 )
 from methods.prototype.evidence.helpers import softmax_distribution
+from methods.prototype.scoring.score_policies.max_cosine import MaxCosineScorePolicy
+from methods.prototype.scoring.similarity import score_prototype_categories
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+from shared.src.domain.services.classification_report import (
+    build_confusion_matrix,
+    safe_divide,
+    summarize_per_category,
+)
+
+
+def predict_prototype_label(scores: dict[str, float]) -> tuple[str, float, float]:
+    """Prototype category scores에서 top-1 label과 margin을 고른다."""
+
+    ranked = sorted(
+        scores.items(),
+        key=lambda item: (-item[1], item[0]),
+    )
+    predicted_label, top_1_score = ranked[0]
+    top_2_score = ranked[1][1] if len(ranked) > 1 else ranked[0][1]
+    return predicted_label, top_1_score, top_1_score - top_2_score
+
+
+def evaluate_prototype_pack_rows(
+    *,
+    rows: list[LabeledQueryRow],
+    prototypes: dict[str, tuple[list[float], ...]],
+    embeddings: list[list[float]],
+) -> dict[str, object]:
+    """PrototypePack과 query rows/embeddings의 classification metric을 계산한다."""
+
+    categories = sorted(prototypes)
+    actual_labels: list[str] = []
+    predicted_labels: list[str] = []
+    top_1_scores: list[float] = []
+    true_scores: list[float] = []
+    margins: list[float] = []
+    score_policy = MaxCosineScorePolicy()
+
+    for row, embedding in zip(rows, embeddings, strict=True):
+        actual_label = row["mapped_label_4"]
+        scores = score_prototype_categories(
+            embedding=embedding,
+            prototypes=prototypes,
+            policy=score_policy,
+        )
+        predicted_label, top_1_score, margin = predict_prototype_label(scores)
+
+        actual_labels.append(actual_label)
+        predicted_labels.append(predicted_label)
+        top_1_scores.append(top_1_score)
+        true_scores.append(scores[actual_label])
+        margins.append(margin)
+
+    total = len(rows)
+    correct = sum(
+        1
+        for actual, predicted in zip(actual_labels, predicted_labels, strict=True)
+        if actual == predicted
+    )
+    accuracy = safe_divide(correct, total)
+    confusion_matrix = build_confusion_matrix(
+        categories=categories,
+        actual_labels=actual_labels,
+        predicted_labels=predicted_labels,
+    )
+    per_category = summarize_per_category(
+        categories=categories,
+        actual_labels=actual_labels,
+        predicted_labels=predicted_labels,
+        primary_values=true_scores,
+        top_1_values=top_1_scores,
+        margins=margins,
+        primary_metric_key="mean_true_label_score",
+        top_1_metric_key="mean_top_1_score",
+    )
+
+    return {
+        "rows_total": total,
+        "accuracy_top_1": round(accuracy, 6),
+        "correct_top_1": correct,
+        "mean_true_label_score": round(
+            safe_divide(sum(true_scores), len(true_scores)),
+            6,
+        ),
+        "mean_top_1_score": round(
+            safe_divide(sum(top_1_scores), len(top_1_scores)),
+            6,
+        ),
+        "mean_margin_top1_top2": round(
+            safe_divide(sum(margins), len(margins)),
+            6,
+        ),
+        "confusion_matrix": confusion_matrix,
+        "per_category": per_category,
+    }
 
 
 def build_prototype_candidate_evaluation_payload(
