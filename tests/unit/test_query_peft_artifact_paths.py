@@ -30,21 +30,21 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
 
     paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
-        trainer_version="lora_fixmatch_2026_05_10_155954",
+        trainer_version="peft_fixmatch_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
     )
 
     assert str(paths.output_dir) == (
         "runs/train_peft_ssl_classifier/consistency/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
-        "fixmatch_usb_v1/lora_fixmatch_2026_05_10_155954"
+        "fixmatch_usb_v1/peft_fixmatch_2026_05_10_155954"
     )
     assert str(paths.report_path) == (
         "runs/train_peft_ssl_classifier/"
         "consistency/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
         "fixmatch_usb_v1/"
-        "lora_fixmatch_2026_05_10_155954/"
+        "peft_fixmatch_2026_05_10_155954/"
         "reports/report.json"
     )
 
@@ -67,14 +67,14 @@ def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> 
 
     paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
-        trainer_version="lora_replay_2026_05_10_155954",
+        trainer_version="peft_replay_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
     )
 
     assert str(paths.output_dir) == (
         "runs/train_peft_ssl_classifier/pseudo_label_replay/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
-        "lora_replay_2026_05_10_155954"
+        "peft_replay_2026_05_10_155954"
     )
 
 
@@ -87,7 +87,7 @@ def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
 
     paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
-        trainer_version="lora_smoke_2026_05_10_155954",
+        trainer_version="peft_smoke_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
     )
 
@@ -95,7 +95,7 @@ def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
         "runs/_smoke/train_peft_ssl_classifier/consistency/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
         "validation-ourafla_reddit_test-ourafla_reddit/"
-        "fixmatch_usb_v1/lora_smoke_2026_05_10_155954"
+        "fixmatch_usb_v1/peft_smoke_2026_05_10_155954"
     )
     assert str(paths.report_path).startswith("runs/_smoke/train_peft_ssl_classifier/")
 
@@ -111,12 +111,12 @@ def test_non_query_ssl_run_output_dir_keeps_flat_run_id() -> None:
 
     paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
-        trainer_version="lora_clf_2026_05_10_155954",
+        trainer_version="peft_clf_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
     )
 
     assert str(paths.output_dir) == (
-        "runs/train_peft_supervised_classifier/lora_clf_2026_05_10_155954"
+        "runs/train_peft_supervised_classifier/peft_clf_2026_05_10_155954"
     )
 
 
@@ -131,13 +131,13 @@ def test_supervised_smoke_budget_paths_stay_under_smoke_root() -> None:
 
     paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
-        trainer_version="lora_supervised_smoke_2026_05_10_155954",
+        trainer_version="peft_supervised_smoke_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
     )
 
     assert str(paths.output_dir) == (
         "runs/_smoke/train_peft_supervised_classifier/"
-        "lora_supervised_smoke_2026_05_10_155954"
+        "peft_supervised_smoke_2026_05_10_155954"
     )
     assert str(paths.report_path).startswith(
         "runs/_smoke/train_peft_supervised_classifier/"

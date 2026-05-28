@@ -43,7 +43,7 @@ central fixed embedding + classifier seed
 | Hydra config | 실행 조합, strategy axis, track preset | `conf/*` |
 | Agent API/runtime | 로컬 inference, query buffer, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
 | Main server API/runtime | FL round, aggregation, prototype publication | `main_server/src/api/*`, `main_server/src/services/*` |
-| Scripts | dataset/prototype/classifier/LoRA/FL simulation entrypoint와 thin wrapper | `scripts/experiments/*`, `scripts/prototypes/*` |
+| Scripts | dataset/prototype/PEFT/FL simulation entrypoint와 thin wrapper | `scripts/experiments/*`, `scripts/prototypes/*` |
 | Apps | family extension UI, experiment dashboard, future 제품 UI shell | `apps/family_extension/*`, `apps/experiment_dashboard/*` |
 | Tests | package unit, cross-boundary integration, architecture guard | `shared/tests`, `agent/tests`, `main_server/tests`, `tests/*` |
 
@@ -129,7 +129,7 @@ Reddit Labeled Data
 -> Query Buffer
 -> Threshold / Policy Selection
 -> Accepted Query-derived Rows
--> Continue LoRA + Classifier Adaptation
+-> Continue PEFT text encoder + linear head adaptation
 -> Central or Federated Evaluation
 ```
 

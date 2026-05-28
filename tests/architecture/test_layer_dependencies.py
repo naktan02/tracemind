@@ -1264,11 +1264,11 @@ def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
         SCRIPTS_SRC / "experiments" / "result_index" / "models.py",
         SCRIPTS_SRC / "experiments" / "result_index" / "fl_ssl_report_loader.py",
         SCRIPTS_SRC / "experiments" / "result_index" / "dashboard_export.py",
-        REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "app.js",
     )
     forbidden_snippets = (
         "central_lora_ssl",
         "central_lora_initial_eval",
+        "adapter_family_name",
         "lora_rank",
         "lora_alpha",
         "lora_dropout",
@@ -1288,6 +1288,18 @@ def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
         for snippet in forbidden_snippets
         if snippet in path.read_text(encoding="utf-8")
     ]
+    dashboard_path = REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "app.js"
+    dashboard_source = dashboard_path.read_text(encoding="utf-8")
+    legacy_reader_start = dashboard_source.index("function normalizeDashboardBundle(")
+    legacy_reader_end = dashboard_source.index("function hydrateFilters(")
+    dashboard_active_source = (
+        dashboard_source[:legacy_reader_start] + dashboard_source[legacy_reader_end:]
+    )
+    violations.extend(
+        f"{_relative_repo_path(dashboard_path)}: {snippet}"
+        for snippet in forbidden_snippets
+        if snippet in dashboard_active_source
+    )
 
     assert not violations, (
         "result index와 dashboard 계약은 PEFT adapter field를 사용한다. LoRA는 "

@@ -25,7 +25,7 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
 
     records = load_result_index_records(report_path)
 
-    assert records.run.run_id == "lora_fixmatch_2026_05_13_143419"
+    assert records.run.run_id == "peft_fixmatch_2026_05_13_143419"
     assert records.run.track == "central_peft_ssl"
     assert records.run.method_family == "peft_classifier"
     assert records.run.method_name == "fixmatch_usb_v1"
@@ -88,7 +88,7 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
         "validation-ourafla_reddit_test-ourafla_reddit"
     )
     assert bundle["projection_images"][0]["image_src"].startswith(
-        "data/artifacts/lora_fixmatch_2026_05_13_143419/"
+        "data/artifacts/peft_fixmatch_2026_05_13_143419/"
     )
     assert "data/datasets" not in json.dumps(bundle)
 
@@ -283,7 +283,7 @@ def test_result_index_default_ingest_keeps_smoke_out_of_dashboard(
 
     assert indexed_count == 1
     assert [run["run_id"] for run in bundle["runs"]] == [
-        "lora_fixmatch_2026_05_13_143419"
+        "peft_fixmatch_2026_05_13_143419"
     ]
     assert bundle["filters"]["run_control_budget_names"] == ["main"]
     assert bundle["filters"]["run_control_output_dirs"] == ["runs"]
@@ -447,7 +447,7 @@ def _write_report(tmp_path: Path) -> Path:
             "validation-ourafla_reddit_test-ourafla_reddit"
         )
         / "fixmatch_usb_v1"
-        / "lora_fixmatch_2026_05_13_143419"
+        / "peft_fixmatch_2026_05_13_143419"
         / "reports"
         / "report.json"
     )
@@ -475,7 +475,7 @@ def _write_peft_report(tmp_path: Path) -> Path:
             "validation-ourafla_reddit_test-ourafla_reddit"
         )
         / "fixmatch_usb_v1"
-        / "lora_fixmatch_2026_05_13_143419"
+        / "peft_fixmatch_2026_05_13_143419"
         / "reports"
         / "report.json"
     )
@@ -646,9 +646,9 @@ def _write_new_layout_fl_ssl_report(tmp_path: Path) -> Path:
 def _sample_report(projection_dir: Path) -> dict:
     return {
         "schema_version": "central_peft_classifier_eval.v1",
-        "trainer_version": "lora_fixmatch_2026_05_13_143419",
+        "trainer_version": "peft_fixmatch_2026_05_13_143419",
         "manifest": {
-            "trainer_version": "lora_fixmatch_2026_05_13_143419",
+            "trainer_version": "peft_fixmatch_2026_05_13_143419",
             "train_jsonl": "data/datasets/source/labeled.jsonl",
             "eval_sets": {
                 "validation": "data/datasets/source/validation.jsonl",

@@ -275,7 +275,7 @@ async function init() {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    state.bundle = await response.json();
+    state.bundle = normalizeDashboardBundle(await response.json());
     elements.loadState.className = "notice success";
     elements.loadState.textContent = "dashboard data 로드 완료";
     hydrateFilters();
@@ -287,6 +287,63 @@ async function init() {
       <span>먼저 result index export를 실행하세요: <code>uv run python -m scripts.experiments.result_index.ingest --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json</code></span>
     `;
   }
+}
+
+function normalizeDashboardBundle(bundle) {
+  const runs = (bundle.runs ?? []).map(normalizeRunRecord);
+  const flSslRuns = (bundle.fl_ssl_runs ?? []).map(normalizeRunRecord);
+  return {
+    ...bundle,
+    filters: normalizeDashboardFilters(bundle.filters ?? {}),
+    runs,
+    fl_ssl_runs: flSslRuns,
+  };
+}
+
+function normalizeRunRecord(row) {
+  const legacyTrackNames = {
+    central_lora_ssl: CENTRAL_SSL_TRACK,
+    central_lora_initial_eval: CENTRAL_INITIAL_EVAL_TRACK,
+  };
+  const normalized = {
+    ...row,
+    track: legacyTrackNames[row.track] ?? row.track,
+  };
+  if (
+    normalized.payload_adapter_kind === undefined &&
+    normalized.adapter_family_name !== undefined
+  ) {
+    normalized.payload_adapter_kind = normalized.adapter_family_name;
+  }
+  const legacyFieldRenames = {
+    lora_rank: "peft_adapter_rank",
+    lora_alpha: "peft_adapter_alpha",
+    lora_dropout: "peft_adapter_dropout",
+    lora_bias: "peft_adapter_bias",
+    lora_target_modules: "peft_adapter_target_modules",
+    lora_use_rslora: "peft_adapter_use_rslora",
+    lora_use_dora: "peft_adapter_use_dora",
+  };
+  for (const [legacyKey, currentKey] of Object.entries(legacyFieldRenames)) {
+    if (normalized[currentKey] === undefined && normalized[legacyKey] !== undefined) {
+      normalized[currentKey] = normalized[legacyKey];
+    }
+  }
+  return normalized;
+}
+
+function normalizeDashboardFilters(filters) {
+  return {
+    ...filters,
+    peft_adapter_ranks: filters.peft_adapter_ranks ?? filters.lora_ranks ?? [],
+    peft_adapter_alphas: filters.peft_adapter_alphas ?? filters.lora_alphas ?? [],
+    peft_adapter_use_rslora_values:
+      filters.peft_adapter_use_rslora_values ??
+      filters.lora_use_rslora_values ??
+      [],
+    peft_adapter_use_dora_values:
+      filters.peft_adapter_use_dora_values ?? filters.lora_use_dora_values ?? [],
+  };
 }
 
 function bindEvents() {
@@ -1933,8 +1990,6 @@ function flPayloadAdapterKind(row, roundRuntime = null) {
   return (
     row.payload_adapter_kind ??
     runtime.payload_adapter_kind ??
-    row.adapter_family_name ??
-    runtime.adapter_family_name ??
     null
   );
 }

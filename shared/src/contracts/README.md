@@ -22,7 +22,7 @@
 현재 활성 계획 기준:
 
 - 초기 seed baseline은 `central + fixed embedding + classifier`다.
-- query-domain 적응 단계에서만 `LoRA + classifier`를 연다.
+- query-domain 적응 단계에서만 `PEFT text encoder + linear head`를 연다.
 - 시스템/FL 트랙의 우선 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - 여기서 classifier는 공통 class evidence를 만드는 shared artifact로 본다.
 - `PrototypePack`과 shared adapter 계열 계약은 제거 대상이 아니라 비교 실험/확장 축으로 유지한다.

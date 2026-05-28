@@ -128,13 +128,13 @@ Reddit Labeled Data -> Fixed Embedding -> Classifier Seed -> Local Deployment
 Central SSL control:
 
 ```text
-Query Buffer -> Selection -> Accepted Rows -> LoRA + Classifier -> Central Evaluation
+Query Buffer -> Selection -> Accepted Rows -> PEFT text encoder + linear head -> Central Evaluation
 ```
 
 비교 family는 `supervised`, `pseudo-label`, `prototype SSL`, `FixMatch`,
 `R-Drop`, `MixText`이고 `TAPT`는 optional preadaptation이다. 같은 table 안에서는
-backbone, tokenizer, label schema, LoRA spec, initial checkpoint, query selection
-rule, seed를 고정한다.
+backbone, tokenizer, label schema, PEFT adapter mechanism/config, initial checkpoint,
+query selection rule, seed를 고정한다.
 
 FL SSL non-IID:
 
