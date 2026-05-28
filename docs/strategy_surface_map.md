@@ -19,13 +19,14 @@
 | 영역 | 선택 위치 | 구현/계약 owner |
 |---|---|---|
 | Dataset/source/view | `execution_context/*`, `query_data_selection.*` | dataset scripts, shared row contract |
-| Central SSL method | `strategy_axes/ssl/consistency_method` | `methods/ssl/algorithms/*` |
-| SSL input mode | `strategy_axes/ssl/input_mode` | config-declared runner callable |
-| PEFT adapter mechanism | `strategy_axes/adaptation/peft_adapter` | `methods/adaptation/peft_adapters/*` |
-| Trainable update family | `strategy_axes/trainable_state/update_family`, `round_runtime.update_family_name` | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*` |
-| FL shard/participation/weight policy | `strategy_axes/fl/*_policy` | `methods/federated/*` |
-| FL SSL method descriptor | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/<method>/` |
-| FL local/server capability | `server_step_policy`, `server_update_policy`, `peer_context_policy`, `local_ssl_policy` | `methods/federated_ssl/*` + selected update family runtime |
+| Central SSL method | `strategy_axes/ssl_objective/consistency_method` | `methods/ssl/algorithms/*` |
+| SSL input mode | `strategy_axes/ssl_objective/input_mode` | config-declared runner callable |
+| PEFT adapter mechanism | `strategy_axes/model_architecture/peft` | `methods/adaptation/peft_adapters/*` |
+| Trainable update family | `strategy_axes/model_architecture/update_family`, `round_runtime.update_family_name` | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*` |
+| FL split/topology policy | `strategy_axes/fl_topology/shard_policy`, `labeled_exposure`, `materialized_split` | `methods/federated/*`, split materialization |
+| FL round capability | `strategy_axes/fl_topology/server_step`, `server_update`, `peer_context`, `update_partition`, `aggregation_weight` | `methods/federated_ssl/*` + selected update family runtime |
+| FL SSL method descriptor | `strategy_axes/fssl_method` | `methods/federated_ssl/<method>/` |
+| FL local update profile | `strategy_axes/ssl_objective/local_update_profile` | `methods/federated_ssl/local_update_profile.py`, Query SSL/PEFT runtime |
 | Prototype build/scoring | `strategy_axes/prototype/*`, prototype analysis config | `methods/prototype/*` |
 | Report/evaluation metric | report builder config, evaluator selection | `methods/evaluation/*` |
 
@@ -41,6 +42,9 @@
   FedMatch method-local objective다.
 - `server_step_policy`와 `server_update_policy`는 다른 축이다. server-side seed step
   여부와 submitted update 해석 방식을 섞지 않는다.
+- `fl_topology`는 이름보다 범위가 넓다. 현재는 FL data topology와 round capability
+  leaf를 함께 담는 group이고, method identity는 `fssl_method`, local update recipe는
+  `ssl_objective/local_update_profile`로 분리한다.
 - `security_policy`는 method identity가 아니라 runtime capability 축이다.
 
 ## 확장 절차

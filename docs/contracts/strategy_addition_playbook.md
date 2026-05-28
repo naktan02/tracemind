@@ -37,7 +37,7 @@
 새 FL SSL 논문 method는 `docs/contracts/fl_ssl_method_capability_matrix.md`에서
 capability 요구사항을 먼저 정리한다. 선택 전에는
 `methods/federated_ssl/<method>/` 구현 폴더나
-`conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
+`conf/strategy_axes/fssl_method/<method>.yaml` placeholder를 만들지 않는다.
 현재 첫 선택 method는 FedMatch이며, capability surface와 tensor local objective core,
 PEFT text encoder partitioned step core, `local_ssl_policy`/`server_update_policy` 분리까지 열린
 상태다.
@@ -267,7 +267,8 @@ PEFT text encoder partitioned step core, `local_ssl_policy`/`server_update_polic
 - local training runtime fallback:
   - [methods/federated_ssl/runtime_fallbacks.py](../../methods/federated_ssl/runtime_fallbacks.py)
 - 실험 실행 기본 조합:
-  - `conf/strategy_axes/fl/` 또는 `conf/run_controls/`
+  - `conf/strategy_axes/fl_topology/`, `conf/strategy_axes/fssl_method/`,
+    `conf/strategy_axes/ssl_objective/` 또는 `conf/run_controls/`
 - server round runtime 기본 aggregation:
   - [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 - experiment preset:
@@ -304,7 +305,7 @@ PEFT text encoder partitioned step core, `local_ssl_policy`/`server_update_polic
 FL SSL 논문 method를 추가하는 경우에는 다음도 확인한다.
 
 1. `methods/federated_ssl/NEW_METHOD.md`의 추가 순서를 따른다.
-2. `conf/strategy_axes/fl/method_descriptor/<method>.yaml`은
+2. `conf/strategy_axes/fssl_method/<method>.yaml`은
    `methods/federated_ssl/<method>/descriptor.py`,
    `local_objective.py`, `server_policy.py`, `round_policy.py`가
    생긴 뒤에만 추가한다.

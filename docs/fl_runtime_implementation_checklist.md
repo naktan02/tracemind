@@ -23,7 +23,7 @@ truth를 먼저 확인한다.
 ## 완료로 유지할 invariant
 
 - 새 FL SSL method 추가의 기본 변경 위치는
-  `methods/federated_ssl/<method>/`, `conf/strategy_axes/fl/method_descriptor`,
+  `methods/federated_ssl/<method>/`, `conf/strategy_axes/fssl_method`,
   필요한 capability config, tests다.
 - `scripts`는 `fedmatch_agreement`, `fedmatch_partitioned`, `lora_classifier`,
   `diagonal_scale` 같은 method/update-family legacy 이름으로 실행 분기하지 않는다.

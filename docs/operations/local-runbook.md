@@ -201,7 +201,7 @@ USB PseudoLabel baseline:
 
 ```bash
 uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
+  strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1 \
   output_dir=runs/run_peft_ssl_control_pseudolabel
 ```
 

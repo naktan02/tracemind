@@ -13,7 +13,7 @@ Dataset loading, Hydra 조립, artifact 저장은 `scripts/`가 맡는다.
 새 Query SSL algorithm을 추가할 때는 먼저 `NEW_METHOD.md`를 본다. 같은
 `compute_step(model, labeled_batch, unlabeled_batch)` seam으로 표현되는 방법론은
 `methods/ssl/algorithms/<method>/`와
-`conf/strategy_axes/ssl/consistency_method/<method>_v1.yaml`을 추가하는 것이 기본이다.
+`conf/strategy_axes/ssl_objective/consistency_method/<method>_v1.yaml`을 추가하는 것이 기본이다.
 
 Algorithm은 USB/SemiLearn처럼 role별 hook 교체가 가능해야 한다. TraceMind는
 mutable hook dict와 문자열 lookup 대신 `SslObjectiveHooks` typed bundle로

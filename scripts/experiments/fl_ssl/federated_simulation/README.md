@@ -52,6 +52,9 @@
 - `fl_method.composition_mode=method_owned`: FedMatch 같은 descriptor-owned method
 - `fl_data.source_mode=materialized_client_split`: 논문 비교용 고정 split
 - `run_controls/fl_ssl/budget`: smoke/reduced/main runtime budget
-- `strategy_axes/fl/*`: shard, participation, server step/update, peer context 등 capability
+- `strategy_axes/fl_topology/*`: shard, labeled exposure, participation, server
+  step/update, peer context 등 FL split/topology와 round capability
+- `strategy_axes/ssl_objective/local_update_profile`: local update backend,
+  scoring/evidence, privacy guard recipe
 
 상세 실행 명령은 상위 `scripts/experiments/fl_ssl/README.md`를 먼저 본다.

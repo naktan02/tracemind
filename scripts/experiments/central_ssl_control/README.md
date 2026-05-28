@@ -27,11 +27,11 @@ uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
   run_controls/central_ssl/budget=smoke
 ```
 
-method는 `strategy_axes/ssl/consistency_method`로 선택한다.
+method는 `strategy_axes/ssl_objective/consistency_method`로 선택한다.
 
 ```bash
 uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl/consistency_method=freematch_usb_v1
+  strategy_axes/ssl_objective/consistency_method=freematch_usb_v1
 ```
 
 ## 경계
@@ -45,7 +45,7 @@ uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
 ## Read Path
 
 1. `conf/entrypoints/central_ssl_control/*.yaml`
-2. `conf/strategy_axes/ssl/**`
-3. `conf/strategy_axes/adaptation/**`
+2. `conf/strategy_axes/ssl_objective/**`
+3. `conf/strategy_axes/model_architecture/**`
 4. `methods/ssl/**`
 5. `methods/adaptation/peft_text_encoder/**`

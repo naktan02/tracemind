@@ -56,8 +56,8 @@ adapter payload 해석/평균 규칙으로 안정화된 계산은 `methods/feder
 
 ## 추가할 설정
 
-- `conf/strategy_axes/fl/method_descriptor/<method>.yaml`
-- 필요하면 `conf/strategy_axes/fl/local_update_profile/<profile>.yaml`
+- `conf/strategy_axes/fssl_method/<method>.yaml`
+- 필요하면 `conf/strategy_axes/ssl_objective/local_update_profile/<profile>.yaml`
 
 method descriptor YAML은 implementation/recipe가 실제로 존재할 때만 추가한다.
 threshold, LoRA rank, round 수 같은 일반 실행값의 source of truth는 Hydra leaf config에
@@ -66,7 +66,7 @@ threshold, LoRA rank, round 수 같은 일반 실행값의 source of truth는 Hy
 `parameter_overrides` 같은 실행 표면만 둔다. Update family와 aggregation backend
 조합은 별도 preset YAML을 만들지 않고 `round_runtime.update_family_name`과
 `round_runtime.aggregation_backend_name`을 직접 override하거나
-`strategy_axes/trainable_state/update_family` group을 고른다. v1 shared payload
+`strategy_axes/model_architecture/update_family` group을 고른다. v1 shared payload
 compatibility가 필요하면 새 config는 `round_runtime.payload_adapter_kind`를 생산한다.
 `round_runtime.adapter_family_name`은 제거된 v1 입력 이름이다. 새 method recipe,
 runtime config, report/result reader의 조합 키로 다시 만들지 않는다.

@@ -17,7 +17,7 @@
   aggregation 변형을 묶는다. 두 개 이상 방법론에서 공유되는 계산은 축별 methods
   패키지로 승격한다.
 - FL SSL 논문 method는 선택 전에는 구현 폴더나
-  `conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
+  `conf/strategy_axes/fssl_method/<method>.yaml` placeholder를 만들지 않는다.
   현재 선택된 첫 method는 FedMatch이며, capability surface와 tensor local objective
   core, PEFT text encoder partitioned step core까지 열린 상태다.
 - 단일 사용처용 추상화와 compatibility layer는 만들지 않는다.
@@ -26,19 +26,19 @@
 
 | 축 | core owner | runtime owner | config | 대표 테스트 |
 |---|---|---|---|---|
-| SSL objective | `methods/ssl/*` | `scripts/experiments/*`, agent runtime 필요 시 adapter | `conf/strategy_axes/ssl/*` | `tests/unit`, `tests/integration` |
-| Pseudo-label selection | `methods/ssl/hooks/*` | agent acceptance/selection adapter, scripts control runner | `conf/strategy_axes/ssl/pseudo_label_selection/*` | selection unit, central control smoke |
+| SSL objective | `methods/ssl/*` | `scripts/experiments/*`, agent runtime 필요 시 adapter | `conf/strategy_axes/ssl_objective/*` | `tests/unit`, `tests/integration` |
+| Pseudo-label selection | `methods/ssl/hooks/*` | agent acceptance/selection adapter, scripts control runner | `conf/strategy_axes/ssl_objective/pseudo_label_selection/*` | selection unit, central control smoke |
 | Query SSL adaptation | `methods/adaptation/query_text_views/*` | scripts central SSL runners | `conf/entrypoints/central_ssl_control/*` | trainer smoke, artifact metadata |
-| PEFT adapter | `methods/adaptation/*` | scripts trainer, future agent adapter | `conf/strategy_axes/adaptation/*` | adapter builder unit |
+| PEFT adapter | `methods/adaptation/*` | scripts trainer, future agent adapter | `conf/strategy_axes/model_architecture/peft/*` | adapter builder unit |
 | Prototype building | `methods/prototype/building/*` | scripts prototype CLI, main_server publication adapter | `conf/strategy_axes/prototype/*` | builder unit, publication integration |
 | Prototype scoring/evidence | `methods/prototype/scoring/*`, `methods/prototype/evidence/*` | agent scoring/evidence backends, scripts analysis | training objective config | scoring/evidence unit |
 | Prototype SSL method | `methods/ssl/*` + `methods/prototype/*` | central/FL SSL runner | SSL/prototype strategy axes | SSL comparison smoke |
-| FL shard policy | `methods/federated/shard_policy/*` | scripts FL simulation | `conf/strategy_axes/fl/shard_policy/*` | shard determinism unit |
-| FL client participation | `methods/federated/participation.py` | scripts FL simulation round loop | `conf/strategy_axes/fl/client_participation_policy/*` | participation unit, round report |
-| FL aggregation weighting | `methods/federated/aggregation_weighting.py` | family FedAvg cores | `conf/strategy_axes/fl/aggregation_weight_policy/*` | weighting unit, aggregation unit |
-| FL SSL capability plan | `methods/federated_ssl/capability_plan.py`, `capability_axes.py` | scripts FL simulation compatibility adapters, future runtime adapters | `conf/strategy_axes/fl/*_policy/*` | capability compatibility unit |
+| FL shard policy | `methods/federated/shard_policy/*` | scripts FL simulation | `conf/strategy_axes/fl_topology/shard_policy/*` | shard determinism unit |
+| FL client participation | `methods/federated/participation.py` | scripts FL simulation round loop | `conf/strategy_axes/fl_topology/client_participation/*` | participation unit, round report |
+| FL aggregation weighting | `methods/federated/aggregation_weighting.py` | family FedAvg cores | `conf/strategy_axes/fl_topology/aggregation_weight/*` | weighting unit, aggregation unit |
+| FL SSL capability plan | `methods/federated_ssl/capability_plan.py`, `capability_axes.py` | scripts FL simulation compatibility adapters, future runtime adapters | `conf/strategy_axes/fl_topology/*`, `conf/strategy_axes/ssl_objective/local_ssl_policy/*` | capability compatibility unit |
 | FL aggregation | method-only는 `methods/federated_ssl/<method>/aggregation.py`, 재사용 backend는 `methods/federated/aggregation/*` + update-family projection | main_server aggregation adapter | update family + aggregation backend leaf | aggregation unit, round integration |
-| FL SSL method descriptor | `methods/federated_ssl/*` | scripts FL simulation, future runtime translation | `conf/strategy_axes/fl/method_descriptor/*`는 method name/scenario/overrides만 선택 | simulation smoke |
+| FL SSL method descriptor | `methods/federated_ssl/*` | scripts FL simulation, future runtime translation | `conf/strategy_axes/fssl_method/*`는 method name/scenario/overrides만 선택 | simulation smoke |
 | Secure update codec | `shared/src/services/*` | agent/main_server privacy/update boundary | shared config or runtime config | contract/integration |
 
 ## 추가 순서

@@ -65,7 +65,7 @@ central fixed embedding + classifier seed
   제거된 상태를 유지한다.
 - FL simulation은 `payload_adapter_kind=peft_classifier`,
   `update_family_name=peft_text_encoder`, `aggregation_backend_name=fedavg`를 쓴다.
-- `strategy_axes/adaptation/peft_adapter`는 `peft_adapter` namespace를 사용한다.
+- `strategy_axes/model_architecture/peft`는 `peft_adapter` namespace를 사용한다.
 - simulation model revision naming은
   `scripts/experiments/fl_ssl/federated_simulation/model_revisions.py`가 소유한다.
 - PEFT supervised seed step과 final projection core는

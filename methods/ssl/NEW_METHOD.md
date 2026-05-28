@@ -13,7 +13,7 @@ main_server round lifecycle을 통과하지 않는다.
 
 | 종류 | 예시 | 난이도 | 기본 변경 위치 |
 |---|---|---|---|
-| weak-only step objective | PseudoLabel 변형 | 낮음 | `methods/ssl/algorithms/<method>/`, `conf/strategy_axes/ssl/consistency_method/` |
+| weak-only step objective | PseudoLabel 변형 | 낮음 | `methods/ssl/algorithms/<method>/`, `conf/strategy_axes/ssl_objective/consistency_method/` |
 | weak/strong consistency objective | FixMatch, UDA, FreeMatch류 | 낮음-중간 | 위와 같음 |
 | labeled/unlabeled batch 안에서 끝나는 regularization | R-Drop류 | 중간 | algorithm core + 필요 시 batch view validation |
 | 새 unlabeled view surface가 필요한 objective | multi-strong view, custom augmentation | 중간 | algorithm core + dataloader/view builder + augmentation config |
@@ -34,7 +34,7 @@ methods/ssl/algorithms/<method_name>/
   <method_name>.py
   README.md
 
-conf/strategy_axes/ssl/consistency_method/<method_name>_v1.yaml
+conf/strategy_axes/ssl_objective/consistency_method/<method_name>_v1.yaml
 tests/unit/test_methods_<method_name>.py
 ```
 
@@ -134,7 +134,7 @@ interface shape만 보여주는 참고다.
 ## 어디를 건드리지 않을지
 
 - 중앙 SSL method별 Python entrypoint를 새로 만들지 않는다.
-  같은 runner로 표현되는 방법론은 Hydra `strategy_axes/ssl/consistency_method`만
+  같은 runner로 표현되는 방법론은 Hydra `strategy_axes/ssl_objective/consistency_method`만
   교체한다.
 - `agent/`와 `main_server/`에 중앙 SSL method-specific 파일을 추가하지 않는다.
 - `shared/`에는 payload shape가 실제로 바뀔 때만 손댄다.

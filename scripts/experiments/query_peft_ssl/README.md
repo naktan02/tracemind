@@ -43,4 +43,4 @@ Hydra entrypoint를 실행한다.
 `scripts/runtime_adapters/`에 둔다.
 
 새 Query SSL 알고리즘은 원칙적으로 `run_peft_ssl_control.py`를 재사용하고
-`strategy_axes/ssl/consistency_method` Hydra config만 추가/교체한다.
+`strategy_axes/ssl_objective/consistency_method` Hydra config만 추가/교체한다.

@@ -68,7 +68,7 @@ Query Buffer (raw text)
 5. 방법론 비교에서는 adaptation objective만 바꾼다.
 6. full seed replay는 canonical 경로가 아니라 optional ablation로만 다룬다.
 7. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 PEFT adapter 재학습과 future query adaptation을 닫을 수 없다.
-8. scripts 실험 표면에서는 `strategy_axes/adaptation/initial_checkpoint` selector를 source of truth로 두고, 같은 비교표 안의 run은 같은 초기 checkpoint provenance를 공유해야 한다.
+8. scripts 실험 표면에서는 `strategy_axes/model_architecture/initial_checkpoint` selector를 source of truth로 두고, 같은 비교표 안의 run은 같은 초기 checkpoint provenance를 공유해야 한다.
 
 ## 중앙 SSL control 비교축
 
@@ -104,7 +104,7 @@ Query Buffer (raw text)
   `first_aug`다.
   `aug_0`, `aug_1` 생성/caching은 `execution_context/query_view`의 view
   materialization config가 담당한다. 학습의
-  `strategy_axes/ssl/augmentation_source`는 이미 저장된
+  `strategy_axes/ssl_objective/augmentation_source`는 이미 저장된
   `text + aug_0 + aug_1` row를 읽을지, 실행 중 생성할지를 고른다.
 - 중앙 SSL 알고리즘 비교용 canonical query source는
   `ourafla_ssl_labeled1024_per_class_seed42_v1`이다.
@@ -180,7 +180,7 @@ Query Buffer (raw text)
 
 기본 scaffold 고정값:
 
-1. backbone/tokenizer: `strategy_axes/adaptation/transformer_backbone=mxbai_encoder`
+1. backbone/tokenizer: `strategy_axes/model_architecture/backbone=mxbai_encoder`
 2. PEFT adapter config: 기본 mechanism은 `lora`, `rank=8`, `alpha=16`, `dropout=0.1`, `target_modules=all-linear`
 3. initial checkpoint: 중앙 Query SSL method 비교 기본값은 `none`이다. 기존
    `canonical_fixed_classifier_seed` warm-start는 continual adaptation 또는

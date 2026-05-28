@@ -64,7 +64,7 @@ def _assert_manual_fl_runtime_is_compatible(cfg: DictConfig) -> None:
 
 def test_trainable_state_update_family_leafs_are_executable_surfaces() -> None:
     update_family_dir = (
-        REPO_ROOT / "conf" / "strategy_axes" / "trainable_state" / "update_family"
+        REPO_ROOT / "conf" / "strategy_axes" / "model_architecture" / "update_family"
     )
     leaf_paths = sorted(
         path for path in update_family_dir.glob("*.yaml") if path.name != "__init__.py"
@@ -906,7 +906,7 @@ def test_federated_simulation_method_recipe_axes_are_composable(
                 config_name="entrypoints/fl_ssl/run_federated_simulation",
                 overrides=[
                     f"strategy_axes/fssl_method={descriptor.name}",
-                    f"strategy_axes/fssl_method/local_update_profile={local_profile_name}",
+                    f"strategy_axes/ssl_objective/local_update_profile={local_profile_name}",
                 ],
             )
         for runtime_pair in descriptor.recipe.supported_runtime_pairs:
@@ -915,7 +915,10 @@ def test_federated_simulation_method_recipe_axes_are_composable(
                     config_name="entrypoints/fl_ssl/run_federated_simulation",
                     overrides=[
                         f"strategy_axes/fssl_method={descriptor.name}",
-                        (f"strategy_axes/fssl_method/local_update_profile={local_profile_name}"),
+                        (
+                            "strategy_axes/ssl_objective/local_update_profile="
+                            f"{local_profile_name}"
+                        ),
                         (
                             "strategy_axes/model_architecture/update_family="
                             f"{runtime_pair.update_family_name}"
@@ -1162,7 +1165,7 @@ def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                f"strategy_axes/fssl_method/local_update_profile={profile_name}",
+                f"strategy_axes/ssl_objective/local_update_profile={profile_name}",
             ],
         )
 
@@ -1331,7 +1334,7 @@ def test_federated_simulation_rejects_removed_manual_baseline_descriptor_overrid
     None
 ):
     with initialize_config_module(version_base=None, config_module="conf"):
-        with pytest.raises(Exception, match="method_descriptor"):
+        with pytest.raises(Exception, match="fssl_method"):
             compose(
                 config_name="entrypoints/fl_ssl/run_federated_simulation",
                 overrides=["strategy_axes/fssl_method=fedavg_pseudo_label"],

@@ -247,7 +247,7 @@ def test_shared_adapter_base_does_not_default_to_diagonal_scale() -> None:
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
@@ -524,10 +524,15 @@ def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
         CONF_SRC / "strategy_axes" / "ssl_objective" / "input_mode" / "consistency.yaml"
     ).exists()
     assert (
-        CONF_SRC / "strategy_axes" / "ssl_objective" / "input_mode" / "pseudo_label_replay.yaml"
+        CONF_SRC
+        / "strategy_axes"
+        / "ssl_objective"
+        / "input_mode"
+        / "pseudo_label_replay.yaml"
     ).exists()
-    assert "/strategy_axes/ssl_objective/input_mode: consistency" in entrypoint_config.read_text(
-        encoding="utf-8"
+    assert (
+        "/strategy_axes/ssl_objective/input_mode: consistency"
+        in entrypoint_config.read_text(encoding="utf-8")
     )
     assert not violations, (
         "central SSL mode router는 mode별 concrete runner를 직접 import/분기하지 "
@@ -588,8 +593,9 @@ def test_query_peft_artifact_paths_do_not_branch_on_ssl_input_mode_names() -> No
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert not violations, (
-        "central SSL output grouping 규칙은 strategy_axes/ssl_objective/input_mode leaf가 "
-        "소유한다. artifact_paths.py는 central_ssl_runner의 resolved flag만 읽는다.\n"
+        "central SSL output grouping 규칙은 "
+        "strategy_axes/ssl_objective/input_mode leaf가 소유한다. artifact_paths.py는 "
+        "central_ssl_runner의 resolved flag만 읽는다.\n"
         f"violations={violations}"
     )
 
@@ -619,19 +625,30 @@ def test_local_objective_regularizers_stay_update_payload_agnostic() -> None:
 def test_fl_local_update_profiles_do_not_keep_python_mapping_catalog() -> None:
     forbidden_path = METHODS_SRC / "federated_ssl" / "training_algorithm_profiles.py"
     assert not forbidden_path.exists(), (
-        "FL local update profile 실행값은 conf/strategy_axes/fssl_method/local_update_profile "
-        "Hydra YAML이 소유한다. Python에는 profile별 objective mapping catalog를 "
-        "다시 만들지 않는다."
+        "FL local update profile 실행값은 "
+        "conf/strategy_axes/ssl_objective/local_update_profile Hydra YAML이 소유한다. "
+        "Python에는 profile별 objective mapping catalog를 다시 만들지 않는다."
     )
 
 
 def test_fl_local_update_profiles_do_not_keep_lora_classifier_leaf() -> None:
-    profile_root = CONF_SRC / "strategy_axes" / "fssl_method" / "local_update_profile"
+    profile_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "local_update_profile"
     forbidden_path = profile_root / "lora_pseudo_label_v1.yaml"
     assert not forbidden_path.exists(), (
         "active FL local update profile leaf는 peft_pseudo_label_v1을 사용한다. "
         "lora_pseudo_label_v1은 old-run artifact/report reader compatibility "
         "표면으로만 남기고 Hydra 실행 profile로 되살리지 않는다."
+    )
+
+
+def test_legacy_fl_strategy_axis_group_is_removed() -> None:
+    legacy_root = CONF_SRC / "strategy_axes" / "fl"
+
+    assert not legacy_root.exists(), (
+        "active FL strategy axes는 strategy_axes/fl_topology, "
+        "strategy_axes/fssl_method, strategy_axes/ssl_objective/local_update_profile로 "
+        "나뉜다. legacy strategy_axes/fl group은 README/marker만 남겨도 새 축 위치를 "
+        "흐리므로 되살리지 않는다."
     )
 
 
@@ -864,7 +881,7 @@ def test_fl_simulation_does_not_own_labeled_exposure_row_policy() -> None:
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
@@ -1020,7 +1037,7 @@ def test_result_index_uses_payload_adapter_kind_as_canonical_field() -> None:
         f"{_relative_repo_path(path)}: {snippet}"
         for path, snippets in forbidden_by_path
         for snippet in snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not missing and not violations, (
@@ -1046,7 +1063,7 @@ def test_federated_ssl_active_docs_use_update_family_terms() -> None:
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
@@ -1319,7 +1336,7 @@ def test_peft_method_modules_use_canonical_model_type_name() -> None:
         for root in (PEFT_TEXT_ENCODER_SRC, METHODS_FEDERATED_SSL_SRC / "fedmatch")
         for path in _iter_python_files(root)
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
@@ -1359,7 +1376,7 @@ def test_partitioned_peft_execution_primitive_uses_adapter_linear_head_names() -
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert (
@@ -1386,7 +1403,7 @@ def test_scripts_use_query_peft_ssl_harness_package_path() -> None:
         for path in _iter_python_files(root)
         if path != Path(__file__).resolve()
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert (
@@ -1476,7 +1493,7 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not (missing_paths or legacy_existing_paths or violations), (
@@ -1509,7 +1526,7 @@ def test_central_peft_entrypoints_do_not_write_lora_named_artifact_roots() -> No
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
@@ -1540,7 +1557,7 @@ def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
         f"{_relative_repo_path(path)}: {snippet}"
         for path in _iter_python_files(QUERY_PEFT_SSL_SRC)
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
@@ -1583,7 +1600,7 @@ def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
     dashboard_path = REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "app.js"
     dashboard_source = dashboard_path.read_text(encoding="utf-8")
@@ -1626,7 +1643,7 @@ def test_peft_partition_delta_uses_canonical_internal_type_name() -> None:
         for root in checked_roots
         for path in (_iter_python_files(root) if root.is_dir() else [root])
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
@@ -2265,7 +2282,7 @@ def test_peft_text_encoder_active_module_docs_use_peft_names() -> None:
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
@@ -2795,7 +2812,7 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
@@ -2833,7 +2850,7 @@ def test_active_docs_use_current_trainable_state_vocabulary() -> None:
         f"{_relative_repo_path(path)}: {snippet}"
         for path in checked_paths
         for snippet in forbidden_snippets
-        if snippet in path.read_text(encoding="utf-8")
+        if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (

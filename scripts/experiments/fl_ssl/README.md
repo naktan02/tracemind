@@ -43,7 +43,7 @@ uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
   query_data_selection.unlabeled=ourafla_reddit \
   query_data_selection.validation=ourafla_reddit \
   query_data_selection.test=ourafla_reddit \
-  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  strategy_axes/fl_topology/shard_policy=dirichlet_alpha03 \
   federated_run_budget.client_count=10
 ```
 
@@ -71,10 +71,10 @@ YAML에 복제하지 않고 method package에서 report protocol로 주입한다
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=reduced \
   fl_method.composition_mode=method_owned \
-  strategy_axes/fl/method_descriptor=fedmatch \
-  strategy_axes/fl/update_partition_policy=partitioned \
-  strategy_axes/fl/aggregation_weight_policy=uniform \
-  strategy_axes/fl/peer_context_policy=fixed_probe_output_knn
+  strategy_axes/fssl_method=fedmatch \
+  strategy_axes/fl_topology/update_partition=partitioned \
+  strategy_axes/fl_topology/aggregation_weight=uniform \
+  strategy_axes/fl_topology/peer_context=fixed_probe_output_knn
 ```
 
 ## Sweep
@@ -82,13 +82,13 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
   run_controls/fl_ssl/budget=smoke \
-  strategy_axes/fl/shard_policy=dirichlet_alpha03
+  strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
 ```
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   run_controls/fl_ssl/budget=smoke \
-  strategy_axes/fl/shard_policy=dirichlet_alpha03
+  strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
 ```
 
 `materialized_client_split` 기반 client-count sweep은

@@ -5,12 +5,15 @@ defaults:
   - /execution_context/query_data_source: default
   - /execution_context/embedding_adapter: mxbai
   - /execution_context/runtime_env: gpu_local
+  - /execution_context/simulation_diagnostics: default
+  - /execution_context/security_policy: plaintext
   # model_architecture: backbone, peft, update_family, initial_checkpoint
   - /strategy_axes/model_architecture/backbone: mxbai_encoder
   - /strategy_axes/model_architecture/peft: default
   - /strategy_axes/model_architecture/update_family: peft_text_encoder
   - /run_controls/fl_ssl/budget: smoke
-  # fl_topology: 분산 환경 토폴로지 축
+  - /run_controls/fl_ssl/safety_and_sweeps: default
+  # fl_topology: FL split/topology와 공통 round capability 축
   - /strategy_axes/fl_topology/shard_policy: label_dominant
   - /strategy_axes/fl_topology/labeled_exposure: shared_client_seed
   - /strategy_axes/fl_topology/client_participation: all_clients
@@ -24,9 +27,9 @@ defaults:
   - /strategy_axes/ssl_objective/consistency_method: fixmatch_usb_v1
   - /strategy_axes/ssl_objective/multiview_source: materialized_rows
   - /strategy_axes/ssl_objective/local_ssl_policy: query_ssl_method
+  - /strategy_axes/ssl_objective/local_update_profile: peft_pseudo_label_v1
   # fssl_method: FL+SSL 결합 방법론
   - /strategy_axes/fssl_method: null
-  - /strategy_axes/fssl_method/local_update_profile: peft_pseudo_label_v1
   - _self_
   - /strategy_axes/fl_topology/materialized_split: null
   - override /hydra/job_logging: disabled
@@ -48,83 +51,6 @@ fl_method:
   # 상위 method가 client objective/server policy를 소유한다.
   # composition_mode=manual이면 lower axes는 compose된 leaf 값에서 자동 파생된다.
   composition_mode: manual
-
-security_policy:
-  # 현재 simulation은 plaintext만 지원한다. secure aggregation/DP는 capability 축으로 추가한다.
-  name: plaintext
-  update_payload_visibility: per_client_plaintext
-  client_metric_visibility: per_client_plaintext
-
-seed_sweep:
-  output_dir: ${federated_run_budget.output_dir}
-  seeds:
-    - 42
-    - 43
-    - 44
-
-client_count_sweep:
-  output_dir: ${federated_run_budget.output_dir}
-  client_counts:
-    - 1
-    - 2
-    - 3
-    - 4
-    - 5
-    - 6
-    - 7
-    - 8
-    - 9
-    - 10
-  # materialized_client_split sweep에서는 count별로 별도 manifest를 지정해야 한다.
-  # 예: 1: data/datasets/fl_client_splits/client_local_labeled/..._clients1_.../manifest.json
-  split_manifest_by_client_count: null
-
-run_safety:
-  # 총 예정 communication round가 이 값을 넘으면 명시 ack 없이는 runner가 시작되지 않는다.
-  # 단일 main 30-round는 허용하고, 그보다 큰 accidental long run은 막는다.
-  max_total_rounds_without_ack: 30
-  allow_long_run: false
-  long_run_ack: null
-  required_long_run_ack: ALLOW_FL_SSL_LONG_RUN
-
-diagnostics:
-  dump_dir_name: selection_dumps
-
-artifact_persistence:
-  # Simulation에서는 server-owned aggregation artifact가 canonical update source다.
-  # agent-local update 사본은 디버그용이므로 기본 저장하지 않는다.
-  persist_agent_local_updates: false
-
-resume:
-  # 완료 round summary만 작은 JSON checkpoint로 저장한다. model/update artifact는
-  # 기존 server-owned 산출물을 재사용하므로 학습 시간 대비 overhead는 작다.
-  checkpoint_enabled: true
-  enabled: false
-  run_dir: null
-
-diagnostic_view:
-  # 성능 평가는 validation set으로 수행한다. 이 view는 client-local pseudo-label
-  # diagnostics만 위한 작은 deterministic subset이다.
-  enabled: true
-  selection_policy: deterministic_random
-  max_rows: 512
-  seed_offset: 1309
-
-peer_probe:
-  # FedMatch fixed Gaussian probe에 대응하는 TraceMind fixed text probe다.
-  # 전체 validation set을 매 round/client마다 평가하지 않고 작은 deterministic subset만 쓴다.
-  enabled: true
-  selection_policy: label_balanced
-  max_rows: 128
-  seed_offset: 907
-
-final_projection:
-  # 학습/집계/최종 metric 이후에만 실행되는 진단 artifact다.
-  enabled: true
-  dataset_names:
-    - validation
-    - test
-  fail_on_error: false
 
 client_pool_split:
   labeled_ratio: 0.1
