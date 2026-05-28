@@ -187,6 +187,63 @@ def test_scripts_runtime_adapters_do_not_keep_federated_server_facade() -> None:
     )
 
 
+def test_federated_server_peft_runtime_adapter_keeps_method_core_in_methods() -> None:
+    server_step_path = (
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "peft_encoder_server_step.py"
+    )
+    final_projection_path = (
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "peft_encoder_final_projection.py"
+    )
+    method_runtime_paths = (
+        REPO_ROOT
+        / "methods"
+        / "adaptation"
+        / "peft_text_encoder"
+        / "simulation_runtime"
+        / "supervised_seed.py",
+        REPO_ROOT
+        / "methods"
+        / "adaptation"
+        / "peft_text_encoder"
+        / "simulation_runtime"
+        / "final_projection.py",
+    )
+    forbidden_snippets = (
+        "run_peft_encoder_supervised_seed_step_core",
+        "build_peft_encoder_state_projection",
+        "write_peft_encoder_projection_artifacts",
+        "build_peft_encoder_text_classifier_from_config",
+        "load_peft_encoder_base_parameters_into_model",
+        "materialize_base_peft_encoder_state",
+        "build_dataloader",
+    )
+    violations: list[tuple[Path, str]] = []
+    for path in (server_step_path, final_projection_path):
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
+    missing_method_paths = [
+        _relative_repo_path(path) for path in method_runtime_paths if not path.exists()
+    ]
+
+    assert not missing_method_paths, (
+        "PEFT encoder simulation server core는 methods/adaptation/<family>/"
+        "simulation_runtime/가 소유한다.\n"
+        f"{chr(10).join(f'- {path}' for path in missing_method_paths)}"
+    )
+    assert not violations, (
+        "scripts federated_server PEFT adapter는 request/context/publication bridge만 "
+        "맡는다. 모델 빌드, state materialization, seed step, projection assembly는 "
+        "methods/adaptation/peft_text_encoder/simulation_runtime/로 둔다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
 def test_scripts_runtime_adapters_do_not_keep_federated_agent_family_files() -> None:
     package_root = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent"
     forbidden_paths = (

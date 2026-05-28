@@ -4,21 +4,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from methods.adaptation.peft_text_encoder.aggregation import (
-    peft_encoder_fedavg_projection as peft_fedavg_projection,
-)
-from methods.adaptation.peft_text_encoder.aggregation import (
-    peft_encoder_state_projection as peft_state_projection,
-)
-from methods.adaptation.peft_text_encoder.federated_ssl import (
-    supervised_seed_step,
-)
 from methods.adaptation.peft_text_encoder.runtime_family import (
     is_peft_encoder_update_family,
     peft_encoder_runtime_payload,
 )
-from methods.adaptation.peft_text_encoder.update.materialization import (
-    materialize_base_peft_encoder_state,
+from methods.adaptation.peft_text_encoder.simulation_runtime.supervised_seed import (
+    PEFT_ENCODER_SEED_ADAPTER_ARTIFACT_SLOT,
+    PEFT_ENCODER_SEED_CLASSIFIER_HEAD_ARTIFACT_SLOT,
+    build_peft_encoder_supervised_seed_projection,
 )
 from methods.federated_ssl.server_step import (
     resolve_method_supervised_seed_step_parameters,
@@ -70,8 +63,6 @@ def run_peft_encoder_supervised_seed_step(
     if request.ssl_method_config is None:
         raise ValueError("supervised_seed_step requires ssl_method_config.")
 
-    peft_config = runtime_payload.training_backend_config
-    labels = tuple(str(label) for label in active.adapter_state.label_schema)
     seed_parameters = resolve_method_supervised_seed_step_parameters(
         method_name=request.ssl_method_config.name,
         effective_parameters=request.ssl_method_config.effective_parameters,
@@ -80,19 +71,24 @@ def run_peft_encoder_supervised_seed_step(
         round_index=round_index,
     )
     now = datetime.now(timezone.utc)
-    base_parameters = materialize_base_peft_encoder_state(
-        base_state=active.adapter_state,
-        context=build_simulation_aggregation_context(
+    next_model_revision = f"sim_rev_{round_index:04d}_server_seed"
+    artifact_refs = build_server_aggregate_artifact_refs(
+        artifact_namespace=request.round_runtime_config.update_family_name,
+        next_model_revision=next_model_revision,
+        artifact_names=(
+            PEFT_ENCODER_SEED_ADAPTER_ARTIFACT_SLOT,
+            PEFT_ENCODER_SEED_CLASSIFIER_HEAD_ARTIFACT_SLOT,
+        ),
+    )
+    projection = build_peft_encoder_supervised_seed_projection(
+        adapter_state=active.adapter_state,
+        bootstrap_rows=bootstrapped.dataset_split.bootstrap_rows,
+        aggregation_context=build_simulation_aggregation_context(
             output_dir=request.output_dir,
             next_model_revision=active.adapter_state.model_revision,
             aggregated_at=now,
         ),
-    )
-    seed_result = supervised_seed_step.run_peft_encoder_supervised_seed_step_core(
-        labels=labels,
-        base_parameters=base_parameters,
-        bootstrap_rows=bootstrapped.dataset_split.bootstrap_rows,
-        peft_config=peft_config,
+        peft_config=runtime_payload.training_backend_config,
         trainer_runtime_config=request.local_trainer_runtime_config,
         runtime_resource_cache=bootstrapped.runtime_resource_cache,
         seed=int(request.seed) + 7919 + int(round_index),
@@ -100,31 +96,10 @@ def run_peft_encoder_supervised_seed_step(
         batch_size=seed_parameters.batch_size,
         learning_rate=float(request.training_task_config.learning_rate),
         gradient_clip_norm=request.training_task_config.gradient_clip_norm,
-    )
-    next_model_revision = f"sim_rev_{round_index:04d}_server_seed"
-    artifact_refs = build_server_aggregate_artifact_refs(
-        artifact_namespace=request.round_runtime_config.update_family_name,
-        next_model_revision=next_model_revision,
-        artifact_names=(
-            _adapter_artifact_slot(active.adapter_state),
-            peft_fedavg_projection.CLASSIFIER_HEAD_ARTIFACT_SLOT,
-        ),
-    )
-    projection = peft_state_projection.build_peft_encoder_state_projection(
-        base_state=active.adapter_state,
-        base_parameters=base_parameters,
         next_model_revision=next_model_revision,
         updated_at=now,
-        peft_adapter_artifact_ref=artifact_refs.refs_by_name[
-            _adapter_artifact_slot(active.adapter_state)
-        ],
-        classifier_head_artifact_ref=artifact_refs.refs_by_name[
-            peft_fedavg_projection.CLASSIFIER_HEAD_ARTIFACT_SLOT
-        ],
+        artifact_refs_by_name=artifact_refs.refs_by_name,
         artifact_format=artifact_refs.artifact_format,
-        peft_parameter_deltas=seed_result.peft_parameter_deltas,
-        classifier_head_weight_deltas=seed_result.classifier_head_weight_deltas,
-        classifier_head_bias_deltas=seed_result.classifier_head_bias_deltas,
     )
     publication = bootstrapped.server_runtime.publish_shared_adapter_projection(
         base_manifest=active.manifest,
@@ -146,11 +121,5 @@ def run_peft_encoder_supervised_seed_step(
             adapter_state=publication.next_state,
         ),
         model_revision=next_model_revision,
-        metrics=seed_result.metrics,
+        metrics=projection.metrics,
     )
-
-
-def _adapter_artifact_slot(
-    adapter_state: PeftClassifierState,
-) -> str:
-    return peft_fedavg_projection.PEFT_ADAPTER_ARTIFACT_SLOT

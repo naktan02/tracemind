@@ -27,6 +27,9 @@ from methods.adaptation.peft_text_encoder.federated_ssl import (
 from methods.adaptation.peft_text_encoder.federated_ssl.peer_predictions import (
     PEFT_ENCODER_PEER_SNAPSHOT_KIND,
 )
+from methods.adaptation.peft_text_encoder.simulation_runtime import (
+    supervised_seed as supervised_seed_runtime,
+)
 from methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime import (
     FederatedPeftEncoderRuntimeConfig,
     build_peft_encoder_round_runtime_payloads,
@@ -122,7 +125,6 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
 from scripts.runtime_adapters.federated_agent.peft_encoder_local_training import (
     QuerySslPeftEncoderClientTrainingResult,
 )
-from scripts.runtime_adapters.federated_server import peft_encoder_server_step
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
 )
@@ -928,7 +930,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
         _fake_build_model,
     )
     monkeypatch.setattr(
-        peft_encoder_server_step,
+        supervised_seed_runtime,
         "materialize_base_peft_encoder_state",
         _fake_materialize,
     )
