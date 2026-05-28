@@ -64,6 +64,7 @@ def test_fl_simulation_client_training_has_no_adapter_family_literals() -> None:
         "DiagonalScale",
         "LoraClassifier",
         "LORA_CLASSIFIER",
+        "LoRA-classifier",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 

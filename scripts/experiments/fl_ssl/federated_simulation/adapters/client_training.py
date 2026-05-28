@@ -71,5 +71,5 @@ def run_client_round(
 
     raise NotImplementedError(
         "FL SSL simulation no longer supports prototype-scored generic local "
-        "training. Use the LoRA-classifier method/manual local objective path."
+        "training. Use the PEFT encoder method/manual local objective path."
     )

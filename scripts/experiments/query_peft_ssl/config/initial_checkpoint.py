@@ -138,7 +138,7 @@ def _load_manifest_payload(path: Path) -> dict[str, Any]:
 
 def _detect_manifest_kind(payload: dict[str, Any]) -> str:
     if str(payload.get("adapter_dir", "")).strip():
-        return "lora_classifier_manifest"
+        return "peft_classifier_manifest"
     if str(payload.get("model_path", "")).strip():
         return "fixed_classifier_manifest"
     return "generic_manifest"

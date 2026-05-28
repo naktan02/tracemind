@@ -39,16 +39,18 @@ def test_initial_checkpoint_none_keeps_fresh_start() -> None:
     )
 
 
-def test_initial_checkpoint_resolves_lora_manifest_paths(tmp_path: Path) -> None:
+def test_initial_checkpoint_resolves_peft_classifier_manifest_paths(
+    tmp_path: Path,
+) -> None:
     adapter_dir = tmp_path / "adapter"
     adapter_dir.mkdir()
     classifier_path = tmp_path / "classifier.pt"
     classifier_path.write_bytes(b"checkpoint")
-    manifest_path = tmp_path / "lora.manifest.json"
+    manifest_path = tmp_path / "peft_classifier.manifest.json"
     manifest_path.write_text(
         json.dumps(
             {
-                "trainer_version": "seed_lora_v1",
+                "trainer_version": "seed_peft_v1",
                 "adapter_dir": str(adapter_dir),
                 "classifier_path": str(classifier_path),
             }
@@ -70,11 +72,11 @@ def test_initial_checkpoint_resolves_lora_manifest_paths(tmp_path: Path) -> None
     assert resolved.cfg.initial_classifier_path == str(classifier_path)
     assert (
         resolved.extra_manifest["query_adaptation_initial_checkpoint"]["resolved_kind"]
-        == "lora_classifier_manifest"
+        == "peft_classifier_manifest"
     )
     assert (
         resolved.extra_manifest["query_adaptation_initial_checkpoint"]["reference_id"]
-        == "seed_lora_v1"
+        == "seed_peft_v1"
     )
 
 
