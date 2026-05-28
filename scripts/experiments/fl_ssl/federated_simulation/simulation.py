@@ -8,6 +8,7 @@ from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
+    validate_federated_ssl_adapter_family_compatibility,
     validate_federated_ssl_capability_compatibility,
     validate_federated_ssl_local_ssl_policy_alignment,
     validate_federated_ssl_profile_compatibility,
@@ -148,6 +149,7 @@ def _require_runtime_compatibility(
 ) -> None:
     """method/local update/round runtime 조합을 bootstrap 전에 검증한다."""
 
+    capability_plan = _resolve_capability_plan(request)
     _require_training_task_type_matches_runtime(
         request=request,
         ssl_method_runtime=ssl_method_runtime,
@@ -156,36 +158,35 @@ def _require_runtime_compatibility(
     local_adapter_kind = resolve_federated_training_backend_adapter_kind(
         objective_config=request.training_task_config.objective_config,
     )
-    _require_local_adapter_matches_round_runtime(
-        request=request,
-        local_adapter_kind=local_adapter_kind,
+    validate_federated_ssl_adapter_family_compatibility(
+        local_update_profile=request.local_update_profile,
+        local_update_adapter_kind=local_adapter_kind,
+        round_adapter_family_name=request.round_runtime_config.adapter_family_name,
     )
     ssl_method_descriptor = ssl_method_runtime.descriptor
     validate_federated_ssl_capability_compatibility(
         method_descriptor=ssl_method_descriptor,
-        capability_plan=_resolve_capability_plan(request),
+        capability_plan=capability_plan,
     )
     query_ssl_objective = _resolve_query_ssl_objective_config(request)
     validate_federated_ssl_local_ssl_policy_alignment(
-        capability_plan=_resolve_capability_plan(request),
+        capability_plan=capability_plan,
         query_ssl_algorithm_name=(
             None if query_ssl_objective is None else query_ssl_objective.algorithm_name
         ),
     )
     server_step_execution.require_supported_server_step(
-        _resolve_capability_plan(request),
+        capability_plan,
         server_step_executor=request.server_step_executor,
     )
-    peer_context_exchange.require_supported_peer_context(
-        _resolve_capability_plan(request)
-    )
+    peer_context_exchange.require_supported_peer_context(capability_plan)
     resolve_simulation_aggregation_backend_name(
         adapter_family_name=request.round_runtime_config.adapter_family_name,
         aggregation_backend_name=request.round_runtime_config.aggregation_backend_name,
-        capability_plan=_resolve_capability_plan(request),
+        capability_plan=capability_plan,
     )
     validate_federated_ssl_simulation_runtime_support(
-        capability_plan=_resolve_capability_plan(request),
+        capability_plan=capability_plan,
         composition_mode=execution_plan.composition_mode,
     )
     if ssl_method_descriptor is None:
@@ -200,7 +201,7 @@ def _require_runtime_compatibility(
             round_aggregation_backend_name=(
                 request.round_runtime_config.aggregation_backend_name
             ),
-            capability_plan=_resolve_capability_plan(request),
+            capability_plan=capability_plan,
         )
     )
 
@@ -444,30 +445,6 @@ def _require_mapping_value(
             f"{context}.{key} must match the registered method descriptor: "
             f"{actual!r} != {expected!r}."
         )
-
-
-def _require_local_adapter_matches_round_runtime(
-    *,
-    request: SimulationRunRequest,
-    local_adapter_kind: str,
-) -> None:
-    if (
-        local_adapter_kind.lower()
-        == request.round_runtime_config.adapter_family_name.lower()
-    ):
-        return
-    profile_name = (
-        None
-        if request.local_update_profile is None
-        else request.local_update_profile.algorithm_profile_name
-    )
-    raise ValueError(
-        "FL SSL compatibility failed: local_update_profile and round_runtime "
-        "must target the same adapter family: "
-        f"local_update_profile={profile_name}, "
-        f"local_update_adapter_kind={local_adapter_kind}, "
-        f"round_adapter_family={request.round_runtime_config.adapter_family_name}."
-    )
 
 
 def _resolve_query_ssl_objective_config(

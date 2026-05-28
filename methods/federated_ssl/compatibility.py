@@ -86,22 +86,11 @@ def validate_federated_ssl_profile_compatibility(
             f"{context.method_descriptor.name} does not support simulation runtime."
         )
 
-    if (
-        context.local_update_adapter_kind.lower()
-        != context.round_adapter_family_name.lower()
-    ):
-        profile_name = (
-            None
-            if context.local_update_profile is None
-            else context.local_update_profile.algorithm_profile_name
-        )
-        raise ValueError(
-            "FL SSL compatibility failed: local_update_profile and round_runtime "
-            "must target the same adapter family: "
-            f"local_update_profile={profile_name}, "
-            f"local_update_adapter_kind={context.local_update_adapter_kind}, "
-            f"round_adapter_family={context.round_adapter_family_name}."
-        )
+    validate_federated_ssl_adapter_family_compatibility(
+        local_update_profile=context.local_update_profile,
+        local_update_adapter_kind=context.local_update_adapter_kind,
+        round_adapter_family_name=context.round_adapter_family_name,
+    )
 
     recipe = context.method_descriptor.recipe
     if recipe is None:
@@ -133,6 +122,40 @@ def validate_federated_ssl_profile_compatibility(
             method_descriptor=context.method_descriptor,
             capability_plan=context.capability_plan,
         )
+
+
+def validate_federated_ssl_adapter_family_compatibility(
+    *,
+    local_update_profile: LocalUpdateProfile | None,
+    local_update_adapter_kind: str,
+    round_adapter_family_name: str,
+) -> None:
+    """local update payload family와 round shared-state family drift를 검증한다."""
+
+    normalized_local_adapter_kind = normalize_non_empty_str(
+        local_update_adapter_kind,
+        field_name="local_update_adapter_kind",
+    )
+    normalized_round_adapter_family_name = normalize_non_empty_str(
+        round_adapter_family_name,
+        field_name="round_adapter_family_name",
+    )
+    if normalized_local_adapter_kind.lower() == (
+        normalized_round_adapter_family_name.lower()
+    ):
+        return
+    profile_name = (
+        None
+        if local_update_profile is None
+        else local_update_profile.algorithm_profile_name
+    )
+    raise ValueError(
+        "FL SSL compatibility failed: local_update_profile and round_runtime "
+        "must target the same adapter family: "
+        f"local_update_profile={profile_name}, "
+        f"local_update_adapter_kind={normalized_local_adapter_kind}, "
+        f"round_adapter_family={normalized_round_adapter_family_name}."
+    )
 
 
 def validate_federated_ssl_capability_compatibility(

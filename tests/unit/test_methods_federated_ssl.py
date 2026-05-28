@@ -22,6 +22,7 @@ from methods.federated_ssl.base import (
 )
 from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
+    validate_federated_ssl_adapter_family_compatibility,
     validate_federated_ssl_profile_compatibility,
 )
 from methods.federated_ssl.execution_plan import (
@@ -406,6 +407,19 @@ def test_local_update_profile_validates_training_objective_drift() -> None:
 
 def test_fl_ssl_compatibility_rejects_adapter_family_drift() -> None:
     profile = LocalUpdateProfile.from_mapping(_local_update_profile_mapping())
+
+    validate_federated_ssl_adapter_family_compatibility(
+        local_update_profile=profile,
+        local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
+        round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+    )
+
+    with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
+        validate_federated_ssl_adapter_family_compatibility(
+            local_update_profile=profile,
+            local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
+            round_adapter_family_name=OTHER_TEST_ONLY_ADAPTER_KIND,
+        )
 
     with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
         validate_federated_ssl_profile_compatibility(

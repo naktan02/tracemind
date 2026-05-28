@@ -637,6 +637,30 @@ def test_fl_simulation_server_aggregate_namespace_uses_update_family() -> None:
     )
 
 
+def test_fl_simulation_does_not_own_adapter_family_compatibility_rule() -> None:
+    path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "simulation.py"
+    )
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "def _require_local_adapter_matches_round_runtime(",
+        "local_update_profile and round_runtime",
+        "round_adapter_family={request.round_runtime_config.adapter_family_name}",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "FL SSL adapter-family compatibility rule과 error message는 "
+        "methods/federated_ssl/compatibility.py가 소유한다. simulation runner는 "
+        "bootstrap에서 methods-owned validator만 호출한다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_fl_simulation_unit_tests_use_active_peft_payload_surface() -> None:
     source = (
         REPO_ROOT / "tests" / "unit" / "test_run_federated_simulation.py"

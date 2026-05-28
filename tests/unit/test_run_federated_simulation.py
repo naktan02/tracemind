@@ -2154,6 +2154,35 @@ def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
         run_simulation_request(request)
 
 
+def test_run_simulation_request_rejects_local_update_round_family_drift(
+    tmp_path,
+) -> None:
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="local_update_round_family_mismatch",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="classifier_head",
+            update_family_name="linear_head",
+            initial_state_builder=(
+                "methods.classification.linear_head.bootstrap."
+                "build_zero_classifier_head_state"
+            ),
+        ),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="peft_classifier_trainer",
+            privacy_guard_name="noop",
+            objective_extras=_peft_objective_extras(),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
+        run_simulation_request(request)
+
+
 def test_run_simulation_request_rejects_manual_plan_runtime_drift(
     tmp_path,
 ) -> None:
