@@ -8,9 +8,9 @@ from pathlib import Path
 from omegaconf import DictConfig
 
 from methods.federated.client_split import (
-    LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
-    LABELED_EXPOSURE_SERVER_ONLY_SEED,
     FederatedLabeledExposurePolicy,
+    resolve_bootstrap_labeled_rows,
+    resolve_client_visible_labeled_rows,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
@@ -237,12 +237,11 @@ def _build_runtime_dataset_split(
     client_shards: list[FederatedClientShard] = []
     for labeled_shard in labeled_split.client_shards:
         unlabeled = unlabeled_by_client[labeled_shard.client_id]
-        if labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
-            labeled = []
-        elif labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT:
-            labeled = list(labeled_shard.rows)
-        else:
-            labeled = list(labeled_rows)
+        labeled = resolve_client_visible_labeled_rows(
+            policy=labeled_exposure_policy,
+            client_local_rows=labeled_shard.rows,
+            shared_seed_rows=labeled_rows,
+        )
         client_shards.append(
             FederatedClientShard(
                 client_id=labeled_shard.client_id,
@@ -252,10 +251,10 @@ def _build_runtime_dataset_split(
                 client_pool_split_enforced=True,
             )
         )
-    bootstrap_rows = (
-        list(labeled_rows)
-        if labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED
-        else list(labeled_split.bootstrap_rows)
+    bootstrap_rows = resolve_bootstrap_labeled_rows(
+        policy=labeled_exposure_policy,
+        split_bootstrap_rows=labeled_split.bootstrap_rows,
+        shared_seed_rows=labeled_rows,
     )
     return FederatedDatasetSplit(
         bootstrap_rows=bootstrap_rows,

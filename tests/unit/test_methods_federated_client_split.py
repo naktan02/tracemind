@@ -9,6 +9,8 @@ from methods.federated.client_split import (
     LABELED_EXPOSURE_SERVER_ONLY_SEED,
     LABELED_EXPOSURE_SHARED_CLIENT_SEED,
     FederatedLabeledExposurePolicy,
+    resolve_bootstrap_labeled_rows,
+    resolve_client_visible_labeled_rows,
 )
 
 
@@ -41,3 +43,44 @@ def test_labeled_exposure_policy_normalizes_known_modes() -> None:
 def test_labeled_exposure_policy_rejects_unknown_mode() -> None:
     with pytest.raises(ValueError, match="labeled_exposure_policy.name"):
         FederatedLabeledExposurePolicy(name="unknown")
+
+
+def test_labeled_exposure_policy_resolves_runtime_visible_rows() -> None:
+    client_local = FederatedLabeledExposurePolicy(
+        name=LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT
+    )
+    shared_client = FederatedLabeledExposurePolicy(
+        name=LABELED_EXPOSURE_SHARED_CLIENT_SEED
+    )
+    server_only = FederatedLabeledExposurePolicy(
+        name=LABELED_EXPOSURE_SERVER_ONLY_SEED
+    )
+
+    assert resolve_client_visible_labeled_rows(
+        policy=client_local,
+        client_local_rows=["client-a"],
+        shared_seed_rows=["seed-a", "seed-b"],
+    ) == ["client-a"]
+    assert resolve_client_visible_labeled_rows(
+        policy=shared_client,
+        client_local_rows=["client-a"],
+        shared_seed_rows=["seed-a", "seed-b"],
+    ) == ["seed-a", "seed-b"]
+    assert (
+        resolve_client_visible_labeled_rows(
+            policy=server_only,
+            client_local_rows=["client-a"],
+            shared_seed_rows=["seed-a", "seed-b"],
+        )
+        == []
+    )
+    assert resolve_bootstrap_labeled_rows(
+        policy=server_only,
+        split_bootstrap_rows=["bootstrap-a"],
+        shared_seed_rows=["seed-a"],
+    ) == ["seed-a"]
+    assert resolve_bootstrap_labeled_rows(
+        policy=client_local,
+        split_bootstrap_rows=["bootstrap-a"],
+        shared_seed_rows=["seed-a"],
+    ) == ["bootstrap-a"]

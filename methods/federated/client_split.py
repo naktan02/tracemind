@@ -72,6 +72,34 @@ class FederatedLabeledExposurePolicy:
         return {"name": self.name}
 
 
+def resolve_client_visible_labeled_rows(
+    *,
+    policy: FederatedLabeledExposurePolicy,
+    client_local_rows: Sequence[ItemT],
+    shared_seed_rows: Sequence[ItemT],
+) -> list[ItemT]:
+    """정책에 따라 한 client가 볼 labeled rows를 반환한다."""
+
+    if policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+        return []
+    if policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT:
+        return list(client_local_rows)
+    return list(shared_seed_rows)
+
+
+def resolve_bootstrap_labeled_rows(
+    *,
+    policy: FederatedLabeledExposurePolicy,
+    split_bootstrap_rows: Sequence[ItemT],
+    shared_seed_rows: Sequence[ItemT],
+) -> list[ItemT]:
+    """정책에 따라 server/bootstrap boundary가 볼 labeled rows를 반환한다."""
+
+    if policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+        return list(shared_seed_rows)
+    return list(split_bootstrap_rows)
+
+
 def compact_labeled_exposure_policy_slug(policy_name: str) -> str:
     """labeled exposure policy의 path/report용 compact slug를 반환한다."""
 

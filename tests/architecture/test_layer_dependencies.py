@@ -732,6 +732,36 @@ def test_fl_run_layout_does_not_own_labeled_exposure_policy_slug_map() -> None:
     )
 
 
+def test_fl_simulation_does_not_own_labeled_exposure_row_policy() -> None:
+    checked_paths = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "data_source_request.py",
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "materialize_fl_client_split.py",
+    )
+    forbidden_snippets = (
+        'labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED',
+        'labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT',
+        'resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED',
+        'resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT',
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "labeled exposure policy의 client/bootstrap row 노출 의미는 "
+        "methods/federated/client_split.py가 소유한다. FL simulation/materialization "
+        "adapter는 rows를 읽고 helper에 넘긴다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
     checked_paths = (
         METHODS_SRC / "adaptation" / "peft_text_encoder" / "update_family_runtime.py",

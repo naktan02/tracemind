@@ -11,10 +11,10 @@ import hydra
 from omegaconf import DictConfig
 
 from methods.federated.client_split import (
-    LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
-    LABELED_EXPOSURE_SERVER_ONLY_SEED,
     FederatedLabeledExposurePolicy,
     FederatedLabeledPoolPolicy,
+    resolve_bootstrap_labeled_rows,
+    resolve_client_visible_labeled_rows,
     select_labeled_pool_items,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
@@ -147,11 +147,10 @@ def materialize_fl_client_split(
     )
     dump_split_rows(
         artifacts.bootstrap_labeled_jsonl,
-        (
-            selected_labeled_rows
-            if resolved_labeled_exposure_policy.name
-            == LABELED_EXPOSURE_SERVER_ONLY_SEED
-            else labeled_split.bootstrap_rows
+        resolve_bootstrap_labeled_rows(
+            policy=resolved_labeled_exposure_policy,
+            split_bootstrap_rows=labeled_split.bootstrap_rows,
+            shared_seed_rows=selected_labeled_rows,
         ),
     )
     if artifacts.shared_client_labeled_jsonl is not None:
@@ -165,22 +164,19 @@ def materialize_fl_client_split(
         client_dir = clients_dir / client_id
         labeled_path = client_dir / "labeled.jsonl"
         unlabeled_path = client_dir / "unlabeled.jsonl"
-        if resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
-            client_labeled_rows = []
-            client_labeled_ref = _relative_ref(output_dir, labeled_path)
-            dump_split_rows(labeled_path, client_labeled_rows)
-        elif (
-            resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT
-        ):
-            client_labeled_rows = list(labeled_client_shard.rows)
-            client_labeled_ref = _relative_ref(output_dir, labeled_path)
-            dump_split_rows(labeled_path, client_labeled_rows)
-        else:
-            client_labeled_rows = list(selected_labeled_rows)
+        client_labeled_rows = resolve_client_visible_labeled_rows(
+            policy=resolved_labeled_exposure_policy,
+            client_local_rows=labeled_client_shard.rows,
+            shared_seed_rows=selected_labeled_rows,
+        )
+        if resolved_labeled_exposure_policy.shares_same_labeled_rows_across_clients:
             client_labeled_ref = _relative_ref(
                 output_dir,
                 artifacts.shared_client_labeled_jsonl,
             )
+        else:
+            client_labeled_ref = _relative_ref(output_dir, labeled_path)
+            dump_split_rows(labeled_path, client_labeled_rows)
         client_unlabeled_rows = unlabeled_rows_by_client[client_id]
 
         dump_split_rows(unlabeled_path, client_unlabeled_rows)
