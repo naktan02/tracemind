@@ -3,11 +3,11 @@
 defaults:
   - /execution_context/dataset_asset: ourafla
   - /execution_context/runtime_env: gpu_online
-  - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
-  - /strategy_axes/adaptation/peft_adapter: default
+  - /strategy_axes/model_architecture/backbone: mxbai_encoder
+  - /strategy_axes/model_architecture/peft: default
   - /run_controls/central_ssl/budget: main
   - /execution_context/query_data_source: default
-  - /strategy_axes/adaptation/initial_checkpoint: none
+  - /strategy_axes/model_architecture/initial_checkpoint: none
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_

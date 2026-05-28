@@ -14,7 +14,7 @@ def run_central_ssl_mode(cfg: DictConfig) -> None:
     if runner_cfg is None:
         raise ValueError(
             "central_ssl_runner is required. Select "
-            "strategy_axes/ssl/input_mode=<mode> instead of overriding only "
+            "strategy_axes/ssl_objective/input_mode=<mode> instead of overriding only "
             "ssl_input_mode."
         )
     mode = str(getattr(cfg, "ssl_input_mode", "") or "").strip()
@@ -22,7 +22,7 @@ def run_central_ssl_mode(cfg: DictConfig) -> None:
     if mode != runner_mode:
         raise ValueError(
             "ssl_input_mode must match central_ssl_runner.mode. Select "
-            "strategy_axes/ssl/input_mode=<mode> so the mode and runner stay "
+            "strategy_axes/ssl_objective/input_mode=<mode> so the mode and runner stay "
             f"coupled by config. Got ssl_input_mode={mode!r}, "
             f"central_ssl_runner.mode={runner_mode!r}."
         )

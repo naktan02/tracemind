@@ -5,26 +5,30 @@ defaults:
   - /execution_context/query_data_source: default
   - /execution_context/embedding_adapter: mxbai
   - /execution_context/runtime_env: gpu_local
-  - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
-  - /strategy_axes/adaptation/peft_adapter: default
+  # model_architecture: backbone, peft, update_family, initial_checkpoint
+  - /strategy_axes/model_architecture/backbone: mxbai_encoder
+  - /strategy_axes/model_architecture/peft: default
+  - /strategy_axes/model_architecture/update_family: peft_text_encoder
   - /run_controls/fl_ssl/budget: smoke
-  - /strategy_axes/fl/shard_policy: label_dominant
-  - /strategy_axes/fl/labeled_exposure_policy: shared_client_seed
-  - /strategy_axes/fl/client_participation_policy: all_clients
-  - /strategy_axes/fl/local_supervision_regime: client_labeled_and_unlabeled
-  - /strategy_axes/fl/server_step_policy: none
-  - /strategy_axes/fl/server_update_policy: fedavg_merged_delta
-  - /strategy_axes/fl/peer_context_policy: none
-  - /strategy_axes/fl/update_partition_policy: unified
-  - /strategy_axes/fl/aggregation_weight_policy: example_count
-  - /strategy_axes/fl/query_multiview_source: materialized_rows
-  - /strategy_axes/fl/method_descriptor: null
-  - /strategy_axes/fl/local_update_profile: peft_pseudo_label_v1
-  - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
-  - /strategy_axes/trainable_state/update_family: peft_text_encoder
-  - /strategy_axes/fl/local_ssl_policy: query_ssl_method
+  # fl_topology: 분산 환경 토폴로지 축
+  - /strategy_axes/fl_topology/shard_policy: label_dominant
+  - /strategy_axes/fl_topology/labeled_exposure: shared_client_seed
+  - /strategy_axes/fl_topology/client_participation: all_clients
+  - /strategy_axes/fl_topology/supervision_regime: client_labeled_and_unlabeled
+  - /strategy_axes/fl_topology/server_step: none
+  - /strategy_axes/fl_topology/server_update: fedavg_merged_delta
+  - /strategy_axes/fl_topology/peer_context: none
+  - /strategy_axes/fl_topology/update_partition: unified
+  - /strategy_axes/fl_topology/aggregation_weight: example_count
+  # ssl_objective: SSL 학습 목적 함수 축
+  - /strategy_axes/ssl_objective/consistency_method: fixmatch_usb_v1
+  - /strategy_axes/ssl_objective/multiview_source: materialized_rows
+  - /strategy_axes/ssl_objective/local_ssl_policy: query_ssl_method
+  # fssl_method: FL+SSL 결합 방법론
+  - /strategy_axes/fssl_method: null
+  - /strategy_axes/fssl_method/local_update_profile: peft_pseudo_label_v1
   - _self_
-  - /strategy_axes/fl/materialized_split: null
+  - /strategy_axes/fl_topology/materialized_split: null
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
 
@@ -130,37 +134,10 @@ train_batch_size: ${training_task.batch_size}
 query_ssl_strong_view_policy: first_aug
 
 # `local_update_profile`은 agent local SSL update 정책을 소유한다.
-# server round의 update family는 strategy_axes/trainable_state/update_family가
+# server round의 update family는 strategy_axes/model_architecture/update_family가
 # 소유하고, v1 shared payload kind는 payload_adapter_kind로만 노출한다.
 round_runtime:
   aggregation_backend_name: fedavg
-  # canonical PEFT text encoder runtime payload leaf다. LoRA/DoRA 등 mechanism은
-  # peft_adapter_name과 adapter parameters로 구분한다.
-  runtime_payloads:
-    peft_text_encoder:
-      backbone_model_id: ${paper_backbone.model_id}
-      backbone_revision: ${paper_backbone.revision}
-      tokenizer_model_id: ${paper_backbone.tokenizer_model_id}
-      tokenizer_revision: ${paper_backbone.tokenizer_revision}
-      pooling: ${paper_backbone.pooling}
-      max_length: ${paper_backbone.max_length}
-      task_prefix: ${paper_backbone.task_prefix}
-      peft_adapter_name: ${peft_adapter.peft_adapter_name}
-      rank: ${peft_adapter.rank}
-      alpha: ${peft_adapter.alpha}
-      dropout: ${peft_adapter.dropout}
-      bias: ${peft_adapter.bias}
-      target_modules: ${peft_adapter.target_modules}
-      use_rslora: ${peft_adapter.use_rslora}
-      # FedProx proximal coefficient. 0.0이면 기존 FedAvg local objective와 동일하다.
-      proximal_mu: 0.0
-      delta_format: server_uploaded_artifact_ref
-      artifact_ref_prefix: agent-local://peft_classifier
-      text_metadata_keys: strong_text,training_text,raw_text,text,weak_text
-      label_schema: anxiety,depression,normal,suicidal
-      artifact_format: simulation_peft_classifier_state_ref
-      peft_adapter_artifact_ref: null
-      classifier_head_artifact_ref: null
 training_task:
   local_epochs: 1
   batch_size: 12

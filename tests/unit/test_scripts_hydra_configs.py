@@ -387,7 +387,7 @@ def test_run_peft_ssl_control_supports_pseudolabel_method_override() -> None:
         cfg = compose(
             config_name="entrypoints/central_ssl_control/run_peft_ssl_control",
             overrides=[
-                "strategy_axes/ssl/consistency_method=pseudolabel_usb_v1",
+                "strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
                 "query_ssl_method.unsup_warm_up=0.2",
                 "query_ssl_method.unlabeled_batch_size=8",
@@ -407,7 +407,7 @@ def test_run_peft_ssl_control_supports_flexmatch_method_override() -> None:
         cfg = compose(
             config_name="entrypoints/central_ssl_control/run_peft_ssl_control",
             overrides=[
-                "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
+                "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
                 "query_ssl_method.thresh_warmup=false",
                 "query_ssl_method.unlabeled_batch_size=8",
@@ -427,7 +427,7 @@ def test_run_peft_ssl_control_supports_freematch_method_override() -> None:
         cfg = compose(
             config_name="entrypoints/central_ssl_control/run_peft_ssl_control",
             overrides=[
-                "strategy_axes/ssl/consistency_method=freematch_usb_v1",
+                "strategy_axes/ssl_objective/consistency_method=freematch_usb_v1",
                 "query_ssl_method.ema_p=0.9",
                 "query_ssl_method.ent_loss_ratio=0.02",
                 "query_ssl_method.use_quantile=true",
@@ -449,7 +449,7 @@ def test_run_peft_ssl_control_supports_adamatch_method_override() -> None:
         cfg = compose(
             config_name="entrypoints/central_ssl_control/run_peft_ssl_control",
             overrides=[
-                "strategy_axes/ssl/consistency_method=adamatch_usb_v1",
+                "strategy_axes/ssl_objective/consistency_method=adamatch_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
                 "query_ssl_method.ema_p=0.9",
                 "query_ssl_method.unlabeled_batch_size=8",
@@ -469,7 +469,7 @@ def test_run_peft_ssl_control_uses_precomputed_query_views() -> None:
         cfg = compose(
             config_name="entrypoints/central_ssl_control/run_peft_ssl_control",
             overrides=[
-                "strategy_axes/ssl/augmentation_source=precomputed_usb_candidates_v1",
+                "strategy_axes/ssl_objective/augmentation_source=precomputed_usb_candidates_v1",
                 "query_ssl_strong_view_policy=first_aug",
             ],
         )
@@ -485,7 +485,7 @@ def test_run_peft_ssl_control_supports_pseudo_label_replay_mode() -> None:
         cfg = compose(
             config_name="entrypoints/central_ssl_control/run_peft_ssl_control",
             overrides=[
-                "strategy_axes/ssl/input_mode=pseudo_label_replay",
+                "strategy_axes/ssl_objective/input_mode=pseudo_label_replay",
                 "pseudo_label_jsonl=data/artifacts/query_peft_pseudo_label/run/pseudo_label_train.jsonl",
                 "include_seed_train_rows=true",
             ],
@@ -555,11 +555,11 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     )
     assert list(cfg.round_runtime.local_objective_executors) == [
         "scripts.runtime_adapters.federated_agent."
-        "peft_encoder_method_owned_client_round."
-        "run_peft_encoder_method_owned_client_round_if_supported",
+        "generic_client_runtime_bridge."
+        "run_method_owned_client_round_if_supported",
         "scripts.runtime_adapters.federated_agent."
-        "peft_encoder_query_ssl_client_round."
-        "run_peft_encoder_query_ssl_client_round_if_supported",
+        "generic_client_runtime_bridge."
+        "run_query_ssl_client_round_if_supported",
     ]
     assert cfg.round_runtime.initial_state_builder == (
         "methods.adaptation.peft_text_encoder.update_family_runtime."
@@ -570,8 +570,8 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "evaluate_peft_encoder_simulation_validation_payload"
     )
     assert cfg.round_runtime.final_projection_builder == (
-        "scripts.runtime_adapters.federated_server.peft_encoder_final_projection."
-        "build_peft_encoder_final_projection_artifacts"
+        "scripts.runtime_adapters.federated_server.generic_server_runtime_bridge."
+        "build_final_projection_artifacts"
     )
     assert cfg.round_runtime.transient_resource_cleaner == (
         "methods.adaptation.peft_text_encoder.resource_cache."
@@ -667,7 +667,7 @@ def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> 
                 "query_data_selection.unlabeled=ourafla_reddit",
                 "run_controls/fl_ssl/budget=main",
                 "federated_run_budget.client_count=8",
-                "strategy_axes/fl/shard_policy=dirichlet_alpha03",
+                "strategy_axes/fl_topology/shard_policy=dirichlet_alpha03",
             ],
         )
 
@@ -727,7 +727,7 @@ def test_fl_client_split_materialization_supports_labeled_exposure_policy_axis()
         cfg = compose(
             config_name="entrypoints/fl_ssl/materialize_fl_client_split",
             overrides=[
-                "strategy_axes/fl/labeled_exposure_policy=shared_client_seed",
+                "strategy_axes/fl_topology/labeled_exposure=shared_client_seed",
             ],
         )
 
@@ -748,8 +748,8 @@ def test_fl_client_split_materialization_shared_seed_main_split_id_matches_docs(
                 "query_data_selection.unlabeled=ourafla_reddit",
                 "query_data_selection.validation=ourafla_reddit",
                 "query_data_selection.test=ourafla_reddit",
-                "strategy_axes/fl/shard_policy=dirichlet_alpha03",
-                "strategy_axes/fl/labeled_exposure_policy=shared_client_seed",
+                "strategy_axes/fl_topology/shard_policy=dirichlet_alpha03",
+                "strategy_axes/fl_topology/labeled_exposure=shared_client_seed",
             ],
         )
 
@@ -793,11 +793,11 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     )
     assert list(cfg.round_runtime.local_objective_executors) == [
         "scripts.runtime_adapters.federated_agent."
-        "peft_encoder_method_owned_client_round."
-        "run_peft_encoder_method_owned_client_round_if_supported",
+        "generic_client_runtime_bridge."
+        "run_method_owned_client_round_if_supported",
         "scripts.runtime_adapters.federated_agent."
-        "peft_encoder_query_ssl_client_round."
-        "run_peft_encoder_query_ssl_client_round_if_supported",
+        "generic_client_runtime_bridge."
+        "run_query_ssl_client_round_if_supported",
     ]
     assert cfg.round_runtime.initial_state_builder == (
         "methods.adaptation.peft_text_encoder.update_family_runtime."
@@ -808,8 +808,8 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "evaluate_peft_encoder_simulation_validation_payload"
     )
     assert cfg.round_runtime.final_projection_builder == (
-        "scripts.runtime_adapters.federated_server.peft_encoder_final_projection."
-        "build_peft_encoder_final_projection_artifacts"
+        "scripts.runtime_adapters.federated_server.generic_server_runtime_bridge."
+        "build_final_projection_artifacts"
     )
     assert cfg.round_runtime.transient_resource_cleaner == (
         "methods.adaptation.peft_text_encoder.resource_cache."
@@ -829,7 +829,7 @@ def test_federated_simulation_materialized_split_axis_selects_manifest() -> None
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl/materialized_split=shared_general_reddit_pc100_alpha03_clients10",
+                "strategy_axes/fl_topology/materialized_split=shared_general_reddit_pc100_alpha03_clients10",
             ],
         )
 
@@ -877,7 +877,7 @@ def test_federated_simulation_materialized_split_axis_covers_shared_budgets(
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
-            overrides=[f"strategy_axes/fl/materialized_split={selector}"],
+            overrides=[f"strategy_axes/fl_topology/materialized_split={selector}"],
         )
 
     assert cfg.fl_data.source_mode == "materialized_client_split"
@@ -905,8 +905,8 @@ def test_federated_simulation_method_recipe_axes_are_composable(
             compose(
                 config_name="entrypoints/fl_ssl/run_federated_simulation",
                 overrides=[
-                    f"strategy_axes/fl/method_descriptor={descriptor.name}",
-                    f"strategy_axes/fl/local_update_profile={local_profile_name}",
+                    f"strategy_axes/fssl_method={descriptor.name}",
+                    f"strategy_axes/fssl_method/local_update_profile={local_profile_name}",
                 ],
             )
         for runtime_pair in descriptor.recipe.supported_runtime_pairs:
@@ -914,10 +914,10 @@ def test_federated_simulation_method_recipe_axes_are_composable(
                 cfg = compose(
                     config_name="entrypoints/fl_ssl/run_federated_simulation",
                     overrides=[
-                        f"strategy_axes/fl/method_descriptor={descriptor.name}",
-                        (f"strategy_axes/fl/local_update_profile={local_profile_name}"),
+                        f"strategy_axes/fssl_method={descriptor.name}",
+                        (f"strategy_axes/fssl_method/local_update_profile={local_profile_name}"),
                         (
-                            "strategy_axes/trainable_state/update_family="
+                            "strategy_axes/model_architecture/update_family="
                             f"{runtime_pair.update_family_name}"
                         ),
                         "round_runtime.aggregation_backend_name="
@@ -936,10 +936,10 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl/method_descriptor=fedmatch",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl/update_partition_policy=partitioned",
-                "strategy_axes/fl/aggregation_weight_policy=uniform",
+                "strategy_axes/fl_topology/update_partition=partitioned",
+                "strategy_axes/fl_topology/aggregation_weight=uniform",
             ],
         )
 
@@ -993,7 +993,7 @@ def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm()
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
+                "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
             ],
         )
 
@@ -1012,12 +1012,12 @@ def test_federated_simulation_method_owned_fedmatch_uses_method_local_policy() -
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl/method_descriptor=fedmatch",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl/update_partition_policy=partitioned",
-                "strategy_axes/fl/aggregation_weight_policy=uniform",
-                "strategy_axes/fl/peer_context_policy=fixed_probe_output_knn",
-                "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
+                "strategy_axes/fl_topology/update_partition=partitioned",
+                "strategy_axes/fl_topology/aggregation_weight=uniform",
+                "strategy_axes/fl_topology/peer_context=fixed_probe_output_knn",
+                "strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1",
             ],
         )
 
@@ -1038,15 +1038,15 @@ def test_federated_simulation_update_family_declares_server_step_executor() -> N
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl/server_step_policy=supervised_seed_step",
+                "strategy_axes/fl_topology/server_step=supervised_seed_step",
             ],
         )
 
     assert cfg.server_step_policy.name == "supervised_seed_step"
     assert (
         cfg.round_runtime.server_step_executors.supervised_seed_step
-        == "scripts.runtime_adapters.federated_server.peft_encoder_server_step."
-        "run_peft_encoder_supervised_seed_step"
+        == "scripts.runtime_adapters.federated_server.generic_server_runtime_bridge."
+        "run_supervised_seed_step"
     )
     assert "executor" not in cfg.server_step_policy
 
@@ -1057,11 +1057,11 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
                 "run_controls/fl_ssl/budget=reduced",
-                "strategy_axes/fl/method_descriptor=fedmatch",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl/update_partition_policy=partitioned",
-                "strategy_axes/fl/aggregation_weight_policy=uniform",
-                "strategy_axes/fl/peer_context_policy=fixed_probe_output_knn",
+                "strategy_axes/fl_topology/update_partition=partitioned",
+                "strategy_axes/fl_topology/aggregation_weight=uniform",
+                "strategy_axes/fl_topology/peer_context=fixed_probe_output_knn",
             ],
         )
 
@@ -1086,7 +1086,7 @@ def test_federated_simulation_rejects_legacy_peer_context_override() -> None:
             compose(
                 config_name="entrypoints/fl_ssl/run_federated_simulation",
                 overrides=[
-                    "strategy_axes/fl/peer_context_policy=prediction_similarity_topk",
+                    "strategy_axes/fl_topology/peer_context=prediction_similarity_topk",
                 ],
             )
 
@@ -1096,10 +1096,10 @@ def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> Non
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl/method_descriptor=fedmatch",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl/update_partition_policy=partitioned",
-                "strategy_axes/fl/aggregation_weight_policy=uniform",
+                "strategy_axes/fl_topology/update_partition=partitioned",
+                "strategy_axes/fl_topology/aggregation_weight=uniform",
                 "+ssl_method.parameter_overrides.confidence_threshold=0.85",
                 "+ssl_method.parameter_overrides.num_helpers=4",
             ],
@@ -1131,10 +1131,10 @@ def test_fedmatch_local_budget_policy_can_select_original_method() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl/method_descriptor=fedmatch",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl/update_partition_policy=partitioned",
-                "strategy_axes/fl/aggregation_weight_policy=uniform",
+                "strategy_axes/fl_topology/update_partition=partitioned",
+                "strategy_axes/fl_topology/aggregation_weight=uniform",
                 "ssl_method.local_budget_policy=original_method",
             ],
         )
@@ -1162,7 +1162,7 @@ def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                f"strategy_axes/fl/local_update_profile={profile_name}",
+                f"strategy_axes/fssl_method/local_update_profile={profile_name}",
             ],
         )
 
@@ -1263,8 +1263,8 @@ def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> N
             overrides=[
                 "run_controls/fl_ssl/budget=reduced",
                 "fl_method.composition_mode=manual",
-                "strategy_axes/fl/shard_policy=dirichlet_alpha03",
-                "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
+                "strategy_axes/fl_topology/shard_policy=dirichlet_alpha03",
+                "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
                 "round_runtime.aggregation_backend_name=fedavg",
                 "fl_data.source_mode=materialized_client_split",
                 f"fl_data.split_manifest={split_manifest}",
@@ -1319,7 +1319,7 @@ def test_federated_simulation_supports_dirichlet_shard_policy_override() -> None
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
-            overrides=["strategy_axes/fl/shard_policy=dirichlet_alpha03"],
+            overrides=["strategy_axes/fl_topology/shard_policy=dirichlet_alpha03"],
         )
 
     assert cfg.shard_policy.name == "dirichlet_label_skew"
@@ -1334,7 +1334,7 @@ def test_federated_simulation_rejects_removed_manual_baseline_descriptor_overrid
         with pytest.raises(Exception, match="method_descriptor"):
             compose(
                 config_name="entrypoints/fl_ssl/run_federated_simulation",
-                overrides=["strategy_axes/fl/method_descriptor=fedavg_pseudo_label"],
+                overrides=["strategy_axes/fssl_method=fedavg_pseudo_label"],
             )
 
 
@@ -1402,7 +1402,7 @@ def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name()
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
+                "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
                 "training_task.local_epochs=2",
                 "training_task.batch_size=8",
                 "training_task.max_steps=7",
@@ -1501,7 +1501,7 @@ def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:
         cfg = compose(
             config_name="entrypoints/central_ssl_control/run_peft_ssl_control",
             overrides=[
-                "strategy_axes/ssl/consistency_method=pseudolabel_usb_v1",
+                "strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1",
                 "output_dir=runs/run_peft_ssl_control_pseudolabel",
             ],
         )

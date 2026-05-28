@@ -3,8 +3,8 @@
 defaults:
   - /execution_context/query_data_source: default
   - /run_controls/fl_ssl/budget: smoke
-  - /strategy_axes/fl/shard_policy: label_dominant
-  - /strategy_axes/fl/labeled_exposure_policy: shared_client_seed
+  - /strategy_axes/fl_topology/shard_policy: label_dominant
+  - /strategy_axes/fl_topology/labeled_exposure: shared_client_seed
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_

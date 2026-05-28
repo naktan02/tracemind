@@ -1,1 +1,0 @@
-"""Transformer backbone config group."""

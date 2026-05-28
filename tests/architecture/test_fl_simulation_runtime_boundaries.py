@@ -377,13 +377,8 @@ def test_scripts_runtime_adapters_do_not_keep_federated_server_facade() -> None:
 
 
 def test_federated_server_peft_runtime_adapter_keeps_method_core_in_methods() -> None:
-    server_step_path = (
-        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server" / "peft_encoder_server_step.py"
-    )
-    final_projection_path = (
-        SCRIPTS_RUNTIME_ADAPTER_SRC
-        / "federated_server"
-        / "peft_encoder_final_projection.py"
+    generic_server_bridge_path = (
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server" / "generic_server_runtime_bridge.py"
     )
     method_runtime_paths = (
         REPO_ROOT
@@ -411,11 +406,10 @@ def test_federated_server_peft_runtime_adapter_keeps_method_core_in_methods() ->
         "sim_rev_{round_index:04d}_server_seed",
     )
     violations: list[tuple[Path, str]] = []
-    for path in (server_step_path, final_projection_path):
-        source = path.read_text(encoding="utf-8")
-        for snippet in forbidden_snippets:
-            if snippet in source:
-                violations.append((_relative_repo_path(path), snippet))
+    source = generic_server_bridge_path.read_text(encoding="utf-8")
+    for snippet in forbidden_snippets:
+        if snippet in source:
+            violations.append((_relative_repo_path(generic_server_bridge_path), snippet))
     missing_method_paths = [
         _relative_repo_path(path) for path in method_runtime_paths if not path.exists()
     ]
@@ -513,7 +507,7 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         package_root / "backend_resolver.py",
         package_root / "base_state_materialization.py",
         package_root / "client_update_flow.py",
-        package_root / "peft_encoder_local_training.py",
+        package_root / "generic_client_runtime_bridge.py",
         package_root / "scoring_runtime.py",
         package_root / "selection_runtime.py",
         package_root / "training_example_mapper.py",
@@ -551,6 +545,7 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         _relative_repo_path(path) for path in expected_files if not path.exists()
     ]
     generic_local_training_path = package_root / "local_training.py"
+    peft_encoder_local_training_path = package_root / "peft_encoder_local_training.py"
 
     assert not monolith_path.exists(), (
         "FL simulation agent runtime bridge는 federated_agent/ package의 책임별 "
@@ -560,6 +555,9 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
     assert not generic_local_training_path.exists(), (
         "PEFT encoder 전용 local training bridge는 peft_encoder_local_training.py에 "
         "둔다. generic local_training.py에 update-family별 분기를 누적하지 않는다."
+    )
+    assert not peft_encoder_local_training_path.exists(), (
+        "PEFT encoder local training 파일은 dynamic loader/bridge 구조로 통합되어 더 이상 존재하지 않는다."
     )
     assert not any(path.exists() for path in forbidden_paths), (
         "training example backend별 row shape 요구사항은 methods/query_text_views가 "
@@ -587,72 +585,20 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
 
 def test_federated_agent_peft_round_files_do_not_own_update_submission() -> None:
     package_root = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent"
-    checked_paths = (
-        package_root / "peft_encoder_method_owned_client_round.py",
-        package_root / "peft_encoder_query_ssl_client_round.py",
-    )
-    required_helper = package_root / "client_update_flow.py"
-    forbidden_snippets = (
-        "ClientRoundSummary(",
-        "client_update_submission",
-        "SimulationClientArtifactStore(",
-        "payload_byte_count(",
-        "extract_delta_l2_norm(",
-        "extract_aggregation_example_count(",
-        "build_client_diagnostic_unlabeled_view",
-    )
-    violations: list[tuple[Path, str]] = []
-    for path in checked_paths:
-        source = path.read_text(encoding="utf-8")
-        for snippet in forbidden_snippets:
-            if snippet in source:
-                violations.append((_relative_repo_path(path), snippet))
+    method_owned_round_path = package_root / "peft_encoder_method_owned_client_round.py"
+    query_ssl_round_path = package_root / "peft_encoder_query_ssl_client_round.py"
 
-    assert required_helper.exists(), (
-        "family-specific client round 파일은 update submission/summary 조립을 "
-        "반복 소유하지 않는다. 공통 흐름은 client_update_flow.py가 맡는다.\n"
-        f"missing={_relative_repo_path(required_helper)}"
+    assert not method_owned_round_path.exists(), (
+        "family-specific client round 파일은 generic bridge 구조 도입으로 더 이상 존재하지 않는다."
     )
-    assert not violations, (
-        "PEFT encoder client-round bridge는 local core 호출과 family upload 함수 "
-        "선택만 맡는다. diagnostic view, server submit, payload byte, summary "
-        "조립은 generic client update flow로 둔다.\n"
-        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    assert not query_ssl_round_path.exists(), (
+        "family-specific client round 파일은 generic bridge 구조 도입으로 더 이상 존재하지 않는다."
     )
 
 
 def test_peft_local_training_bridge_delegates_runtime_io_helpers() -> None:
     package_root = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent"
     local_training_path = package_root / "peft_encoder_local_training.py"
-    expected_owner_paths = (
-        package_root / "base_state_materialization.py",
-        package_root / "artifact_store.py",
-    )
-    source = local_training_path.read_text(encoding="utf-8")
-    forbidden_snippets = (
-        "def _load_base_parameters_if_needed(",
-        "def _load_base_partition_parameters_if_needed(",
-        "def _save_agent_local_update(",
-        "adapter_base_materialization_seconds",
-        "adapter_base_partition_materialization_seconds",
-        "agent_repository_save_seconds",
-        "TrainingArtifactRepository(",
-        "QuerySslLocalTrainingService(",
-    )
-    violations = [snippet for snippet in forbidden_snippets if snippet in source]
-    missing_owner_paths = [
-        _relative_repo_path(path) for path in expected_owner_paths if not path.exists()
-    ]
-
-    assert not missing_owner_paths, (
-        "PEFT local training bridge의 runtime IO helper는 가장 가까운 capability "
-        "module이 소유한다.\n"
-        f"{chr(10).join(f'- {path}' for path in missing_owner_paths)}"
-    )
-    assert not violations, (
-        "peft_encoder_local_training.py는 local training core 연결만 맡는다. "
-        "base-state materialization timing은 base_state_materialization.py가, "
-        "agent-local update 저장은 artifact_store.py가, agent service 생성은 "
-        "training_runtime.py가 소유한다.\n"
-        f"violations={violations}"
+    assert not local_training_path.exists(), (
+        "PEFT encoder local training bridge 파일은 generic bridge로 통합되어 더 이상 존재하지 않는다."
     )

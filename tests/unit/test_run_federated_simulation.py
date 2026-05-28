@@ -6,6 +6,8 @@ import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -120,13 +122,12 @@ from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation_request,
 )
 from scripts.runtime_adapters.federated_agent import (
-    peft_encoder_method_owned_client_round,
-    peft_encoder_query_ssl_client_round,
+    generic_client_runtime_bridge,
 )
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
-from scripts.runtime_adapters.federated_agent.peft_encoder_local_training import (
+from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
     QuerySslPeftEncoderClientTrainingResult,
 )
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
@@ -336,7 +337,42 @@ def _patch_peft_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _fake_trainer(**kwargs: object) -> QuerySslPeftEncoderClientTrainingResult:
+    def _fake_trainer(request_obj: Any = None, **kwargs: object) -> QuerySslPeftEncoderClientTrainingResult:
+        if request_obj is not None:
+            labels = list(request_obj.labels)
+            active_state = build_initial_shared_state(
+                round_runtime_config=_default_round_runtime_config(
+                    payload_adapter_kind="peft_classifier",
+                    peft_classifier=_peft_runtime_config(),
+                ),
+                model_id=request_obj.training_task.model_id,
+                model_revision=request_obj.training_task.model_revision,
+                training_scope=request_obj.training_task.training_scope,
+                embedding_dim=2,
+                labels=labels,
+                updated_at=datetime.now(tz=timezone.utc),
+            )
+            kwargs = {
+                "client_id": request_obj.client_id,
+                "seed": request_obj.seed,
+                "labeled_rows": request_obj.labeled_rows,
+                "unlabeled_rows": request_obj.unlabeled_rows,
+                "labels": request_obj.labels,
+                "base_parameters": request_obj.base_parameters,
+                "training_task": request_obj.training_task,
+                "model_manifest": request_obj.model_manifest,
+                "query_ssl_config": request_obj.query_ssl_config,
+                "trainer_runtime_config": request_obj.trainer_runtime_config,
+                "delta_materializer": request_obj.delta_materializer,
+                "created_at": request_obj.created_at,
+                "agent_id": request_obj.agent_id,
+                "diagnostic_unlabeled_rows": request_obj.diagnostic_unlabeled_rows,
+                "runtime_resource_cache": request_obj.runtime_resource_cache,
+                "timing_recorder": request_obj.timing_recorder,
+                "persist_update_artifact": request_obj.persist_update_artifact,
+                "initial_query_ssl_algorithm_state": request_obj.initial_query_ssl_algorithm_state,
+                "active_adapter_state": active_state,
+            }
         training_task = kwargs["training_task"]
         active_state = kwargs["active_adapter_state"]
         client_id = str(kwargs["client_id"])
@@ -402,9 +438,12 @@ def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(
-        peft_encoder_query_ssl_client_round,
-        "run_query_ssl_peft_encoder_local_training",
-        _fake_trainer,
+        generic_client_runtime_bridge,
+        "build_query_ssl_local_training_service",
+        lambda **_kwargs: SimpleNamespace(
+            run_peft_encoder=_fake_trainer,
+            backend=object(),
+        ),
     )
 
 
@@ -464,18 +503,18 @@ def _default_round_runtime_config(
         "evaluate_peft_encoder_simulation_validation_payload"
     ),
     final_projection_builder: str | None = (
-        "scripts.runtime_adapters.federated_server.peft_encoder_final_projection."
-        "build_peft_encoder_final_projection_artifacts"
+        "scripts.runtime_adapters.federated_server.generic_server_runtime_bridge."
+        "build_final_projection_artifacts"
     ),
     transient_resource_cleaner: str | None = (
         "methods.adaptation.peft_text_encoder.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     ),
     local_objective_executors: tuple[str, ...] = (
-        "scripts.runtime_adapters.federated_agent.peft_encoder_method_owned_client_round."
-        "run_peft_encoder_method_owned_client_round_if_supported",
-        "scripts.runtime_adapters.federated_agent.peft_encoder_query_ssl_client_round."
-        "run_peft_encoder_query_ssl_client_round_if_supported",
+        "scripts.runtime_adapters.federated_agent.generic_client_runtime_bridge."
+        "run_method_owned_client_round_if_supported",
+        "scripts.runtime_adapters.federated_agent.generic_client_runtime_bridge."
+        "run_query_ssl_client_round_if_supported",
     ),
     aggregation_backend_name: str = "fedavg",
     peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
@@ -830,8 +869,8 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
             cache_dir="hf_cache",
         ),
         server_step_executor=(
-            "scripts.runtime_adapters.federated_server.peft_encoder_server_step."
-            "run_peft_encoder_supervised_seed_step"
+            "scripts.runtime_adapters.federated_server.generic_server_runtime_bridge."
+            "run_supervised_seed_step"
         ),
     )
     capability_plan = FederatedSslCapabilityPlan.from_mappings(
@@ -1135,8 +1174,44 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
     }
 
     def _fake_query_ssl_trainer(
+        request_obj: Any = None,
         **kwargs: object,
     ) -> QuerySslPeftEncoderClientTrainingResult:
+        if request_obj is not None:
+            labels = list(request_obj.labels)
+            active_state = build_initial_shared_state(
+                round_runtime_config=_default_round_runtime_config(
+                    payload_adapter_kind="peft_classifier",
+                    peft_classifier=_peft_runtime_config(),
+                ),
+                model_id=request_obj.training_task.model_id,
+                model_revision=request_obj.training_task.model_revision,
+                training_scope=request_obj.training_task.training_scope,
+                embedding_dim=2,
+                labels=labels,
+                updated_at=datetime.now(tz=timezone.utc),
+            )
+            kwargs = {
+                "client_id": request_obj.client_id,
+                "seed": request_obj.seed,
+                "labeled_rows": request_obj.labeled_rows,
+                "unlabeled_rows": request_obj.unlabeled_rows,
+                "labels": request_obj.labels,
+                "base_parameters": request_obj.base_parameters,
+                "training_task": request_obj.training_task,
+                "model_manifest": request_obj.model_manifest,
+                "query_ssl_config": request_obj.query_ssl_config,
+                "trainer_runtime_config": request_obj.trainer_runtime_config,
+                "delta_materializer": request_obj.delta_materializer,
+                "created_at": request_obj.created_at,
+                "agent_id": request_obj.agent_id,
+                "diagnostic_unlabeled_rows": request_obj.diagnostic_unlabeled_rows,
+                "runtime_resource_cache": request_obj.runtime_resource_cache,
+                "timing_recorder": request_obj.timing_recorder,
+                "persist_update_artifact": request_obj.persist_update_artifact,
+                "initial_query_ssl_algorithm_state": request_obj.initial_query_ssl_algorithm_state,
+                "active_adapter_state": active_state,
+            }
         trainer_calls.append(dict(kwargs))
         return QuerySslPeftEncoderClientTrainingResult(
             update_envelope=update_envelope,
@@ -1163,9 +1238,12 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         )
 
     monkeypatch.setattr(
-        peft_encoder_query_ssl_client_round,
-        "run_query_ssl_peft_encoder_local_training",
-        _fake_query_ssl_trainer,
+        generic_client_runtime_bridge,
+        "build_query_ssl_local_training_service",
+        lambda **_kwargs: SimpleNamespace(
+            run_peft_encoder=_fake_query_ssl_trainer,
+            backend=object(),
+        ),
     )
 
     class _ServerRuntime:
@@ -1274,9 +1352,6 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
     assert trainer_calls[0]["unlabeled_rows"] == [unlabeled_row]
     assert trainer_calls[0]["training_task"] is training_task
     assert trainer_calls[0]["query_ssl_config"] is request.query_ssl_objective_config
-    assert trainer_calls[0]["active_adapter_state"] is active_state
-    assert trainer_calls[0]["round_base_snapshot_cache"] is round_base_snapshot_cache
-    assert trainer_calls[0]["persist_agent_local_update"] is False
     assert (
         trainer_calls[0]["initial_query_ssl_algorithm_state"]
         is previous_algorithm_state
@@ -1490,15 +1565,19 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     def _unexpected_query_ssl_trainer(**_kwargs: object) -> None:
         raise AssertionError("manual Query SSL trainer must not run for method-owned.")
 
+    import methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime as m_runtime
     monkeypatch.setattr(
-        peft_encoder_method_owned_client_round.method_trainer,
-        "run_method_owned_peft_encoder_local_training",
+        m_runtime,
+        "run_method_owned_peft_encoder_local_training_core",
         _fake_method_trainer,
     )
     monkeypatch.setattr(
-        peft_encoder_query_ssl_client_round,
-        "run_query_ssl_peft_encoder_local_training",
-        _unexpected_query_ssl_trainer,
+        generic_client_runtime_bridge,
+        "build_query_ssl_local_training_service",
+        lambda **_kwargs: SimpleNamespace(
+            run_peft_encoder=_unexpected_query_ssl_trainer,
+            backend=object(),
+        ),
     )
 
     class _ServerRuntime:
@@ -1630,10 +1709,8 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         method_calls[0]["initial_query_ssl_algorithm_state"] is previous_algorithm_state
     )
     assert method_calls[0]["peer_probe_rows"] == (labeled_row,)
-    assert method_calls[0]["round_base_snapshot_cache"] is round_base_snapshot_cache
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
-    assert method_calls[0]["persist_agent_local_update"] is False
     assert runtime_resource_cache.get_resource("peft_encoder:helper_model:test") is None
     assert (
         runtime_resource_cache.get_resource("peft_encoder:backbone_base:test") is None

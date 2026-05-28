@@ -74,7 +74,7 @@ def test_central_ssl_mode_router_rejects_scalar_mode_override_without_group() ->
         }
     )
 
-    with pytest.raises(ValueError, match="strategy_axes/ssl/input_mode"):
+    with pytest.raises(ValueError, match="strategy_axes/ssl_objective/input_mode"):
         router.run_central_ssl_mode(cfg)
 
 

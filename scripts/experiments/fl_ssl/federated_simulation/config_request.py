@@ -329,7 +329,7 @@ def _resolve_round_payload_adapter_kind(round_runtime: DictConfig) -> str:
         return payload_adapter_kind
 
     raise ValueError(
-        "Set strategy_axes/trainable_state/update_family so it declares "
+        "Set strategy_axes/model_architecture/update_family so it declares "
         "round_runtime.payload_adapter_kind."
     )
 
@@ -458,8 +458,8 @@ def _build_execution_plan(cfg: DictConfig) -> FederatedSslExecutionPlan:
         ssl_method = cfg.get("ssl_method")
         if ssl_method is None:
             raise ValueError(
-                "method-owned FL SSL execution requires strategy_axes/fl/"
-                "method_descriptor config."
+                "method-owned FL SSL execution requires strategy_axes/"
+                "fssl_method config."
             )
         descriptor = resolve_federated_ssl_method_descriptor(str(ssl_method.name))
     return build_federated_ssl_execution_plan(

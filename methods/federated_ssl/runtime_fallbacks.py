@@ -2,7 +2,7 @@
 
 이 모듈은 API/runtime 요청이 명시 training 값을 주지 않았을 때만 쓰는
 compatibility fallback을 소유한다. 실험 실행값의 source of truth는 Hydra
-`conf/strategy_axes/fl/*`에 남긴다.
+`conf/strategy_axes/fssl_method/`, `conf/strategy_axes/fl_topology/` 등에 남긴다.
 """
 
 from __future__ import annotations

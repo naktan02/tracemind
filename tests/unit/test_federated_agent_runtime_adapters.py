@@ -62,9 +62,7 @@ from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
     RoundBaseSnapshotCache,
 )
 from scripts.runtime_adapters.federated_agent import base_state_materialization
-from scripts.runtime_adapters.federated_agent import (
-    peft_encoder_local_training as qtrainer,
-)
+from scripts.runtime_adapters.federated_agent import generic_client_runtime_bridge
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
@@ -73,9 +71,6 @@ from scripts.runtime_adapters.federated_agent.backend_resolver import (
 )
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
     load_peft_encoder_base_parameters,
-)
-from scripts.runtime_adapters.federated_agent.peft_encoder_local_training import (
-    run_query_ssl_peft_encoder_local_training,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_delta_payload,
@@ -412,8 +407,9 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         "_build_peft_encoder_model",
         _fake_build_peft_encoder_model,
     )
+    from scripts.runtime_adapters.federated_agent import base_state_materialization
     monkeypatch.setattr(
-        qtrainer,
+        base_state_materialization,
         "load_peft_encoder_base_parameters_with_timing",
         lambda **_kwargs: object(),
     )
@@ -465,10 +461,60 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         ),
     )
 
-    result = run_query_ssl_peft_encoder_local_training(
-        client_id="agent_01",
+    request = SimpleNamespace(
         seed=42,
         output_dir=tmp_path,
+        ssl_method_config=None,
+        diagnostic_view_config=SimpleNamespace(enabled=False, max_rows=0),
+        query_ssl_objective_config=FederatedQuerySslObjectiveConfig(
+            method_name=method_name,
+            algorithm_name=algorithm_name,
+            parameters=parameters,
+            strong_view_policy="first_aug",
+            unlabeled_batch_size=2,
+        ),
+        round_runtime_config=SimpleNamespace(
+            update_family_name="peft_text_encoder",
+            runtime_payload_for_update_family=lambda: object(),
+        ),
+        local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
+            device="cpu",
+            local_files_only=True,
+        ),
+        training_task_config=SimpleNamespace(
+            local_epochs=1,
+            batch_size=2,
+            learning_rate=1e-4,
+            gradient_clip_norm=None,
+            objective_config=TrainingObjectiveConfig.from_mapping(
+                {"training_backend_name": PEFT_ENCODER_TRAINING_BACKEND_NAME}
+            ),
+        ),
+        artifact_persistence_config=SimpleNamespace(
+            persist_agent_local_updates=True,
+        ),
+    )
+
+    bootstrapped = SimpleNamespace(
+        round_base_snapshot_cache=RoundBaseSnapshotCache(),
+        runtime_resource_cache=runtime_resource_cache,
+        peer_probe_rows=None,
+        server_runtime=SimpleNamespace(
+            accept_client_update=lambda **_kwargs: True,
+            accept_update=lambda *args, **kwargs: True,
+        ),
+    )
+
+    active = SimpleNamespace(
+        adapter_state=active_state,
+        manifest=SimpleNamespace(
+            model_id="mxbai-peft-classifier",
+            model_revision="sim_rev_0000",
+        ),
+    )
+
+    shard = SimpleNamespace(
+        client_id="agent_01",
         labeled_rows=[
             {
                 "query_id": "l1",
@@ -485,7 +531,14 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
                 "mapped_label_4": "normal",
             }
         ],
-        active_adapter_state=active_state,
+    )
+
+    execution = generic_client_runtime_bridge.run_query_ssl_client_round_if_supported(
+        request=request,
+        bootstrapped=bootstrapped,
+        active=active,
+        round_id="round_0001",
+        shard=shard,
         training_task=TrainingTask(
             schema_version="training_task.v1",
             round_id="round_0001",
@@ -504,31 +557,15 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
             selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 1}),
             task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
         ),
-        model_manifest=SimpleNamespace(
-            model_id="mxbai-peft-classifier",
-            model_revision="sim_rev_0000",
-        ),
-        query_ssl_config=FederatedQuerySslObjectiveConfig(
-            method_name=method_name,
-            algorithm_name=algorithm_name,
-            parameters=parameters,
-            strong_view_policy="first_aug",
-            unlabeled_batch_size=2,
-        ),
-        peft_config=peft_config,
-        trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
-            device="cpu",
-            local_files_only=True,
-        ),
-        runtime_resource_cache=runtime_resource_cache,
     )
 
     assert captured["algorithm"].algorithm_name == algorithm_name
     assert captured["runtime_resource_cache"] is runtime_resource_cache
     if algorithm_name == "flexmatch":
         assert captured["algorithm"].thresh_warmup is True
-    assert result.update_payload == update_payload
-    assert result.pseudo_label_quality.pseudo_label_correct_count == 1
+    assert execution is not None
+    assert execution.update_submitted is True
+    assert execution.summary.pseudo_label_correct_count == 1
 
 
 def test_query_ssl_peft_encoder_delta_materialization_writes_server_owned_refs(

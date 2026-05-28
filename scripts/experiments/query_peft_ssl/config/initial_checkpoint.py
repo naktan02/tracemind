@@ -87,7 +87,7 @@ def resolve_query_adaptation_initial_checkpoint(
             "query_adaptation_initial_checkpoint is required for this experiment. "
             "Provide query_adaptation_initial_checkpoint.manifest_path or explicit "
             "adapter/head paths. Fresh-start ablation이면 "
-            "`strategy_axes/adaptation/initial_checkpoint=none`으로 명시해라."
+            "`strategy_axes/model_architecture/initial_checkpoint=none`으로 명시해라."
         )
 
     if adapter_dir:

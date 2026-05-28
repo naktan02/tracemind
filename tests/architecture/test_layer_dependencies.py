@@ -15,13 +15,13 @@ CONF_SRC = REPO_ROOT / "conf"
 SHARED_SRC = REPO_ROOT / "shared" / "src"
 METHODS_SRC = REPO_ROOT / "methods"
 CONF_FL_METHOD_DESCRIPTOR_SRC = (
-    REPO_ROOT / "conf" / "strategy_axes" / "fl" / "method_descriptor"
+    REPO_ROOT / "conf" / "strategy_axes" / "fssl_method"
 )
 CONF_FL_UPDATE_PARTITION_POLICY_SRC = (
-    REPO_ROOT / "conf" / "strategy_axes" / "fl" / "update_partition_policy"
+    REPO_ROOT / "conf" / "strategy_axes" / "fl_topology" / "update_partition"
 )
 CONF_FL_PEER_CONTEXT_POLICY_SRC = (
-    REPO_ROOT / "conf" / "strategy_axes" / "fl" / "peer_context_policy"
+    REPO_ROOT / "conf" / "strategy_axes" / "fl_topology" / "peer_context"
 )
 AGENT_SRC = REPO_ROOT / "agent" / "src"
 AGENT_CONF = REPO_ROOT / "agent" / "conf"
@@ -521,12 +521,12 @@ def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert (
-        CONF_SRC / "strategy_axes" / "ssl" / "input_mode" / "consistency.yaml"
+        CONF_SRC / "strategy_axes" / "ssl_objective" / "input_mode" / "consistency.yaml"
     ).exists()
     assert (
-        CONF_SRC / "strategy_axes" / "ssl" / "input_mode" / "pseudo_label_replay.yaml"
+        CONF_SRC / "strategy_axes" / "ssl_objective" / "input_mode" / "pseudo_label_replay.yaml"
     ).exists()
-    assert "/strategy_axes/ssl/input_mode: consistency" in entrypoint_config.read_text(
+    assert "/strategy_axes/ssl_objective/input_mode: consistency" in entrypoint_config.read_text(
         encoding="utf-8"
     )
     assert not violations, (
@@ -588,7 +588,7 @@ def test_query_peft_artifact_paths_do_not_branch_on_ssl_input_mode_names() -> No
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert not violations, (
-        "central SSL output grouping 규칙은 strategy_axes/ssl/input_mode leaf가 "
+        "central SSL output grouping 규칙은 strategy_axes/ssl_objective/input_mode leaf가 "
         "소유한다. artifact_paths.py는 central_ssl_runner의 resolved flag만 읽는다.\n"
         f"violations={violations}"
     )
@@ -619,14 +619,14 @@ def test_local_objective_regularizers_stay_update_payload_agnostic() -> None:
 def test_fl_local_update_profiles_do_not_keep_python_mapping_catalog() -> None:
     forbidden_path = METHODS_SRC / "federated_ssl" / "training_algorithm_profiles.py"
     assert not forbidden_path.exists(), (
-        "FL local update profile 실행값은 conf/strategy_axes/fl/local_update_profile "
+        "FL local update profile 실행값은 conf/strategy_axes/fssl_method/local_update_profile "
         "Hydra YAML이 소유한다. Python에는 profile별 objective mapping catalog를 "
         "다시 만들지 않는다."
     )
 
 
 def test_fl_local_update_profiles_do_not_keep_lora_classifier_leaf() -> None:
-    profile_root = CONF_SRC / "strategy_axes" / "fl" / "local_update_profile"
+    profile_root = CONF_SRC / "strategy_axes" / "fssl_method" / "local_update_profile"
     forbidden_path = profile_root / "lora_pseudo_label_v1.yaml"
     assert not forbidden_path.exists(), (
         "active FL local update profile leaf는 peft_pseudo_label_v1을 사용한다. "
@@ -639,7 +639,7 @@ def test_fl_local_ssl_policy_does_not_expose_method_local_fedmatch_leaf() -> Non
     forbidden_path = (
         CONF_SRC
         / "strategy_axes"
-        / "fl"
+        / "ssl_objective"
         / "local_ssl_policy"
         / "fedmatch_agreement.yaml"
     )
@@ -655,8 +655,8 @@ def test_fl_server_update_policy_does_not_expose_method_local_fedmatch_leaf() ->
     forbidden_path = (
         CONF_SRC
         / "strategy_axes"
-        / "fl"
-        / "server_update_policy"
+        / "fl_topology"
+        / "server_update"
         / "fedmatch_partitioned.yaml"
     )
 
@@ -719,7 +719,7 @@ def test_fl_entrypoint_does_not_own_payload_payload_adapter_alias() -> None:
     assert not violations, (
         "FL root entrypoint는 실행 update family와 aggregation backend만 조합한다. "
         "v1 payload adapter kind compatibility alias는 "
-        "strategy_axes/trainable_state/update_family leaf가 소유한다.\n"
+        "strategy_axes/model_architecture/update_family leaf가 소유한다.\n"
         f"violations={violations}"
     )
 
@@ -776,10 +776,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         / "config_request.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_agent"
-        / "peft_encoder_method_owned_client_round.py",
-        SCRIPTS_RUNTIME_ADAPTER_SRC
-        / "federated_agent"
-        / "peft_encoder_query_ssl_client_round.py",
+        / "generic_client_runtime_bridge.py",
         SCRIPTS_SRC
         / "experiments"
         / "fl_ssl"
@@ -883,13 +880,10 @@ def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
         METHODS_SRC / "adaptation" / "peft_text_encoder" / "update_family_runtime.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_agent"
-        / "peft_encoder_method_owned_client_round.py",
-        SCRIPTS_RUNTIME_ADAPTER_SRC
-        / "federated_agent"
-        / "peft_encoder_query_ssl_client_round.py",
+        / "generic_client_runtime_bridge.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_server"
-        / "peft_encoder_server_step.py",
+        / "generic_server_runtime_bridge.py",
     )
     forbidden_snippets = (
         "is_peft_encoder_payload_adapter",
@@ -1098,7 +1092,7 @@ def test_fl_simulation_server_aggregate_namespace_uses_update_family() -> None:
         SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server" / "aggregation_artifacts.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_server"
-        / "peft_encoder_server_step.py",
+        / "generic_server_runtime_bridge.py",
         REPO_ROOT / "tests" / "unit" / "test_run_federated_simulation.py",
     )
     forbidden_snippets = (
@@ -1174,7 +1168,7 @@ def test_scripts_runtime_bridges_use_peft_config_type_names() -> None:
     checked_paths = (
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_agent"
-        / "peft_encoder_local_training.py",
+        / "generic_client_runtime_bridge.py",
         METHODS_SRC
         / "adaptation"
         / "peft_text_encoder"
@@ -2050,7 +2044,7 @@ def test_fl_scripts_legacy_payload_names_stay_in_compatibility_files() -> None:
         ),
         Path("scripts/experiments/fl_ssl/federated_simulation/models.py"),
         Path("scripts/runtime_adapters/federated_agent/base_state_materialization.py"),
-        Path("scripts/runtime_adapters/federated_agent/peft_encoder_local_training.py"),
+        Path("scripts/runtime_adapters/federated_agent/generic_client_runtime_bridge.py"),
     }
     actual_paths: set[Path] = set()
     for root in roots:
@@ -2694,7 +2688,7 @@ def test_peft_text_encoder_uses_peft_adapters_axis() -> None:
 
 def test_peft_adapter_mechanisms_are_not_trainable_state_family_leaves() -> None:
     update_family_dir = (
-        CONF_SRC / "strategy_axes" / "trainable_state" / "update_family"
+        CONF_SRC / "strategy_axes" / "model_architecture" / "update_family"
     )
     mechanism_fragments = ("lora", "rslora", "dora")
     violations = [
@@ -2705,7 +2699,7 @@ def test_peft_adapter_mechanisms_are_not_trainable_state_family_leaves() -> None
 
     assert not violations, (
         "LoRA/RSLoRA/DoRA는 PEFT adapter mechanism이지 trainable state/update "
-        "family가 아니다. mechanism 선택은 strategy_axes/adaptation/peft_adapter와 "
+        "family가 아니다. mechanism 선택은 strategy_axes/model_architecture/peft와 "
         "methods/adaptation/peft_adapters/<mechanism>/builder.py에 두고, "
         "trainable_state/update_family에는 peft_text_encoder/prototype_pack 같은 "
         "공유 상태 family만 둔다.\n"
