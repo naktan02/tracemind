@@ -155,7 +155,7 @@ def _build_task() -> TrainingTask:
         learning_rate=1e-2,
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
-            loss="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             confidence_threshold=0.6,
             margin_threshold=0.05,
         ),

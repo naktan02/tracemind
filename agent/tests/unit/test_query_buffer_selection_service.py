@@ -45,7 +45,7 @@ def _build_task(
         learning_rate=1e-2,
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
-            loss="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             confidence_threshold=confidence_threshold,
             margin_threshold=margin_threshold,
             pseudo_label_algorithm_name=pseudo_label_algorithm_name,
@@ -116,8 +116,7 @@ def test_build_query_buffer_evidence_preserves_snapshot_metadata() -> None:
     assert evidence.metadata["query_buffer_locale"] == "ko-KR"
     assert evidence.metadata["query_buffer_source_type"] == "user_message"
     assert (
-        evidence.metadata["query_buffer.scorer_backend_name"]
-        == "prototype_similarity"
+        evidence.metadata["query_buffer.scorer_backend_name"] == "prototype_similarity"
     )
     assert evidence.metadata["translation_used"] is False
 

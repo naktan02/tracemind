@@ -393,9 +393,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert payload["protocol"]["round_runtime"]["payload_adapter_kind"] == (
         "peft_classifier"
     )
-    assert payload["protocol"]["round_runtime"]["adapter_family_name"] == (
-        "peft_classifier"
-    )
+    assert "adapter_family_name" not in payload["protocol"]["round_runtime"]
     assert payload["protocol"]["round_runtime"]["update_family_name"] == (
         "peft_text_classifier"
     )

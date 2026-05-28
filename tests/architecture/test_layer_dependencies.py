@@ -629,10 +629,7 @@ def test_fl_report_protocol_records_payload_adapter_kind() -> None:
             / "federated_simulation"
             / "io"
             / "protocol_payload.py",
-            (
-                '"payload_adapter_kind": round_runtime_config.payload_adapter_kind',
-                '"adapter_family_name": round_runtime_config.payload_adapter_kind',
-            ),
+            ('"payload_adapter_kind": round_runtime_config.payload_adapter_kind',),
         ),
         (
             SCRIPTS_SRC / "experiments" / "result_index" / "fl_ssl_report_loader.py",
@@ -651,8 +648,8 @@ def test_fl_report_protocol_records_payload_adapter_kind() -> None:
 
     assert not missing, (
         "새 FL report protocol은 update_family_name과 payload_adapter_kind를 "
-        "canonical field로 기록/해석한다. adapter_family_name은 old-run/result "
-        "reader compatibility field로만 남긴다.\n"
+        "canonical field로 기록한다. adapter_family_name은 old-run/result reader "
+        "compatibility field로만 해석한다.\n"
         f"{chr(10).join(f'- {item}' for item in missing)}"
     )
 

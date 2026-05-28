@@ -21,7 +21,7 @@ PEFT_TEXT_CLASSIFIER_SLUG_BUILDER = (
 
 def _peft_text_classifier_round_runtime() -> dict[str, object]:
     return {
-        "adapter_family_name": "peft_classifier",
+        "payload_adapter_kind": "peft_classifier",
         "update_family_name": "peft_text_classifier",
         "runtime_payload_key": "peft_text_classifier",
         "composition_slug_builder": PEFT_TEXT_CLASSIFIER_SLUG_BUILDER,

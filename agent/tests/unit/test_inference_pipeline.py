@@ -18,9 +18,6 @@ from agent.src.services.inference.pipeline_service import (
     InferencePipelineService,
 )
 from agent.src.services.language.preprocess_service import PreprocessService
-from shared.src.contracts.adapter_contract_families.factories import (
-    make_identity_state_payload,
-)
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
 
@@ -246,11 +243,10 @@ def test_pipeline_uses_active_shared_adapter_state_for_scoring(
     tmp_path: Path,
 ) -> None:
     """active shared adapter state가 있으면 변환 embedding과 revision을 사용한다."""
-    shared_state = make_identity_state_payload(
-        model_id="test-embed",
-        model_revision="global_rev_001",
-        embedding_dim=3,
-    )
+    shared_state = MagicMock()
+    shared_state.adapter_kind = "peft_classifier"
+    shared_state.model_revision = "global_rev_001"
+    shared_state.apply.side_effect = lambda embedding: [float(v) for v in embedding]
     shared_adapter_provider = MagicMock()
     shared_adapter_provider.get_active_state.return_value = shared_state
     shared_adapter_provider.get_active_manifest.return_value = make_embedding_manifest(
@@ -275,18 +271,17 @@ def test_pipeline_uses_active_shared_adapter_state_for_scoring(
     assert (
         result.query_buffer_record.metadata["shared_model_revision"] == "global_rev_001"
     )
-    assert result.query_buffer_record.metadata["adapter_kind"] == "diagonal_scale"
+    assert result.query_buffer_record.metadata["adapter_kind"] == "peft_classifier"
 
 
 def test_pipeline_can_apply_future_local_adapter_after_shared_state(
     tmp_path: Path,
 ) -> None:
     """local state가 있으면 inference에만 shared 이후 순서로 적용한다."""
-    shared_state = make_identity_state_payload(
-        model_id="test-embed",
-        model_revision="global_rev_001",
-        embedding_dim=3,
-    )
+    shared_state = MagicMock()
+    shared_state.adapter_kind = "peft_classifier"
+    shared_state.model_revision = "global_rev_001"
+    shared_state.apply.side_effect = lambda embedding: [float(v) for v in embedding]
     shared_adapter_provider = MagicMock()
     shared_adapter_provider.get_active_state.return_value = shared_state
     shared_adapter_provider.get_active_manifest.return_value = make_embedding_manifest(

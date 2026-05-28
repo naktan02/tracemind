@@ -118,7 +118,7 @@ def test_score_can_switch_to_top_k_mean_policy() -> None:
 def test_score_service_can_be_built_from_objective_config() -> None:
     service = ScoringService.from_objective_config(
         TrainingObjectiveConfig(
-            training_backend_name="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             scorer_backend_name="prototype_similarity",
             score_policy_name="topk_mean_cosine",
             score_top_k=2,
@@ -170,7 +170,7 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
     )
     service = ScoringService.from_objective_config(
         TrainingObjectiveConfig(
-            training_backend_name="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             scorer_backend_name="constant_test_backend",
         )
     )
@@ -190,7 +190,7 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
 def test_score_service_uses_methods_owned_classifier_head_logits_backend() -> None:
     service = ScoringService.from_objective_config(
         TrainingObjectiveConfig(
-            training_backend_name="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             scorer_backend_name="classifier_head_logits",
         ),
         shared_state=ClassifierHeadState(

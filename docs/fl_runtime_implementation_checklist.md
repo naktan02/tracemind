@@ -197,7 +197,7 @@ methods/evaluation/                            # stable metric helper만
   compatibility로만 유지한다.
 - [x] FL simulation에서 `peft_pseudo_label_v1` local profile과
   `strategy_axes/trainable_state/update_family=peft_text_classifier`,
-  `round_runtime.adapter_family_name=peft_classifier`,
+  `round_runtime.payload_adapter_kind=peft_classifier`,
   `round_runtime.aggregation_backend_name=fedavg` leaf 조합을 compose할 수 있다.
 - [x] PEFT-classifier FedAvg는 두 라운드에서
   `previous global snapshot + round aggregated delta = next global snapshot`
