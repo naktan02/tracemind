@@ -13,6 +13,7 @@ Prototype 분석 실험 runner나 sweep은 `scripts/` 또는 `research/analysis/
 
 - `building/`: single-centroid exact builder와 kmeans/dbscan multi-prototype
   build strategy
+- `index.py`: prototype build/scoring/analysis가 공유하는 category -> prototype view
 - `scoring/`: embedding-prototype similarity와 category score 집계 policy
 - `thresholding/`: prototype score 기반 static threshold policy, candidate 평가,
   selection rule

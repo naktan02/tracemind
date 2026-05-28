@@ -30,7 +30,8 @@
 - `models.py`
   - 실험 결과와 중간 산출물 dataclass
 - `strategies.py`
-  - `methods/prototype/building` build strategy를 실험용 `PrototypeIndex`로 감싸는 adapter
+  - `methods/prototype/building/strategy_factory.py`가 고른 build strategy를 실험용
+    `PrototypeIndex`로 감싸는 adapter
 - `scoring.py`
   - prototype scorer runtime 설정과 scorer adapter
 - `evaluation.py`
@@ -81,7 +82,8 @@ python -m scripts.experiments.prototype_analysis.prototype_threshold_sweep \
 - scorer 축을 바꾸고 싶으면 `scoring.py`의 `PrototypeScoringConfig`부터 본다.
 - 새 builder 전략을 추가하고 싶으면 먼저
   `methods/prototype/building/<builder_name>.py`에 공용 계산을 추가하고,
-  `strategies.py`에는 실험 adapter만 둔다.
+  `methods/prototype/building/strategy_factory.py`에 catalog entry를 추가한다.
+  `strategies.py`는 builder 이름으로 분기하지 않는다.
 - threshold와 scorer 관련 knob가 실제로 어디까지 열려 있는지는
   [docs/strategy_surface_map.md](../../../../docs/strategy_surface_map.md)를
   같이 보면 빠르다.

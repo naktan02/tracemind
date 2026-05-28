@@ -6,13 +6,11 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from methods.prototype.index import PrototypeIndex
 from methods.prototype.thresholding.models import ThresholdPolicyEvaluation
 from methods.prototype.thresholding.policies import StaticThresholdPolicy
 from scripts.experiments.prototype_analysis.prototype_strategy.evaluation import (
     score_embeddings,
-)
-from scripts.experiments.prototype_analysis.prototype_strategy.models import (
-    PrototypeIndex,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
     PrototypeIndexScorer,

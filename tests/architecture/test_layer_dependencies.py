@@ -334,6 +334,37 @@ def test_prototype_building_keeps_strategy_files_separate() -> None:
     )
 
 
+def test_prototype_analysis_scripts_do_not_own_build_strategy_catalog() -> None:
+    strategies_path = PROTOTYPE_STRATEGY_SRC / "strategies.py"
+    models_path = PROTOTYPE_STRATEGY_SRC / "models.py"
+    dbscan_config_path = (
+        CONF_SRC / "strategy_axes" / "prototype" / "build_strategy" / "dbscan.yaml"
+    )
+    source = strategies_path.read_text(encoding="utf-8")
+    models_source = models_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "from methods.prototype.building.single import",
+        "from methods.prototype.building.kmeans import",
+        "from methods.prototype.building.dbscan import",
+        'normalized_name == "single"',
+        'normalized_name == "kmeans"',
+        'normalized_name == "dbscan"',
+        'normalized_name == "all"',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert (PROTOTYPE_BUILDING_SRC / "strategy_factory.py").exists()
+    assert dbscan_config_path.exists()
+    assert "class PrototypeIndex" not in models_source
+    assert "class PrototypeVector" not in models_source
+    assert not violations, (
+        "prototype build strategy catalog와 name 분기는 methods/prototype/building이 "
+        "소유한다. prototype analysis scripts는 methods-owned runtime strategy를 "
+        "실험용 PrototypeIndex로 변환하는 adapter만 맡는다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_prototype_scoring_does_not_keep_policy_facade() -> None:
     facade_path = PROTOTYPE_SCORING_SRC / "policies.py"
     implementation_root = PROTOTYPE_SCORING_SRC / "score_policies"

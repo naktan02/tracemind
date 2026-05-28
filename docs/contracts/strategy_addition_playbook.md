@@ -88,7 +88,9 @@ PEFT text encoder partitioned step core, `local_ssl_policy`/`server_update_polic
 
 1. Prototype pack payload shape가 기존 `PrototypePackPayload`로 충분한지 먼저 확인한다.
 2. build 알고리즘 계산은 `methods/prototype/building/<builder_name>.py`에 둔다.
-3. 실험 모듈에는 `PrototypeIndex` adapter와 selection glue만 둔다.
+3. `PrototypeIndex` 같은 reusable analysis/method view는 `methods/prototype/`에
+   두고, 실험 모듈에는 runtime artifact를 그 view로 변환하는 adapter와 selection
+   glue만 둔다.
 4. exact incremental build-state를 지원하지 않으면 `supports_exact_build_state=False`로 둔다.
 5. 기본 artifact builder로 노출할 때만 `conf/strategy_axes/prototype/build_strategy/`에 Hydra group을 추가한다.
 

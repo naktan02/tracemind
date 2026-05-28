@@ -7,15 +7,13 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from methods.prototype.index import PrototypeIndex
 from methods.prototype.thresholding.evaluation import (
     evaluate_scored_predictions,
 )
 from methods.prototype.thresholding.models import (
     EvaluationMetrics,
     ScoredPrediction,
-)
-from scripts.experiments.prototype_analysis.prototype_strategy.models import (
-    PrototypeIndex,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
     PrototypeIndexScorer,

@@ -214,6 +214,22 @@ def test_seed_prototypes_supports_short_builder_override() -> None:
     assert list(cfg.prototype_builder.candidate_ks) == [2]
 
 
+def test_seed_prototypes_supports_dbscan_builder_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/prototype_pack/seed_prototypes",
+            overrides=[
+                "strategy_axes/prototype/build_strategy=dbscan",
+                "prototype_builder.eps_values=[0.1]",
+                "prototype_builder.min_samples_values=[2]",
+            ],
+        )
+
+    assert cfg.prototype_builder.name == "dbscan"
+    assert list(cfg.prototype_builder.eps_values) == [0.1]
+    assert list(cfg.prototype_builder.min_samples_values) == [2]
+
+
 def test_prototype_strategy_supports_short_group_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(

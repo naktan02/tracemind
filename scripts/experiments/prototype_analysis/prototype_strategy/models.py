@@ -3,56 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
 import numpy as np
 
+from methods.prototype.index import PrototypeIndex
 from methods.prototype.thresholding.models import (
     EvaluationMetrics,
     ThresholdPolicyEvaluation,
 )
-
-
-@dataclass(slots=True)
-class PrototypeVector:
-    """하나의 cluster/centroid prototype."""
-
-    prototype_id: str
-    centroid: list[float]
-    member_count: int
-
-
-@dataclass(slots=True)
-class PrototypeIndex:
-    """전략별 category -> prototypes 결과."""
-
-    strategy_name: str
-    categories: dict[str, list[PrototypeVector]]
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def prototype_count(self) -> int:
-        return sum(len(prototypes) for prototypes in self.categories.values())
-
-    def prototype_count_by_category(self) -> dict[str, int]:
-        return {
-            category: len(prototypes)
-            for category, prototypes in sorted(self.categories.items())
-        }
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "strategy_name": self.strategy_name,
-            "prototype_count": self.prototype_count,
-            "prototype_count_by_category": self.prototype_count_by_category(),
-            "metadata": self.metadata,
-            "categories": {
-                category: [asdict(prototype) for prototype in prototypes]
-                for category, prototypes in sorted(self.categories.items())
-            },
-        }
 
 
 @dataclass(slots=True)

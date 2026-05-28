@@ -11,10 +11,11 @@ import numpy as np
 from sklearn.decomposition import PCA
 from umap import UMAP
 
+from methods.prototype.index import PrototypeIndex
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 from .io_utils import dump_jsonl
-from .models import ProjectionArtifact, PrototypeIndex
+from .models import ProjectionArtifact
 from .projection_figure import draw_projection_figure
 from .projection_rows import (
     build_projected_point_rows,

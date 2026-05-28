@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from methods.prototype.index import PrototypeIndex
 from scripts.experiments.prototype_analysis.prototype_strategy.evaluation import (
     embed_rows,
     evaluate_embeddings,
@@ -15,7 +16,6 @@ from scripts.experiments.prototype_analysis.prototype_strategy.io_utils import d
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     ExperimentSummary,
     PrototypeBuildStrategy,
-    PrototypeIndex,
     StrategyEvaluationReport,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.projection import (

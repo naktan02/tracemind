@@ -7,6 +7,7 @@ import json
 import numpy as np
 import pytest
 
+from methods.prototype.index import PrototypeIndex, PrototypeVector
 from methods.prototype.thresholding import policies as threshold_policies
 from methods.prototype.thresholding import selection as threshold_selection
 from methods.prototype.thresholding.evaluation import (
@@ -22,8 +23,6 @@ from scripts.experiments.prototype_analysis.prototype_strategy import (
     threshold_policy_evaluator,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
-    PrototypeIndex,
-    PrototypeVector,
     ThresholdPolicyExperimentSummary,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (

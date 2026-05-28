@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 from sklearn.cluster import KMeans
 
-from scripts.experiments.prototype_analysis.prototype_strategy.models import (
+from methods.prototype.index import (
     PrototypeIndex,
     PrototypeVector,
 )

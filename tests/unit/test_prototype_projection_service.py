@@ -7,7 +7,7 @@ import json
 import numpy as np
 import pytest
 
-from scripts.experiments.prototype_analysis.prototype_strategy.models import (
+from methods.prototype.index import (
     PrototypeIndex,
     PrototypeVector,
 )

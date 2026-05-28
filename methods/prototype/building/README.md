@@ -10,10 +10,12 @@
 - `single.py`: `single` build strategy
 - `kmeans.py`: `kmeans` build strategy
 - `dbscan.py`: `dbscan` build strategy
+- `strategy_factory.py`: strategy name/config를 concrete build strategy로 resolve
 
 경계:
 
 - `shared`는 prototype payload contract, domain entity, serialization을 소유한다.
 - `methods`는 어떤 builder 알고리즘으로 prototype pack을 만들지 소유한다.
-- `main_server`와 `scripts`는 builder를 선택하고 실행/발행하는 runtime adapter다.
+- `main_server`와 `scripts`는 builder를 실행/발행하는 runtime adapter다. builder
+  선택 catalog는 이 패키지의 `strategy_factory.py`가 소유한다.
 - compatibility wrapper를 남기지 않고 direct-file import를 사용한다.

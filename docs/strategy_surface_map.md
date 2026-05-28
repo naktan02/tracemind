@@ -178,7 +178,7 @@ central fixed embedding + classifier seed
 
 | 축 | 현재 값 | 선택 위치 | core | 상태 |
 |---|---|---|---|---|
-| Build strategy | `single`, `kmeans` | `strategy_axes/prototype/build_strategy` | `methods/prototype/building/*` | 활성 |
+| Build strategy | `single`, `kmeans`, `dbscan` | `strategy_axes/prototype/build_strategy`, prototype analysis `strategy.name` | `methods/prototype/building/*`, `methods/prototype/building/strategy_factory.py` | 활성 |
 | Scoring policy | `max_cosine`, `topk_mean_cosine` | training/scoring config | `methods/prototype/scoring/*` | 활성 |
 | Evidence normalization | `prototype_similarity_evidence` | training objective config | `methods/prototype/evidence/*` | 활성 |
 | Training input view | `prototype_rescore`, multiview helpers | training objective config | `methods/prototype/training_inputs/*` | 활성 |

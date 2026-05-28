@@ -7,23 +7,23 @@ from datetime import datetime, timezone
 
 import numpy as np
 
+from methods.prototype.building.dbscan import DbscanPrototypeBuildStrategy
+from methods.prototype.building.kmeans import KMeansPrototypeBuildStrategy
+from methods.prototype.building.single import SinglePrototypeBuildStrategy
+from methods.prototype.index import PrototypeIndex, PrototypeVector
 from scripts.experiments.prototype_analysis.prototype_strategy.io_utils import (
     load_jsonl_rows,
     resolve_output_dir,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     EvaluationMetrics,
-    PrototypeIndex,
-    PrototypeVector,
     StrategyEvaluationReport,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.runner import (
     StrategySelectionPolicy,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.strategies import (
-    DbscanPrototypeStrategy,
-    KMeansPrototypeStrategy,
-    SinglePrototypeStrategy,
+    ExperimentPrototypeBuildStrategy,
     build_requested_strategies,
 )
 
@@ -58,7 +58,9 @@ def _build_embeddings() -> dict[str, np.ndarray]:
 
 
 def test_single_strategy_builds_one_prototype_per_category() -> None:
-    strategy = SinglePrototypeStrategy()
+    strategy = ExperimentPrototypeBuildStrategy(
+        runtime_strategy=SinglePrototypeBuildStrategy()
+    )
 
     prototype_index = strategy.build(_build_embeddings())
 
@@ -73,17 +75,21 @@ def test_single_strategy_builds_one_prototype_per_category() -> None:
 def test_kmeans_and_dbscan_build_multiple_prototypes_for_separable_clusters() -> None:
     embeddings = {"anxiety": _build_embeddings()["anxiety"]}
 
-    kmeans_index = KMeansPrototypeStrategy(
-        candidate_ks=(2, 3),
-        silhouette_sample_size=6,
-        random_state=42,
+    kmeans_index = ExperimentPrototypeBuildStrategy(
+        runtime_strategy=KMeansPrototypeBuildStrategy(
+            candidate_ks=(2, 3),
+            silhouette_sample_size=6,
+            random_state=42,
+        )
     ).build(embeddings)
-    dbscan_index = DbscanPrototypeStrategy(
-        eps_values=(0.05, 0.1, 0.2),
-        min_samples_values=(2,),
-        search_sample_size=6,
-        min_cluster_coverage=0.9,
-        random_state=42,
+    dbscan_index = ExperimentPrototypeBuildStrategy(
+        runtime_strategy=DbscanPrototypeBuildStrategy(
+            eps_values=(0.05, 0.1, 0.2),
+            min_samples_values=(2,),
+            search_sample_size=6,
+            min_cluster_coverage=0.9,
+            random_state=42,
+        )
     ).build(embeddings)
 
     assert len(kmeans_index.categories["anxiety"]) >= 2
@@ -169,8 +175,9 @@ def test_build_requested_strategies_returns_single_requested_strategy() -> None:
     )
 
     assert len(strategies) == 1
-    assert isinstance(strategies[0], KMeansPrototypeStrategy)
-    assert strategies[0].candidate_ks == (2,)
+    assert isinstance(strategies[0], ExperimentPrototypeBuildStrategy)
+    assert isinstance(strategies[0].runtime_strategy, KMeansPrototypeBuildStrategy)
+    assert tuple(strategies[0].runtime_strategy.candidate_ks) == (2,)
 
 
 def test_build_strategies_returns_all_defaults_for_all_mode() -> None:
@@ -185,10 +192,10 @@ def test_build_strategies_returns_all_defaults_for_all_mode() -> None:
         dbscan_min_cluster_coverage=0.6,
     )
 
-    assert [type(strategy) for strategy in strategies] == [
-        SinglePrototypeStrategy,
-        KMeansPrototypeStrategy,
-        DbscanPrototypeStrategy,
+    assert [type(strategy.runtime_strategy) for strategy in strategies] == [
+        SinglePrototypeBuildStrategy,
+        KMeansPrototypeBuildStrategy,
+        DbscanPrototypeBuildStrategy,
     ]
 
 
