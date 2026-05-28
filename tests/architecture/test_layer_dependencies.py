@@ -2662,6 +2662,8 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
 
 def test_active_surface_and_runbook_docs_stay_concise() -> None:
     checked_paths = (
+        CONF_SRC / "README.md",
+        REPO_ROOT / "docs" / "project_execution_plan.md",
         REPO_ROOT / "docs" / "strategy_surface_map.md",
         REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md",
@@ -2672,6 +2674,8 @@ def test_active_surface_and_runbook_docs_stay_concise() -> None:
         / "README.md",
     )
     max_lines_by_path = {
+        CONF_SRC / "README.md": 160,
+        REPO_ROOT / "docs" / "project_execution_plan.md": 160,
         REPO_ROOT / "docs" / "strategy_surface_map.md": 120,
         REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md": 120,
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md": 160,
