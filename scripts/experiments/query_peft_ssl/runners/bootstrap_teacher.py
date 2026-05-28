@@ -1,4 +1,4 @@
-"""Fixed classifier teacher -> LoRA student bootstrap runner."""
+"""Fixed classifier teacher -> PEFT student bootstrap runner."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 BOOTSTRAP_SUMMARY_SCHEMA_VERSION = "fixed_classifier_lora_bootstrap.v1"
 
 
-def run_fixed_classifier_teacher_lora_student_bootstrap(
+def run_fixed_classifier_teacher_peft_student_bootstrap(
     *,
     cfg: DictConfig,
     teacher_seed_rows: Sequence[LabeledQueryRow] | None = None,
@@ -42,7 +42,7 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
     export_root: str | Path | None = None,
     generated_at: datetime | None = None,
 ) -> dict[str, str]:
-    """초기 teacher는 fixed classifier, student는 LoRA classifier로 연결한다."""
+    """초기 teacher는 fixed classifier, student는 PEFT classifier로 연결한다."""
 
     effective_generated_at = generated_at or datetime.now(tz=timezone.utc)
     run_id = _resolve_run_id(cfg=cfg, generated_at=effective_generated_at)
@@ -99,7 +99,7 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
         prediction_summary=teacher_export.prediction_summary,
     )
 
-    student_outputs = _run_student_lora_bootstrap(
+    student_outputs = _run_student_peft_bootstrap(
         cfg=cfg,
         run_id=run_id,
         teacher_seed_jsonl_ref=teacher_rows.seed_jsonl_ref,
@@ -167,7 +167,7 @@ def _resolve_run_id(
     return generated_at.strftime("lora_bootstrap_%Y_%m_%d_%H%M%S")
 
 
-def _run_student_lora_bootstrap(
+def _run_student_peft_bootstrap(
     *,
     cfg: DictConfig,
     run_id: str,

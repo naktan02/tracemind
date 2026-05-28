@@ -1029,6 +1029,10 @@ def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
         "train_query_ssl_" + "lora",
         "Supervised" + "Lora",
         "Lora" + "Labeled",
+        "evaluate_lora_run_context",
+        "run_fixed_classifier_teacher_lora_student_bootstrap",
+        "_run_student_lora_bootstrap",
+        "lora_clf",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"

@@ -1,4 +1,4 @@
-"""Pseudo-label self-training LoRA runner."""
+"""Pseudo-label self-training PEFT runner."""
 
 from __future__ import annotations
 

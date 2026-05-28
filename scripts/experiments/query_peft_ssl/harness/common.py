@@ -74,7 +74,7 @@ def prepare_supervised_peft_run_context(
     train_jsonl_ref: str | Path | None = None,
     eval_set_refs: Mapping[str, str | Path] | None = None,
     trainer_version_override: str | None = None,
-    trainer_version_prefix: str = "lora_clf",
+    trainer_version_prefix: str = "peft_clf",
 ) -> SupervisedPeftRunContext:
     """Supervised PEFT runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
 
@@ -180,7 +180,7 @@ def prepare_labeled_peft_run_context(
     train_jsonl_ref: str | Path | None = None,
     eval_set_refs: Mapping[str, str | Path] | None = None,
     trainer_version_override: str | None = None,
-    trainer_version_prefix: str = "lora_clf",
+    trainer_version_prefix: str = "peft_clf",
 ) -> PeftLabeledRunContext:
     """Labeled PEFT family runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
 
@@ -243,7 +243,7 @@ def evaluate_supervised_peft_run_context(
     categories: list[str],
     device: str,
 ) -> dict[str, Any]:
-    """학습이 끝난 supervised LoRA 모델을 모든 eval set에서 평가한다."""
+    """학습이 끝난 supervised PEFT 모델을 모든 eval set에서 평가한다."""
 
     results: dict[str, Any] = {}
     for dataset_name, dataloader in eval_loaders.items():
@@ -279,7 +279,7 @@ def evaluate_supervised_peft_run_context(
     return results
 
 
-def evaluate_lora_run_context(
+def evaluate_peft_labeled_run_context(
     *,
     model: Any,
     eval_loaders: Mapping[str, Any],

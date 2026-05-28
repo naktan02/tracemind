@@ -11,7 +11,7 @@ from omegaconf import OmegaConf
 
 from scripts.experiments.query_peft_ssl.harness.common import (
     PeftLabeledRunContext,
-    evaluate_lora_run_context,
+    evaluate_peft_labeled_run_context,
     prepare_labeled_peft_run_context,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
@@ -123,7 +123,7 @@ def evaluate_query_ssl_run_context(
 ) -> dict[str, Any]:
     """학습이 끝난 Query SSL 모델을 모든 eval set에서 평가한다."""
 
-    return evaluate_lora_run_context(
+    return evaluate_peft_labeled_run_context(
         model=model,
         eval_loaders=eval_loaders,
         categories=categories,

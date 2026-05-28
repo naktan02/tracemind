@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from omegaconf import OmegaConf
 
 from scripts.experiments.query_peft_ssl.runners.bootstrap_teacher import (
-    run_fixed_classifier_teacher_lora_student_bootstrap,
+    run_fixed_classifier_teacher_peft_student_bootstrap,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
@@ -116,7 +116,7 @@ def _fake_teacher_classifier() -> SimpleNamespace:
     )
 
 
-def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
+def test_bootstrap_runner_trains_teacher_then_runs_peft_student(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -195,7 +195,7 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
         _fake_student_runner,
     )
 
-    outputs = run_fixed_classifier_teacher_lora_student_bootstrap(
+    outputs = run_fixed_classifier_teacher_peft_student_bootstrap(
         cfg=cfg,
         teacher_seed_rows=[_row("s1", "anxiety", "불안해")],
         teacher_unlabeled_rows=[
@@ -290,7 +290,7 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
         },
     )
 
-    outputs = run_fixed_classifier_teacher_lora_student_bootstrap(
+    outputs = run_fixed_classifier_teacher_peft_student_bootstrap(
         cfg=cfg,
         export_root=tmp_path / "exports",
         generated_at=datetime(2026, 4, 14, 1, 0, tzinfo=timezone.utc),
@@ -360,7 +360,7 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
         _fake_student_runner,
     )
 
-    outputs = run_fixed_classifier_teacher_lora_student_bootstrap(
+    outputs = run_fixed_classifier_teacher_peft_student_bootstrap(
         cfg=cfg,
         teacher_seed_rows=[_row("s1", "anxiety", "불안해")],
         teacher_unlabeled_rows=[_row("u1", "depression", "우울해")],
