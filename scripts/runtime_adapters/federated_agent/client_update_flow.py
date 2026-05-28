@@ -11,12 +11,17 @@ from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_update_submission,
 )
+from scripts.experiments.fl_ssl.federated_simulation.adapters.diagnostic_view import (
+    build_client_diagnostic_unlabeled_view,
+)
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     BootstrappedSimulation,
     ClientRoundExecution,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientRoundSummary,
+    FederatedClientShard,
+    SimulationRunRequest,
 )
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
@@ -150,6 +155,23 @@ def submit_local_training_result(
         peer_client_snapshot=peer_client_snapshot,
         client_partition_snapshot=client_partition_snapshot or {},
         query_ssl_algorithm_state=query_ssl_algorithm_state or {},
+    )
+
+
+def build_round_diagnostic_unlabeled_rows(
+    *,
+    request: SimulationRunRequest,
+    round_id: str,
+    shard: FederatedClientShard,
+) -> list[Any]:
+    """client round diagnostic unlabeled view를 만든다."""
+
+    return build_client_diagnostic_unlabeled_view(
+        rows=shard.unlabeled_rows,
+        config=request.diagnostic_view_config,
+        run_seed=request.seed,
+        round_index=round_index_from_id(round_id),
+        client_id=shard.client_id,
     )
 
 

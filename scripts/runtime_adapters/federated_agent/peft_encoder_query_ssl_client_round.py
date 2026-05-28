@@ -19,9 +19,6 @@ from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )
-from scripts.experiments.fl_ssl.federated_simulation.adapters.diagnostic_view import (
-    build_client_diagnostic_unlabeled_view,
-)
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
@@ -32,7 +29,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
 from scripts.runtime_adapters.federated_agent.client_update_flow import (
-    round_index_from_id,
+    build_round_diagnostic_unlabeled_rows,
     submit_local_training_result,
 )
 from scripts.runtime_adapters.federated_agent.peft_encoder_local_training import (
@@ -106,12 +103,10 @@ def _run_query_ssl_peft_encoder_client_round(
     timing = TimingRecorder()
     training_started_at = time.perf_counter()
     with timing.measure("diagnostic_view_select_seconds"):
-        diagnostic_unlabeled_rows = build_client_diagnostic_unlabeled_view(
-            rows=shard.unlabeled_rows,
-            config=request.diagnostic_view_config,
-            run_seed=request.seed,
-            round_index=round_index_from_id(round_id),
-            client_id=shard.client_id,
+        diagnostic_unlabeled_rows = build_round_diagnostic_unlabeled_rows(
+            request=request,
+            round_id=round_id,
+            shard=shard,
         )
     with timing.measure("local_training_total_seconds"):
         local_result = run_query_ssl_peft_encoder_local_training(

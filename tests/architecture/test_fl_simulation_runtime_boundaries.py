@@ -353,6 +353,7 @@ def test_federated_agent_peft_round_files_do_not_own_update_submission() -> None
         "payload_byte_count(",
         "extract_delta_l2_norm(",
         "extract_aggregation_example_count(",
+        "build_client_diagnostic_unlabeled_view",
     )
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:
@@ -368,7 +369,7 @@ def test_federated_agent_peft_round_files_do_not_own_update_submission() -> None
     )
     assert not violations, (
         "PEFT encoder client-round bridge는 local core 호출과 family upload 함수 "
-        "선택만 맡는다. server submit, payload byte, summary 조립은 generic "
-        "client update flow로 둔다.\n"
+        "선택만 맡는다. diagnostic view, server submit, payload byte, summary "
+        "조립은 generic client update flow로 둔다.\n"
         f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
