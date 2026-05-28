@@ -196,6 +196,7 @@ def _require_runtime_compatibility(
             local_update_profile=request.local_update_profile,
             local_update_adapter_kind=local_adapter_kind,
             round_adapter_family_name=request.round_runtime_config.adapter_family_name,
+            round_update_family_name=request.round_runtime_config.update_family_name,
             round_aggregation_backend_name=(
                 request.round_runtime_config.aggregation_backend_name
             ),

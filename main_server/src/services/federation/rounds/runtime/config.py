@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from ..aggregation.models import AggregationConfigScalar
 
 ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
+ROUND_UPDATE_FAMILY_ENV = "TRACEMIND_ROUND_UPDATE_FAMILY"
 ROUND_AGGREGATION_BACKEND_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND"
 ROUND_AGGREGATION_BACKEND_CONFIG_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND_CONFIG"
 ROUND_METHOD_DESCRIPTOR_ENV = "TRACEMIND_ROUND_METHOD_DESCRIPTOR"
@@ -21,6 +22,7 @@ class ServerRoundRuntimeProfile:
 
     profile_name: str
     adapter_family_name: str
+    update_family_name: str
     aggregation_backend_name: str
     method_descriptor_name: str | None = None
     aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] = field(
@@ -31,6 +33,7 @@ class ServerRoundRuntimeProfile:
 DEFAULT_PEFT_CLASSIFIER_SERVER_ROUND_RUNTIME_PROFILE = ServerRoundRuntimeProfile(
     profile_name="default_peft_classifier.v1",
     adapter_family_name="peft_classifier",
+    update_family_name="peft_text_classifier",
     aggregation_backend_name="fedavg",
 )
 DEFAULT_SERVER_ROUND_RUNTIME_PROFILE = (
@@ -43,6 +46,7 @@ class ServerRoundRuntimeConfig:
     """서버가 round orchestration을 조립할 때 사용하는 전략 선택 축."""
 
     adapter_family_name: str = DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.adapter_family_name
+    update_family_name: str = DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.update_family_name
     aggregation_backend_name: str = (
         DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_name
     )
@@ -65,6 +69,10 @@ def load_server_round_runtime_config_from_env(
         adapter_family_name=source.get(
             ROUND_ADAPTER_FAMILY_ENV,
             DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.adapter_family_name,
+        ),
+        update_family_name=source.get(
+            ROUND_UPDATE_FAMILY_ENV,
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.update_family_name,
         ),
         aggregation_backend_name=source.get(
             ROUND_AGGREGATION_BACKEND_ENV,

@@ -562,6 +562,35 @@ def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
     )
 
 
+def test_federated_ssl_runtime_pairs_are_update_family_oriented() -> None:
+    checked_roots = (
+        METHODS_FEDERATED_SSL_SRC,
+        TEST_FIXTURES_SRC,
+    )
+    violations: list[tuple[Path, int]] = []
+    for root in checked_roots:
+        for path in _iter_python_files(root):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                if not isinstance(node.func, ast.Name):
+                    continue
+                if node.func.id != "FederatedSslRuntimePair":
+                    continue
+                if any(
+                    keyword.arg == "adapter_family_name" for keyword in node.keywords
+                ):
+                    violations.append((_relative_repo_path(path), node.lineno))
+
+    assert not violations, (
+        "FL SSL method recipe의 runtime pair는 trainable-state/update-family "
+        "조합을 표현한다. adapter_family_name은 shared payload/aggregation "
+        "compatibility 표면에만 남긴다.\n"
+        f"{chr(10).join(f'- {path}:{line}' for path, line in violations)}"
+    )
+
+
 def test_fl_simulation_server_aggregate_namespace_uses_update_family() -> None:
     checked_paths = (
         SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server" / "runtime.py",

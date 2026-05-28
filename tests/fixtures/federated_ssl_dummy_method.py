@@ -20,7 +20,8 @@ from methods.federated_ssl.base import (
 )
 from methods.federated_ssl.registry import register_federated_ssl_method_descriptor
 
-TEST_ONLY_ADAPTER_KIND = "test_only_update_family"
+TEST_ONLY_ADAPTER_KIND = "test_only_adapter_kind"
+TEST_ONLY_UPDATE_FAMILY = "test_only_update_family"
 TEST_ONLY_AGGREGATION_BACKEND_NAME = "test_only_aggregation_backend"
 
 
@@ -59,7 +60,7 @@ DUMMY_FEDERATED_SSL_RECIPE = FederatedSslMethodRecipe(
     supported_local_update_profile_names=("dummy_local_update_profile_v1",),
     supported_runtime_pairs=(
         FederatedSslRuntimePair(
-            adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+            update_family_name=TEST_ONLY_UPDATE_FAMILY,
             aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
         ),
     ),

@@ -209,19 +209,19 @@ class FederatedSslRuntimeCapabilities:
 
 @dataclass(frozen=True, slots=True)
 class FederatedSslRuntimePair:
-    """method가 지원하는 adapter family와 aggregation backend 조합."""
+    """method가 지원하는 update family와 aggregation backend 조합."""
 
-    adapter_family_name: str
+    update_family_name: str
     aggregation_backend_name: str
 
     def __post_init__(self) -> None:
-        _set_non_empty(self, "adapter_family_name")
+        _set_non_empty(self, "update_family_name")
         _set_non_empty(self, "aggregation_backend_name")
 
     @property
     def normalized_key(self) -> tuple[str, str]:
         return (
-            self.adapter_family_name.lower(),
+            self.update_family_name.lower(),
             self.aggregation_backend_name.lower(),
         )
 
@@ -257,15 +257,15 @@ class FederatedSslMethodRecipe:
     def supports_runtime_pair(
         self,
         *,
-        adapter_family_name: str,
+        update_family_name: str,
         aggregation_backend_name: str,
     ) -> bool:
-        """method가 adapter family/backend 조합을 허용하는지 확인한다."""
+        """method가 update family/backend 조합을 허용하는지 확인한다."""
 
         if not self.supported_runtime_pairs:
             return True
         normalized_key = (
-            adapter_family_name.strip().lower(),
+            update_family_name.strip().lower(),
             aggregation_backend_name.strip().lower(),
         )
         return normalized_key in set(self._runtime_pair_keys())

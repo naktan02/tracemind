@@ -33,6 +33,7 @@ from main_server.src.services.federation.rounds.runtime.config import (
     ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,
     ROUND_METHOD_DESCRIPTOR_ENV,
+    ROUND_UPDATE_FAMILY_ENV,
     ServerRoundRuntimeConfig,
     load_server_round_runtime_config_from_env,
 )
@@ -61,6 +62,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 
 TEST_ADAPTER_KIND = "test_adapter_runtime_factory"
 TEST_FAMILY_NAME = "test_family_runtime_factory"
+TEST_UPDATE_FAMILY_NAME = "test_update_family_runtime_factory"
 TEST_BACKEND_NAME = "test_avg_runtime_factory"
 TEST_MISMATCH_BACKEND_NAME = "test_mismatch_avg_runtime_factory"
 TEST_METHOD_NAME = "test_round_runtime_descriptor"
@@ -90,7 +92,7 @@ TEST_METHOD_DESCRIPTOR = FederatedSslMethodDescriptor(
         method_name=TEST_METHOD_NAME,
         supported_runtime_pairs=(
             FederatedSslRuntimePair(
-                adapter_family_name=TEST_FAMILY_NAME,
+                update_family_name=TEST_UPDATE_FAMILY_NAME,
                 aggregation_backend_name=TEST_BACKEND_NAME,
             ),
         ),
@@ -280,6 +282,7 @@ def test_round_lifecycle_config_wires_method_descriptor(
     service = build_round_lifecycle_service_from_config(
         ServerRoundRuntimeConfig(
             adapter_family_name=TEST_FAMILY_NAME,
+            update_family_name=TEST_UPDATE_FAMILY_NAME,
             aggregation_backend_name=TEST_BACKEND_NAME,
             method_descriptor_name=TEST_METHOD_NAME,
         )
@@ -309,6 +312,7 @@ def test_runtime_config_loader_reads_environment_mapping() -> None:
     config = load_server_round_runtime_config_from_env(
         environ={
             ROUND_ADAPTER_FAMILY_ENV: TEST_FAMILY_NAME,
+            ROUND_UPDATE_FAMILY_ENV: TEST_UPDATE_FAMILY_NAME,
             ROUND_AGGREGATION_BACKEND_ENV: TEST_BACKEND_NAME,
             ROUND_METHOD_DESCRIPTOR_ENV: f" {TEST_METHOD_NAME} ",
             ROUND_AGGREGATION_BACKEND_CONFIG_ENV: '{"min_scale": 0.8}',
@@ -316,6 +320,7 @@ def test_runtime_config_loader_reads_environment_mapping() -> None:
     )
 
     assert config.adapter_family_name == TEST_FAMILY_NAME
+    assert config.update_family_name == TEST_UPDATE_FAMILY_NAME
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
     assert config.method_descriptor_name == TEST_METHOD_NAME
     assert config.aggregation_backend_overrides == {"min_scale": 0.8}
@@ -325,6 +330,7 @@ def test_main_server_app_uses_environment_runtime_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv(ROUND_ADAPTER_FAMILY_ENV, TEST_FAMILY_NAME)
+    monkeypatch.setenv(ROUND_UPDATE_FAMILY_ENV, TEST_UPDATE_FAMILY_NAME)
     monkeypatch.setenv(ROUND_AGGREGATION_BACKEND_ENV, TEST_BACKEND_NAME)
     monkeypatch.setenv(ROUND_AGGREGATION_BACKEND_CONFIG_ENV, '{"max_scale": 1.1}')
 
@@ -333,6 +339,7 @@ def test_main_server_app_uses_environment_runtime_config(
     service = app.state.round_lifecycle_service
 
     assert config.adapter_family_name == TEST_FAMILY_NAME
+    assert config.update_family_name == TEST_UPDATE_FAMILY_NAME
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
     assert config.aggregation_backend_overrides == {"max_scale": 1.1}
     assert isinstance(service.round_manager_service.adapter_family, _TestRoundFamily)

@@ -88,7 +88,7 @@ descriptor = FederatedSslMethodDescriptor(
         supported_local_update_profile_names=("peft_pseudo_label_v1",),
         supported_runtime_pairs=(
             FederatedSslRuntimePair(
-                adapter_family_name="peft_classifier",
+                update_family_name="peft_text_classifier",
                 aggregation_backend_name="fedavg",
             ),
         ),

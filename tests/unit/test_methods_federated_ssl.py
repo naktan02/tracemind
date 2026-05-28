@@ -41,8 +41,10 @@ from methods.federated_ssl.registry import (
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 TEST_FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures"
-TEST_ONLY_ADAPTER_KIND = "test_only_update_family"
-OTHER_TEST_ONLY_ADAPTER_KIND = "other_test_only_update_family"
+TEST_ONLY_ADAPTER_KIND = "test_only_adapter_kind"
+OTHER_TEST_ONLY_ADAPTER_KIND = "other_test_only_adapter_kind"
+TEST_ONLY_UPDATE_FAMILY = "test_only_update_family"
+OTHER_TEST_ONLY_UPDATE_FAMILY = "other_test_only_update_family"
 TEST_ONLY_AGGREGATION_BACKEND_NAME = "test_only_aggregation_backend"
 OTHER_TEST_ONLY_AGGREGATION_BACKEND_NAME = "other_test_only_aggregation_backend"
 TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME = "test_only_local_update_profile"
@@ -79,7 +81,7 @@ METHOD_OWNED_RECIPE = FederatedSslMethodRecipe(
     supported_local_update_profile_names=(TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME,),
     supported_runtime_pairs=(
         FederatedSslRuntimePair(
-            adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+            update_family_name=TEST_ONLY_UPDATE_FAMILY,
             aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
         ),
     ),
@@ -147,7 +149,7 @@ def test_fedmatch_descriptor_prefers_peft_classifier_recipe_surface() -> None:
     assert [
         pair.normalized_key for pair in descriptor.recipe.supported_runtime_pairs
     ] == [
-        ("peft_classifier", "fedavg"),
+        ("peft_text_classifier", "fedavg"),
     ]
 
 
@@ -175,7 +177,7 @@ def test_federated_ssl_execution_plan_supports_manual_lower_axes() -> None:
             "manual_axes": {
                 "client_ssl_objective": "pseudo_label",
                 "server_aggregation": TEST_ONLY_AGGREGATION_BACKEND_NAME,
-                "update_family": TEST_ONLY_ADAPTER_KIND,
+                "update_family": TEST_ONLY_UPDATE_FAMILY,
             },
         },
         security_policy={"name": "plaintext"},
@@ -188,7 +190,7 @@ def test_federated_ssl_execution_plan_supports_manual_lower_axes() -> None:
     assert plan.execution_role == "manual_baseline"
     assert plan.manual_axes.client_ssl_objective == "pseudo_label"
     assert plan.manual_axes.server_aggregation == TEST_ONLY_AGGREGATION_BACKEND_NAME
-    assert plan.manual_axes.update_family == TEST_ONLY_ADAPTER_KIND
+    assert plan.manual_axes.update_family == TEST_ONLY_UPDATE_FAMILY
 
 
 def test_federated_ssl_execution_plan_preserves_configured_update_family() -> None:
@@ -198,14 +200,14 @@ def test_federated_ssl_execution_plan_preserves_configured_update_family() -> No
             "manual_axes": {
                 "client_ssl_objective": "fixmatch",
                 "server_aggregation": TEST_ONLY_AGGREGATION_BACKEND_NAME,
-                "update_family": OTHER_TEST_ONLY_ADAPTER_KIND,
+                "update_family": OTHER_TEST_ONLY_UPDATE_FAMILY,
             },
         },
         security_policy={"name": "plaintext"},
         method_descriptor=None,
     )
 
-    assert plan.manual_axes.update_family == OTHER_TEST_ONLY_ADAPTER_KIND
+    assert plan.manual_axes.update_family == OTHER_TEST_ONLY_UPDATE_FAMILY
 
 
 def test_federated_ssl_execution_plan_rejects_method_owned_manual_axes() -> None:
@@ -282,6 +284,7 @@ def test_federated_ssl_registry_supports_test_only_method_extension(
             local_update_profile=local_update_profile,
             local_update_adapter_kind=fixture.TEST_ONLY_ADAPTER_KIND,
             round_adapter_family_name=fixture.TEST_ONLY_ADAPTER_KIND,
+            round_update_family_name=fixture.TEST_ONLY_UPDATE_FAMILY,
             round_aggregation_backend_name=(fixture.TEST_ONLY_AGGREGATION_BACKEND_NAME),
         )
     )
@@ -356,7 +359,7 @@ def test_federated_ssl_method_descriptor_rejects_recipe_name_drift() -> None:
                 method_name="other_method",
                 supported_runtime_pairs=(
                     FederatedSslRuntimePair(
-                        adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                        update_family_name=TEST_ONLY_UPDATE_FAMILY,
                         aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
                     ),
                 ),
@@ -411,6 +414,7 @@ def test_fl_ssl_compatibility_rejects_adapter_family_drift() -> None:
                 local_update_profile=profile,
                 local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
                 round_adapter_family_name=OTHER_TEST_ONLY_ADAPTER_KIND,
+                round_update_family_name=OTHER_TEST_ONLY_UPDATE_FAMILY,
                 round_aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )
         )
@@ -430,6 +434,7 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
                 local_update_profile=profile,
                 local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
                 round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                round_update_family_name=TEST_ONLY_UPDATE_FAMILY,
                 round_aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )
         )
@@ -441,6 +446,19 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
                 local_update_profile=None,
                 local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
                 round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                round_update_family_name=OTHER_TEST_ONLY_UPDATE_FAMILY,
+                round_aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
+            )
+        )
+
+    with pytest.raises(ValueError, match="method recipe.*round runtime pair"):
+        validate_federated_ssl_profile_compatibility(
+            FederatedSslProfileCompatibilityContext(
+                method_descriptor=METHOD_OWNED_DESCRIPTOR,
+                local_update_profile=None,
+                local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
+                round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                round_update_family_name=TEST_ONLY_UPDATE_FAMILY,
                 round_aggregation_backend_name=OTHER_TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )
         )

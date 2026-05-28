@@ -22,6 +22,7 @@ class ServerRoundRuntimeCompatibility:
     """검증된 server-owned round runtime 조합 요약."""
 
     adapter_family_name: str
+    update_family_name: str
     adapter_kind: str
     aggregation_backend_name: str
     method_descriptor_name: str | None = None
@@ -63,18 +64,19 @@ def validate_server_round_runtime_config(
         validate_default_round_state_exchange_descriptor(method_descriptor)
         recipe = method_descriptor.recipe
         if recipe is not None and not recipe.supports_runtime_pair(
-            adapter_family_name=config.adapter_family_name,
+            update_family_name=config.update_family_name,
             aggregation_backend_name=config.aggregation_backend_name,
         ):
             raise ValueError(
                 "Incompatible round runtime config: method recipe does not support "
                 "round runtime pair: "
                 f"method={method_descriptor.name}, "
-                f"adapter_family={config.adapter_family_name}, "
+                f"update_family={config.update_family_name}, "
                 f"aggregation_backend={config.aggregation_backend_name}."
             )
     return ServerRoundRuntimeCompatibility(
         adapter_family_name=config.adapter_family_name,
+        update_family_name=config.update_family_name,
         adapter_kind=adapter_family.adapter_kind,
         aggregation_backend_name=config.aggregation_backend_name,
         method_descriptor_name=config.method_descriptor_name,

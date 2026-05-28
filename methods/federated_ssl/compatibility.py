@@ -36,6 +36,7 @@ class FederatedSslProfileCompatibilityContext:
     local_update_profile: LocalUpdateProfile | None
     local_update_adapter_kind: str
     round_adapter_family_name: str
+    round_update_family_name: str
     round_aggregation_backend_name: str
     capability_plan: FederatedSslCapabilityPlan | None = None
 
@@ -54,6 +55,14 @@ class FederatedSslProfileCompatibilityContext:
             normalize_non_empty_str(
                 self.round_adapter_family_name,
                 field_name="round_adapter_family_name",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "round_update_family_name",
+            normalize_non_empty_str(
+                self.round_update_family_name,
+                field_name="round_update_family_name",
             ),
         )
         object.__setattr__(
@@ -108,14 +117,14 @@ def validate_federated_ssl_profile_compatibility(
             )
 
     if not recipe.supports_runtime_pair(
-        adapter_family_name=context.round_adapter_family_name,
+        update_family_name=context.round_update_family_name,
         aggregation_backend_name=context.round_aggregation_backend_name,
     ):
         raise ValueError(
             "FL SSL compatibility failed: method recipe does not support "
             "round runtime pair: "
             f"method={context.method_descriptor.name}, "
-            f"adapter_family={context.round_adapter_family_name}, "
+            f"update_family={context.round_update_family_name}, "
             f"aggregation_backend={context.round_aggregation_backend_name}."
         )
 
