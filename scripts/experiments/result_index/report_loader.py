@@ -211,7 +211,7 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         completed_rounds=None,
         shard_policy_name=None,
         shard_alpha=None,
-        adapter_family_name=None,
+        payload_adapter_kind=None,
         update_family_name=None,
         aggregation_backend_name=None,
         fl_composition_mode=None,

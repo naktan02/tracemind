@@ -604,6 +604,7 @@ def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
     forbidden_snippets = (
         "is_peft_encoder_adapter_family",
         "round_runtime_config.adapter_family_name",
+        "adapter_family_name:",
     )
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:
@@ -651,6 +652,60 @@ def test_fl_report_protocol_records_payload_adapter_kind() -> None:
         "canonical field로 기록한다. adapter_family_name은 old-run/result reader "
         "compatibility field로만 해석한다.\n"
         f"{chr(10).join(f'- {item}' for item in missing)}"
+    )
+
+
+def test_result_index_uses_payload_adapter_kind_as_canonical_field() -> None:
+    required_by_path = (
+        (
+            SCRIPTS_SRC / "experiments" / "result_index" / "models.py",
+            ("payload_adapter_kind: str | None",),
+        ),
+        (
+            SCRIPTS_SRC / "experiments" / "result_index" / "schema.py",
+            ("payload_adapter_kind text",),
+        ),
+        (
+            SCRIPTS_SRC / "experiments" / "result_index" / "dashboard_export.py",
+            ('"payload_adapter_kinds"',),
+        ),
+        (
+            REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "app.js",
+            ("row.payload_adapter_kind", "runtime.payload_adapter_kind"),
+        ),
+    )
+    forbidden_by_path = (
+        (
+            SCRIPTS_SRC / "experiments" / "result_index" / "models.py",
+            ("adapter_family_name: str | None",),
+        ),
+        (
+            SCRIPTS_SRC / "experiments" / "result_index" / "schema.py",
+            ("adapter_family_name text",),
+        ),
+        (
+            SCRIPTS_SRC / "experiments" / "result_index" / "dashboard_export.py",
+            ('"adapter_families"',),
+        ),
+    )
+    missing = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path, snippets in required_by_path
+        for snippet in snippets
+        if snippet not in path.read_text(encoding="utf-8")
+    ]
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path, snippets in forbidden_by_path
+        for snippet in snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not missing and not violations, (
+        "result-index와 dashboard의 canonical 실행 표면은 payload_adapter_kind다. "
+        "adapter_family_name은 old report/old DB fallback reader에서만 해석한다.\n"
+        f"missing:\n{chr(10).join(f'- {item}' for item in missing)}\n"
+        f"violations:\n{chr(10).join(f'- {item}' for item in violations)}"
     )
 
 

@@ -51,7 +51,7 @@ class ExperimentRunRecord:
     completed_rounds: int | None
     shard_policy_name: str | None
     shard_alpha: float | None
-    adapter_family_name: str | None
+    payload_adapter_kind: str | None
     update_family_name: str | None
     aggregation_backend_name: str | None
     fl_composition_mode: str | None

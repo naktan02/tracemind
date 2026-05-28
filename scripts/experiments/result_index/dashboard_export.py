@@ -189,7 +189,7 @@ def _build_filters(
         "round_budgets": _unique(row.get("round_budget") for row in runs),
         "shard_policies": _unique(row.get("shard_policy_name") for row in runs),
         "shard_alphas": _unique(row.get("shard_alpha") for row in runs),
-        "adapter_families": _unique(row.get("adapter_family_name") for row in runs),
+        "payload_adapter_kinds": _unique(_payload_adapter_kind(row) for row in runs),
         "update_families": _unique(row.get("update_family_name") for row in runs),
         "aggregation_backends": _unique(
             row.get("aggregation_backend_name") for row in runs
@@ -215,6 +215,10 @@ def _build_filters(
 
 def _unique(values) -> list[Any]:
     return sorted({value for value in values if value is not None})
+
+
+def _payload_adapter_kind(row: dict[str, Any]) -> Any:
+    return row.get("payload_adapter_kind") or row.get("adapter_family_name")
 
 
 def _safe_path_part(value: str) -> str:

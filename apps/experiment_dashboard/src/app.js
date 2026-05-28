@@ -1737,7 +1737,7 @@ function flFilterValue(row, axisId) {
   if (axisId === "round_count") return String(flRoundCountForRun(row) ?? "-");
   if (axisId === "local_epochs") return String(row.epochs ?? "-");
   if (axisId === "client_count") return String(row.client_count ?? "-");
-  if (axisId === "adapter") return String(row.adapter_family_name ?? "-");
+  if (axisId === "adapter") return String(flPayloadAdapterKind(row) ?? "-");
   if (axisId === "aggregation") return String(row.aggregation_backend_name ?? "-");
   if (axisId === "seed") return String(row.seed ?? "-");
   if (axisId === "shard_alpha") return String(row.shard_alpha ?? "-");
@@ -1917,7 +1917,7 @@ function flRunDescriptor(row) {
   return [
     flDataSourceLabel(row),
     flLabelBudgetLabel(row),
-    `adapter=${row.adapter_family_name ?? roundRuntime.adapter_family_name ?? "-"}`,
+    `adapter=${flPayloadAdapterKind(row, roundRuntime) ?? "-"}`,
     loraConfigLabel(row),
     `agg=${row.aggregation_backend_name ?? roundRuntime.aggregation_backend_name ?? "-"}`,
     `regularizer=${flLocalRegularizerLabel(row)}`,
@@ -1926,6 +1926,17 @@ function flRunDescriptor(row) {
     `updates=${costValue ?? "-"}`,
     `seed=${row.seed ?? protocol.seed ?? "-"}`,
   ].join(" · ");
+}
+
+function flPayloadAdapterKind(row, roundRuntime = null) {
+  const runtime = roundRuntime ?? row.protocol?.round_runtime ?? {};
+  return (
+    row.payload_adapter_kind ??
+    runtime.payload_adapter_kind ??
+    row.adapter_family_name ??
+    runtime.adapter_family_name ??
+    null
+  );
 }
 
 function flLocalRegularizerLabel(row) {

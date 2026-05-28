@@ -356,7 +356,7 @@ def test_fedmatch_partitioned_server_update_resolves_for_peft_classifier_family(
     adapter_kind: str,
 ) -> None:
     resolved_backend = resolve_federated_ssl_server_update_backend_name(
-        adapter_family_name=adapter_kind,
+        payload_adapter_kind=adapter_kind,
         server_update_policy_name=SERVER_UPDATE_FEDMATCH_PARTITIONED,
         aggregation_backend_name="fedavg",
     )

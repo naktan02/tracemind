@@ -177,7 +177,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.unique_unlabeled_row_count == 40555
     assert records.run.shard_policy_name == "dirichlet_label_skew"
     assert records.run.shard_alpha == 0.3
-    assert records.run.adapter_family_name == "lora_classifier"
+    assert records.run.payload_adapter_kind == "lora_classifier"
     assert records.run.update_family_name == "peft_text_classifier"
     assert records.run.aggregation_backend_name == "fedavg"
     assert records.run.fl_composition_mode == "manual"
@@ -208,7 +208,7 @@ def test_load_result_index_records_reads_peft_classifier_objective(
     records = load_result_index_records(report_path)
 
     assert records.run.method_family == "manual_baselines"
-    assert records.run.adapter_family_name == "peft_classifier"
+    assert records.run.payload_adapter_kind == "peft_classifier"
     assert records.run.update_family_name == "peft_text_classifier"
     assert records.run.peft_adapter_name == "lora"
     assert records.run.lora_rank == 8
@@ -241,7 +241,7 @@ def test_fl_ssl_result_index_prefers_payload_adapter_kind(
 
     records = load_result_index_records(report_path)
 
-    assert records.run.adapter_family_name == "peft_classifier"
+    assert records.run.payload_adapter_kind == "peft_classifier"
 
 
 def test_result_index_discovers_fl_ssl_report_artifacts(tmp_path: Path) -> None:
@@ -360,7 +360,7 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["client_counts"] == [10]
     assert bundle["filters"]["round_budgets"] == [50]
     assert bundle["filters"]["shard_alphas"] == [0.3]
-    assert bundle["filters"]["adapter_families"] == ["lora_classifier"]
+    assert bundle["filters"]["payload_adapter_kinds"] == ["lora_classifier"]
     assert bundle["filters"]["peft_adapter_names"] == ["lora"]
     assert bundle["filters"]["lora_ranks"] == [8]
     assert bundle["filters"]["lora_alphas"] == [16]
@@ -424,7 +424,7 @@ def test_fl_ssl_dashboard_filters_include_peft_classifier_v2_and_legacy_v1(
     write_result_index_records(db_path=db_path, records=records)
     bundle = write_dashboard_bundle(db_path=db_path, output_path=dashboard_path)
 
-    assert bundle["filters"]["adapter_families"] == [
+    assert bundle["filters"]["payload_adapter_kinds"] == [
         "lora_classifier",
         "peft_classifier",
     ]
@@ -434,7 +434,7 @@ def test_fl_ssl_dashboard_filters_include_peft_classifier_v2_and_legacy_v1(
     assert bundle["filters"]["aggregation_backends"] == ["fedavg"]
     assert bundle["filters"]["peft_adapter_names"] == ["lora"]
     assert {
-        row["adapter_family_name"]
+        row["payload_adapter_kind"]
         for row in bundle["fl_ssl_runs"]
         if row["track"] == "fl_ssl_main_comparison"
     } == {"lora_classifier", "peft_classifier"}
@@ -536,7 +536,6 @@ def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
     protocol = payload["protocol"]
     protocol["round_runtime"] = {
         "payload_adapter_kind": "peft_classifier",
-        "adapter_family_name": "peft_classifier",
         "update_family_name": "peft_text_classifier",
         "aggregation_backend_name": "fedavg",
     }

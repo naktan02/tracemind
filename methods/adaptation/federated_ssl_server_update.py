@@ -1,4 +1,4 @@
-"""Adapter family별 FL SSL server update policy backend resolver."""
+"""Payload adapter kind별 FL SSL server update policy backend resolver."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def register_federated_ssl_server_update_backend_resolver(
 
 def resolve_federated_ssl_server_update_backend_name(
     *,
-    adapter_family_name: str,
+    payload_adapter_kind: str,
     server_update_policy_name: str | None,
     aggregation_backend_name: str,
 ) -> str:
@@ -71,7 +71,7 @@ def resolve_federated_ssl_server_update_backend_name(
     if normalized_policy == SERVER_UPDATE_FEDAVG_MERGED_DELTA:
         return aggregation_backend_name
 
-    normalized_adapter_kind = _normalize_adapter_kind(adapter_family_name)
+    normalized_adapter_kind = _normalize_adapter_kind(payload_adapter_kind)
     resolver = _SERVER_UPDATE_BACKEND_RESOLVERS.get(normalized_adapter_kind)
     if resolver is None:
         _import_federated_ssl_module_for_adapter_kind(normalized_adapter_kind)

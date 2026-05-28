@@ -60,7 +60,7 @@ def load_fl_ssl_result_index_records(
         or optional_str(ssl_method.get("name"))
         or "unknown"
     )
-    adapter_family = optional_str(
+    payload_adapter_kind = optional_str(
         round_runtime.get("payload_adapter_kind")
     ) or optional_str(round_runtime.get("adapter_family_name"))
     update_family = optional_str(
@@ -142,7 +142,7 @@ def load_fl_ssl_result_index_records(
         completed_rounds=optional_int(protocol.get("completed_rounds")),
         shard_policy_name=optional_str(shard_policy.get("name")),
         shard_alpha=optional_float(shard_policy.get("alpha")),
-        adapter_family_name=adapter_family,
+        payload_adapter_kind=payload_adapter_kind,
         update_family_name=update_family,
         aggregation_backend_name=optional_str(
             round_runtime.get("aggregation_backend_name")

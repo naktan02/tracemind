@@ -180,7 +180,7 @@ class SimulationServerRuntime:
         state_repository = build_shared_adapter_state_repository(output_dir)
         round_manager = RoundManagerService(
             adapter_family=build_simulation_round_family(
-                adapter_family_name=round_runtime_config.payload_adapter_kind,
+                payload_adapter_kind=round_runtime_config.payload_adapter_kind,
                 aggregation_backend_name=resolve_simulation_aggregation_backend_name(
                     payload_adapter_kind=round_runtime_config.payload_adapter_kind,
                     aggregation_backend_name=(
@@ -361,14 +361,14 @@ def load_active_state(
 
 def build_simulation_round_family(
     *,
-    adapter_family_name: str,
+    payload_adapter_kind: str,
     aggregation_backend_name: str,
     aggregation_backend_overrides: dict[str, str] | None = None,
     output_dir: Path,
 ):
     """simulation이 사용할 round family 조합을 만든다."""
     return build_shared_adapter_round_family(
-        adapter_family_name,
+        payload_adapter_kind,
         aggregation_backend_name=aggregation_backend_name,
         aggregation_backend_overrides=aggregation_backend_overrides,
         aggregation_artifact_store=AggregationArtifactStore(
@@ -403,7 +403,7 @@ def resolve_simulation_aggregation_backend_name(
     """server update policy를 simulation aggregation backend 이름으로 해석한다."""
 
     return resolve_federated_ssl_server_update_backend_name(
-        adapter_family_name=payload_adapter_kind,
+        payload_adapter_kind=payload_adapter_kind,
         server_update_policy_name=(
             None
             if capability_plan is None
