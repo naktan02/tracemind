@@ -10,13 +10,15 @@ from main_server.src.services.federation.rounds.acceptance.errors import (
 )
 from main_server.src.services.federation.rounds.boundary.models import RoundRecord
 from methods.federated_ssl.base import (
+    ROUND_STATE_EXCHANGE_CLIENT_METRIC_SUMMARY,
+    ROUND_STATE_EXCHANGE_NONE,
     FederatedSslMethodDescriptor,
     FederatedSslRoundStateExchangeSpec,
 )
 from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 
-NO_ROUND_STATE_EXCHANGE_NAME = "none"
-CLIENT_METRIC_SUMMARY_EXCHANGE_NAME = "client_metric_summary"
+NO_ROUND_STATE_EXCHANGE_NAME = ROUND_STATE_EXCHANGE_NONE
+CLIENT_METRIC_SUMMARY_EXCHANGE_NAME = ROUND_STATE_EXCHANGE_CLIENT_METRIC_SUMMARY
 SUPPORTED_DEFAULT_ROUND_STATE_EXCHANGES = frozenset(
     {NO_ROUND_STATE_EXCHANGE_NAME, CLIENT_METRIC_SUMMARY_EXCHANGE_NAME}
 )

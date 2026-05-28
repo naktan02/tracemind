@@ -7,7 +7,8 @@ builder와 registry를 소유한다. text classifier task나 update payload 의�
 ## 책임
 
 - PEFT adapter builder protocol
-- adapter mechanism registry
+- adapter mechanism registry와 `methods/adaptation/peft_adapters/<mechanism>/builder.py`
+  convention import
 - LoRA/DoRA별 target module 해석과 builder
 
 ## 금지
@@ -16,6 +17,7 @@ builder와 registry를 소유한다. text classifier task나 update payload 의�
 - classifier head 학습 loop
 - text classifier update payload 조립
 - FL SSL method semantics 소유
+- registry 파일에 concrete mechanism import 목록 누적
 
 기존 `methods/adaptation/peft/`와 `methods/adaptation/lora/` compatibility
 package는 제거했다. 새 내부 코드는 이 경로를 직접 import한다.

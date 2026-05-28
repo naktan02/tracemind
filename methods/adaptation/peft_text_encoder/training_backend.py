@@ -77,8 +77,8 @@ PEFT_ENCODER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
 class PeftEncoderTrainingBackend:
     """raw text accepted example을 PEFT encoder update payload로 바꾼다.
 
-    이 backend는 raw text를 shared payload에 넣지 않는다. 현재는 실제 LoRA
-    weight 파일을 생성하는 executor 없이 계약-compatible artifact ref를 남긴다.
+    이 backend는 raw text를 shared payload에 넣지 않는다. 현재는 실제 PEFT
+    adapter weight 파일을 생성하는 executor 없이 계약-compatible artifact ref를 남긴다.
     이후 PEFT 실행기는 `train_executor.py` seam 뒤에 연결한다.
     """
 

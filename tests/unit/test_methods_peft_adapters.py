@@ -11,6 +11,7 @@ from methods.adaptation.peft_adapters.base import (
 )
 from methods.adaptation.peft_adapters.registry import (
     build_peft_adapter_builder,
+    peft_adapter_config_from_cfg,
     resolve_peft_adapter_name,
 )
 
@@ -53,6 +54,28 @@ def test_peft_adapter_registry_builds_rslora_with_forced_flag() -> None:
 
     assert builder.adapter_name == "rslora"
     assert builder.build_summary(cfg=cfg)["use_rslora"] is True
+
+
+def test_peft_adapter_config_rejects_legacy_lora_root() -> None:
+    cfg = SimpleNamespace(lora=SimpleNamespace(peft_adapter_name="lora"))
+
+    try:
+        peft_adapter_config_from_cfg(cfg)
+    except ValueError as exc:
+        assert "peft_adapter" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("expected legacy cfg.lora to be rejected")
+
+
+def test_resolve_peft_adapter_name_requires_explicit_name() -> None:
+    cfg = SimpleNamespace(peft_adapter=SimpleNamespace(use_rslora=True))
+
+    try:
+        resolve_peft_adapter_name(cfg)
+    except ValueError as exc:
+        assert "peft_adapter_name" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("expected missing peft_adapter_name to be rejected")
 
 
 def test_lora_builder_delegates_to_peft_stack() -> None:

@@ -15,6 +15,8 @@ TRAINING_ROW_SOURCES = frozenset(
         TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE,
     }
 )
+ROUND_STATE_EXCHANGE_NONE = "none"
+ROUND_STATE_EXCHANGE_CLIENT_METRIC_SUMMARY = "client_metric_summary"
 
 
 def _require_non_empty(value: str, *, field_name: str) -> str:

@@ -1728,6 +1728,52 @@ def test_federated_agent_runtime_adapter_unit_tests_name_active_peft_surface() -
     )
 
 
+def test_federated_ssl_client_diagnostics_use_method_discovery() -> None:
+    source = (METHODS_FEDERATED_SSL_SRC / "client_diagnostics.py").read_text(
+        encoding="utf-8"
+    )
+    forbidden_snippets = (
+        "_KNOWN_METHOD_DIAGNOSTIC_MODULES",
+        '("fedmatch",)',
+        "for method_name in _KNOWN",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "method-local client diagnostics는 methods/federated_ssl/<method>/"
+        "client_diagnostics.py convention으로 발견한다. 새 FL method 추가 때 "
+        "공통 client_diagnostics.py에 method 이름 목록을 누적하지 않는다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_round_state_exchange_names_are_contract_owned() -> None:
+    base_source = (METHODS_FEDERATED_SSL_SRC / "base.py").read_text(encoding="utf-8")
+    execution_plan_source = (
+        METHODS_FEDERATED_SSL_SRC / "execution_plan.py"
+    ).read_text(encoding="utf-8")
+    executor_source = (
+        MAIN_SERVER_SRC
+        / "services"
+        / "federation"
+        / "rounds"
+        / "round_state_exchange"
+        / "executor.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'ROUND_STATE_EXCHANGE_NONE = "none"' in base_source
+    assert (
+        'ROUND_STATE_EXCHANGE_CLIENT_METRIC_SUMMARY = "client_metric_summary"'
+        in base_source
+    )
+    assert 'round_state_exchange_name != "none"' not in execution_plan_source
+    assert 'NO_ROUND_STATE_EXCHANGE_NAME = "none"' not in executor_source
+    assert (
+        'CLIENT_METRIC_SUMMARY_EXCHANGE_NAME = "client_metric_summary"'
+        not in executor_source
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",
@@ -2916,6 +2962,43 @@ def test_peft_adapters_do_not_import_classifier_task_payloads() -> None:
         "소유한다. classifier label, task head, update payload 의미는 "
         "peft_text_encoder adaptation 또는 shared contract가 소유한다.\n"
         f"{_format_violations(violations)}"
+    )
+
+
+def test_peft_adapter_registry_does_not_hardcode_concrete_mechanisms() -> None:
+    source = (PEFT_ADAPTERS_SRC / "registry.py").read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "from methods.adaptation.peft_adapters.lora import",
+        "builder as _lora_adapter",
+        'hasattr(cfg, "lora")',
+        "return cfg.lora",
+        'return "lora"',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "PEFT adapter registry는 registry primitive와 convention import만 소유한다. "
+        "LoRA/DoRA 같은 concrete mechanism import 목록이나 legacy cfg.lora "
+        "fallback은 active registry에 누적하지 않는다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_simulation_inline_peft_delta_does_not_default_adapter_mechanism() -> None:
+    source = (
+        PEFT_TEXT_ENCODER_SRC / "update" / "simulation_inline_delta.py"
+    ).read_text(encoding="utf-8")
+    forbidden_snippets = (
+        'getattr(config, "peft_adapter_name", "lora")',
+        'or "lora"',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "simulation inline delta는 PEFT adapter mechanism 기본값을 재소유하지 않는다. "
+        "실행 config의 to_peft_adapter_config_payload()에서 canonical "
+        "peft_adapter_name을 읽어야 한다.\n"
+        f"violations={violations}"
     )
 
 

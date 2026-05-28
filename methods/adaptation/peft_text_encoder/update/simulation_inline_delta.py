@@ -77,7 +77,7 @@ def _build_peft_parameter_deltas(
 ) -> dict[str, list[float]]:
     rank = int(getattr(config, "rank", 1))
     vector_dim = max(1, rank)
-    adapter_name = str(getattr(config, "peft_adapter_name", "lora")).strip() or "lora"
+    adapter_name = _peft_adapter_name(config)
     return {
         f"{adapter_name}.simulation_adapter_a": _average_text_signature(
             rows=rows,
@@ -92,6 +92,16 @@ def _build_peft_parameter_deltas(
             scale=scale,
         ),
     }
+
+
+def _peft_adapter_name(config: PeftEncoderUpdateConfig) -> str:
+    payload = config.to_peft_adapter_config_payload()
+    adapter_name = str(payload.get("peft_adapter_name") or "").strip()
+    if not adapter_name:
+        raise ValueError(
+            "PEFT encoder simulation config must define peft_adapter_name."
+        )
+    return adapter_name
 
 
 def _average_text_signature(

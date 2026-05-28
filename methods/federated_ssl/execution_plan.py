@@ -10,7 +10,10 @@ from methods.common.config_reading import (
     read_str_tuple,
     validate_allowed_keys,
 )
-from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.base import (
+    ROUND_STATE_EXCHANGE_NONE,
+    FederatedSslMethodDescriptor,
+)
 
 COMPOSITION_MODE_METHOD_OWNED = "method_owned"
 COMPOSITION_MODE_MANUAL = "manual"
@@ -190,7 +193,7 @@ class FederatedSslExecutionPlan:
             else method_descriptor.round_state_exchange
         )
         default_exchange_name = (
-            "none"
+            ROUND_STATE_EXCHANGE_NONE
             if method_descriptor is None
             else (
                 None
@@ -248,7 +251,7 @@ class FederatedSslExecutionPlan:
                 "manual fl_method.descriptor_name must be omitted; manual_baseline "
                 "is an execution role, not a method descriptor."
             )
-        if self.round_state_exchange_name != "none":
+        if self.round_state_exchange_name != ROUND_STATE_EXCHANGE_NONE:
             raise ValueError(
                 "manual fl_method round_state_exchange must be 'none' unless a "
                 "method-owned descriptor defines a custom exchange."

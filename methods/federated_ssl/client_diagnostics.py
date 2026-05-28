@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import pkgutil
 from collections.abc import Callable, Iterable, Mapping
 from importlib import import_module
 from types import ModuleType
 
 NumericSummaryFn = Callable[[Iterable[float]], Mapping[str, float | int | None]]
 
-_KNOWN_METHOD_DIAGNOSTIC_MODULES = ("fedmatch",)
+_FEDERATED_SSL_PACKAGE = "methods.federated_ssl"
 
 
 def extract_client_method_diagnostics(
@@ -145,7 +146,14 @@ def _mapping_payload(value: object) -> Mapping[str, object]:
 
 def _known_method_diagnostic_modules() -> tuple[ModuleType, ...]:
     modules: list[ModuleType] = []
-    for method_name in _KNOWN_METHOD_DIAGNOSTIC_MODULES:
+    package = import_module(_FEDERATED_SSL_PACKAGE)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is None:
+        return ()
+    for module_info in pkgutil.iter_modules(package_paths):
+        if not module_info.ispkg:
+            continue
+        method_name = module_info.name
         module = _import_method_client_diagnostics_module(method_name)
         if module is not None:
             modules.append(module)
@@ -158,11 +166,11 @@ def _import_method_client_diagnostics_module(method_name: str) -> ModuleType | N
         return None
     try:
         return import_module(
-            f"methods.federated_ssl.{normalized_method_name}.client_diagnostics"
+            f"{_FEDERATED_SSL_PACKAGE}.{normalized_method_name}.client_diagnostics"
         )
     except ModuleNotFoundError as exc:
         expected_name = (
-            f"methods.federated_ssl.{normalized_method_name}.client_diagnostics"
+            f"{_FEDERATED_SSL_PACKAGE}.{normalized_method_name}.client_diagnostics"
         )
         if exc.name == expected_name:
             return None

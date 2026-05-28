@@ -659,7 +659,7 @@ def _build_psi_query_ssl_algorithm(
         return None
     if normalized_policy != LOCAL_SSL_POLICY_FIXMATCH:
         raise NotImplementedError(
-            "FedMatch partitioned LoRA runtime currently supports "
+            "FedMatch partitioned PEFT text encoder runtime currently supports "
             "local_ssl_policy=fedmatch_agreement or fixmatch."
         )
     if query_ssl_config is None:

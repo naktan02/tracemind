@@ -71,7 +71,7 @@ class QueryAdaptationDatasetProvenance:
 
 @dataclass(slots=True)
 class QueryAdaptationDatasetExample:
-    """LoRA/query 적응에 넘길 단일 raw-text pseudo-labeled row."""
+    """query-domain 적응에 넘길 단일 raw-text pseudo-labeled row."""
 
     source_row: TrainingExampleSource
     label: str
@@ -114,7 +114,7 @@ class QueryAdaptationDataset:
 
 @dataclass(slots=True)
 class QueryAdaptationDatasetService:
-    """selection 결과를 future LoRA/scaffold 입력셋으로 조립한다."""
+    """selection 결과를 query-domain adaptation 입력셋으로 조립한다."""
 
     config: QueryAdaptationDatasetConfig = field(
         default_factory=QueryAdaptationDatasetConfig
