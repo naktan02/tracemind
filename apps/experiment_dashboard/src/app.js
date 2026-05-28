@@ -1583,7 +1583,7 @@ function renderFlRoundFlatNote(rows) {
   elements.flRoundFlatNote.hidden = false;
   elements.flRoundFlatNote.textContent = [
     `선택한 run에서 ${metricLabel(state.flRoundMetric)} 값이 전 라운드 동일합니다.`,
-    "현재 기존 v1 LoRA-classifier FL runs는 validation scorer가 prototype_similarity라 shared PEFT/head state를 직접 읽지 않아 aggregate 효과가 global validation curve에 반영되지 않습니다.",
+    "과거 cache나 prototype-scorer 기반 report는 aggregated PEFT state 변화가 global validation curve에 직접 반영되지 않을 수 있으니 client/round artifact table을 함께 확인하세요.",
   ].join(" ");
 }
 

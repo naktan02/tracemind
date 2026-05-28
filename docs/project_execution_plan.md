@@ -94,7 +94,10 @@ central fixed embedding + classifier seed
 - Runtime: update base revision, aggregation, publication, artifact rebuild가 일관된다.
 - Privacy: raw text는 서버로 올라가지 않고 privacy layer는 training logic과 분리된다.
 
-## User Decisions Still Needed
+## Future Decisions
+
+아래는 현재 구조 리팩터링을 막는 결정이 아니라, 다음 연구/제품 단계에서 고를
+선택지다.
 
 - query buffer raw text retention 기본값.
 - private adapter/head 도입 시점.

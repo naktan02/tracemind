@@ -1525,6 +1525,7 @@ def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
         SCRIPTS_SRC / "experiments" / "result_index" / "dashboard_export.py",
     )
     forbidden_snippets = (
+        "LoRA-classifier",
         "central_lora_ssl",
         "central_lora_initial_eval",
         "adapter_family_name",
@@ -2665,9 +2666,12 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
 def test_active_surface_and_runbook_docs_stay_concise() -> None:
     checked_paths = (
         CONF_SRC / "README.md",
+        SCRIPTS_SRC / "README.md",
         REPO_ROOT / "docs" / "project_execution_plan.md",
+        REPO_ROOT / "docs" / "experiment_results.md",
         REPO_ROOT / "docs" / "strategy_surface_map.md",
         REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md",
+        SCRIPTS_SRC / "experiments" / "central_ssl_control" / "README.md",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md",
         SCRIPTS_SRC
         / "experiments"
@@ -2677,9 +2681,12 @@ def test_active_surface_and_runbook_docs_stay_concise() -> None:
     )
     max_lines_by_path = {
         CONF_SRC / "README.md": 160,
+        SCRIPTS_SRC / "README.md": 120,
         REPO_ROOT / "docs" / "project_execution_plan.md": 160,
+        REPO_ROOT / "docs" / "experiment_results.md": 100,
         REPO_ROOT / "docs" / "strategy_surface_map.md": 120,
         REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md": 120,
+        SCRIPTS_SRC / "experiments" / "central_ssl_control" / "README.md": 100,
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md": 160,
         SCRIPTS_SRC
         / "experiments"

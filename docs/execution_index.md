@@ -51,6 +51,9 @@ central fixed embedding + classifier seed
 | `docs/notes/decisions/2026-05-28-archived-lora-classifier-v1-terminology-audit.md` | 완료된 `lora_classifier` 용어 감사 기록. legacy migration 추적 때만 읽는다 |
 | `docs/notes/decisions/2026-05-28-archived-strategy-surface-map.md` | 긴 strategy surface 감사 기록. 현재 축 확인은 active `docs/strategy_surface_map.md`를 먼저 읽는다 |
 | `docs/notes/decisions/2026-05-28-archived-conf-readme.md` | 긴 Hydra config group 설명 기록. 현재 config 경계는 active `conf/README.md`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-scripts-guide.md` | 긴 scripts cookbook 기록. 현재 scripts 경계는 active `scripts/README.md`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-central-ssl-control-readme.md` | 긴 central SSL 실행 예시 기록. 현재 entrypoint 경계는 code-adjacent README와 `conf/`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-experiment-results.md` | 긴 과거 결과 표 기록. 현재 결과 지도는 active `docs/experiment_results.md`를 먼저 읽는다 |
 | `docs/notes/decisions/2026-05-28-archived-fl-ssl-runbook.md` | 긴 FL SSL 실행 예시 기록. 현재 실행 경계는 `scripts/experiments/fl_ssl/README.md`를 먼저 읽는다 |
 | `docs/notes/decisions/2026-05-28-archived-fl-simulation-package-readme.md` | 긴 FL simulation package 설명 기록. 현재 패키지 경계는 code-adjacent README를 먼저 읽는다 |
 | `docs/notes/decisions/2026-05-28-archived-project-execution-plan.md` | 긴 실행 계획 기록. 현재 우선순위는 active `docs/project_execution_plan.md`를 먼저 읽는다 |

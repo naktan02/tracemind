@@ -63,8 +63,7 @@
 - `aggregation/`
   - server-owned aggregation backend registry와 methods strategy executor
   - `fedavg.py`, `fedprox.py` 같은 aggregation method 파일은 두지 않는다
-  - `classifier_head.py`, `peft_classifier.py` 같은 payload adapter 단위 module도
-    두지 않는다
+  - payload adapter 단위 concrete module도 두지 않는다
   - registry는 explicit test/backend override와 methods strategy resolve만 맡는다
   - adapter payload projection은 `methods/adaptation/<family>/`가 소유하고,
     재사용 aggregation backend 의미는 `methods/federated/aggregation/`이 소유한다

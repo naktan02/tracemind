@@ -52,7 +52,7 @@
 - `central_ssl_control/train_peft_supervised_classifier.py`
   - query-domain 적응 단계의 `frozen backbone + PEFT encoder classifier` canonical supervised baseline entrypoint.
 - `central_ssl_control/train_peft_ssl_classifier.py`
-  - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT classifier scaffold에 얹는
+  - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT text encoder scaffold에 얹는
     공통 SSL entrypoint.
   - `strategy_axes/ssl/input_mode=consistency`는
     `strategy_axes/ssl/consistency_method`를 실행한다.
@@ -65,7 +65,7 @@
     `query_ssl_strong_view_policy`,
     `strategy_axes/adaptation/initial_checkpoint` selector다.
 - `query_peft_ssl/`
-  - query-domain PEFT classifier scaffold의 helper 모듈
+  - query-domain PEFT text encoder scaffold의 helper 모듈
   - `runners/supervised.py`가 canonical supervised baseline runner다.
   - `query_ssl/common.py`가 Query SSL family 공통 scaffolding이다.
   - `runners/consistency.py`가 USB FixMatch를 포함한 consistency family runner다.
