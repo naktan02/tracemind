@@ -49,6 +49,9 @@ central fixed embedding + classifier seed
 |---|---|
 | `docs/notes/decisions/2026-05-28-archived-text-classifier-adaptation-refactor-plan.md` | 완료된 text classifier migration 기록. legacy shim 변경 때만 읽는다 |
 | `docs/notes/decisions/2026-05-28-archived-lora-classifier-v1-terminology-audit.md` | 완료된 `lora_classifier` 용어 감사 기록. legacy migration 추적 때만 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-strategy-surface-map.md` | 긴 strategy surface 감사 기록. 현재 축 확인은 active `docs/strategy_surface_map.md`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-fl-ssl-runbook.md` | 긴 FL SSL 실행 예시 기록. 현재 실행 경계는 `scripts/experiments/fl_ssl/README.md`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-fl-simulation-package-readme.md` | 긴 FL simulation package 설명 기록. 현재 패키지 경계는 code-adjacent README를 먼저 읽는다 |
 | `docs/notes/sessions/2026-05-28-archived-fl-ssl-execution-audit.md` | 특정 시점 FL SSL artifact 감사 기록 |
 | `docs/notes/sessions/2026-05-28-archived-fl-ssl-runtime-performance-audit.md` | FedMatch runtime 성능 개선 전후 수치 기록 |
 | `docs/staged_execution_roadmap.md` | phase 이름만 보는 축약 지도. 현재 우선순위는 project execution plan이 소유 |

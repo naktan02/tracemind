@@ -2660,6 +2660,51 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
     )
 
 
+def test_active_surface_and_runbook_docs_stay_concise() -> None:
+    checked_paths = (
+        REPO_ROOT / "docs" / "strategy_surface_map.md",
+        REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md",
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "README.md",
+    )
+    max_lines_by_path = {
+        REPO_ROOT / "docs" / "strategy_surface_map.md": 120,
+        REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md": 120,
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md": 160,
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "README.md": 120,
+    }
+    violations = [
+        (
+            _relative_repo_path(path),
+            len(path.read_text(encoding="utf-8").splitlines()),
+            max_lines_by_path[path],
+        )
+        for path in checked_paths
+        if len(path.read_text(encoding="utf-8").splitlines())
+        > max_lines_by_path[path]
+    ]
+
+    assert not violations, (
+        "surface map과 script runbook은 active 진입점이다. 긴 완료 이력, 특정 run "
+        "세부, 반복 cookbook은 docs/notes archive로 내리고 active 문서는 현재 "
+        "경계와 read path만 유지한다.\n"
+        f"{chr(10).join(_format_doc_line_violation(item) for item in violations)}"
+    )
+
+
+def _format_doc_line_violation(violation: tuple[Path, int, int]) -> str:
+    path, count, limit = violation
+    return f"- {path}: {count}>{limit}"
+
+
 def test_fl_round_e2e_does_not_exercise_removed_diagonal_scale_runtime() -> None:
     path = REPO_ROOT / "tests" / "integration" / "test_fl_round_e2e.py"
     imports = _collect_absolute_imports(path)
