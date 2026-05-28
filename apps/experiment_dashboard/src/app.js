@@ -1882,10 +1882,10 @@ function flRunMetricValue(row, metric) {
     return flCostValue(row);
   }
   if (metric === "c2s_total_bytes") {
-    return flPosthocCommunicationBytes(row, "c2s_total_bytes");
+    return flCommunicationEstimateBytes(row, "c2s_total_bytes");
   }
   if (metric === "s2c_total_bytes_estimated") {
-    return flPosthocCommunicationBytes(row, "s2c_total_bytes_estimated");
+    return flCommunicationEstimateBytes(row, "s2c_total_bytes_estimated");
   }
   return flMetric(row, metric);
 }
@@ -1962,12 +1962,12 @@ function flCostValue(row) {
   return typeof cost === "object" && cost !== null ? cost.value : cost;
 }
 
-function flPosthocCommunicationBytes(row, key) {
+function flCommunicationEstimateBytes(row, key) {
   const cost = flMetric(row, "communication_cost");
   if (typeof cost !== "object" || cost === null) {
     return null;
   }
-  const estimates = cost.posthoc_byte_estimates;
+  const estimates = cost.artifact_byte_estimates ?? cost.posthoc_byte_estimates;
   if (typeof estimates !== "object" || estimates === null) {
     return null;
   }

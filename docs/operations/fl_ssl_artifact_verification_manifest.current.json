@@ -39,7 +39,7 @@
         "expected_peer_context_policy": "fixed_probe_output_knn",
         "expected_local_ssl_policy": "fedmatch_agreement",
         "expect_partitioned_update_artifact_refs": true,
-        "expected_posthoc_communication_schema_version": "fl_ssl_posthoc_communication_cost.v1",
+        "expected_communication_estimate_schema_version": "fl_ssl_posthoc_communication_cost.v1",
         "expect_partitioned_sparse_s2c_estimates": true,
         "expected_embedding_metadata_status": "recorded",
         "expected_embedding_backend": "transformers_mxbai",

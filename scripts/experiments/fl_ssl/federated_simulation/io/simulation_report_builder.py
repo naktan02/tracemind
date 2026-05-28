@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
+from scripts.experiments.fl_ssl.federated_simulation.io import (
+    communication_cost_estimates,
+)
 from scripts.experiments.fl_ssl.federated_simulation.io.aggregation_diagnostics import (
     build_aggregation_diagnostics,
 )
@@ -76,12 +80,19 @@ class SimulationReportBuilder:
         diagnostic_view_config: FederatedDiagnosticViewConfig | None = None,
         final_projection_artifacts: Mapping[str, object] | None = None,
         peer_probe_manifest: FederatedPeerProbeManifest | None = None,
+        run_artifact_dir: Path | None = None,
     ) -> dict[str, object]:
         client_metric_summary = build_client_metric_summary(
             result=result,
             dataset_split=dataset_split,
         )
         communication_cost = build_communication_cost_summary(result)
+        round_payloads = build_round_payloads(result)
+        communication_cost_estimates.attach_artifact_communication_estimate(
+            communication_cost=communication_cost,
+            run_dir=run_artifact_dir,
+            rounds=round_payloads,
+        )
         round_progression = build_round_progression(result)
         primary_metrics = {
             "macro_f1": result.final_validation.macro_f1,
@@ -169,7 +180,7 @@ class SimulationReportBuilder:
                 "client_validation": client_metric_summary,
                 "round_progression": round_progression,
             },
-            "rounds": build_round_payloads(result),
+            "rounds": round_payloads,
         }
 
 

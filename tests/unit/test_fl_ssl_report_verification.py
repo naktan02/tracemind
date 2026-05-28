@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.experiments.fl_ssl.backfill_communication_costs import (
-    POSTHOC_SCHEMA_VERSION,
+from scripts.experiments.fl_ssl.federated_simulation.io import (
+    communication_cost_estimates,
 )
 from scripts.experiments.fl_ssl.federated_simulation.io.report_verification import (
     FederatedReportExpectation,
@@ -197,14 +197,16 @@ def _round_record_expectation() -> FederatedReportExpectation:
     )
 
 
-def _attach_posthoc_communication_cost(
+def _attach_artifact_communication_estimate(
     payload: dict[str, object],
     *,
     include_sparse_estimate: bool = True,
     mirror_secondary: bool = True,
 ) -> dict[str, object]:
-    posthoc: dict[str, object] = {
-        "schema_version": POSTHOC_SCHEMA_VERSION,
+    estimate: dict[str, object] = {
+        "schema_version": (
+            communication_cost_estimates.COMMUNICATION_ESTIMATE_SCHEMA_VERSION
+        ),
         "c2s_total_bytes": 28,
         "s2c_total_bytes_estimated": 336,
         "bidirectional_total_bytes_estimated": 364,
@@ -220,9 +222,11 @@ def _attach_posthoc_communication_cost(
         ],
     }
     if include_sparse_estimate:
-        posthoc["s2c_partitioned_sparse_transport_bytes_estimated"] = 96
-    diagnostics = {"communication_cost": {"posthoc_byte_estimates": posthoc}}
-    metrics = {"secondary": {"communication_cost": {"posthoc_byte_estimates": posthoc}}}
+        estimate["s2c_partitioned_sparse_transport_bytes_estimated"] = 96
+    diagnostics = {"communication_cost": {"artifact_byte_estimates": estimate}}
+    metrics = {
+        "secondary": {"communication_cost": {"artifact_byte_estimates": estimate}}
+    }
     payload["diagnostics"] = diagnostics
     payload["metrics"] = metrics if mirror_secondary else {"secondary": {}}
     return payload
@@ -796,8 +800,8 @@ def test_verify_fedmatch_partitioned_report_flags_ssl_method_protocol_drift() ->
     )
 
 
-def test_verify_fedmatch_report_accepts_posthoc_sparse_communication_cost() -> None:
-    payload = _attach_posthoc_communication_cost(
+def test_verify_fedmatch_report_accepts_artifact_sparse_communication_cost() -> None:
+    payload = _attach_artifact_communication_estimate(
         _report_payload(
             client_count=2,
             completed_rounds=2,
@@ -811,7 +815,9 @@ def test_verify_fedmatch_report_accepts_posthoc_sparse_communication_cost() -> N
         payload=payload,
         expectation=FederatedReportExpectation(
             expected_federated_ssl_method="fedmatch",
-            expected_posthoc_communication_schema_version=POSTHOC_SCHEMA_VERSION,
+            expected_communication_estimate_schema_version=(
+                communication_cost_estimates.COMMUNICATION_ESTIMATE_SCHEMA_VERSION
+            ),
             expect_partitioned_sparse_s2c_estimates=True,
         ),
     )
@@ -819,8 +825,8 @@ def test_verify_fedmatch_report_accepts_posthoc_sparse_communication_cost() -> N
     assert result.passed
 
 
-def test_verify_fedmatch_report_flags_missing_posthoc_sparse_cost_fields() -> None:
-    payload = _attach_posthoc_communication_cost(
+def test_verify_fedmatch_report_flags_missing_artifact_sparse_cost_fields() -> None:
+    payload = _attach_artifact_communication_estimate(
         _report_payload(
             client_count=2,
             completed_rounds=2,
@@ -836,22 +842,26 @@ def test_verify_fedmatch_report_flags_missing_posthoc_sparse_cost_fields() -> No
         payload=payload,
         expectation=FederatedReportExpectation(
             expected_federated_ssl_method="fedmatch",
-            expected_posthoc_communication_schema_version=POSTHOC_SCHEMA_VERSION,
+            expected_communication_estimate_schema_version=(
+                communication_cost_estimates.COMMUNICATION_ESTIMATE_SCHEMA_VERSION
+            ),
             expect_partitioned_sparse_s2c_estimates=True,
         ),
     )
 
     assert not result.passed
     assert (
-        "diagnostics.communication_cost.posthoc_byte_estimates"
+        "diagnostics.communication_cost.artifact_byte_estimates"
         ".s2c_partitioned_sparse_transport_bytes_estimated is required."
     ) in result.errors
     assert (
-        "metrics.secondary.communication_cost.posthoc_byte_estimates.schema_version "
-        f"expected '{POSTHOC_SCHEMA_VERSION}', got None."
+        "metrics.secondary.communication_cost.artifact_byte_estimates.schema_version "
+        "expected "
+        f"'{communication_cost_estimates.COMMUNICATION_ESTIMATE_SCHEMA_VERSION}', "
+        "got None."
     ) in result.errors
     assert (
-        "metrics.secondary.communication_cost.posthoc_byte_estimates is required."
+        "metrics.secondary.communication_cost.artifact_byte_estimates is required."
         in (result.errors)
     )
 
@@ -1297,7 +1307,7 @@ def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
 ) -> None:
     report_path = _write_report_run_with_server_update_artifacts(
         tmp_path,
-        payload=_attach_posthoc_communication_cost(
+        payload=_attach_artifact_communication_estimate(
             _report_payload(
                 client_count=2,
                 completed_rounds=2,
@@ -1370,8 +1380,11 @@ def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
                             "expected_peer_context_policy": "fixed_probe_output_knn",
                             "expected_local_ssl_policy": "fedmatch_agreement",
                             "expect_partitioned_update_artifact_refs": True,
-                            "expected_posthoc_communication_schema_version": (
-                                POSTHOC_SCHEMA_VERSION
+                            "expected_communication_estimate_schema_version": (
+                                (
+                                    communication_cost_estimates
+                                    .COMMUNICATION_ESTIMATE_SCHEMA_VERSION
+                                )
                             ),
                             "expect_partitioned_sparse_s2c_estimates": True,
                         },

@@ -78,8 +78,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         expect_peft_classifier_aggregate_snapshot=(
             args.expect_peft_classifier_aggregate_snapshot
         ),
-        expected_posthoc_communication_schema_version=(
-            args.expected_posthoc_communication_schema_version
+        expected_communication_estimate_schema_version=(
+            args.expected_communication_estimate_schema_version
         ),
         expect_partitioned_sparse_s2c_estimates=(
             args.expect_partitioned_sparse_s2c_estimates
@@ -225,7 +225,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--expect-peft-classifier-aggregate-snapshot",
         action="store_true",
     )
-    parser.add_argument("--expected-posthoc-communication-schema-version")
+    parser.add_argument("--expected-communication-estimate-schema-version")
     parser.add_argument(
         "--expect-partitioned-sparse-s2c-estimates",
         action="store_true",

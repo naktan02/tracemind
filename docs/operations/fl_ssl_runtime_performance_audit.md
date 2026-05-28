@@ -37,7 +37,8 @@ truth는 `shared/src/contracts/adapter_contract_families/lora_classifier.py`다.
 
 검증 결과:
 
-- `backfill_communication_costs --write` PASS
+- historical post-run communication backfill PASS. 이 CLI는 이후 삭제됐고, 새 run은
+  report 생성 경로에서 artifact communication estimate를 직접 기록한다.
 - `verify_federated_report_artifacts` PASS
 - Posthoc communication estimate:
   C2S `1,429,494,473 bytes`, S2C `19,496,932,570 bytes`, total
@@ -52,7 +53,7 @@ truth는 `shared/src/contracts/adapter_contract_families/lora_classifier.py`다.
 
 - protocol과 artifact 경로는 `fedmatch_partitioned`, `partitioned`,
   `fixed_probe_output_knn`, `fedmatch_agreement`,
-  `partitioned_deltas_artifact_ref`, sparse S2C posthoc estimate까지 verifier로
+  `partitioned_deltas_artifact_ref`, sparse S2C communication estimate까지 verifier로
   고정됐다.
 - 성능은 초기 모델보다 악화됐다. 이 기록은 실행 경로 검증이지 FedMatch 성능
   우위의 근거가 아니다.

@@ -159,6 +159,6 @@ NOTES = (
     "helper weak-view probabilities are wired through the common peer_context axis "
     "and PEFT text encoder update-family slice. The labels-at-server supervised "
     "seed step is wired through the common server_step axis. Sparse S2C/C2S is "
-    "wired in the simulation slice with posthoc communication estimates, not "
+    "wired in the simulation slice with artifact communication estimates, not "
     "measured network packets.",
 )

@@ -52,9 +52,9 @@ source of truth로 본다.
   snapshot 존재까지 같은 verifier로 확인한다. FedMatch physical-partition run은
   `fedmatch_partitioned`, `partitioned`, `uniform`, `fixed_probe_output_knn`,
   `fedmatch_agreement`, `partitioned_deltas_artifact_ref`를 verifier expectation으로
-  고정한다. Posthoc communication sidecar를 병합한 뒤에는 같은 verifier에서
-  `fl_ssl_posthoc_communication_cost.v1`와 partitioned sparse S2C 추정 필드도
-  고정한다.
+  고정한다. report 생성 경로는 artifact 기반 communication estimate를 함께 남기며,
+  verifier에서 `fl_ssl_artifact_communication_cost.v1`와 partitioned sparse S2C
+  추정 필드도 고정한다.
 - [x] 실제 FL report 산출물 shape를 result index 샘플로 고정하고 dashboard/index
   소비 필드를 확정했다. `result_index`는 `fl_ssl_main_comparison.report.json`에서
   track, method/algorithm, split/source, seed, client/round budget, shard alpha,
@@ -104,7 +104,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   provider는 열렸다. labels-at-server는 `server_only_seed + supervised_seed_step`
   server runtime과 client-local `psi` upload slice로 열렸다. sparse S2C/C2S는
   client-local previous partition snapshot과 partitioned global state 기준 simulation
-  slice로 열렸고, 통신량은 posthoc estimate로 기록한다.
+  slice로 열렸고, 통신량은 report 생성 시 artifact estimate로 기록한다.
 - [x] FedMatch method-owned smoke로 helper injection과 partitioned delta path를
   확인했다. 1-round smoke는 previous client snapshot이 없어 helper count 0이 정상이고,
   2-client 2-round smoke에서는 round 2에서 helper count/refreshed가 1.0으로 기록됐다.
@@ -130,7 +130,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   보존되는 peer/client partition snapshot vector를 float32 array로 압축했다.
   이후 `shared_general_reddit_pc100_alpha03_clients10` materialized split에서
   FedMatch method-owned `10 clients x 5 rounds` reduced run을 완료했고,
-  posthoc communication backfill과 report verifier가 PASS했다.
+  artifact communication estimate를 포함한 report verifier가 PASS했다.
   산출물은
   `runs/fl_ssl/fedmatch/fedmatch__lora_classifier__fedmatch_partitioned/labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/clients10_rounds5/20260526T120100Z`다.
   최종 macro-F1은 `0.138327`로 초기 `0.265190`보다 낮아, 실행 경로 검증은

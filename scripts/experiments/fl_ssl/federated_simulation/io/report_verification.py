@@ -330,7 +330,7 @@ def verify_federated_simulation_report_payload(
         rounds=rounds,
         expectation=expectation,
     )
-    _verify_posthoc_communication_cost(
+    _verify_communication_cost_estimates(
         errors=errors,
         payload=payload,
         expectation=expectation,
@@ -464,68 +464,83 @@ def _verify_shared_update_artifacts(
         )
 
 
-def _verify_posthoc_communication_cost(
+def _verify_communication_cost_estimates(
     *,
     errors: list[str],
     payload: Mapping[str, object],
     expectation: FederatedReportExpectation,
 ) -> None:
+    expected_schema = expectation.expected_communication_estimate_schema_version
     if (
-        expectation.expected_posthoc_communication_schema_version is None
+        expected_schema is None
         and not expectation.expect_partitioned_sparse_s2c_estimates
     ):
         return
     diagnostics = _object_mapping(payload.get("diagnostics"))
     diagnostic_cost = _object_mapping(diagnostics.get("communication_cost"))
-    diagnostic_posthoc = _object_mapping(diagnostic_cost.get("posthoc_byte_estimates"))
+    diagnostic_field, diagnostic_estimate = _communication_estimate_mapping(
+        diagnostic_cost
+    )
     _expect_equal(
         errors,
-        "diagnostics.communication_cost.posthoc_byte_estimates.schema_version",
-        diagnostic_posthoc.get("schema_version"),
-        expectation.expected_posthoc_communication_schema_version,
+        f"diagnostics.communication_cost.{diagnostic_field}.schema_version",
+        diagnostic_estimate.get("schema_version"),
+        expected_schema,
     )
     metrics = _object_mapping(payload.get("metrics"))
     secondary = _object_mapping(metrics.get("secondary"))
     secondary_cost = _object_mapping(secondary.get("communication_cost"))
-    secondary_posthoc = _object_mapping(secondary_cost.get("posthoc_byte_estimates"))
+    secondary_field, secondary_estimate = _communication_estimate_mapping(
+        secondary_cost
+    )
     _expect_equal(
         errors,
-        "metrics.secondary.communication_cost.posthoc_byte_estimates.schema_version",
-        secondary_posthoc.get("schema_version"),
-        expectation.expected_posthoc_communication_schema_version,
+        f"metrics.secondary.communication_cost.{secondary_field}.schema_version",
+        secondary_estimate.get("schema_version"),
+        expected_schema,
     )
     if not expectation.expect_partitioned_sparse_s2c_estimates:
         return
     _verify_partitioned_sparse_s2c_estimates(
         errors=errors,
-        posthoc=diagnostic_posthoc,
-        field_prefix="diagnostics.communication_cost.posthoc_byte_estimates",
+        estimate=diagnostic_estimate,
+        field_prefix=f"diagnostics.communication_cost.{diagnostic_field}",
     )
     _verify_partitioned_sparse_s2c_estimates(
         errors=errors,
-        posthoc=secondary_posthoc,
-        field_prefix="metrics.secondary.communication_cost.posthoc_byte_estimates",
+        estimate=secondary_estimate,
+        field_prefix=f"metrics.secondary.communication_cost.{secondary_field}",
     )
+
+
+def _communication_estimate_mapping(
+    communication_cost: Mapping[str, object],
+) -> tuple[str, Mapping[str, object]]:
+    for field_name in ("artifact_byte_estimates", "posthoc_byte_estimates"):
+        estimate = _object_mapping(communication_cost.get(field_name))
+        if estimate:
+            return field_name, estimate
+    return "artifact_byte_estimates", {}
 
 
 def _verify_partitioned_sparse_s2c_estimates(
     *,
     errors: list[str],
-    posthoc: Mapping[str, object],
+    estimate: Mapping[str, object],
     field_prefix: str,
 ) -> None:
-    if not posthoc:
+    if not estimate:
         errors.append(f"{field_prefix} is required.")
         return
     if (
-        _optional_int(posthoc.get("s2c_partitioned_sparse_transport_bytes_estimated"))
+        _optional_int(estimate.get("s2c_partitioned_sparse_transport_bytes_estimated"))
         is None
     ):
         errors.append(
             f"{field_prefix}.s2c_partitioned_sparse_transport_bytes_estimated "
             "is required."
         )
-    per_round = _object_sequence(posthoc.get("per_round"))
+    per_round = _object_sequence(estimate.get("per_round"))
     if not per_round:
         errors.append(f"{field_prefix}.per_round must not be empty.")
         return

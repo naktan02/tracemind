@@ -1,22 +1,19 @@
-"""FL SSL posthoc communication cost backfill 검증."""
+"""FL SSL artifact communication cost estimate 검증."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from scripts.experiments.fl_ssl.backfill_communication_costs import (
-    POSTHOC_SCHEMA_VERSION,
-    build_posthoc_communication_cost,
-    write_posthoc_communication_cost,
+from scripts.experiments.fl_ssl.federated_simulation.io import (
+    communication_cost_estimates,
 )
 
 
-def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
+def test_build_artifact_communication_estimate_estimates_c2s_and_s2c(
     tmp_path: Path,
 ) -> None:
     run_dir = tmp_path / "runs" / "fl_ssl" / "manual" / "method" / "split" / "r"
-    report_path = run_dir / "reports" / "fl_ssl_main_comparison.report.json"
     _write_json(
         run_dir
         / "main_server"
@@ -89,11 +86,9 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
             }
         },
     )
-    payload = {
-        "track": "fl_ssl_main_comparison",
-        "metrics": {"secondary": {"communication_cost": {"value": 2}}},
-        "diagnostics": {"communication_cost": {"value": 2}},
-        "rounds": [
+    estimate = communication_cost_estimates.build_artifact_communication_estimate(
+        run_dir=run_dir,
+        rounds=[
             {
                 "round_id": "round_0001",
                 "round_index": 1,
@@ -111,26 +106,22 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
                 ],
             }
         ],
-    }
-
-    posthoc = build_posthoc_communication_cost(
-        report_path=report_path,
-        payload=payload,
     )
 
-    assert posthoc["schema_version"] == POSTHOC_SCHEMA_VERSION
-    assert posthoc["c2s_payload_bytes"] == 7
-    assert posthoc["c2s_artifact_bytes"] == 21
-    assert posthoc["c2s_total_bytes"] == 28
-    assert posthoc["s2c_global_state_bytes_estimated"] == 240
-    assert posthoc["s2c_total_bytes_estimated"] > 240
+    assert estimate["schema_version"] == (
+        communication_cost_estimates.COMMUNICATION_ESTIMATE_SCHEMA_VERSION
+    )
+    assert estimate["c2s_payload_bytes"] == 7
+    assert estimate["c2s_artifact_bytes"] == 21
+    assert estimate["c2s_total_bytes"] == 28
+    assert estimate["s2c_global_state_bytes_estimated"] == 240
+    assert estimate["s2c_total_bytes_estimated"] > 240
 
 
-def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
+def test_build_artifact_communication_estimate_estimates_partitioned_sparse_s2c(
     tmp_path: Path,
 ) -> None:
     run_dir = tmp_path / "runs" / "fl_ssl" / "fedmatch" / "split" / "r"
-    report_path = run_dir / "reports" / "fl_ssl_main_comparison.report.json"
     _write_json(
         run_dir
         / "main_server"
@@ -225,8 +216,9 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
             },
         },
     )
-    payload = {
-        "rounds": [
+    estimate = communication_cost_estimates.build_artifact_communication_estimate(
+        run_dir=run_dir,
+        rounds=[
             {
                 "round_id": "round_0001",
                 "round_index": 1,
@@ -240,65 +232,51 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
                 "clients": [],
             },
         ],
-    }
-
-    posthoc = build_posthoc_communication_cost(
-        report_path=report_path,
-        payload=payload,
     )
 
-    assert posthoc["s2c_partitioned_sparse_transport_bytes_estimated"] == 96
-    assert posthoc["s2c_total_bytes_estimated"] == (
-        posthoc["s2c_global_state_bytes_estimated"] + 96
+    assert estimate["s2c_partitioned_sparse_transport_bytes_estimated"] == 96
+    assert estimate["s2c_total_bytes_estimated"] == (
+        estimate["s2c_global_state_bytes_estimated"] + 96
     )
-    assert posthoc["bidirectional_total_bytes_estimated"] == (
-        posthoc["c2s_total_bytes"] + posthoc["s2c_total_bytes_estimated"]
-    )
-    assert (
-        posthoc["per_round"][0]["s2c_partitioned_sparse_transport_bytes_estimated"] == 0
+    assert estimate["bidirectional_total_bytes_estimated"] == (
+        estimate["c2s_total_bytes"] + estimate["s2c_total_bytes_estimated"]
     )
     assert (
-        posthoc["per_round"][1]["s2c_partitioned_sparse_transport_bytes_estimated"]
+        estimate["per_round"][0]["s2c_partitioned_sparse_transport_bytes_estimated"]
+        == 0
+    )
+    assert (
+        estimate["per_round"][1]["s2c_partitioned_sparse_transport_bytes_estimated"]
         == 96
     )
-    assert posthoc["per_round"][1]["s2c_total_bytes_estimated"] == (
-        posthoc["per_round"][1]["s2c_global_state_bytes_estimated"] + 96
+    assert estimate["per_round"][1]["s2c_total_bytes_estimated"] == (
+        estimate["per_round"][1]["s2c_global_state_bytes_estimated"] + 96
     )
 
 
-def test_write_posthoc_communication_cost_merges_report_and_sidecar(
+def test_attach_artifact_communication_estimate_updates_report_cost(
     tmp_path: Path,
 ) -> None:
-    report_path = tmp_path / "run" / "reports" / "fl_ssl_main_comparison.report.json"
-    report_path.parent.mkdir(parents=True)
-    payload = {
-        "metrics": {"secondary": {"communication_cost": {"value": 1}}},
-        "diagnostics": {"communication_cost": {"value": 1}},
-    }
-    posthoc = {
-        "schema_version": POSTHOC_SCHEMA_VERSION,
-        "c2s_total_bytes": 10,
-    }
+    run_dir = tmp_path / "run"
+    communication_cost: dict[str, object] = {"value": 1}
 
-    write_posthoc_communication_cost(
-        report_path=report_path,
-        payload=payload,
-        posthoc=posthoc,
+    communication_cost_estimates.attach_artifact_communication_estimate(
+        communication_cost=communication_cost,
+        run_dir=run_dir,
+        rounds=[
+            {
+                "round_id": "round_0001",
+                "round_index": 1,
+                "selected_client_count": 1,
+                "clients": [],
+            }
+        ],
     )
 
-    report = json.loads(report_path.read_text(encoding="utf-8"))
-    sidecar = json.loads(
-        (report_path.parent / "fl_ssl_posthoc_communication_cost.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    assert sidecar == posthoc
-    assert report["diagnostics"]["communication_cost"]["posthoc_byte_estimates"] == (
-        posthoc
-    )
-    assert (
-        report["metrics"]["secondary"]["communication_cost"]["posthoc_byte_estimates"]
-        == posthoc
+    estimate = communication_cost["artifact_byte_estimates"]
+    assert isinstance(estimate, dict)
+    assert estimate["schema_version"] == (
+        communication_cost_estimates.COMMUNICATION_ESTIMATE_SCHEMA_VERSION
     )
 
 

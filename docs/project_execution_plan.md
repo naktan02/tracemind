@@ -269,9 +269,12 @@ Runtime translation:
 - 현재 워크스페이스의 감사용 manifest
   `docs/operations/fl_ssl_artifact_verification_manifest.current.json`는
   2026-05-26 FedMatch reduced report를 round budget, client count, method-owned
-  FedMatch protocol, partitioned delta artifact ref, sparse S2C posthoc estimate까지
-  재검증한다. 2026-05-17 manual baseline 계열 historical artifact는 현재 로컬에
-  없어 current manifest 대상에서 제외했다.
+  FedMatch protocol, partitioned delta artifact ref, sparse S2C communication
+  estimate까지 재검증한다. 해당 historical report의 estimate field는 옛
+  schema 이름을 쓰지만 verifier expectation surface는 current
+  `expected_communication_estimate_schema_version`만 사용한다. 2026-05-17 manual
+  baseline 계열 historical artifact는 현재 로컬에 없어 current manifest 대상에서
+  제외했다.
 - FedMatch method-owned smoke는 `peer_context=fixed_probe_output_knn`,
   `server_update_policy=fedmatch_partitioned`,
   `method_descriptor=fedmatch`에서 파생되는 `fedmatch_agreement` 조합으로
@@ -326,8 +329,8 @@ Runtime translation:
    `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
    helper injection, `partitioned_deltas_artifact_ref` 소비, final report metadata였다.
    2026-05-26 `10 clients`, `5 rounds`, `max_steps=20`,
-   `local_budget_policy=iteration_capped` run은 posthoc communication backfill 뒤
-   verifier PASS했다. 원본 labels-at-client budget은
+   `local_budget_policy=iteration_capped` run은 artifact communication estimate를
+   포함해 verifier PASS했다. 원본 labels-at-client budget은
    `ssl_method.local_budget_policy=original_method`를 명시한 별도 faithful run에서만
    사용한다.
 11. 같은 split/seed/budget에서 현행

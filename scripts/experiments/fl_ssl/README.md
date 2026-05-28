@@ -243,17 +243,12 @@ override 조합을 verifier로 고정한다. 최소 검증 축은
 `ssl_method.implementation_status=partitioned_trainable_state_slice_v1`,
 `ssl_method.local_budget_policy=iteration_capped`,
 `ssl_method.parameter_override_status=original`,
-`partitioned_deltas_artifact_ref`다. Posthoc 통신량을 병합한 report는
-`expected_posthoc_communication_schema_version`과
+`partitioned_deltas_artifact_ref`다. 정상 report 생성 경로는 artifact 기반
+communication estimate를 report에 함께 쓰며,
+`expected_communication_estimate_schema_version`과
 `expect_partitioned_sparse_s2c_estimates`로 sparse S2C 추정 필드도 고정한다.
 
-실행 뒤에는 먼저 posthoc 통신량을 병합하고, 같은 report를 verifier로 다시 고정한다.
-
 ```bash
-uv run python -m scripts.experiments.fl_ssl.backfill_communication_costs \
-  --report <run-dir>/reports/fl_ssl_main_comparison.report.json \
-  --write
-
 uv run python -m scripts.experiments.fl_ssl.verify_federated_report_artifacts \
   --report <run-dir>/reports/fl_ssl_main_comparison.report.json \
   --expected-fl-method-name fedmatch \
@@ -271,7 +266,7 @@ uv run python -m scripts.experiments.fl_ssl.verify_federated_report_artifacts \
   --expected-local-ssl-policy fedmatch_agreement \
   --expect-partitioned-update-artifact-refs \
   --expect-no-agent-local-update-refs \
-  --expected-posthoc-communication-schema-version fl_ssl_posthoc_communication_cost.v1 \
+  --expected-communication-estimate-schema-version fl_ssl_artifact_communication_cost.v1 \
   --expect-partitioned-sparse-s2c-estimates
 ```
 
@@ -374,7 +369,8 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 method-owned PEFT-classifier local objective, partitioned update 제출, peer helper
 context injection, labels-at-server supervised seed step까지 simulation slice에서
 실행된다. sparse S2C/C2S는 client-local previous partition snapshot과 partitioned
-global state 기준 simulation slice로 실행되며, 통신량은 posthoc estimate로 기록한다.
+global state 기준 simulation slice로 실행되며, 통신량은 report 생성 시 artifact
+estimate로 기록한다.
 
 원본 기본값은 YAML에 복제하지 않고
 `methods/federated_ssl/fedmatch/original_spec.py`에서 report protocol로 주입된다.
@@ -416,7 +412,7 @@ manual Query SSL 경로와 FedMatch method-owned 경로 모두 `diagnostic_view`
 
 2026-05-26 기준 FedMatch method-owned reduced는
 `shared_general_reddit_pc100_alpha03_clients10` split에서 `10 clients x 5 rounds`로
-완주했고, posthoc communication backfill 뒤 verifier가 PASS했다. 해당 run은 실행
+완주했고, artifact communication estimate를 포함한 verifier가 PASS했다. 해당 run은 실행
 경로 검증용이며 최종 macro-F1은 초기보다 낮았다. main/full-budget은 별도 요청이
 있기 전까지 실행하지 않는다.
 

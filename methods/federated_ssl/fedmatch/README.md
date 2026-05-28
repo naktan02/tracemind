@@ -92,7 +92,7 @@ capability다. 원본 FedMatch snapshot은
 probability provider, `labels-at-server` client-local `psi` upload slice,
 `server_step_policy=supervised_seed_step` simulation path, sparse S2C/C2S projection,
 client-local previous partition snapshot accounting은 simulation slice로 열렸지만
-실제 네트워크 packet 측정은 posthoc estimate로 남긴다.
+실제 네트워크 packet 측정은 artifact estimate로 남긴다.
 현재 실행 server path는 `server_step_policy=none`에서
 `server_update_policy=fedavg_merged_delta`면 PEFT encoder FedAvg가 merged
 delta를 aggregation하고, `server_update_policy=fedmatch_partitioned`면 simulation
