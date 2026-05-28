@@ -180,9 +180,9 @@ class SimulationServerRuntime:
         state_repository = build_shared_adapter_state_repository(output_dir)
         round_manager = RoundManagerService(
             adapter_family=build_simulation_round_family(
-                adapter_family_name=round_runtime_config.adapter_family_name,
+                adapter_family_name=round_runtime_config.payload_adapter_kind,
                 aggregation_backend_name=resolve_simulation_aggregation_backend_name(
-                    adapter_family_name=round_runtime_config.adapter_family_name,
+                    adapter_family_name=round_runtime_config.payload_adapter_kind,
                     aggregation_backend_name=(
                         round_runtime_config.aggregation_backend_name
                     ),

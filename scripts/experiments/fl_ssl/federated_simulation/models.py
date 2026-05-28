@@ -293,7 +293,7 @@ def _optional_str(value: object) -> str | None:
 
 @dataclass(slots=True)
 class FederatedRoundRuntimeConfig:
-    """simulation이 사용할 shared family / aggregation backend 설정."""
+    """simulation이 사용할 update family와 v1 payload compatibility 설정."""
 
     adapter_family_name: str
     aggregation_backend_name: str
@@ -336,6 +336,12 @@ class FederatedRoundRuntimeConfig:
                 normalized_runtime_payload_key.lower().replace("-", "_")
             )
         self.runtime_payload_key = normalized_runtime_payload_key
+
+    @property
+    def payload_adapter_kind(self) -> str:
+        """v1 shared payload/aggregation compatibility용 adapter kind."""
+
+        return self.adapter_family_name
 
     def runtime_payload_for_update_family(self) -> object | None:
         """update-family config가 지정한 runtime payload를 반환한다."""

@@ -161,7 +161,7 @@ def _require_runtime_compatibility(
     validate_federated_ssl_adapter_family_compatibility(
         local_update_profile=request.local_update_profile,
         local_update_adapter_kind=local_adapter_kind,
-        round_adapter_family_name=request.round_runtime_config.adapter_family_name,
+        round_adapter_family_name=request.round_runtime_config.payload_adapter_kind,
     )
     ssl_method_descriptor = ssl_method_runtime.descriptor
     validate_federated_ssl_capability_compatibility(
@@ -181,7 +181,7 @@ def _require_runtime_compatibility(
     )
     peer_context_exchange.require_supported_peer_context(capability_plan)
     resolve_simulation_aggregation_backend_name(
-        adapter_family_name=request.round_runtime_config.adapter_family_name,
+        adapter_family_name=request.round_runtime_config.payload_adapter_kind,
         aggregation_backend_name=request.round_runtime_config.aggregation_backend_name,
         capability_plan=capability_plan,
     )
@@ -196,7 +196,7 @@ def _require_runtime_compatibility(
             method_descriptor=ssl_method_descriptor,
             local_update_profile=request.local_update_profile,
             local_update_adapter_kind=local_adapter_kind,
-            round_adapter_family_name=request.round_runtime_config.adapter_family_name,
+            round_adapter_family_name=request.round_runtime_config.payload_adapter_kind,
             round_update_family_name=request.round_runtime_config.update_family_name,
             round_aggregation_backend_name=(
                 request.round_runtime_config.aggregation_backend_name

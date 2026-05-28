@@ -16,7 +16,7 @@ def require_round_runtime_matches_training_objective(
     """round runtime family state와 local objective payload config drift를 막는다."""
 
     require_adapter_runtime_matches_objective(
-        adapter_kind=request.round_runtime_config.adapter_family_name,
+        adapter_kind=request.round_runtime_config.payload_adapter_kind,
         runtime_config=request.round_runtime_config.runtime_payload_for_update_family(),
         objective_config=request.training_task_config.objective_config,
     )
