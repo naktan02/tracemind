@@ -101,7 +101,8 @@ runtime이 PEFT encoder `partitioned_delta_average` backend로 `partitioned_delt
 partition delta를 평균하는 simulation slice다.
 `fedmatch_agreement`는 원본 FedMatch agreement objective 의미다. generic
 `local_ssl_policy` leaf로 고르지 않고 `method_descriptor=fedmatch`의 method config에서
-파생하며, `server_update_policy=fedmatch_partitioned`와 함께 써야 한다.
+파생한다. 이 기본 선택은 `descriptor.py`의 method-owned metadata가 소유하며,
+`server_update_policy=fedmatch_partitioned`와 함께 써야 한다.
 `server_step_policy=supervised_seed_step`은 round open 전에 server bootstrap rows로
 PEFT encoder active state를 한 번 더 발행한 뒤 client round를 시작한다.
 
@@ -136,8 +137,9 @@ runner, agent, main_server는 FedMatch 이름이 아니라 capability를 통해 
 
 FedMatch 원본 의미 보존은 한 번에 열지 않는다.
 
-1. Adapter-family guard를 먼저 세운다. `sigma/psi` 이름은 FedMatch package가 소유하고,
-   LoRA/DoRA 같은 PEFT 구현은 update-family partition mechanism으로 격리한다.
+1. Update-family guard를 먼저 세운다. `sigma/psi` 이름은 FedMatch package가
+   소유하고, LoRA/DoRA 같은 PEFT 구현은 update-family partition mechanism으로
+   격리한다.
 2. Local physical partition을 연다. client 안에서 `sigma`와 `psi` adapter/head
    parameter를 실제로 분리하고, supervised objective는 `sigma`, unsupervised objective와
    L1/L2는 `psi`로 routing한다.

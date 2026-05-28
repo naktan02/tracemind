@@ -1886,6 +1886,27 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
                 f"{_relative_repo_path(config_path)}: name={declared_name!r} "
                 f"must match filename stem {method_name!r}"
             )
+        duplicated_method_metadata_keys = sorted(
+            set(payload)
+            & {
+                "display_name",
+                "method_role",
+                "implementation_status",
+                "original_source",
+                "trace_mapping",
+                "client_step",
+                "server_step",
+                "round_state_exchange",
+                "report_tags",
+                "notes",
+            }
+        )
+        if duplicated_method_metadata_keys:
+            violations.append(
+                f"{_relative_repo_path(config_path)}: method metadata must stay in "
+                "methods/federated_ssl/<method>/descriptor.py, not YAML: "
+                f"{duplicated_method_metadata_keys}"
+            )
         if payload.get("use_original_parameters") is True:
             duplicated_keys = sorted(
                 key
@@ -2885,6 +2906,25 @@ def test_main_server_round_payload_adapter_package_has_no_concrete_modules() -> 
         "aggregation backend를 generic runtime으로 조합한다. concrete payload adapter "
         "module은 추가하지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_scripts_do_not_import_removed_main_server_round_family_package() -> None:
+    legacy_import = "main_server.src.services.federation.rounds.families"
+    violations: list[tuple[Path, str]] = []
+    for root in (SCRIPTS_SRC, REPO_ROOT / "tests"):
+        violations.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(legacy_import,),
+            )
+        )
+
+    assert not violations, (
+        "scripts/tests는 제거된 main_server rounds.families package를 import하지 "
+        "않는다. server round wiring은 payload_adapters package와 generic "
+        "payload_adapter field를 사용한다.\n"
+        f"{_format_violations(violations)}"
     )
 
 

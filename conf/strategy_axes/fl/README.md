@@ -104,8 +104,10 @@ server round 조합은 별도 YAML group이 아니라 최종 compose된
 `method_descriptor`는 논문 method의 identity, report role, custom runtime 필요
 여부와 원본 parameter snapshot 사용 여부를 표현한다. 원본 상세값 자체는
 `methods/federated_ssl/<method>/original_spec.py`가 소유하고, YAML은
-`scenario`, `use_original_parameters`, `parameter_overrides` 같은 실행 표면과
-trace/report wiring metadata만 둔다. 원본 numeric 기본값은 복제하지 않는다.
+`scenario`, `use_original_parameters`, `parameter_overrides` 같은 실행 표면만 둔다.
+trace/report wiring metadata와 client/server step 의미는
+`methods/federated_ssl/<method>/descriptor.py`에서 파생한다. 원본 numeric 기본값은
+복제하지 않는다.
 실제 local update 계산 조합은 `local_update_profile`, server round runtime 조합은
 `round_runtime.*` leaf에서 온다.
 

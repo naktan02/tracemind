@@ -23,8 +23,8 @@ from main_server.src.services.federation.rounds.boundary.models import (
     RoundRecord,
     RoundStatus,
 )
-from main_server.src.services.federation.rounds.families.registry import (
-    build_shared_adapter_round_family,
+from main_server.src.services.federation.rounds.payload_adapters.registry import (
+    build_shared_adapter_round_payload_adapter,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
@@ -179,7 +179,7 @@ class SimulationServerRuntime:
 
         state_repository = build_shared_adapter_state_repository(output_dir)
         round_manager = RoundManagerService(
-            adapter_family=build_simulation_round_family(
+            payload_adapter=build_simulation_round_payload_adapter(
                 payload_adapter_kind=round_runtime_config.payload_adapter_kind,
                 aggregation_backend_name=resolve_simulation_aggregation_backend_name(
                     payload_adapter_kind=round_runtime_config.payload_adapter_kind,
@@ -330,7 +330,7 @@ class SimulationServerRuntime:
         """계산된 next shared adapter projection을 server-owned state로 발행한다."""
 
         publisher = SharedAdapterStatePublicationService(
-            adapter_family=self.round_manager.adapter_family,
+            payload_adapter=self.round_manager.payload_adapter,
             state_repository=self.state_repository,
             active_manifest_service=self.lifecycle_service.active_manifest_service,
             artifact_store=AggregationArtifactStore(
@@ -356,18 +356,18 @@ def load_active_state(
 ) -> SharedAdapterState:
     """현재 active manifest가 가리키는 shared adapter state를 domain으로 읽는다."""
     payload = state_repository.load_state_from_ref(manifest.artifact_ref)
-    return round_manager.adapter_family.state_from_payload(payload)
+    return round_manager.payload_adapter.state_from_payload(payload)
 
 
-def build_simulation_round_family(
+def build_simulation_round_payload_adapter(
     *,
     payload_adapter_kind: str,
     aggregation_backend_name: str,
     aggregation_backend_overrides: dict[str, str] | None = None,
     output_dir: Path,
 ):
-    """simulation이 사용할 round family 조합을 만든다."""
-    return build_shared_adapter_round_family(
+    """simulation이 사용할 round payload adapter 조합을 만든다."""
+    return build_shared_adapter_round_payload_adapter(
         payload_adapter_kind,
         aggregation_backend_name=aggregation_backend_name,
         aggregation_backend_overrides=aggregation_backend_overrides,

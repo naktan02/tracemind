@@ -43,7 +43,7 @@ def _report_payload(
     ssl_method_parameter_override_status: str | None = None,
     ssl_algorithm: str = "fixmatch",
     ssl_method: str = "fixmatch_usb_v1",
-    adapter_family: str = "peft_classifier",
+    fallback_payload_adapter_kind: str = "peft_classifier",
     update_family: str = "peft_text_encoder",
     aggregation: str = "fedavg",
     server_update_policy: str = "fedavg_merged_delta",
@@ -52,7 +52,7 @@ def _report_payload(
     peer_context_policy: str = "none",
     local_ssl_policy: str = "query_ssl_method",
     delta_format: str = "server_uploaded_artifact_ref",
-    objective_adapter_family: str = "peft_classifier",
+    objective_payload_scope: str = "peft_classifier",
     payload_adapter_kind: str | None = None,
     embedding_backend: str = "transformers_mxbai",
     embedding_model_id: str = "mixedbread-ai/mxbai-embed-large-v1",
@@ -104,10 +104,12 @@ def _report_payload(
             "objective": {
                 "query_ssl.algorithm_name": ssl_algorithm,
                 "query_ssl.method_name": ssl_method,
-                f"{objective_adapter_family}.delta_format": delta_format,
+                f"{objective_payload_scope}.delta_format": delta_format,
             },
             "round_runtime": {
-                "payload_adapter_kind": payload_adapter_kind or adapter_family,
+                "payload_adapter_kind": (
+                    payload_adapter_kind or fallback_payload_adapter_kind
+                ),
                 "update_family_name": update_family,
                 "aggregation_backend_name": aggregation,
             },
@@ -340,7 +342,7 @@ def test_verify_federated_report_uses_payload_adapter_kind() -> None:
             client_count=2,
             completed_rounds=1,
             round_budget=1,
-            adapter_family="peft_classifier",
+            fallback_payload_adapter_kind="peft_classifier",
             payload_adapter_kind="peft_classifier",
         ),
         expectation=FederatedReportExpectation(
@@ -556,8 +558,8 @@ def test_verify_federated_report_accepts_peft_classifier_v2_update_artifacts(
             client_count=2,
             completed_rounds=2,
             round_budget=2,
-            adapter_family="peft_classifier",
-            objective_adapter_family="peft_classifier",
+            fallback_payload_adapter_kind="peft_classifier",
+            objective_payload_scope="peft_classifier",
         ),
     )
 
@@ -907,8 +909,8 @@ def test_verify_federated_report_flags_peft_classifier_v2_artifact_ref_drift(
             client_count=1,
             completed_rounds=1,
             round_budget=1,
-            adapter_family="peft_classifier",
-            objective_adapter_family="peft_classifier",
+            fallback_payload_adapter_kind="peft_classifier",
+            objective_payload_scope="peft_classifier",
         ),
     )
     update_path = next(
@@ -1150,8 +1152,8 @@ def test_verify_artifact_manifest_applies_peft_snapshot_default(
             client_count=1,
             completed_rounds=1,
             round_budget=1,
-            adapter_family="peft_classifier",
-            objective_adapter_family="peft_classifier",
+            fallback_payload_adapter_kind="peft_classifier",
+            objective_payload_scope="peft_classifier",
         ),
     )
     manifest_path = tmp_path / "manifest.json"

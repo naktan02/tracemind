@@ -22,8 +22,9 @@ from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
 )
-from methods.federated_ssl.method_parameters import (
-    build_federated_ssl_method_parameter_snapshot,
+from methods.federated_ssl.method_config_surface import (
+    build_federated_ssl_method_config_surface,
+    default_method_local_ssl_policy_name,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.experiments.fl_ssl.federated_simulation.config_utils import (
@@ -240,22 +241,16 @@ def _resolve_local_ssl_policy_mapping(
         return optional_plain_dict(cfg, "local_ssl_policy")
     descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
     local_ssl_policy_names = descriptor.required_capabilities.local_ssl_policy_names
-    configured_policy_name = _optional_config_str(
-        cfg.ssl_method.trace_mapping,
-        "local_ssl_policy",
-    )
-    if configured_policy_name is not None:
-        if configured_policy_name not in local_ssl_policy_names:
+    default_policy_name = default_method_local_ssl_policy_name(descriptor)
+    if default_policy_name is not None:
+        if default_policy_name not in local_ssl_policy_names:
             raise ValueError(
-                "ssl_method.trace_mapping.local_ssl_policy must be supported by "
+                "method default local SSL policy must be supported by "
                 "descriptor.required_capabilities.local_ssl_policy_names: "
-                f"method={descriptor.name}, value={configured_policy_name!r}, "
+                f"method={descriptor.name}, value={default_policy_name!r}, "
                 f"supported={list(local_ssl_policy_names)!r}."
             )
-        return {
-            "name": configured_policy_name,
-            "parameter_source": "method_descriptor",
-        }
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
     if not local_ssl_policy_names:
         return optional_plain_dict(cfg, "local_ssl_policy")
     if len(local_ssl_policy_names) != 1:
@@ -381,12 +376,11 @@ def _build_ssl_method_config(
     if ssl_method is None:
         raise ValueError("method-owned FL SSL execution requires ssl_method config.")
     ssl_method_mapping = to_plain_dict(ssl_method)
-    parameter_snapshot = build_federated_ssl_method_parameter_snapshot(
+    method_config_surface = build_federated_ssl_method_config_surface(
         method_name=str(ssl_method_mapping["name"]),
         method_config=ssl_method_mapping,
     )
-    ssl_method_mapping.update(parameter_snapshot.to_mapping())
-    return FederatedSslMethodConfig(**ssl_method_mapping)
+    return FederatedSslMethodConfig(**method_config_surface)
 
 
 def _resolve_training_task_type(
@@ -399,7 +393,8 @@ def _resolve_training_task_type(
     ssl_method = cfg.get("ssl_method")
     if ssl_method is None:
         raise ValueError("method-owned FL SSL execution requires ssl_method config.")
-    return str(ssl_method.client_step.task_type)
+    descriptor = resolve_federated_ssl_method_descriptor(str(ssl_method.name))
+    return descriptor.local_step.step_name
 
 
 def _is_manual_composition(fl_method: dict[str, object]) -> bool:

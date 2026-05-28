@@ -844,13 +844,13 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
     )
     calls: dict[str, object] = {}
 
-    class _AdapterFamily:
+    class _PayloadAdapter:
         def state_to_payload(self, state: object) -> object:
             calls["state_to_payload"] = state
             return state
 
     class _RoundManager:
-        adapter_family = _AdapterFamily()
+        payload_adapter = _PayloadAdapter()
 
     class _StateRepository:
         def __init__(self) -> None:

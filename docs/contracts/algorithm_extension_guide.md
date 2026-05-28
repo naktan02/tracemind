@@ -19,7 +19,7 @@
 - FL SSL 논문 method는 선택 전에는 구현 폴더나
   `conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
   현재 선택된 첫 method는 FedMatch이며, capability surface와 tensor local objective
-  core, LoRA partitioned step core까지 열린 상태다.
+  core, PEFT text encoder partitioned step core까지 열린 상태다.
 - 단일 사용처용 추상화와 compatibility layer는 만들지 않는다.
 
 ## 전략 표면
@@ -37,8 +37,8 @@
 | FL client participation | `methods/federated/participation.py` | scripts FL simulation round loop | `conf/strategy_axes/fl/client_participation_policy/*` | participation unit, round report |
 | FL aggregation weighting | `methods/federated/aggregation_weighting.py` | family FedAvg cores | `conf/strategy_axes/fl/aggregation_weight_policy/*` | weighting unit, aggregation unit |
 | FL SSL capability plan | `methods/federated_ssl/capability_plan.py`, `capability_axes.py` | scripts FL simulation compatibility adapters, future runtime adapters | `conf/strategy_axes/fl/*_policy/*` | capability compatibility unit |
-| FL aggregation | method-only는 `methods/federated_ssl/<method>/aggregation.py`, 재사용 backend는 `methods/federated/aggregation/*` + `methods/adaptation/<family>/*` projection | main_server aggregation adapter | `conf/strategy_axes/fl/method_descriptor/*` | aggregation unit, round integration |
-| FL SSL method descriptor | `methods/federated_ssl/*` | scripts FL simulation, future runtime translation | `conf/strategy_axes/fl/method_descriptor/*` | simulation smoke |
+| FL aggregation | method-only는 `methods/federated_ssl/<method>/aggregation.py`, 재사용 backend는 `methods/federated/aggregation/*` + update-family projection | main_server aggregation adapter | update family + aggregation backend leaf | aggregation unit, round integration |
+| FL SSL method descriptor | `methods/federated_ssl/*` | scripts FL simulation, future runtime translation | `conf/strategy_axes/fl/method_descriptor/*`는 method name/scenario/overrides만 선택 | simulation smoke |
 | Secure update codec | `shared/src/services/*` | agent/main_server privacy/update boundary | shared config or runtime config | contract/integration |
 
 ## 추가 순서

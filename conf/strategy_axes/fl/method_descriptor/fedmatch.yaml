@@ -2,56 +2,7 @@
 
 schema_version: federated_ssl_method.v1
 name: fedmatch
-display_name: FedMatch
-method_role: method_owned
-implementation_status: partitioned_trainable_state_slice_v1
-original_source:
-  repository: https://github.com/wyjeong/FedMatch.git
-  commit: 4947aa255d59bd37915e25a719763aaaf5d7e067
-  paper: arXiv:2006.12097
 scenario: labels-at-client
 use_original_parameters: true
 local_budget_policy: iteration_capped
 parameter_overrides: {}
-trace_mapping:
-  parameter_decomposition: peft_text_encoder_sigma_psi
-  update_partition_policy: partitioned
-  partition_scheme: sigma_psi
-  original_trainable_scope: ResNet9 Conv/Dense full weights
-  trace_trainable_scope: LoRA adapter tensors plus classifier head tensors
-  frozen_scope: Transformer backbone base weights
-  supervised_partition: sigma
-  unsupervised_partition: psi
-  published_state: sigma_plus_psi
-  local_ssl_policy: fedmatch_agreement
-  current_server_update_policy: fedavg_merged_delta
-  target_server_update_policy: fedmatch_partitioned
-  aggregation_weight_policy: uniform
-client_step:
-  task_type: federated_ssl_method_local_step
-  custom_method_runtime_required: true
-  confidence_filter: confidence_threshold
-  pseudo_labeler_name: agreement_based_argmax_vote
-server_step:
-  custom_round_policy_required: false
-  labels_at_client:
-    server_step_policy: none
-    aggregated_partitions:
-      - merged_peft_text_encoder_delta
-  labels_at_server:
-    server_step_policy: supervised_seed_step
-    server_trainable_partition: sigma
-    client_aggregated_partitions:
-      - psi
-round_state_exchange:
-  exchange_name: peer_context
-  custom_exchange_required: true
-  helper_selection_name: fixed_probe_output_knn
-  required_client_metric_keys:
-    - mean_confidence
-report_tags:
-  - fl_ssl_main_comparison
-  - fedmatch
-notes:
-  - FedMatch 원본 snapshot의 설정과 core decision semantics를 보존한다.
-  - Method-owned PEFT text encoder local runtime runs FedMatch supervised/unsupervised partition steps; helper client context selection and helper weak-view probabilities are wired through the common peer_context axis and PEFT text encoder update-family slice. The labels-at-server supervised seed step is wired through the common server_step axis. Sparse S2C/C2S is wired in the simulation slice with posthoc communication estimates, not measured network packets.

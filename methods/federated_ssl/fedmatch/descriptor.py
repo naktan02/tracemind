@@ -49,6 +49,7 @@ FEDMATCH_METHOD_NAME = "fedmatch"
 
 descriptor = FederatedSslMethodDescriptor(
     name=FEDMATCH_METHOD_NAME,
+    display_name="FedMatch",
     implementation_status="partitioned_trainable_state_slice_v1",
     method_role="method_owned",
     required_views=FederatedSslRequiredViews(
@@ -128,4 +129,36 @@ descriptor = FederatedSslMethodDescriptor(
 ORIGINAL_SOURCE_METADATA = {
     "repository": FEDMATCH_ORIGINAL_REPOSITORY,
     "commit": FEDMATCH_ORIGINAL_COMMIT,
+    "paper": "arXiv:2006.12097",
 }
+
+DEFAULT_LOCAL_SSL_POLICY_NAME = LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
+
+TRACE_MAPPING_METADATA = {
+    "parameter_decomposition": "peft_text_encoder_sigma_psi",
+    "update_partition_policy": UPDATE_PARTITION_PARTITIONED,
+    "partition_scheme": "sigma_psi",
+    "original_trainable_scope": "ResNet9 Conv/Dense full weights",
+    "trace_trainable_scope": "LoRA adapter tensors plus classifier head tensors",
+    "frozen_scope": "Transformer backbone base weights",
+    "supervised_partition": "sigma",
+    "unsupervised_partition": "psi",
+    "published_state": "sigma_plus_psi",
+    "local_ssl_policy": LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+    "current_server_update_policy": SERVER_UPDATE_FEDAVG_MERGED_DELTA,
+    "target_server_update_policy": SERVER_UPDATE_FEDMATCH_PARTITIONED,
+    "aggregation_weight_policy": AGGREGATION_WEIGHT_UNIFORM,
+}
+
+REPORT_TAGS = ("fl_ssl_main_comparison", FEDMATCH_METHOD_NAME)
+
+NOTES = (
+    "FedMatch 원본 snapshot의 설정과 core decision semantics를 보존한다.",
+    "Method-owned PEFT text encoder local runtime runs FedMatch "
+    "supervised/unsupervised partition steps; helper client context selection and "
+    "helper weak-view probabilities are wired through the common peer_context axis "
+    "and PEFT text encoder update-family slice. The labels-at-server supervised "
+    "seed step is wired through the common server_step axis. Sparse S2C/C2S is "
+    "wired in the simulation slice with posthoc communication estimates, not "
+    "measured network packets.",
+)

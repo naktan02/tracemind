@@ -383,7 +383,7 @@ def test_local_update_profile_validates_training_objective_drift() -> None:
     objective = TrainingObjectiveConfig.from_mapping(
         {
             **profile.to_training_objective_mapping(),
-            "adapter_family_specific.extra": "kept",
+            "payload_adapter_specific.extra": "kept",
         }
     )
 
@@ -405,7 +405,7 @@ def test_local_update_profile_validates_training_objective_drift() -> None:
         )
 
 
-def test_fl_ssl_compatibility_rejects_adapter_family_drift() -> None:
+def test_fl_ssl_compatibility_rejects_payload_adapter_drift() -> None:
     profile = LocalUpdateProfile.from_mapping(_local_update_profile_mapping())
 
     validate_federated_ssl_payload_adapter_compatibility(

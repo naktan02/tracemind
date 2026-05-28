@@ -290,11 +290,18 @@ class FederatedSslMethodDescriptor:
     required_capabilities: FederatedSslRequiredCapabilities = field(
         default_factory=FederatedSslRequiredCapabilities
     )
+    display_name: str | None = None
 
     def __post_init__(self) -> None:
         _set_non_empty(self, "name")
         _set_non_empty(self, "implementation_status")
         _set_non_empty(self, "method_role")
+        if self.display_name is not None:
+            object.__setattr__(
+                self,
+                "display_name",
+                _require_non_empty(self.display_name, field_name="display_name"),
+            )
         if self.recipe is not None and self.recipe.method_name != self.name:
             raise ValueError(
                 "method descriptor recipe must use the same method name: "

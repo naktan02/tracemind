@@ -240,7 +240,6 @@ override 조합을 verifier로 고정한다. 최소 검증 축은
 `ssl_method=fedmatch`, `server_update_policy=fedmatch_partitioned`,
 `update_partition_policy=partitioned`, `aggregation_weight_policy=uniform`,
 `peer_context_policy=fixed_probe_output_knn`,
-`ssl_method.trace_mapping.local_ssl_policy=fedmatch_agreement`,
 `ssl_method.implementation_status=partitioned_trainable_state_slice_v1`,
 `ssl_method.local_budget_policy=iteration_capped`,
 `ssl_method.parameter_override_status=original`,
@@ -379,7 +378,9 @@ global state 기준 simulation slice로 실행되며, 통신량은 posthoc estim
 
 원본 기본값은 YAML에 복제하지 않고
 `methods/federated_ssl/fedmatch/original_spec.py`에서 report protocol로 주입된다.
-ablation은 필요한 값만 override한다.
+trace/report metadata와 `fedmatch_agreement` local objective 선택은
+`methods/federated_ssl/fedmatch/descriptor.py`에서 파생된다. ablation은 필요한
+method parameter 값만 override한다.
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \

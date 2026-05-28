@@ -903,33 +903,40 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     )
     assert ssl_method_config is not None
 
-    assert (
-        cfg.ssl_method.implementation_status == "partitioned_trainable_state_slice_v1"
-    )
     assert cfg.ssl_method.local_budget_policy == "iteration_capped"
     assert cfg.training_task.max_steps == 20
-    assert cfg.ssl_method.original_source.repository == FEDMATCH_ORIGINAL_REPOSITORY
-    assert cfg.ssl_method.original_source.commit == FEDMATCH_ORIGINAL_COMMIT
     assert "original_parameters" not in cfg.ssl_method
+    assert "original_source" not in cfg.ssl_method
+    assert "trace_mapping" not in cfg.ssl_method
+    assert "client_step" not in cfg.ssl_method
+    assert "server_step" not in cfg.ssl_method
+    assert "round_state_exchange" not in cfg.ssl_method
     assert cfg.ssl_method.scenario == "labels-at-client"
     assert cfg.ssl_method.use_original_parameters is True
     assert dict(cfg.ssl_method.parameter_overrides) == {}
+    assert ssl_method_config.implementation_status == (
+        "partitioned_trainable_state_slice_v1"
+    )
+    assert ssl_method_config.original_source["repository"] == (
+        FEDMATCH_ORIGINAL_REPOSITORY
+    )
+    assert ssl_method_config.original_source["commit"] == FEDMATCH_ORIGINAL_COMMIT
     assert ssl_method_config.original_parameters == expected
     assert ssl_method_config.effective_parameters == expected
     assert ssl_method_config.parameter_overrides == {}
     assert ssl_method_config.parameter_override_status == "original"
-    assert cfg.ssl_method.trace_mapping.supervised_partition == "sigma"
-    assert cfg.ssl_method.trace_mapping.unsupervised_partition == "psi"
+    assert ssl_method_config.trace_mapping["supervised_partition"] == "sigma"
+    assert ssl_method_config.trace_mapping["unsupervised_partition"] == "psi"
     assert (
-        cfg.ssl_method.trace_mapping.parameter_decomposition
+        ssl_method_config.trace_mapping["parameter_decomposition"]
         == "peft_text_encoder_sigma_psi"
     )
-    assert cfg.ssl_method.trace_mapping.aggregation_weight_policy == "uniform"
-    assert cfg.ssl_method.trace_mapping.update_partition_policy == "partitioned"
-    assert cfg.ssl_method.trace_mapping.partition_scheme == "sigma_psi"
-    assert list(cfg.ssl_method.server_step.labels_at_client.aggregated_partitions) == [
-        "merged_peft_text_encoder_delta"
-    ]
+    assert ssl_method_config.trace_mapping["aggregation_weight_policy"] == "uniform"
+    assert ssl_method_config.trace_mapping["update_partition_policy"] == "partitioned"
+    assert ssl_method_config.trace_mapping["partition_scheme"] == "sigma_psi"
+    assert ssl_method_config.client_step["task_type"] == (
+        "federated_ssl_method_local_step"
+    )
 
 
 def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm() -> (
@@ -953,7 +960,7 @@ def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm()
     assert capability_plan.server_update_policy_name == "fedavg_merged_delta"
 
 
-def test_federated_simulation_can_express_fedmatch_server_with_fixmatch() -> None:
+def test_federated_simulation_method_owned_fedmatch_uses_method_local_policy() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
@@ -965,7 +972,6 @@ def test_federated_simulation_can_express_fedmatch_server_with_fixmatch() -> Non
                 "strategy_axes/fl/aggregation_weight_policy=uniform",
                 "strategy_axes/fl/peer_context_policy=fixed_probe_output_knn",
                 "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
-                "ssl_method.trace_mapping.local_ssl_policy=fixmatch",
             ],
         )
 
@@ -974,9 +980,9 @@ def test_federated_simulation_can_express_fedmatch_server_with_fixmatch() -> Non
         labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
     )
 
-    assert cfg.local_ssl_policy.name == "fixmatch"
+    assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
     assert cfg.server_update_policy.name == "fedmatch_partitioned"
-    assert capability_plan.local_ssl_policy_name == "fixmatch"
+    assert capability_plan.local_ssl_policy_name == "fedmatch_agreement"
     assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
     assert capability_plan.update_partition_policy_name == "partitioned"
     assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
@@ -1022,7 +1028,6 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
     assert cfg.federated_run_budget.name == "reduced"
     assert cfg.federated_run_budget.rounds == 5
     assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
-    assert cfg.ssl_method.trace_mapping.local_ssl_policy == "fedmatch_agreement"
     assert cfg.server_update_policy.name == "fedmatch_partitioned"
     assert capability_plan.local_ssl_policy_name == "fedmatch_agreement"
     assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
