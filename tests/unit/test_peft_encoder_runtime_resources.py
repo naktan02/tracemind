@@ -205,7 +205,7 @@ def test_peft_encoder_model_builder_uses_peft_adapter_builder(
     assert captured["get_peft_model"] is _fake_get_peft_model
 
 
-def test_load_lora_classifier_base_parameters_does_not_mutate_snapshot() -> None:
+def test_load_peft_encoder_base_parameters_does_not_mutate_snapshot() -> None:
     class _Backbone(nn.Module):
         def __init__(self) -> None:
             super().__init__()

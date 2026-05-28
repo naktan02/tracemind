@@ -31,10 +31,10 @@ experiment package로 이해하면 된다.
    - final/client validation과 report 조립
 6. `scripts/runtime_adapters/federated_server/`
    - main_server runtime adapter package
-   - `runtime.py`: `SimulationServerRuntime`, active state load, round family 조립
+  - `runtime.py`: `SimulationServerRuntime`, active state load, payload adapter 조립
    - `repositories.py`: simulation output root 기준 repository wiring
-   - `initial_state_factory.py`: adapter family별 initial shared state factory.
-     family-specific payload 의미는 `methods/adaptation/*`에 위임한다.
+  - `initial_state_factory.py`: update family별 initial shared state factory.
+     update-family payload 의미는 `methods/adaptation/*`에 위임한다.
    - `task_config_surface.py`: simulation이 server round draft로 넘길 task config port
    - `round_request_mapper.py`: round task/open request 변환
 7. `scripts/runtime_adapters/federated_agent/`

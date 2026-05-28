@@ -1,10 +1,10 @@
 # Adaptation 공통 scaffold
 
-`methods/adaptation/common/`은 fixed embedding classifier와 LoRA classifier가
-공유하는 adaptation scaffold만 둔다.
+`methods/adaptation/common/`은 linear head, PEFT text encoder처럼 여러
+adaptation/update family가 공유하는 scaffold만 둔다.
 
 여기에는 model input 방식이나 runner orchestration을 넣지 않는다. feature tensor
-모델과 token batch 모델은 각 adapter family가 계속 소유하고, 이 패키지는 best
+모델과 token batch 모델은 각 update family가 계속 소유하고, 이 패키지는 best
 checkpoint 선택, selection-set epoch history record처럼 adaptation 내부에서
 안정적으로 같은 부분만 담당한다. 중앙/FL이 함께 쓰는 평가 metric 계산은
 `methods/evaluation/`을 source of truth로 둔다.

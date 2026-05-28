@@ -24,7 +24,6 @@ central fixed embedding + classifier seed
 | `docs/architecture/code-expression-guidelines.md` | 코드 표현 밀도와 읽기 난이도 기준 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
 | `docs/contracts/legacy_contract_ledger.md` | legacy/compatibility 표면의 소유자와 제거 조건 |
-| `docs/contracts/lora_classifier_v1_terminology_audit.md` | `lora_classifier` v1 contract 용어와 구현 owner 경로 분류 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |
 | `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
 | `docs/governance/document-governance.md` | 문서 class와 갱신 규칙 |
@@ -49,6 +48,7 @@ central fixed embedding + classifier seed
 | 문서 | 역할 |
 |---|---|
 | `docs/architecture/text-classifier-adaptation-refactor-plan.md` | 완료된 text classifier migration 기록. legacy shim 변경 때만 읽는다 |
+| `docs/contracts/lora_classifier_v1_terminology_audit.md` | 완료된 `lora_classifier` 용어 감사 기록. legacy migration 추적 때만 읽는다 |
 | `docs/operations/fl_ssl_execution_audit.md` | 특정 시점 FL SSL artifact 감사 기록 |
 | `docs/operations/fl_ssl_runtime_performance_audit.md` | FedMatch runtime 성능 개선 전후 수치 기록 |
 | `docs/staged_execution_roadmap.md` | phase 이름만 보는 축약 지도. 현재 우선순위는 project execution plan이 소유 |

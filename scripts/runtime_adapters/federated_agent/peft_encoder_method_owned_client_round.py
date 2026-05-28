@@ -11,15 +11,15 @@ from typing import Any
 from methods.adaptation.peft_text_encoder.resource_cache import (
     clear_peft_encoder_transient_resource_cache,
 )
-from methods.adaptation.peft_text_encoder.runtime_family import (
-    is_peft_encoder_update_family,
-)
 from methods.adaptation.peft_text_encoder.update.delta_artifacts import (
     server_owned_peft_encoder_update_artifact_byte_count,
     upload_agent_local_peft_encoder_update,
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
+)
+from methods.adaptation.peft_text_encoder.update_family_runtime import (
+    is_peft_encoder_update_family,
 )
 from methods.common.timing import TimingRecorder
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan

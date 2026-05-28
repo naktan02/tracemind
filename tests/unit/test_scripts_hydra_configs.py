@@ -499,7 +499,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert "peft_classifier" not in cfg.round_runtime
     assert "peft_text_encoder" in cfg.round_runtime.runtime_payloads
     assert cfg.round_runtime.composition_slug_builder == (
-        "methods.adaptation.peft_text_encoder.runtime_family."
+        "methods.adaptation.peft_text_encoder.update_family_runtime."
         "build_peft_text_encoder_composition_slug"
     )
     assert cfg.round_runtime.round_runtime_payload_builder == (
@@ -515,7 +515,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "run_peft_encoder_query_ssl_client_round_if_supported",
     ]
     assert cfg.round_runtime.initial_state_builder == (
-        "methods.adaptation.peft_text_encoder.runtime_family."
+        "methods.adaptation.peft_text_encoder.update_family_runtime."
         "build_initial_peft_encoder_state"
     )
     assert cfg.round_runtime.validation_evaluator == (
@@ -737,7 +737,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert "peft_classifier" not in cfg.round_runtime
     assert "peft_text_encoder" in cfg.round_runtime.runtime_payloads
     assert cfg.round_runtime.composition_slug_builder == (
-        "methods.adaptation.peft_text_encoder.runtime_family."
+        "methods.adaptation.peft_text_encoder.update_family_runtime."
         "build_peft_text_encoder_composition_slug"
     )
     assert cfg.round_runtime.round_runtime_payload_builder == (
@@ -753,7 +753,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "run_peft_encoder_query_ssl_client_round_if_supported",
     ]
     assert cfg.round_runtime.initial_state_builder == (
-        "methods.adaptation.peft_text_encoder.runtime_family."
+        "methods.adaptation.peft_text_encoder.update_family_runtime."
         "build_initial_peft_encoder_state"
     )
     assert cfg.round_runtime.validation_evaluator == (

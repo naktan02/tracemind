@@ -40,7 +40,7 @@ def run_selection_tracked_training_loop(
     """epoch 학습 결과를 selection 평가, history, best checkpoint로 닫는다.
 
     실제 batch 구성, model input 변환, optimizer step은 caller의 `train_epoch`가
-    소유한다. 이 helper는 fixed classifier와 LoRA classifier에서 동일한
+    소유한다. 이 helper는 linear head와 PEFT text encoder에서 동일한
     selection-set 기반 검증/기록/복원 흐름만 담당한다.
     """
 

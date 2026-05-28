@@ -94,7 +94,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `strategy_axes/fl/local_update_profile`
   - `cfg.local_update_profile`로 compose된다.
   - agent local update를 만드는 training/evidence/scoring/privacy 조합을 소유한다.
-  - adapter family나 aggregation backend를 소유하지 않는다.
+  - update family나 aggregation backend를 소유하지 않는다.
 - `strategy_axes/ssl/consistency_method`
   - `cfg.query_ssl_method`로 compose된다.
   - manual FL 조합에서 client SSL objective의 source of truth다.
@@ -163,7 +163,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - `shared` contract 경계에서는 기존 report/runtime compatibility를 위해
     `query_ssl.algorithm_name`, `peft_classifier.delta_format` 같은 dotted flat key로
     정규화된다.
-  - 새 adapter family 값을 추가할 때도 entrypoint에 긴 quoted dotted key를 늘리기보다
+  - 새 update/payload family 값을 추가할 때도 entrypoint에 긴 quoted dotted key를 늘리기보다
     owner scope 아래에 묶고, canonical 해석은 `TrainingObjectiveConfig`가 맡긴다.
 - `seed_sweep`
   - FL SSL seed sweep runner가 순회할 seed 목록과 sweep output root를 소유한다.

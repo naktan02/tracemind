@@ -504,7 +504,7 @@ def test_fl_simulation_runtime_model_does_not_embed_lora_classifier_scope() -> N
         / "peft_text_encoder"
         / "simulation_runtime"
         / "round_runtime.py",
-        METHODS_SRC / "adaptation" / "peft_text_encoder" / "runtime_family.py",
+        METHODS_SRC / "adaptation" / "peft_text_encoder" / "update_family_runtime.py",
         METHODS_SRC / "adaptation" / "peft_text_encoder" / "resource_cache.py",
     )
     forbidden_snippets = (
@@ -561,7 +561,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         / "protocol_payload.py",
         CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
-        METHODS_SRC / "adaptation" / "peft_text_encoder" / "runtime_family.py",
+        METHODS_SRC / "adaptation" / "peft_text_encoder" / "update_family_runtime.py",
         METHODS_SRC
         / "adaptation"
         / "peft_text_encoder"
@@ -598,7 +598,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
 
 def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
     checked_paths = (
-        METHODS_SRC / "adaptation" / "peft_text_encoder" / "runtime_family.py",
+        METHODS_SRC / "adaptation" / "peft_text_encoder" / "update_family_runtime.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_agent"
         / "peft_encoder_method_owned_client_round.py",
@@ -2349,7 +2349,7 @@ def test_fl_round_e2e_does_not_exercise_removed_diagonal_scale_runtime() -> None
         "shared.src.contracts.adapter_contract_families.diagonal_scale" not in imports
     )
     assert "diagonal_scale" not in source, (
-        "root FL round E2E는 현재 runtime family를 검증한다. diagonal_scale는 "
+        "root FL round E2E는 현재 update family runtime을 검증한다. diagonal_scale는 "
         "shared v1 contract compatibility 테스트에만 남기고, 서버/에이전트 "
         "lifecycle smoke의 실행 family로 되살리지 않는다."
     )

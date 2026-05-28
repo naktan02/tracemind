@@ -12,9 +12,6 @@ from methods.adaptation.peft_text_encoder.evaluation import (
 from methods.adaptation.peft_text_encoder.projection_artifacts import (
     write_peft_encoder_projection_artifacts,
 )
-from methods.adaptation.peft_text_encoder.runtime_family import (
-    build_training_backend_config_for_peft_encoder_state,
-)
 from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
@@ -25,6 +22,9 @@ from methods.adaptation.peft_text_encoder.training.modeling import (
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     materialize_base_peft_encoder_state,
+)
+from methods.adaptation.peft_text_encoder.update_family_runtime import (
+    build_training_backend_config_for_peft_encoder_state,
 )
 from methods.adaptation.query_text_views.data import build_dataloader
 from methods.common.runtime_resources import RuntimeResourceCache

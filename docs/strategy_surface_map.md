@@ -16,12 +16,12 @@ central fixed embedding + classifier seed
 - 최종 method/runtime 구조 판단은
   `docs/architecture/target-method-runtime-structure.md`를 우선한다. 이 문서는 현재
   실행 표면과 legacy compatibility 이름을 함께 보여준다.
-- 현재 표의 historical `adapter_family_name`, `lora_classifier`, `fedmatch_agreement`는
-  migration 기록에서만 보일 수 있다. target 구조에서는 각각
-  `payload_adapter_kind`/`update_family_name`, `peft_text_encoder`,
-  method-local FedMatch objective로 정리한다. `lora_classifier` shared parser/factory와
-  report/result reader fallback은 제거됐으므로 새 실험 산출물은 `peft_classifier`
-  payload format을 쓴다.
+- 현재 표의 historical `adapter_family_name`, `lora_classifier`는 migration 기록에서만
+  보일 수 있다. target 구조에서는 각각 `payload_adapter_kind`/`update_family_name`,
+  `peft_text_encoder`로 정리한다. `fedmatch_agreement`는 generic config leaf가 아니라
+  FedMatch descriptor가 요구하는 method-local objective로만 해석한다.
+  `lora_classifier` shared parser/factory와 report/result reader fallback은
+  제거됐으므로 새 실험 산출물은 `peft_classifier` payload format을 쓴다.
 - 중앙 SSL은 pooled/offline control이다.
 - 논문 메인 비교는 `FL SSL under non-IID`에서 수행한다.
 - runtime v1은 `embedding -> global classifier -> local interpretation` baseline을 우선한다.
@@ -87,16 +87,16 @@ central fixed embedding + classifier seed
 | Peer context policy | `none`, `fixed_probe_output_knn` (`prediction_similarity_topk` legacy alias) | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter, `methods/federated_ssl/peer_context.py` | `none` active, KDTree 우선 fixed-probe nearest-neighbor helper context selection and PEFT text encoder helper weak-probability provider active |
 | Peer probe surface | `label_balanced`, max 128 rows | `peer_probe.*` in FL simulation entrypoint | simulation fixed text probe selector + report protocol metadata | active for `fixed_probe_output_knn` helper selection |
 | Update partition policy | `unified`, `partitioned` | `strategy_axes/fl/update_partition_policy` | common capability + method/adaptation partition helpers | `unified` active, `partitioned` method-gated |
-| Local SSL policy | `profile_pseudo_label`, `fixmatch`, `flexmatch`, `freematch`, `adamatch`, `pseudolabel`, `fedmatch_agreement` | manual은 `strategy_axes/fl/local_ssl_policy` + `strategy_axes/ssl/consistency_method`, method-owned는 descriptor metadata | `methods/federated_ssl/capability_axes.py`, `methods/ssl/algorithms/*`, method-local objective | Query SSL-backed policies active in manual mode, FedMatch agreement active in method-owned slice |
+| Local SSL policy | manual: `profile_pseudo_label` 또는 `query_ssl_method`; method-owned FedMatch: `fedmatch_agreement` | manual은 `strategy_axes/fl/local_ssl_policy` + `strategy_axes/ssl/consistency_method`, method-owned는 descriptor metadata | `methods/federated_ssl/capability_axes.py`, `methods/ssl/algorithms/*`, method-local objective | Query SSL-backed policies active in manual mode, FedMatch agreement는 method-owned slice 전용 |
 | Aggregation weight policy | `example_count`, `uniform`, `accepted_count` | `strategy_axes/fl/aggregation_weight_policy` | `methods/federated/aggregation_weighting.py` + family FedAvg cores | simulation capability |
 | Query multiview source | `materialized_rows`, `agent_generated_or_cached` | `strategy_axes/fl/query_multiview_source` | materialized JSONL rows now, live agent source later | materialized active, live planned |
 | FL SSL method descriptor | `fedmatch` original core/config snapshot, future FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `peft_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | PEFT text encoder Query SSL training/evidence/scoring/privacy runtime | FL SSL simulation profile |
 | Aggregation backend | `fedavg`, effective `partitioned_delta_average` for partitioned server update | `round_runtime.aggregation_backend_name` + update-family/server policy resolver | reusable backend는 `methods/federated/aggregation/*` + update family aggregation projection, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
-| Update family | `linear_head`, `peft_text_encoder`, future `prototype_pack`; v1 adapter family는 compatibility field | `strategy_axes/trainable_state/update_family`, `round_runtime.update_family_name`, model/update manifest | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*`, shared payload contract | 활성 runtime / server aggregation scaffold |
+| Update family | `linear_head`, `peft_text_encoder`, future `prototype_pack`; payload 해석은 별도 `payload_adapter_kind` | `strategy_axes/trainable_state/update_family`, `round_runtime.update_family_name`, model/update manifest | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*`, shared payload contract | 활성 runtime / server aggregation scaffold |
 | FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/peft_encoder_local_training.py`, `scripts/runtime_adapters/federated_agent/artifact_store.py` + `methods/adaptation/peft_text_encoder/training/` | simulation |
-| Runtime resource cache | run-scoped in-memory cache | simulation bootstrap context | `methods.common` cache protocol + simulation implementation; adapter family consumes optional cache | simulation optimization, not method identity |
+| Runtime resource cache | run-scoped in-memory cache | simulation bootstrap context | `methods.common` cache protocol + simulation implementation; update family runtime consumes optional cache | simulation optimization, not method identity |
 | FL run budget | `smoke`, `reduced`, `main` | `run_controls/fl_ssl/budget` | smoke는 `runs/_smoke/fl_ssl`, reduced/main은 `runs/fl_ssl`; reduced는 5 rounds, main은 30 rounds | simulation |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
 | Security policy | `plaintext` | `security_policy.name` | `methods/federated_ssl/execution_plan.py`, future secure-update runtime capability | simulation validator |

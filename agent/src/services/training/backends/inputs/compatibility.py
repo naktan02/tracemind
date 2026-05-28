@@ -10,7 +10,7 @@ def require_training_example_backend_adapter_kind_support(
     backend: TrainingExampleBackend,
     adapter_kind: str,
 ) -> None:
-    """example backend가 training backend adapter family를 지원하는지 검증한다."""
+    """example backend가 training backend adapter_kind를 지원하는지 검증한다."""
 
     normalized_supported = tuple(
         value.strip().lower() for value in backend.supported_adapter_kinds

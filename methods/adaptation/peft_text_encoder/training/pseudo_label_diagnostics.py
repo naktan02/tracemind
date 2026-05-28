@@ -151,7 +151,7 @@ def build_final_snapshot_pseudo_label_quality(
 def tokenization_cache_namespace(
     peft_config: PeftEncoderTrainingBackendConfig,
 ) -> str:
-    """LoRA classifier tokenizer 설정을 cache namespace로 정규화한다."""
+    """PEFT text encoder tokenizer 설정을 cache namespace로 정규화한다."""
 
     return (
         f"tokenizer={peft_config.tokenizer_model_id}"

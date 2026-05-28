@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from methods.adaptation.peft_text_encoder.runtime_family import (
-    is_peft_encoder_update_family,
-    peft_encoder_runtime_payload,
-)
 from methods.adaptation.peft_text_encoder.simulation_runtime.supervised_seed import (
     PEFT_ENCODER_SEED_ADAPTER_ARTIFACT_SLOT,
     PEFT_ENCODER_SEED_CLASSIFIER_HEAD_ARTIFACT_SLOT,
     build_peft_encoder_supervised_seed_projection,
+)
+from methods.adaptation.peft_text_encoder.update_family_runtime import (
+    is_peft_encoder_update_family,
+    peft_encoder_runtime_payload,
 )
 from methods.federated_ssl.server_step import (
     resolve_method_supervised_seed_step_parameters,

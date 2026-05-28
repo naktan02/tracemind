@@ -337,7 +337,7 @@ runtime payload를 읽어야 할 때 이 폴더를 통해서만 연결한다.
   나눈 실제 runtime adapter package.
   - `runtime.py`: `SimulationServerRuntime` orchestration.
   - `repositories.py`: simulation output root 기준 main_server repository wiring.
-  - `initial_state_factory.py`: adapter family별 initial shared state 생성.
+  - `initial_state_factory.py`: update family별 initial shared state 생성.
   - `round_request_mapper.py`: experiment task config -> round open request 변환.
 - `prototype_publication_runtime.py`: prototype pack publication/sync bridge.
 

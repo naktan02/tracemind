@@ -255,7 +255,7 @@ def train_classifier(
         train_epoch=train_epoch,
         evaluate_selection=evaluate_selection,
         best_checkpoint_error_message=(
-            "LoRA classifier training did not produce a best checkpoint."
+            "PEFT text encoder training did not produce a best checkpoint."
         ),
         log_epoch_summary=lambda message: print(message, flush=True),
     )

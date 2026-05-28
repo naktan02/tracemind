@@ -1,4 +1,4 @@
-"""PEFT text encoder runtime family helpers."""
+"""PEFT text encoder update-family runtime helpers."""
 
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def build_initial_peft_encoder_state(
     labels: Sequence[str],
     updated_at: datetime,
 ) -> SharedAdapterState | None:
-    """지원 family면 initial shared state를 만들고, 아니면 None을 반환한다."""
+    """지원 update family면 initial shared state를 만들고, 아니면 None을 반환한다."""
 
     _ = embedding_dim
     update_family_name = _normalize_family_name(round_runtime_config.update_family_name)
@@ -95,7 +95,7 @@ def build_peft_text_encoder_composition_slug(
     round_runtime_mapping: Mapping[str, object],
     update_family_name: str,
 ) -> str:
-    """PEFT text encoder run layout slug를 family owner 쪽에서 만든다."""
+    """PEFT text encoder run layout slug를 update-family owner 쪽에서 만든다."""
 
     family_name = _normalize_family_name(update_family_name)
     runtime_payload = _runtime_payload_mapping(
@@ -141,7 +141,7 @@ def build_training_backend_config_for_peft_encoder_state(
     active_adapter_state: PeftClassifierState,
     objective_config: TrainingObjectiveConfig | None,
 ) -> PeftEncoderTrainingBackendConfig:
-    """active state family에 맞는 local trainer config를 만든다."""
+    """active PEFT state에 맞는 local trainer config를 만든다."""
 
     return build_peft_encoder_training_backend_config(objective_config)
 
@@ -151,7 +151,7 @@ def build_training_backend_for_peft_encoder_state(
     active_adapter_state: PeftClassifierState,
     objective_config: TrainingObjectiveConfig | None,
 ) -> PeftEncoderTrainingBackend:
-    """active state family에 맞는 Query SSL local backend를 만든다."""
+    """active PEFT state에 맞는 Query SSL local backend를 만든다."""
 
     config = build_training_backend_config_for_peft_encoder_state(
         active_adapter_state=active_adapter_state,

@@ -6,8 +6,8 @@ source of truth가 아니며, 새 작업 판단은 코드, code-adjacent README,
 
 ## 현재 상태
 
-주요 runtime refactor는 완료됐다. 다음 변경은 새 method, adapter family, runtime
-capability가 실제로 필요할 때만 연다.
+주요 runtime refactor는 완료됐다. 다음 변경은 새 method, update/payload family,
+runtime capability가 실제로 필요할 때만 연다.
 
 최종 method/runtime vocabulary와 `adapter_family`에서 `update_family`로의 전환 계획은
 `docs/architecture/target-method-runtime-structure.md`를 우선한다. 이 문서는 현행
@@ -40,7 +40,7 @@ method-only aggregation 변형을 묶을 수 있다. 두 개 이상 방법론에
 - runtime/API fallback은 `methods/federated_ssl/runtime_fallbacks.py` 하나로 제한한다.
 - runtime/objective compatibility는 `methods/adaptation/runtime_objective_compatibility.py`
   dispatcher와 family-local 구현이 맡는다.
-- `main_server`는 generic round family, aggregation executor, artifact ref capability,
+- `main_server`는 generic payload adapter, aggregation executor, artifact ref capability,
   server policy executor, round-state exchange bridge만 소유한다.
 - scripts는 runtime adapter, report builder, artifact writer를 thin orchestration으로 유지한다.
 - old path compatibility facade와 단순 re-export wrapper는 재도입하지 않는다.
@@ -66,11 +66,11 @@ FedMatch, FedLGMatch, `(FL)^2` 중 하나를 실제 구현할 때는 먼저
 server/round policy, tests를 둔다. `agent/`나 `main_server/` 변경이 필요하면 그것이
 method-specific 구현인지 generic capability인지 먼저 검증한다.
 
-새 adapter family를 추가할 때는 shared payload family contract, methods-owned update
+새 update/payload family를 추가할 때는 shared payload family contract, methods-owned update
 core, aggregation projection, preflight를 먼저 정의한다. runtime은 bridge/capability만
 추가한다.
 
-script runtime branch가 한 adapter family를 넘어 커지면 scripts 내부 분기를 늘리지 말고
+script runtime branch가 한 update family를 넘어 커지면 scripts 내부 분기를 늘리지 말고
 methods-owned dispatcher나 family-owned helper로 이동한다.
 
 ## 검증

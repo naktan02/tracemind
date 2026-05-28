@@ -66,7 +66,7 @@ def run_client_round(
     ):
         raise NotImplementedError(
             "Federated SSL method requires a custom client runtime that is not "
-            f"wired for this adapter family: {descriptor.name}"
+            f"wired for this update family: {descriptor.name}"
         )
 
     raise NotImplementedError(

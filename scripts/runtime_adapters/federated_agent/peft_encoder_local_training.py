@@ -17,10 +17,6 @@ from methods.adaptation.peft_text_encoder.federated_ssl import (
     helper_provider,
     method_owned_training,
 )
-from methods.adaptation.peft_text_encoder.runtime_family import (
-    build_training_backend_config_for_peft_encoder_state,
-    build_training_backend_for_peft_encoder_state,
-)
 from methods.adaptation.peft_text_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
@@ -32,6 +28,10 @@ from methods.adaptation.peft_text_encoder.update.delta_artifacts import (
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
+)
+from methods.adaptation.peft_text_encoder.update_family_runtime import (
+    build_training_backend_config_for_peft_encoder_state,
+    build_training_backend_for_peft_encoder_state,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder

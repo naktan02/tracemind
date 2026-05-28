@@ -14,7 +14,7 @@ from scripts.experiments.fl_ssl.run_layout import (
 )
 
 PEFT_TEXT_ENCODER_SLUG_BUILDER = (
-    "methods.adaptation.peft_text_encoder.runtime_family."
+    "methods.adaptation.peft_text_encoder.update_family_runtime."
     "build_peft_text_encoder_composition_slug"
 )
 

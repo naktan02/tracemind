@@ -423,7 +423,7 @@ def test_fedmatch_helper_index_prefers_kdtree_when_scipy_is_available() -> None:
     )
 
 
-def test_fedmatch_lora_classifier_partition_mapping_is_explicit() -> None:
+def test_fedmatch_peft_encoder_partition_mapping_is_explicit() -> None:
     assert trace_parameter_mapping.original_trainable_scope == (
         "ResNet9 Conv/Dense full weights"
     )

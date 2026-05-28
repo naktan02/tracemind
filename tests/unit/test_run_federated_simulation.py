@@ -452,7 +452,7 @@ def _default_round_runtime_config(
     payload_adapter_kind: str = "peft_classifier",
     update_family_name: str = "peft_text_encoder",
     initial_state_builder: str | None = (
-        "methods.adaptation.peft_text_encoder.runtime_family."
+        "methods.adaptation.peft_text_encoder.update_family_runtime."
         "build_initial_peft_encoder_state"
     ),
     validation_evaluator: str | None = (
@@ -2364,7 +2364,7 @@ def test_run_simulation_request_rejects_missing_peft_runtime_config(
             aggregation_backend_name="fedavg",
             update_family_name="peft_text_encoder",
             initial_state_builder=(
-                "methods.adaptation.peft_text_encoder.runtime_family."
+                "methods.adaptation.peft_text_encoder.update_family_runtime."
                 "build_initial_peft_encoder_state"
             ),
             validation_evaluator=(
