@@ -21,6 +21,7 @@ from methods.adaptation.peft_text_encoder.update.materialization import (
 from methods.adaptation.peft_text_encoder.update_family_runtime import (
     is_peft_encoder_update_family,
 )
+from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.common.timing import TimingRecorder
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.client_diagnostics import (
@@ -150,7 +151,7 @@ def _run_method_owned_peft_encoder_client_round(
                 else tuple(request.validation_rows)
             ),
             strong_view_policy=(
-                "first_aug"
+                DEFAULT_STRONG_VIEW_POLICY
                 if query_ssl_config is None
                 else query_ssl_config.strong_view_policy
             ),

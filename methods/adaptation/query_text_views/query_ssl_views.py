@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from methods.adaptation.query_text_views.data import (
+    DEFAULT_STRONG_VIEW_POLICY,
     build_multiview_dataloader,
     build_weak_dataloader,
 )
@@ -28,7 +29,7 @@ def build_query_ssl_unlabeled_dataloader(
     task_prefix: str,
     shuffle: bool,
     view_builder_name: str,
-    strong_view_policy: str = "first_aug",
+    strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY,
     tokenization_cache: TextTokenizationCache | None = None,
     tokenization_cache_namespace: str | None = None,
 ) -> Any:

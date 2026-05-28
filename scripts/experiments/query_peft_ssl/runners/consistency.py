@@ -9,6 +9,7 @@ from typing import Any
 from methods.adaptation.peft_text_encoder.training.loops import (
     train_query_ssl_classifier as train_query_ssl_peft_classifier,
 )
+from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.adaptation.query_text_views.query_ssl_views import (
     build_query_ssl_unlabeled_dataloader,
 )
@@ -245,7 +246,7 @@ def _build_unlabeled_loader(
 def _resolve_strong_view_policy(cfg: Any) -> str:
     raw_policy = getattr(cfg, "query_ssl_strong_view_policy", None)
     if raw_policy is None:
-        return "first_aug"
+        return DEFAULT_STRONG_VIEW_POLICY
     return str(getattr(raw_policy, "policy", raw_policy))
 
 

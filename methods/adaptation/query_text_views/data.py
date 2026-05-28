@@ -14,6 +14,20 @@ from methods.adaptation.query_text_views.tokenization import (
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
+STRONG_VIEW_FIRST_AUG = "first_aug"
+STRONG_VIEW_SECOND_AUG = "second_aug"
+STRONG_VIEW_ROW_PARITY_AUG = "row_parity_aug"
+STRONG_VIEW_QUERY_ID_HASH_AUG = "query_id_hash_aug"
+DEFAULT_STRONG_VIEW_POLICY = STRONG_VIEW_FIRST_AUG
+STRONG_VIEW_POLICIES = frozenset(
+    {
+        STRONG_VIEW_FIRST_AUG,
+        STRONG_VIEW_SECOND_AUG,
+        STRONG_VIEW_ROW_PARITY_AUG,
+        STRONG_VIEW_QUERY_ID_HASH_AUG,
+    }
+)
+
 
 class TextLabelDataset(Dataset[dict[str, Any]]):
     """라벨된 query row를 tokenizer 입력 배치로 노출한다."""
@@ -51,7 +65,7 @@ class TextMultiviewDataset(Dataset[dict[str, Any]]):
         *,
         rows: list[LabeledQueryRow],
         task_prefix: str,
-        strong_view_policy: str = "first_aug",
+        strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY,
     ) -> None:
         self._rows = rows
         self._task_prefix = task_prefix
@@ -225,7 +239,7 @@ def build_multiview_dataloader(
     max_length: int,
     task_prefix: str,
     shuffle: bool,
-    strong_view_policy: str = "first_aug",
+    strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY,
     tokenization_cache: TextTokenizationCache | None = None,
     tokenization_cache_namespace: str | None = None,
 ) -> DataLoader[dict[str, Any]]:
@@ -282,16 +296,10 @@ def _normalize_strong_view_policy(value: str) -> str:
     policy = str(value).strip()
     if not policy:
         raise ValueError("strong_view_policy must not be empty.")
-    supported = {
-        "first_aug",
-        "second_aug",
-        "row_parity_aug",
-        "query_id_hash_aug",
-    }
-    if policy not in supported:
+    if policy not in STRONG_VIEW_POLICIES:
         raise ValueError(
             "Unsupported strong_view_policy. "
-            f"Expected one of {sorted(supported)}, got {policy!r}."
+            f"Expected one of {sorted(STRONG_VIEW_POLICIES)}, got {policy!r}."
         )
     return policy
 
@@ -304,13 +312,13 @@ def _select_usb_strong_view(
     query_id: str,
     policy: str,
 ) -> str:
-    if policy == "first_aug":
+    if policy == STRONG_VIEW_FIRST_AUG:
         return aug_0
-    if policy == "second_aug":
+    if policy == STRONG_VIEW_SECOND_AUG:
         return aug_1
-    if policy == "row_parity_aug":
+    if policy == STRONG_VIEW_ROW_PARITY_AUG:
         return aug_0 if row_index % 2 == 0 else aug_1
-    if policy == "query_id_hash_aug":
+    if policy == STRONG_VIEW_QUERY_ID_HASH_AUG:
         digest = hashlib.sha256(query_id.encode("utf-8")).digest()
         return aug_0 if digest[0] % 2 == 0 else aug_1
     raise ValueError(f"Unsupported strong_view_policy: {policy!r}.")

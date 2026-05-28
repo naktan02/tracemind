@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.diagnostic_sampling import (
@@ -383,7 +384,7 @@ class FederatedQuerySslObjectiveConfig:
     method_name: str
     algorithm_name: str
     parameters: Mapping[str, object] = field(default_factory=dict)
-    strong_view_policy: str = "first_aug"
+    strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY
     unlabeled_batch_size: int | None = None
 
     @classmethod
@@ -416,7 +417,8 @@ class FederatedQuerySslObjectiveConfig:
             algorithm_name=algorithm_name,
             parameters={},
             strong_view_policy=(
-                _optional_str(extras.get("strong_view_policy")) or "first_aug"
+                _optional_str(extras.get("strong_view_policy"))
+                or DEFAULT_STRONG_VIEW_POLICY
             ),
             unlabeled_batch_size=unlabeled_batch_size,
         )
@@ -426,7 +428,7 @@ class FederatedQuerySslObjectiveConfig:
         cls,
         source: Mapping[str, object],
         *,
-        strong_view_policy: str = "first_aug",
+        strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY,
     ) -> "FederatedQuerySslObjectiveConfig":
         """Hydra query_ssl_method mapping을 typed config로 해석한다."""
 
