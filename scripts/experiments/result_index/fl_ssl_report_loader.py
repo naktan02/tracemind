@@ -60,7 +60,9 @@ def load_fl_ssl_result_index_records(
         or optional_str(ssl_method.get("name"))
         or "unknown"
     )
-    adapter_family = optional_str(round_runtime.get("adapter_family_name"))
+    adapter_family = optional_str(
+        round_runtime.get("payload_adapter_kind")
+    ) or optional_str(round_runtime.get("adapter_family_name"))
     update_family = optional_str(
         round_runtime.get("update_family_name")
     ) or optional_str(manual_axes.get("update_family"))

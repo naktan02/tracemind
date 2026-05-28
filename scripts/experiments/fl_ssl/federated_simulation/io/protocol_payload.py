@@ -90,7 +90,8 @@ def build_protocol_payload(
             ),
         },
         "round_runtime": {
-            "adapter_family_name": round_runtime_config.adapter_family_name,
+            "payload_adapter_kind": round_runtime_config.payload_adapter_kind,
+            "adapter_family_name": round_runtime_config.payload_adapter_kind,
             "update_family_name": round_runtime_config.update_family_name,
             "round_runtime_payload_builder": (
                 round_runtime_config.round_runtime_payload_builder

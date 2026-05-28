@@ -620,6 +620,43 @@ def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
     )
 
 
+def test_fl_report_protocol_records_payload_adapter_kind() -> None:
+    required_by_path = (
+        (
+            SCRIPTS_SRC
+            / "experiments"
+            / "fl_ssl"
+            / "federated_simulation"
+            / "io"
+            / "protocol_payload.py",
+            (
+                '"payload_adapter_kind": round_runtime_config.payload_adapter_kind',
+                '"adapter_family_name": round_runtime_config.payload_adapter_kind',
+            ),
+        ),
+        (
+            SCRIPTS_SRC / "experiments" / "result_index" / "fl_ssl_report_loader.py",
+            (
+                'round_runtime.get("payload_adapter_kind")',
+                'round_runtime.get("adapter_family_name")',
+            ),
+        ),
+    )
+    missing = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path, snippets in required_by_path
+        for snippet in snippets
+        if snippet not in path.read_text(encoding="utf-8")
+    ]
+
+    assert not missing, (
+        "새 FL report protocol은 update_family_name과 payload_adapter_kind를 "
+        "canonical field로 기록/해석한다. adapter_family_name은 old-run/result "
+        "reader compatibility field로만 남긴다.\n"
+        f"{chr(10).join(f'- {item}' for item in missing)}"
+    )
+
+
 def test_federated_ssl_runtime_pairs_are_update_family_oriented() -> None:
     checked_roots = (
         METHODS_FEDERATED_SSL_SRC,

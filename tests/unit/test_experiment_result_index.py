@@ -220,6 +220,30 @@ def test_load_result_index_records_reads_peft_classifier_objective(
     assert records.run.update_delta_format == "server_uploaded_artifact_ref"
 
 
+def test_fl_ssl_result_index_prefers_payload_adapter_kind(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_peft_fl_ssl_report(tmp_path)
+    payload = _sample_fl_ssl_report()
+    protocol = payload["protocol"]
+    protocol["round_runtime"] = {
+        "payload_adapter_kind": "peft_classifier",
+        "adapter_family_name": "lora_classifier",
+        "update_family_name": "peft_text_classifier",
+        "aggregation_backend_name": "fedavg",
+    }
+    protocol["objective"] = {
+        "query_ssl.method_name": "fixmatch_usb_v1",
+        "query_ssl.algorithm_name": "fixmatch",
+        "peft_classifier.peft_adapter_name": "lora",
+    }
+    report_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.adapter_family_name == "peft_classifier"
+
+
 def test_result_index_discovers_fl_ssl_report_artifacts(tmp_path: Path) -> None:
     central_report = _write_report(tmp_path)
     fl_report = _write_fl_ssl_report(tmp_path)
@@ -511,6 +535,7 @@ def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
     payload = _sample_fl_ssl_report()
     protocol = payload["protocol"]
     protocol["round_runtime"] = {
+        "payload_adapter_kind": "peft_classifier",
         "adapter_family_name": "peft_classifier",
         "update_family_name": "peft_text_classifier",
         "aggregation_backend_name": "fedavg",

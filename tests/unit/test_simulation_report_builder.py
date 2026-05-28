@@ -324,9 +324,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             margin_threshold=0.0,
         ),
         round_runtime_config=FederatedRoundRuntimeConfig(
-            adapter_family_name="diagonal_scale",
+            adapter_family_name="peft_classifier",
             aggregation_backend_name="fedavg",
-            update_family_name="diagonal_scale",
+            update_family_name="peft_text_classifier",
         ),
         embedding_spec=EmbeddingAdapterSpec(
             backend="mxbai",
@@ -389,6 +389,15 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     second_round_aggregation = payload["diagnostics"]["aggregation"]["rounds"][1]
     assert payload["protocol"]["ssl_method"]["local_budget_policy"] == (
         "iteration_capped"
+    )
+    assert payload["protocol"]["round_runtime"]["payload_adapter_kind"] == (
+        "peft_classifier"
+    )
+    assert payload["protocol"]["round_runtime"]["adapter_family_name"] == (
+        "peft_classifier"
+    )
+    assert payload["protocol"]["round_runtime"]["update_family_name"] == (
+        "peft_text_classifier"
     )
     assert payload["rounds"][0]["round_index"] == 1
     assert payload["rounds"][0]["global_validation"]["macro_f1"] == pytest.approx(0.4)
@@ -663,8 +672,8 @@ def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
                 margin_threshold=0.0,
             ),
             round_runtime_config=FederatedRoundRuntimeConfig(
-                adapter_family_name="diagonal_scale",
+                adapter_family_name="peft_classifier",
                 aggregation_backend_name="fedavg",
-                update_family_name="diagonal_scale",
+                update_family_name="peft_text_classifier",
             ),
         )
