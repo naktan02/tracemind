@@ -38,7 +38,7 @@ class SharedAdapterAggregationBackend(Protocol):
         next_model_revision: str,
         aggregated_at: datetime,
     ) -> AggregationResult:
-        """같은 adapter family의 update들을 새 전역 상태로 합친다."""
+        """같은 payload adapter의 update들을 새 전역 상태로 합친다."""
 
 
 AggregationBackendFactory = Callable[

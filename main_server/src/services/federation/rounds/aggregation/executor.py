@@ -40,7 +40,7 @@ class MethodAggregationBackend:
 
     @property
     def adapter_kind(self) -> str:
-        """이 backend가 처리하는 shared adapter family discriminator."""
+        """이 backend가 처리하는 shared payload adapter discriminator."""
 
         return self.strategy.adapter_kind
 

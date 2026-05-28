@@ -144,10 +144,12 @@ def test_shared_layer_does_not_import_runtime_layers() -> None:
     assert not violations, _format_violations(violations)
 
 
-def test_shared_contracts_do_not_keep_central_adapter_family_metadata_catalog() -> None:
-    forbidden_path = SHARED_SRC / "contracts" / "adapter_family_metadata.py"
+def test_shared_contracts_do_not_keep_central_payload_adapter_metadata_catalog() -> (
+    None
+):
+    forbidden_path = SHARED_SRC / "contracts" / "payload_adapter_metadata.py"
     assert not forbidden_path.exists(), (
-        "shared는 중앙 adapter family metadata catalog를 소유하지 않는다. "
+        "shared는 중앙 payload adapter metadata catalog를 소유하지 않는다. "
         "payload shape, adapter_kind, parse/serialize 규칙은 "
         "adapter_contract_families/<family>.py와 registry.py에 둔다."
     )
@@ -211,7 +213,7 @@ def test_shared_training_contracts_do_not_own_adapter_payload_format_catalog() -
 
     assert not violations, (
         "shared training envelope는 payload_format 문자열 필드만 소유한다. "
-        "adapter-family별 canonical/accepted format은 "
+        "payload-adapter별 canonical/accepted format은 "
         "shared/src/contracts/adapter_contract_families/<family>.py가 소유한다.\n"
         f"violations={violations}"
     )
@@ -390,7 +392,7 @@ def test_query_text_views_stays_input_glue_only() -> None:
 
     assert not violations, (
         "query_text_views는 query-domain row/view/token-batch 입력 glue만 "
-        "소유한다. PEFT model composition, shared update payload, adapter-family "
+        "소유한다. PEFT model composition, shared update payload, payload-adapter "
         "materialization은 각 canonical owner에 둔다.\n"
         f"{_format_violations(violations)}"
     )
@@ -472,11 +474,11 @@ def test_fl_entrypoint_does_not_embed_lora_classifier_runtime_scope() -> None:
     )
 
 
-def test_fl_entrypoint_does_not_own_payload_adapter_family_alias() -> None:
+def test_fl_entrypoint_does_not_own_payload_payload_adapter_alias() -> None:
     path = CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
-        "adapter_family_name:",
+        "payload_adapter_name:",
         "payload_adapter_kind:",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
@@ -511,7 +513,7 @@ def test_fl_simulation_runtime_model_does_not_embed_lora_classifier_scope() -> N
         "lora_classifier: FederatedPeftEncoderRuntimeConfig",
         "round_runtime_config.lora_classifier",
         "or round_runtime_config.lora_classifier",
-        'adapter_family_name == "lora_classifier"',
+        'payload_adapter_name == "lora_classifier"',
         "LORA_CLASSIFIER_ADAPTER_KIND,",
         "PEFT_ENCODER_LEGACY_RESOURCE_CACHE_NAMESPACE",
         "peft_encoder_legacy_resource_cache_prefix",
@@ -573,11 +575,11 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         "round_runtime_mapping.get(PEFT_CLASSIFIER_ADAPTER_KIND)",
         "round_runtime.peft_classifier",
         "round_runtime.lora_classifier",
-        "runtime_payload_for_adapter_family",
+        "runtime_payload_for_payload_adapter",
         "classifier_head_bootstrap_logit_scale",
-        "adapter_family_name=str(cfg.round_runtime.adapter_family_name)",
-        "adapter_family_name: str | None",
-        "def adapter_family_name(",
+        "payload_adapter_name=str(cfg.round_runtime.payload_adapter_name)",
+        "payload_adapter_name: str | None",
+        "def payload_adapter_name(",
     )
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:
@@ -608,9 +610,9 @@ def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
         / "peft_encoder_server_step.py",
     )
     forbidden_snippets = (
-        "is_peft_encoder_adapter_family",
-        "round_runtime_config.adapter_family_name",
-        "adapter_family_name:",
+        "is_peft_encoder_payload_adapter",
+        "round_runtime_config.payload_adapter_name",
+        "payload_adapter_name:",
     )
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:
@@ -621,13 +623,13 @@ def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
 
     assert not violations, (
         "PEFT runtime bridge의 지원 여부와 payload 선택은 update_family_name 기준이다. "
-        "adapter_family_name은 shared contract/aggregation compatibility 표면에만 "
+        "payload_adapter_name은 shared contract/aggregation compatibility 표면에만 "
         "남긴다.\n"
         f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
 
 
-def test_active_round_runtime_configs_do_not_accept_adapter_family_alias() -> None:
+def test_active_round_runtime_configs_do_not_accept_payload_adapter_alias() -> None:
     checked_paths = (
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "models.py",
         SCRIPTS_SRC
@@ -645,13 +647,13 @@ def test_active_round_runtime_configs_do_not_accept_adapter_family_alias() -> No
         / "config.py",
     )
     forbidden_snippets = (
-        "adapter_family_name: str | None",
-        "def adapter_family_name(",
+        "payload_adapter_name: str | None",
+        "def payload_adapter_name(",
         "LEGACY_ROUND_ADAPTER_FAMILY_ENV",
         "TRACEMIND_ROUND_ADAPTER_FAMILY",
-        'round_runtime, "adapter_family_name"',
-        "provide legacy round_runtime.adapter_family_name",
-        "payload_adapter_kind and legacy adapter_family_name",
+        'round_runtime, "payload_adapter_name"',
+        "provide legacy round_runtime.payload_adapter_name",
+        "payload_adapter_kind and legacy payload_adapter_name",
     )
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:
@@ -662,7 +664,7 @@ def test_active_round_runtime_configs_do_not_accept_adapter_family_alias() -> No
 
     assert not violations, (
         "active FL runtime config는 payload_adapter_kind만 받는다. "
-        "adapter_family_name은 새 실행 config, report/result reader alias로 "
+        "payload_adapter_name은 새 실행 config, report/result reader alias로 "
         "되살리지 않는다.\n"
         f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
@@ -693,7 +695,7 @@ def test_fl_report_protocol_records_payload_adapter_kind() -> None:
 
     assert not missing, (
         "새 FL report protocol은 update_family_name과 payload_adapter_kind를 "
-        "canonical field로 기록한다. adapter_family_name fallback은 result reader에도 "
+        "canonical field로 기록한다. payload_adapter_name fallback은 result reader에도 "
         "되살리지 않는다.\n"
         f"{chr(10).join(f'- {item}' for item in missing)}"
     )
@@ -721,11 +723,11 @@ def test_result_index_uses_payload_adapter_kind_as_canonical_field() -> None:
     forbidden_by_path = (
         (
             SCRIPTS_SRC / "experiments" / "result_index" / "models.py",
-            ("adapter_family_name: str | None",),
+            ("payload_adapter_name: str | None",),
         ),
         (
             SCRIPTS_SRC / "experiments" / "result_index" / "schema.py",
-            ("adapter_family_name text",),
+            ("payload_adapter_name text",),
         ),
         (
             SCRIPTS_SRC / "experiments" / "result_index" / "dashboard_export.py",
@@ -747,7 +749,8 @@ def test_result_index_uses_payload_adapter_kind_as_canonical_field() -> None:
 
     assert not missing and not violations, (
         "result-index와 dashboard의 canonical 실행 표면은 payload_adapter_kind다. "
-        "adapter_family_name은 old report/old DB fallback reader로도 해석하지 않는다.\n"
+        "payload_adapter_name은 old report/old DB fallback reader로도 해석하지 "
+        "않는다.\n"
         f"missing:\n{chr(10).join(f'- {item}' for item in missing)}\n"
         f"violations:\n{chr(10).join(f'- {item}' for item in violations)}"
     )
@@ -795,13 +798,13 @@ def test_federated_ssl_runtime_pairs_are_update_family_oriented() -> None:
                 if node.func.id != "FederatedSslRuntimePair":
                     continue
                 if any(
-                    keyword.arg == "adapter_family_name" for keyword in node.keywords
+                    keyword.arg == "payload_adapter_name" for keyword in node.keywords
                 ):
                     violations.append((_relative_repo_path(path), node.lineno))
 
     assert not violations, (
         "FL SSL method recipe의 runtime pair는 trainable-state/update-family "
-        "조합을 표현한다. adapter_family_name은 shared payload/aggregation "
+        "조합을 표현한다. payload_adapter_name은 shared payload/aggregation "
         "compatibility 표면에만 남긴다.\n"
         f"{chr(10).join(f'- {path}:{line}' for path, line in violations)}"
     )
@@ -817,10 +820,10 @@ def test_fl_simulation_server_aggregate_namespace_uses_update_family() -> None:
         REPO_ROOT / "tests" / "unit" / "test_run_federated_simulation.py",
     )
     forbidden_snippets = (
-        "server-aggregate://{adapter_family_name}",
+        "server-aggregate://{payload_adapter_name}",
         "server-aggregate://peft_classifier",
         '/ "peft_classifier"\n        / "sim_rev_',
-        "adapter_family_name=str(active.adapter_state.adapter_kind)",
+        "payload_adapter_name=str(active.adapter_state.adapter_kind)",
     )
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:
@@ -837,7 +840,7 @@ def test_fl_simulation_server_aggregate_namespace_uses_update_family() -> None:
     )
 
 
-def test_fl_simulation_does_not_own_adapter_family_compatibility_rule() -> None:
+def test_fl_simulation_does_not_own_payload_adapter_compatibility_rule() -> None:
     path = (
         SCRIPTS_SRC
         / "experiments"
@@ -849,12 +852,12 @@ def test_fl_simulation_does_not_own_adapter_family_compatibility_rule() -> None:
     forbidden_snippets = (
         "def _require_local_adapter_matches_round_runtime(",
         "local_update_profile and round_runtime",
-        "round_adapter_family={request.round_runtime_config.adapter_family_name}",
+        "round_payload_adapter={request.round_runtime_config.payload_adapter_name}",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert not violations, (
-        "FL SSL adapter-family compatibility rule과 error message는 "
+        "FL SSL payload-adapter compatibility rule과 error message는 "
         "methods/federated_ssl/compatibility.py가 소유한다. simulation runner는 "
         "bootstrap에서 methods-owned validator만 호출한다.\n"
         f"violations={violations}"
@@ -869,7 +872,7 @@ def test_fl_simulation_unit_tests_use_active_peft_payload_surface() -> None:
         "make_lora_classifier_delta_payload",
         "LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT",
         'payload_kind="lora_classifier_materialized_state.v1"',
-        'adapter_family_name="diagonal_scale"',
+        'payload_adapter_name="diagonal_scale"',
         'update_family_name="diagonal_scale"',
         'training_backend_name="diagonal_scale_heuristic"',
         'privacy_guard_name="diagonal_scale_clip_only"',
@@ -984,8 +987,8 @@ def test_local_update_registry_does_not_embed_peft_backend_override() -> None:
 
 
 def test_payload_adapter_module_resolver_does_not_embed_concrete_family_map() -> None:
-    path = METHODS_SRC / "adaptation" / "payload_adapter_modules.py"
-    removed_path = METHODS_SRC / "adaptation" / "adapter_family_modules.py"
+    removed_path = METHODS_SRC / "adaptation" / "payload_adapter_modules.py"
+    path = METHODS_SRC / "adaptation" / "implementation_modules.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         '"classifier_head":',
@@ -997,9 +1000,9 @@ def test_payload_adapter_module_resolver_does_not_embed_concrete_family_map() ->
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert not removed_path.exists(), (
-        "adapter_family_modules.py 이름은 legacy adapter-family 용어를 되살린다. "
+        "payload_adapter_modules.py 이름은 legacy payload-adapter 용어를 되살린다. "
         "payload adapter kind -> implementation owner 해석은 "
-        "payload_adapter_modules.py가 소유한다."
+        "implementation_modules.py가 소유한다."
     )
     assert not violations, (
         "payload adapter module resolver는 concrete alias table을 소유하지 "
@@ -1448,7 +1451,7 @@ def test_runtime_fallback_profile_does_not_import_adapter_implementation() -> No
     )
 
 
-def test_round_manager_does_not_own_default_adapter_family() -> None:
+def test_round_manager_does_not_own_default_payload_adapter() -> None:
     path = (
         MAIN_SERVER_SRC
         / "services"
@@ -1459,12 +1462,15 @@ def test_round_manager_does_not_own_default_adapter_family() -> None:
     source = path.read_text(encoding="utf-8")
     imports = _collect_absolute_imports(path)
 
-    assert "main_server.src.services.federation.rounds.families.registry" not in imports
-    assert "build_shared_adapter_round_family" not in source
+    assert (
+        "main_server.src.services.federation.rounds.payload_adapters.registry"
+        not in imports
+    )
+    assert "build_shared_adapter_round_payload_adapter" not in source
     assert "diagonal_scale" not in source, (
         "RoundManagerService는 round lifecycle orchestration만 소유한다. no-config "
-        "legacy adapter family fallback은 runtime/config profile에 격리하고, "
-        "service는 caller가 조립한 adapter_family를 받는다."
+        "legacy payload adapter fallback은 runtime/config profile에 격리하고, "
+        "service는 caller가 조립한 payload_adapter를 받는다."
     )
 
 
@@ -1483,7 +1489,7 @@ def test_server_round_runtime_config_isolates_legacy_adapter_profile() -> None:
         "격리한다."
     )
     assert "legacy_diagonal_scale" not in source
-    assert 'adapter_family_name="diagonal_scale"' not in source
+    assert 'payload_adapter_name="diagonal_scale"' not in source
 
 
 def test_privacy_guards_do_not_register_removed_diagonal_scale_guard() -> None:
@@ -1576,7 +1582,7 @@ def test_fl_scripts_do_not_define_paper_method_specific_runtime_modules() -> Non
     )
 
 
-def test_fl_scripts_legacy_family_names_stay_in_declared_compatibility_files() -> None:
+def test_fl_scripts_legacy_payload_names_stay_in_compatibility_files() -> None:
     roots = (
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation",
         SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
@@ -1614,7 +1620,7 @@ def test_fl_scripts_legacy_family_names_stay_in_declared_compatibility_files() -
                 actual_paths.add(_relative_repo_path(path))
 
     assert actual_paths <= allowed_paths, (
-        "FL scripts/runtime adapters에 adapter-family/method legacy 이름을 새 파일로 "
+        "FL scripts/runtime adapters에 payload-adapter/method legacy 이름을 새 파일로 "
         "확산하지 않는다. 남은 lora_classifier/peft_classifier/FedMatch report "
         "문자열은 docs/contracts/legacy_contract_ledger.md에 기록한 compatibility "
         "표면으로만 허용한다.\n"
@@ -1854,11 +1860,11 @@ def test_test_only_federated_ssl_fixture_stays_family_contract_agnostic() -> Non
     ]
 
     assert not sorted(imports & forbidden_imports), (
-        "test-only FL SSL method fixture는 특정 adapter-family payload contract를 "
+        "test-only FL SSL method fixture는 특정 payload-adapter payload contract를 "
         "import하지 않는다. fixture는 method extension seam만 검증해야 한다."
     )
     assert not snippet_violations, (
-        "test-only FL SSL method fixture는 concrete adapter-family 이름을 "
+        "test-only FL SSL method fixture는 concrete payload-adapter 이름을 "
         "하드코딩하지 않는다.\n"
         f"violations={snippet_violations}"
     )
@@ -2000,7 +2006,7 @@ def test_federated_ssl_capability_axes_do_not_split_tiny_policy_files() -> None:
     )
 
 
-def test_federated_ssl_capability_axes_stays_adapter_family_agnostic() -> None:
+def test_federated_ssl_capability_axes_stays_payload_adapter_agnostic() -> None:
     path = METHODS_FEDERATED_SSL_SRC / "capability_axes.py"
     imports = _collect_absolute_imports(path)
     forbidden_imports = {
@@ -2012,7 +2018,7 @@ def test_federated_ssl_capability_axes_stays_adapter_family_agnostic() -> None:
 
     assert not sorted(imports & forbidden_imports), (
         "FL SSL capability axis는 local/server policy 이름만 소유한다. "
-        "adapter-family payload contract나 runtime backend 해석은 "
+        "payload-adapter payload contract나 runtime backend 해석은 "
         "methods/adaptation/<family>/federated_ssl/가 소유한다."
     )
     assert "lora_classifier" not in source, (
@@ -2030,7 +2036,7 @@ def test_fedmatch_descriptor_does_not_keep_recipe_pass_through() -> None:
     )
 
 
-def test_federated_ssl_method_packages_do_not_own_adapter_family_runtime_files() -> (
+def test_federated_ssl_method_packages_do_not_own_payload_adapter_runtime_files() -> (
     None
 ):
     forbidden_fragments = (
@@ -2050,13 +2056,13 @@ def test_federated_ssl_method_packages_do_not_own_adapter_family_runtime_files()
 
     assert not violations, (
         "methods/federated_ssl/<method>/는 논문 method 의미와 policy를 소유한다. "
-        "LoRA-classifier/full encoder/DoRA 같은 adapter-family 실행 구현은 "
+        "LoRA-classifier/full encoder/DoRA 같은 payload-adapter 실행 구현은 "
         "methods/adaptation/<family>/federated_ssl/에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 
-def test_adapter_family_federated_ssl_files_do_not_multiply_by_method_name() -> None:
+def test_payload_adapter_federated_ssl_files_do_not_multiply_by_method_name() -> None:
     method_fragments = (
         "fedmatch",
         "fedlgmatch",
@@ -2075,7 +2081,7 @@ def test_adapter_family_federated_ssl_files_do_not_multiply_by_method_name() -> 
                 violations.append(_relative_repo_path(path))
 
     assert not violations, (
-        "methods/adaptation/<family>/federated_ssl/는 adapter-family 실행 primitive를 "
+        "methods/adaptation/<family>/federated_ssl/는 payload-adapter 실행 primitive를 "
         "소유한다. 새 FL SSL method마다 <method>_*.py 파일을 늘리지 말고 "
         "method 의미는 methods/federated_ssl/<method>/에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
@@ -2099,7 +2105,7 @@ def test_lora_classifier_partitioned_training_loop_is_method_neutral() -> None:
     )
 
     assert not violations, (
-        "partitioned training loop는 adapter-family execution primitive다. "
+        "partitioned training loop는 payload-adapter execution primitive다. "
         "FedMatch objective와 partition 이름은 methods/federated_ssl/fedmatch/의 "
         "caller가 주입해야 한다.\n"
         f"{chr(10).join(f'- {item}' for item in violations)}"
@@ -2296,7 +2302,7 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
         "lora_classifier model builder",
         "LoRA-classifier `partitioned_delta_average`",
         "lora_classifier leaf",
-        "round_runtime.adapter_family_name",
+        "round_runtime.payload_adapter_name",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
@@ -2500,7 +2506,7 @@ def test_agent_does_not_own_privacy_guard_modules() -> None:
     ]
 
     assert not violations, (
-        "privacy guard 정책과 adapter-family별 clipping 계산은 "
+        "privacy guard 정책과 payload-adapter별 clipping 계산은 "
         "methods/adaptation/privacy_guards가 소유한다. agent는 selected guard를 "
         "local update 실행 흐름에 연결만 한다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
@@ -2636,7 +2642,7 @@ def test_fl_simulation_runtime_compatibility_adapter_is_family_agnostic() -> Non
         "않고 methods-owned dispatcher만 호출한다."
     )
     assert "lora_classifier" not in source, (
-        "FL simulation runtime compatibility adapter는 adapter family literal로 "
+        "FL simulation runtime compatibility adapter는 payload adapter literal로 "
         "분기하지 않는다."
     )
 
@@ -2652,7 +2658,7 @@ def test_federated_ssl_server_update_dispatcher_stays_family_agnostic() -> None:
     source = dispatcher_path.read_text(encoding="utf-8")
 
     assert not sorted(imports & forbidden_imports), (
-        "FL SSL server update dispatcher는 adapter family별 payload contract를 "
+        "FL SSL server update dispatcher는 payload adapter별 payload contract를 "
         "직접 알지 않는다. family-specific backend 해석은 "
         "methods/adaptation/<family>/federated_ssl/server_update_policy.py가 "
         "소유한다."
@@ -2855,8 +2861,14 @@ def test_scripts_do_not_wrap_shared_labeled_query_rows() -> None:
     )
 
 
-def test_main_server_round_family_package_has_no_concrete_family_modules() -> None:
-    package_root = MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "families"
+def test_main_server_round_payload_adapter_package_has_no_concrete_modules() -> None:
+    package_root = (
+        MAIN_SERVER_SRC
+        / "services"
+        / "federation"
+        / "rounds"
+        / "payload_adapters"
+    )
     allowed_files = {
         package_root / "__init__.py",
         package_root / "models.py",
@@ -2869,8 +2881,8 @@ def test_main_server_round_family_package_has_no_concrete_family_modules() -> No
     ]
 
     assert not violations, (
-        "main_server round family package는 shared adapter payload registry와 "
-        "aggregation backend를 generic runtime으로 조합한다. concrete family "
+        "main_server round payload adapter package는 shared adapter payload registry와 "
+        "aggregation backend를 generic runtime으로 조합한다. concrete payload adapter "
         "module은 추가하지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
@@ -2896,12 +2908,12 @@ def test_main_server_aggregation_package_is_executor_boundary_only() -> None:
     assert not violations, (
         "main_server aggregation package는 executor, registry, server-owned "
         "artifact ref capability만 둔다. FedAvg/FedProx 같은 aggregation method와 "
-        "adapter-family projection은 methods/federated/aggregation이 소유한다.\n"
+        "payload-adapter projection은 methods/federated/aggregation이 소유한다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 
-def test_main_server_aggregation_package_has_no_method_or_family_literals() -> None:
+def test_main_server_aggregation_package_has_no_method_or_payload_literals() -> None:
     package_root = (
         MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "aggregation"
     )
@@ -2926,20 +2938,20 @@ def test_main_server_aggregation_package_has_no_method_or_family_literals() -> N
 
     assert not violations, (
         "main_server aggregation package는 selected methods strategy를 실행하는 "
-        "generic boundary만 둔다. aggregation method나 adapter family 상세 문자열은 "
+        "generic boundary만 둔다. aggregation method나 payload adapter 상세 문자열은 "
         "methods/ 쪽 strategy/projection에 둔다.\n"
         f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
 
 
-def test_main_server_aggregation_methods_do_not_define_family_specific_services() -> (
+def test_main_server_aggregation_methods_do_not_define_payload_specific_services() -> (
     None
 ):
     package_root = (
         MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "aggregation"
     )
 
-    family_name_prefixes = {
+    payload_adapter_prefixes = {
         "".join(part.capitalize() for part in adapter_kind.value.split("_"))
         for adapter_kind in AdapterKind
     }
@@ -2950,7 +2962,7 @@ def test_main_server_aggregation_methods_do_not_define_family_specific_services(
             if not isinstance(node, ast.ClassDef):
                 continue
             if any(
-                node.name.startswith(prefix) for prefix in family_name_prefixes
+                node.name.startswith(prefix) for prefix in payload_adapter_prefixes
             ) and (
                 node.name.endswith("AggregationService")
                 or node.name.endswith("AggregationConfig")
@@ -2958,9 +2970,9 @@ def test_main_server_aggregation_methods_do_not_define_family_specific_services(
                 violations.append((_relative_repo_path(path), node.name))
 
     assert not violations, (
-        "main_server aggregation method file은 family별 service/config class를 "
-        "누적하지 않는다. family 차이는 shared payload contract와 generic "
-        "runtime spec 뒤에 둔다.\n"
+        "main_server aggregation method file은 payload-adapter별 service/config "
+        "class를 누적하지 않는다. payload adapter 차이는 shared payload contract와 "
+        "generic runtime spec 뒤에 둔다.\n"
         f"{chr(10).join(f'- {path}: {class_name}' for path, class_name in violations)}"
     )
 
@@ -2983,7 +2995,7 @@ def test_fedavg_strategy_file_stays_generic_without_family_specs() -> None:
     )
 
 
-def test_adapter_family_fedavg_modules_live_under_aggregation_package() -> None:
+def test_payload_adapter_fedavg_modules_live_under_aggregation_package() -> None:
     family_roots = (
         METHODS_SRC / "adaptation" / "diagonal_scale",
         METHODS_SRC / "adaptation" / "classifier_head",
@@ -3000,7 +3012,7 @@ def test_adapter_family_fedavg_modules_live_under_aggregation_package() -> None:
     ]
 
     assert not forbidden_paths, (
-        "adapter family별 FedAvg core/projection은 root 수평 파일이 아니라 "
+        "payload adapter별 FedAvg core/projection은 root 수평 파일이 아니라 "
         "methods/adaptation/<family>/aggregation/fedavg.py에 모은다.\n"
         f"{chr(10).join(f'- {path}' for path in forbidden_paths)}"
     )
@@ -3022,7 +3034,7 @@ def test_fedavg_aggregation_package_stays_generic() -> None:
 
     assert not violations, (
         "methods/federated/aggregation/fedavg는 FedAvg 공통 산술과 strategy wiring만 "
-        "소유한다. adapter family별 FedAvg core와 payload projection은 "
+        "소유한다. payload adapter별 FedAvg core와 payload projection은 "
         "methods/adaptation/<family>/에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
@@ -3037,9 +3049,10 @@ def test_partitioned_delta_average_does_not_create_generic_backend_folder() -> N
     )
 
     assert not violations, (
-        "partitioned delta 평균은 adapter-family payload 해석이 먼저 필요한 backend다. "
-        "registry convention만 만족시키는 methods/federated/aggregation/partitioned_* "
-        "얇은 package를 만들지 않는다.\n"
+        "partitioned delta 평균은 payload-adapter payload 해석이 먼저 필요한 "
+        "backend다. registry convention만 만족시키는 "
+        "methods/federated/aggregation/partitioned_* 얇은 package를 만들지 "
+        "않는다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 

@@ -6,9 +6,9 @@ import importlib
 from collections.abc import Callable
 from typing import Protocol
 
-from methods.adaptation.payload_adapter_modules import (
+from methods.adaptation.implementation_modules import (
+    adaptation_implementation_module_name,
     normalize_payload_adapter_kind,
-    payload_adapter_module_name,
 )
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
@@ -83,7 +83,7 @@ def require_adapter_runtime_matches_objective(
 def _import_runtime_compatibility_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
-    module_name = payload_adapter_module_name(
+    module_name = adaptation_implementation_module_name(
         payload_adapter_kind=normalized_adapter_kind,
         submodule="runtime_compatibility",
     )

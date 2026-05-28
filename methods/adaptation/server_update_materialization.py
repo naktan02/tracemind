@@ -5,9 +5,9 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable
 
-from methods.adaptation.payload_adapter_modules import (
+from methods.adaptation.implementation_modules import (
+    adaptation_implementation_module_name,
     normalize_payload_adapter_kind,
-    payload_adapter_module_name,
 )
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
@@ -65,7 +65,7 @@ def require_server_materializable_update_payload(
 def _import_materialization_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
-    module_name = payload_adapter_module_name(
+    module_name = adaptation_implementation_module_name(
         payload_adapter_kind=normalized_adapter_kind,
         submodule="server_preflight",
     )

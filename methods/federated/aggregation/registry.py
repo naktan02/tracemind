@@ -6,9 +6,9 @@ import importlib
 import pkgutil
 from collections.abc import Iterable, Mapping
 
-from methods.adaptation.payload_adapter_modules import (
-    payload_adapter_module_name,
-    payload_adapter_module_root,
+from methods.adaptation.implementation_modules import (
+    adaptation_implementation_module_name,
+    adaptation_implementation_module_root,
 )
 from methods.federated.aggregation.base import (
     AggregationConfigScalar,
@@ -172,7 +172,7 @@ def _import_adapter_aggregation_module(
     normalized_adapter_kind: str,
     normalized_method_name: str,
 ) -> None:
-    module_name = payload_adapter_module_name(
+    module_name = adaptation_implementation_module_name(
         payload_adapter_kind=normalized_adapter_kind,
         submodule=f"aggregation.{normalized_method_name.replace('-', '_')}",
     )
@@ -237,7 +237,7 @@ def _import_classification_aggregation_modules() -> None:
 def _import_payload_adapter_aggregation_modules(
     normalized_adapter_kind: str,
 ) -> None:
-    module_root = payload_adapter_module_root(normalized_adapter_kind)
+    module_root = adaptation_implementation_module_root(normalized_adapter_kind)
     if not _try_import_module(module_root):
         return
     package = importlib.import_module(module_root)

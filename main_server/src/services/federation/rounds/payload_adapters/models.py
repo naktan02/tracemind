@@ -1,4 +1,4 @@
-"""Shared adapter round family contracts."""
+"""Shared adapter round payload adapter contracts."""
 
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ from ..aggregation.models import (
 )
 
 
-class SharedAdapterRoundFamily(Protocol):
-    """adapter family별 payload 변환과 집계 backend 조합."""
+class SharedAdapterRoundPayloadAdapter(Protocol):
+    """payload adapter별 payload 변환과 집계 backend 조합."""
 
     adapter_kind: str
     accepted_update_formats: tuple[str, ...]
@@ -47,15 +47,15 @@ class SharedAdapterRoundFamily(Protocol):
         """domain state를 contract payload로 변환한다."""
 
 
-RoundFamilyFactory = Callable[
+RoundPayloadAdapterFactory = Callable[
     [str, Mapping[str, AggregationConfigScalar] | None],
-    SharedAdapterRoundFamily,
+    SharedAdapterRoundPayloadAdapter,
 ]
 
 
 @dataclass(slots=True)
-class SharedAdapterRoundFamilyRuntime:
-    """adapter family contract를 server round runtime에 연결하는 generic 조합 객체."""
+class SharedAdapterRoundPayloadAdapterRuntime:
+    """payload adapter contract를 server round runtime에 연결하는 generic 조합 객체."""
 
     adapter_kind: str
     accepted_update_formats: tuple[str, ...]
@@ -65,17 +65,17 @@ class SharedAdapterRoundFamilyRuntime:
         self,
         payload: SharedAdapterStatePayload,
     ) -> SharedAdapterState:
-        """contract state payload가 현재 family와 맞는지 검증한다."""
+        """contract state payload가 현재 payload adapter와 맞는지 검증한다."""
 
         if not isinstance(payload, SharedAdapterStatePayload):
             raise TypeError(
-                "SharedAdapterRoundFamilyRuntime expects "
+                "SharedAdapterRoundPayloadAdapterRuntime expects "
                 "SharedAdapterStatePayload, "
                 f"got {type(payload)!r}."
             )
         if payload.adapter_kind != self.adapter_kind:
             raise ValueError(
-                "State payload adapter_kind does not match family: "
+                "State payload adapter_kind does not match payload adapter: "
                 f"{payload.adapter_kind}"
             )
         return payload
@@ -84,17 +84,17 @@ class SharedAdapterRoundFamilyRuntime:
         self,
         payload: SharedAdapterUpdatePayload,
     ) -> SharedAdapterUpdate:
-        """contract update payload가 현재 family와 맞는지 검증한다."""
+        """contract update payload가 현재 payload adapter와 맞는지 검증한다."""
 
         if not isinstance(payload, SharedAdapterUpdatePayload):
             raise TypeError(
-                "SharedAdapterRoundFamilyRuntime expects "
+                "SharedAdapterRoundPayloadAdapterRuntime expects "
                 "SharedAdapterUpdatePayload, "
                 f"got {type(payload)!r}."
             )
         if payload.adapter_kind != self.adapter_kind:
             raise ValueError(
-                "Update payload adapter_kind does not match family: "
+                "Update payload adapter_kind does not match payload adapter: "
                 f"{payload.adapter_kind}"
             )
         return payload
@@ -107,12 +107,13 @@ class SharedAdapterRoundFamilyRuntime:
 
         if not isinstance(state, SharedAdapterStatePayload):
             raise TypeError(
-                "SharedAdapterRoundFamilyRuntime expects "
+                "SharedAdapterRoundPayloadAdapterRuntime expects "
                 "SharedAdapterStatePayload, "
                 f"got {type(state)!r}."
             )
         if state.adapter_kind != self.adapter_kind:
             raise ValueError(
-                f"State adapter_kind does not match family: {state.adapter_kind}"
+                "State adapter_kind does not match payload adapter: "
+                f"{state.adapter_kind}"
             )
         return state

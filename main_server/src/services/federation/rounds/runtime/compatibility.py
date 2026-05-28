@@ -12,8 +12,8 @@ from main_server.src.services.federation.rounds.runtime.config import (
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 
-from ..families.registry import (
-    build_shared_adapter_round_family,
+from ..payload_adapters.registry import (
+    build_shared_adapter_round_payload_adapter,
 )
 
 
@@ -31,20 +31,20 @@ class ServerRoundRuntimeCompatibility:
 def validate_server_round_runtime_config(
     config: ServerRoundRuntimeConfig,
 ) -> ServerRoundRuntimeCompatibility:
-    """서버 round runtime config가 일관된 family/backend 조합인지 검증한다."""
+    """서버 round runtime config가 일관된 payload adapter/backend 조합인지 검증한다."""
 
-    adapter_family = build_shared_adapter_round_family(
+    payload_adapter = build_shared_adapter_round_payload_adapter(
         config.payload_adapter_kind,
         aggregation_backend_name=config.aggregation_backend_name,
         aggregation_backend_overrides=config.aggregation_backend_overrides,
     )
-    if adapter_family.aggregation_backend.adapter_kind != adapter_family.adapter_kind:
+    if payload_adapter.aggregation_backend.adapter_kind != payload_adapter.adapter_kind:
         raise ValueError(
             "Incompatible round runtime config: aggregation backend "
             f"{config.aggregation_backend_name} resolved to adapter_kind="
-            f"{adapter_family.aggregation_backend.adapter_kind}, "
+            f"{payload_adapter.aggregation_backend.adapter_kind}, "
             f"but payload adapter {config.payload_adapter_kind} expects "
-            f"{adapter_family.adapter_kind}."
+            f"{payload_adapter.adapter_kind}."
         )
     if config.method_descriptor_name is not None:
         method_descriptor = resolve_federated_ssl_method_descriptor(
@@ -77,7 +77,7 @@ def validate_server_round_runtime_config(
     return ServerRoundRuntimeCompatibility(
         payload_adapter_kind=config.payload_adapter_kind,
         update_family_name=config.update_family_name,
-        adapter_kind=adapter_family.adapter_kind,
+        adapter_kind=payload_adapter.adapter_kind,
         aggregation_backend_name=config.aggregation_backend_name,
         method_descriptor_name=config.method_descriptor_name,
     )

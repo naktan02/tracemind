@@ -15,7 +15,7 @@
 
 1. `round_lifecycle_service.py`
 2. `round_manager_service.py`
-3. `families/registry.py`
+3. `payload_adapters/registry.py`
 4. `aggregation/registry.py`
 
 ### API 경계와 canonical shape를 보고 싶을 때
@@ -56,14 +56,14 @@
   - open/update/finalize orchestration
 - `active_manifest_service.py`
   - 서버 current `ModelManifest` 저장/활성화
-- `families/`
+- `payload_adapters/`
   - shared adapter payload registry를 generic round runtime으로 연결
-  - concrete family별 파일을 두지 않고 registered payload family와 aggregation backend
-    조합으로 해석한다
+  - concrete payload adapter별 파일을 두지 않고 registered payload adapter와
+    aggregation backend 조합으로 해석한다
 - `aggregation/`
   - server-owned aggregation backend registry와 methods strategy executor
   - `fedavg.py`, `fedprox.py` 같은 aggregation method 파일은 두지 않는다
-  - `classifier_head.py`, `peft_classifier.py` 같은 adapter family 단위 module도
+  - `classifier_head.py`, `peft_classifier.py` 같은 payload adapter 단위 module도
     두지 않는다
   - registry는 explicit test/backend override와 methods strategy resolve만 맡는다
   - adapter payload projection은 `methods/adaptation/<family>/`가 소유하고,
@@ -79,8 +79,8 @@
     누적된 global LoRA/head parameter snapshot이다. `agent-local://` ref는 서버
     direct accept 단계에서 거부한다. agent/simulation runtime이 먼저 server-owned
     artifact ref로 upload/materialize해야 한다
-  - update accept 단계는 envelope의 active manifest revision뿐 아니라 family별
-    payload compatibility도 확인한다. LoRA-classifier는 payload의 model/base
+  - update accept 단계는 envelope의 active manifest revision뿐 아니라 active payload
+    adapter의 payload compatibility도 확인한다. PEFT-classifier는 payload의 model/base
     revision/scope, backbone, LoRA config, label schema가 active state와 같아야 한다
 - `acceptance/`
   - 중복 제출, 신뢰 정책, 라운드 상태 검증
@@ -92,7 +92,8 @@
   `methods/adaptation/<family>/`에 두고, server wiring은 기존 generic
   `aggregation/executor.py`와 registry를 재사용한다
 - payload adapter kind 추가: `shared/src/contracts/adapter_contract_families/` +
-  aggregation backend. `families/`에 family-specific 파일을 추가하지 않는다.
+  aggregation backend. `payload_adapters/`에 payload-adapter-specific 파일을
+  추가하지 않는다.
 - server runtime 기본 축 변경: `runtime/config.py`
 
 새 FL SSL method가 round별 state exchange, client weighting, pseudo-label statistics,
@@ -102,6 +103,6 @@ server-side calibration을 요구하면 먼저
 추가한다. method 이름을 가진 server 파일이 늘어나면 runtime adapter가 method
 framework 역할을 흡수하고 있다는 신호다.
 
-새 family나 backend를 추가할 때는
+새 payload adapter나 backend를 추가할 때는
 `docs/contracts/algorithm_extension_guide.md`와
 `docs/contracts/strategy_addition_playbook.md`를 먼저 읽는 편이 빠르다.

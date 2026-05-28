@@ -16,8 +16,8 @@ from main_server.src.services.federation.rounds.active_manifest_service import (
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
     AggregationArtifactStore,
 )
-from main_server.src.services.federation.rounds.families.models import (
-    SharedAdapterRoundFamily,
+from main_server.src.services.federation.rounds.payload_adapters.models import (
+    SharedAdapterRoundPayloadAdapter,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
@@ -47,7 +47,7 @@ class SharedAdapterStatePublication:
 class SharedAdapterStatePublicationService:
     """server-owned artifact/state 저장과 active manifest 전환을 맡는다."""
 
-    adapter_family: SharedAdapterRoundFamily
+    payload_adapter: SharedAdapterRoundPayloadAdapter
     state_repository: state_repo_module.SharedAdapterStateRepository
     active_manifest_service: ActiveModelManifestService
     artifact_store: AggregationArtifactStore
@@ -64,7 +64,7 @@ class SharedAdapterStatePublicationService:
                 payload=dict(payload),
             )
 
-        next_state_payload = self.adapter_family.state_to_payload(request.next_state)
+        next_state_payload = self.payload_adapter.state_to_payload(request.next_state)
         self.state_repository.save_shared_adapter_state(next_state_payload)
         next_manifest = ModelManifest(
             schema_version=request.base_manifest.schema_version,

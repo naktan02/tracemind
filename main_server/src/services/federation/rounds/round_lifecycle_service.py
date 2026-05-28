@@ -217,7 +217,7 @@ class RoundLifecycleService:
             envelope=submission.envelope,
             training_task=record.training_task,
         )
-        self._validate_update_payload_matches_active_family(
+        self._validate_update_payload_matches_active_payload_adapter(
             envelope=decoded_envelope,
             update_payload=submission.update_payload,
         )
@@ -372,23 +372,23 @@ class RoundLifecycleService:
                 f"{request.task_type}"
             )
 
-    def _validate_update_payload_matches_active_family(
+    def _validate_update_payload_matches_active_payload_adapter(
         self,
         *,
         envelope: TrainingUpdateEnvelope,
         update_payload: SharedAdapterUpdatePayload,
     ) -> None:
-        adapter_family = self.round_manager_service.adapter_family
-        if envelope.payload_format not in adapter_family.accepted_update_formats:
+        payload_adapter = self.round_manager_service.payload_adapter
+        if envelope.payload_format not in payload_adapter.accepted_update_formats:
             raise RoundValidationError(
-                "Update payload_format is not accepted by the active adapter "
-                f"family {adapter_family.adapter_kind}: {envelope.payload_format}"
+                "Update payload_format is not accepted by the active payload "
+                f"adapter {payload_adapter.adapter_kind}: {envelope.payload_format}"
             )
-        if update_payload.adapter_kind != adapter_family.adapter_kind:
+        if update_payload.adapter_kind != payload_adapter.adapter_kind:
             raise RoundValidationError(
-                "Update payload adapter_kind does not match the active adapter "
-                f"family: {update_payload.adapter_kind} != "
-                f"{adapter_family.adapter_kind}"
+                "Update payload adapter_kind does not match the active payload "
+                f"adapter: {update_payload.adapter_kind} != "
+                f"{payload_adapter.adapter_kind}"
             )
 
     def _validate_update_payload_matches_active_state(
@@ -401,7 +401,7 @@ class RoundLifecycleService:
         active_payload = artifact_repository.load_shared_adapter_state_from_ref(
             record.active_manifest.artifact_ref,
         )
-        active_state = self.round_manager_service.adapter_family.state_from_payload(
+        active_state = self.round_manager_service.payload_adapter.state_from_payload(
             active_payload
         )
         require_server_compatible_update_payload(

@@ -17,8 +17,8 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
 from main_server.src.services.federation.rounds.boundary.models import (  # noqa: E402
     RoundOpenRequest,
 )
-from main_server.src.services.federation.rounds.families.registry import (  # noqa: E402
-    build_shared_adapter_round_family,
+from main_server.src.services.federation.rounds.payload_adapters.registry import (  # noqa: E402
+    build_shared_adapter_round_payload_adapter,
 )
 from main_server.src.services.federation.rounds.round_manager_service import (  # noqa: E402
     RoundManagerService,
@@ -43,8 +43,8 @@ from shared.src.contracts.training_contracts import (  # noqa: E402
 from shared.src.domain.services.clock import FixedClock
 
 
-def _build_peft_classifier_round_family():
-    return build_shared_adapter_round_family(
+def _build_peft_classifier_round_payload_adapter():
+    return build_shared_adapter_round_payload_adapter(
         "peft_classifier",
         aggregation_backend_name="fedavg",
     )
@@ -92,7 +92,7 @@ def test_round_manager_publishes_peft_classifier_next_state(tmp_path: Path) -> N
         ),
     )
     service = RoundManagerService(
-        adapter_family=build_shared_adapter_round_family(
+        payload_adapter=build_shared_adapter_round_payload_adapter(
             "peft_classifier",
             aggregation_backend_name="fedavg",
             aggregation_backend_overrides={
@@ -160,7 +160,9 @@ def test_round_manager_publishes_peft_classifier_next_state(tmp_path: Path) -> N
 
 
 def test_round_manager_sets_default_policy_names_on_training_task() -> None:
-    service = RoundManagerService(adapter_family=_build_peft_classifier_round_family())
+    service = RoundManagerService(
+        payload_adapter=_build_peft_classifier_round_payload_adapter()
+    )
 
     task = service.create_training_task(
         RoundOpenRequest(
@@ -221,7 +223,9 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
 
 
 def test_round_manager_accepts_secure_aggregation_config_on_training_task() -> None:
-    service = RoundManagerService(adapter_family=_build_peft_classifier_round_family())
+    service = RoundManagerService(
+        payload_adapter=_build_peft_classifier_round_payload_adapter()
+    )
 
     task = service.create_training_task(
         RoundOpenRequest(
@@ -298,7 +302,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
     )
     fixed_time = datetime(2026, 3, 30, 15, 0, tzinfo=timezone.utc)
     service = RoundManagerService(
-        adapter_family=build_shared_adapter_round_family(
+        payload_adapter=build_shared_adapter_round_payload_adapter(
             "peft_classifier",
             aggregation_backend_name="fedavg",
             aggregation_backend_overrides={

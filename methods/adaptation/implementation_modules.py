@@ -1,4 +1,4 @@
-"""Payload adapter implementation module path resolution."""
+"""Adaptation implementation module path resolution."""
 
 from __future__ import annotations
 
@@ -12,30 +12,34 @@ _IMPLEMENTATION_ROOT_PACKAGES = (
     "methods.classification",
 )
 _PAYLOAD_MODULE_MANIFEST = "payload_adapter_module"
-_PAYLOAD_ADAPTER_MODULE_ROOTS: dict[str, str] = {}
+_ADAPTATION_IMPLEMENTATION_MODULE_ROOTS: dict[str, str] = {}
 
 
-def payload_adapter_module_root(payload_adapter_kind: str) -> str:
+def adaptation_implementation_module_root(payload_adapter_kind: str) -> str:
     """payload adapter kind가 소유한 implementation module root를 반환한다."""
 
     normalized_payload_adapter_kind = normalize_payload_adapter_kind(
         payload_adapter_kind
     )
-    module_root = _PAYLOAD_ADAPTER_MODULE_ROOTS.get(normalized_payload_adapter_kind)
+    module_root = _ADAPTATION_IMPLEMENTATION_MODULE_ROOTS.get(
+        normalized_payload_adapter_kind
+    )
     if module_root is not None:
         return module_root
     _import_conventional_payload_manifest(normalized_payload_adapter_kind)
-    module_root = _PAYLOAD_ADAPTER_MODULE_ROOTS.get(normalized_payload_adapter_kind)
+    module_root = _ADAPTATION_IMPLEMENTATION_MODULE_ROOTS.get(
+        normalized_payload_adapter_kind
+    )
     if module_root is not None:
         return module_root
     _import_all_payload_manifests()
-    return _PAYLOAD_ADAPTER_MODULE_ROOTS.get(
+    return _ADAPTATION_IMPLEMENTATION_MODULE_ROOTS.get(
         normalized_payload_adapter_kind,
         _default_adaptation_module_root(normalized_payload_adapter_kind),
     )
 
 
-def register_payload_adapter_module_root(
+def register_adaptation_implementation_module_root(
     *payload_adapter_kinds: str,
     module_root: str,
 ) -> None:
@@ -47,17 +51,21 @@ def register_payload_adapter_module_root(
     for payload_adapter_kind in _normalized_payload_adapter_kinds(
         payload_adapter_kinds
     ):
-        registered_root = _PAYLOAD_ADAPTER_MODULE_ROOTS.get(payload_adapter_kind)
+        registered_root = _ADAPTATION_IMPLEMENTATION_MODULE_ROOTS.get(
+            payload_adapter_kind
+        )
         if registered_root is not None and registered_root != normalized_module_root:
             raise ValueError(
                 "Duplicate payload adapter module root registration: "
                 f"{payload_adapter_kind} -> {registered_root} / "
                 f"{normalized_module_root}"
             )
-        _PAYLOAD_ADAPTER_MODULE_ROOTS[payload_adapter_kind] = normalized_module_root
+        _ADAPTATION_IMPLEMENTATION_MODULE_ROOTS[
+            payload_adapter_kind
+        ] = normalized_module_root
 
 
-def payload_adapter_module_name(
+def adaptation_implementation_module_name(
     *,
     payload_adapter_kind: str,
     submodule: str,
@@ -71,7 +79,7 @@ def payload_adapter_module_name(
     if not normalized_submodule:
         raise ValueError("submodule must not be empty.")
     return (
-        f"{payload_adapter_module_root(normalized_payload_adapter_kind)}."
+        f"{adaptation_implementation_module_root(normalized_payload_adapter_kind)}."
         f"{normalized_submodule}"
     )
 

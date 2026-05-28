@@ -11,7 +11,7 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
 
 - `local_update_backend.py`: agent가 호출하는 local update backend port
 - `local_update_registry.py`: method-owned local update backend lookup/catalog facade
-- `payload_adapter_modules.py`: payload adapter contract 이름을 implementation module
+- `implementation_modules.py`: payload adapter contract 이름을 implementation module
   root로 해석하는 resolver. concrete alias는 resolver가 아니라 구현 owner 옆
   `payload_adapter_module.py` manifest가 등록한다.
 - `server_update_materialization.py`: payload family별 서버 materialization

@@ -7,7 +7,9 @@ import pytest
 from methods.adaptation.federated_ssl_server_update import (
     resolve_federated_ssl_server_update_backend_name,
 )
-from methods.adaptation.payload_adapter_modules import payload_adapter_module_name
+from methods.adaptation.implementation_modules import (
+    adaptation_implementation_module_name,
+)
 from methods.adaptation.peft_text_encoder.aggregation import (
     peft_encoder_partitioned_projection as peft_part_projection,
 )
@@ -339,7 +341,7 @@ def test_fedmatch_partitioned_fixmatch_is_simulation_supported() -> None:
 
 
 def test_peft_classifier_payload_module_resolves_to_peft_text_encoder_owner() -> None:
-    assert payload_adapter_module_name(
+    assert adaptation_implementation_module_name(
         payload_adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
         submodule="federated_ssl.server_update_policy",
     ) == ("methods.adaptation.peft_text_encoder.federated_ssl.server_update_policy")

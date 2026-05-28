@@ -22,8 +22,8 @@ from main_server.src.services.federation.rounds.acceptance.policies import (
 from main_server.src.services.federation.rounds.active_manifest_service import (
     ActiveModelManifestService,
 )
-from main_server.src.services.federation.rounds.families.registry import (
-    build_shared_adapter_round_family,
+from main_server.src.services.federation.rounds.payload_adapters.registry import (
+    build_shared_adapter_round_payload_adapter,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
@@ -68,13 +68,13 @@ def build_round_manager_service_from_config(
 
     effective_clock = clock or SystemUtcClock()
     validate_server_round_runtime_config(config)
-    adapter_family = build_shared_adapter_round_family(
+    payload_adapter = build_shared_adapter_round_payload_adapter(
         config.payload_adapter_kind,
         aggregation_backend_name=config.aggregation_backend_name,
         aggregation_backend_overrides=config.aggregation_backend_overrides,
     )
     return RoundManagerService(
-        adapter_family=adapter_family,
+        payload_adapter=payload_adapter,
         artifact_repository=(
             artifact_repository
             or shared_adapter_state_repository_module.SharedAdapterStateRepository()

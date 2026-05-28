@@ -16,8 +16,8 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenRequest,
 )
-from main_server.src.services.federation.rounds.families.models import (
-    SharedAdapterRoundFamily,
+from main_server.src.services.federation.rounds.payload_adapters.models import (
+    SharedAdapterRoundPayloadAdapter,
 )
 from methods.federated_ssl.runtime_fallbacks import (
     build_runtime_fallback_secure_aggregation_config,
@@ -69,7 +69,7 @@ class RoundPublicationRequest:
 class RoundManagerService:
     """라운드용 task를 만들고 새 active manifest를 발행한다."""
 
-    adapter_family: SharedAdapterRoundFamily
+    payload_adapter: SharedAdapterRoundPayloadAdapter
     artifact_repository: SharedAdapterStateRepository = field(
         default_factory=SharedAdapterStateRepository
     )
@@ -119,13 +119,13 @@ class RoundManagerService:
         update_payloads = [
             self._load_update_payload(update) for update in request.updates
         ]
-        aggregation = self.adapter_family.aggregation_backend.aggregate(
+        aggregation = self.payload_adapter.aggregation_backend.aggregate(
             base_state=base_state,
             update_payloads=update_payloads,
             next_model_revision=next_revision,
             aggregated_at=effective_published_at,
         )
-        next_state_payload = self.adapter_family.state_to_payload(
+        next_state_payload = self.payload_adapter.state_to_payload(
             aggregation.next_state
         )
         self.artifact_repository.save_shared_adapter_state(next_state_payload)
@@ -163,8 +163,8 @@ class RoundManagerService:
         payload = self.artifact_repository.load_shared_adapter_state_from_ref(
             base_manifest.artifact_ref
         )
-        state = self.adapter_family.state_from_payload(payload)
-        if state.adapter_kind != self.adapter_family.aggregation_backend.adapter_kind:
+        state = self.payload_adapter.state_from_payload(payload)
+        if state.adapter_kind != self.payload_adapter.aggregation_backend.adapter_kind:
             raise ValueError(
                 "Base state adapter_kind does not match the configured "
                 f"aggregation backend: {state.adapter_kind}"
@@ -175,12 +175,12 @@ class RoundManagerService:
         payload = self.update_payload_repository.load_shared_adapter_update_from_ref(
             update.payload_ref
         )
-        if update.payload_format not in self.adapter_family.accepted_update_formats:
+        if update.payload_format not in self.payload_adapter.accepted_update_formats:
             raise ValueError(
                 "Unsupported payload_format for adapter_kind "
                 f"{payload.adapter_kind}: {update.payload_format}"
             )
-        return self.adapter_family.update_from_payload(payload)
+        return self.payload_adapter.update_from_payload(payload)
 
     @staticmethod
     def _resolve_objective_config(

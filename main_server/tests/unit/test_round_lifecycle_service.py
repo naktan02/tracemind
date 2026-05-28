@@ -68,12 +68,12 @@ from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenDraftRequest,
     RoundStatus,
 )
-from main_server.src.services.federation.rounds.families.models import (
-    SharedAdapterRoundFamily,
+from main_server.src.services.federation.rounds.payload_adapters.models import (
+    SharedAdapterRoundPayloadAdapter,
 )
-from main_server.src.services.federation.rounds.families.registry import (
-    build_shared_adapter_round_family,
-    register_shared_adapter_round_family,
+from main_server.src.services.federation.rounds.payload_adapters.registry import (
+    build_shared_adapter_round_payload_adapter,
+    register_shared_adapter_round_payload_adapter,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundConflictError,
@@ -228,8 +228,8 @@ class _StaticRoundStateExchangeExecutor:
         )
 
 
-TEST_SHIFT_ADAPTER_KIND = "test_shift_round_family"
-TEST_SHIFT_FAMILY_NAME = "test_shift_round_family"
+TEST_SHIFT_ADAPTER_KIND = "test_shift_round_payload_adapter"
+TEST_SHIFT_PAYLOAD_ADAPTER_KIND = "test_shift_round_payload_adapter"
 TEST_SHIFT_BACKEND_NAME = "test_shift_avg"
 TEST_SHIFT_PAYLOAD_FORMAT = "test_shift_update"
 
@@ -303,7 +303,7 @@ class _TestShiftAggregationBackend:
 
 
 @dataclass(slots=True)
-class _TestShiftRoundFamily:
+class _TestShiftRoundPayloadAdapter:
     adapter_kind: str = TEST_SHIFT_ADAPTER_KIND
     accepted_update_formats: tuple[str, ...] = (TEST_SHIFT_PAYLOAD_FORMAT,)
     aggregation_backend: SharedAdapterAggregationBackend | None = None
@@ -333,12 +333,12 @@ class _TestShiftRoundFamily:
         return state
 
 
-def _build_test_shift_round_family(
+def _build_test_shift_round_payload_adapter(
     aggregation_backend_name: str,
     aggregation_backend_overrides,
-) -> SharedAdapterRoundFamily:
+) -> SharedAdapterRoundPayloadAdapter:
     del aggregation_backend_overrides
-    return _TestShiftRoundFamily(
+    return _TestShiftRoundPayloadAdapter(
         aggregation_backend=build_shared_adapter_aggregation_backend(
             adapter_kind=TEST_SHIFT_ADAPTER_KIND,
             backend_name=aggregation_backend_name,
@@ -364,9 +364,9 @@ register_shared_adapter_aggregation_backend(
         supported_adapter_kinds=(TEST_SHIFT_ADAPTER_KIND,),
     ),
 )
-register_shared_adapter_round_family(
-    TEST_SHIFT_FAMILY_NAME,
-    factory=_build_test_shift_round_family,
+register_shared_adapter_round_payload_adapter(
+    TEST_SHIFT_PAYLOAD_ADAPTER_KIND,
+    factory=_build_test_shift_round_payload_adapter,
 )
 
 
@@ -416,8 +416,8 @@ def _build_service(
             clock=FixedClock(fixed_time),
         ),
         round_manager_service=RoundManagerService(
-            adapter_family=build_shared_adapter_round_family(
-                TEST_SHIFT_FAMILY_NAME,
+            payload_adapter=build_shared_adapter_round_payload_adapter(
+                TEST_SHIFT_PAYLOAD_ADAPTER_KIND,
                 aggregation_backend_name=TEST_SHIFT_BACKEND_NAME,
             ),
             artifact_repository=state_repository,
@@ -477,7 +477,7 @@ def _build_peft_service(
             clock=FixedClock(fixed_time),
         ),
         round_manager_service=RoundManagerService(
-            adapter_family=build_shared_adapter_round_family(
+            payload_adapter=build_shared_adapter_round_payload_adapter(
                 "peft_classifier",
                 aggregation_backend_name="fedavg",
             ),
@@ -804,7 +804,7 @@ def test_round_lifecycle_rejects_base_revision_mismatch(tmp_path: Path) -> None:
         service.accept_update_submission(record.round_id, bad_update)
 
 
-def test_round_lifecycle_rejects_payload_format_outside_active_family(
+def test_round_lifecycle_rejects_payload_format_outside_active_payload_adapter(
     tmp_path: Path,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
@@ -1117,8 +1117,8 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
             clock=FixedClock(fixed_time),
         ),
         round_manager_service=RoundManagerService(
-            adapter_family=build_shared_adapter_round_family(
-                TEST_SHIFT_FAMILY_NAME,
+            payload_adapter=build_shared_adapter_round_payload_adapter(
+                TEST_SHIFT_PAYLOAD_ADAPTER_KIND,
                 aggregation_backend_name=TEST_SHIFT_BACKEND_NAME,
             ),
             artifact_repository=state_repository,
@@ -1164,7 +1164,7 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
     assert Path(prototype_build_state_ref).exists()
 
 
-def test_round_lifecycle_finalizes_registered_custom_family(
+def test_round_lifecycle_finalizes_registered_custom_payload_adapter(
     tmp_path: Path,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
@@ -1199,7 +1199,7 @@ def test_round_lifecycle_finalizes_registered_custom_family(
     )
     round_manager_service = build_round_manager_service_from_config(
         ServerRoundRuntimeConfig(
-            payload_adapter_kind=TEST_SHIFT_FAMILY_NAME,
+            payload_adapter_kind=TEST_SHIFT_PAYLOAD_ADAPTER_KIND,
             aggregation_backend_name=TEST_SHIFT_BACKEND_NAME,
         ),
         artifact_repository=state_repository,

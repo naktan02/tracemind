@@ -46,7 +46,7 @@ def test_fl_simulation_does_not_keep_task_config_facade() -> None:
     )
 
 
-def test_fl_simulation_client_training_has_no_adapter_family_literals() -> None:
+def test_fl_simulation_client_training_has_no_payload_adapter_literals() -> None:
     path = (
         SCRIPTS_SRC
         / "experiments"
@@ -69,7 +69,7 @@ def test_fl_simulation_client_training_has_no_adapter_family_literals() -> None:
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert not violations, (
-        "client_training.py는 client round orchestration만 맡고 adapter-family별 "
+        "client_training.py는 client round orchestration만 맡고 payload-adapter별 "
         "raw-row training, artifact upload, payload 변환은 federated_agent runtime "
         "adapter로 낮춘다.\n"
         f"violations={violations}"
@@ -244,7 +244,7 @@ def test_scripts_runtime_adapters_do_not_keep_federated_server_facade() -> None:
         f"facade path={_relative_repo_path(facade_path)}"
     )
     assert not family_state_bridge_path.exists(), (
-        "scripts federated_server bridge는 adapter-family state publication 파일을 "
+        "scripts federated_server bridge는 payload-adapter state publication 파일을 "
         "소유하지 않는다. projection 의미는 methods/adaptation/<family>/가, "
         "server-owned 저장/activate mechanism은 main_server publication capability가 "
         "소유한다.\n"
@@ -320,7 +320,7 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_family_files() -> 
     ]
 
     assert not violations, (
-        "scripts federated_agent bridge는 adapter-family 이름 파일을 소유하지 않는다. "
+        "scripts federated_agent bridge는 payload-adapter 이름 파일을 소유하지 않는다. "
         "family별 payload/materialization 의미는 methods/adaptation/<family>/가 "
         "소유하고, scripts runtime adapter는 generic store/training bridge만 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"

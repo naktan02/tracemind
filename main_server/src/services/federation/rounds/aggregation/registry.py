@@ -60,7 +60,7 @@ def build_shared_adapter_aggregation_backend(
     overrides: Mapping[str, AggregationConfigScalar] | None = None,
     artifact_store: AggregationArtifactStore | None = None,
 ) -> SharedAdapterAggregationBackend:
-    """adapter family와 backend 이름으로 aggregation backend를 조립한다."""
+    """payload adapter와 backend 이름으로 aggregation backend를 조립한다."""
 
     normalized_key = (adapter_kind.strip().lower(), backend_name.strip().lower())
     registered_backend = _AGGREGATION_BACKEND_REGISTRY.get(normalized_key)
