@@ -10,7 +10,7 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 |---|---|---|
 | `method_descriptor/` | `ssl_method` | FedMatch, FedLGMatch 같은 method-owned FL SSL method identity, 원본 parameter snapshot, report metadata. 기본 manual baseline은 이 그룹을 compose하지 않는다. |
 | `local_update_profile/` | `local_update_profile` | agent local update를 만들 때 쓰는 training/evidence/scoring/privacy 조합 |
-| `round_runtime.*` | `round_runtime` | server round의 adapter family와 aggregation backend 직접 leaf |
+| `round_runtime.*` | `round_runtime` | server round의 update family와 aggregation backend 직접 leaf |
 | `shard_policy/` | `shard_policy` | non-IID client split 방식 |
 | `materialized_split/` | `fl_data`, `query_data_selection` | 고정 FL split manifest와 source pair/budget 선택 |
 | `labeled_exposure_policy/` | `labeled_exposure_policy` | 선택된 labeled seed가 client-local split인지, 모든 client가 공유하는 public seed인지, 또는 server-only seed인지 구분 |
@@ -49,7 +49,7 @@ weight를 요구하는 method descriptor로 표현된다. `sigma/psi` partition 
 routing 의미는 FedMatch method package가 소유한다.
 `server_update_policy=fedavg_merged_delta`는 현재 merged delta를 기존 FedAvg path로
 해석하는 runtime이고, `fedmatch_partitioned`는 shared update의 `partitioned_deltas`를
-LoRA-classifier `partitioned_delta_average` simulation backend로 해석한다.
+PEFT encoder `partitioned_delta_average` simulation backend로 해석한다.
 `server_step_policy`는 server-side supervised seed step 여부이고, server update/delta
 해석과 섞지 않는다.
 `local_ssl_policy=query_ssl_method`는 실제 이름을 `query_ssl_method.algorithm_name`에서
@@ -75,7 +75,7 @@ report protocol에 남긴다.
 - `composition_mode=manual`: 논문 method가 아니라 `client_ssl_objective`,
   `server_aggregation`, `update_family`를 직접 조합하는 baseline/ablation 모드다.
   사용자는 `query_ssl_method`, `local_update_profile`,
-  `round_runtime.adapter_family_name`, `round_runtime.aggregation_backend_name`을
+  `round_runtime.update_family_name`, `round_runtime.aggregation_backend_name`을
   직접 고른다. lower axes는 compose된 leaf에서 실행 계획 builder가 자동
   파생한다. report/index에는 `execution_role=manual_baseline`으로 남고
   `descriptor_name`은 비워 둔다.
@@ -95,7 +95,7 @@ pseudo-label update를 만들 때 쓰는 아래 조합을 묶는 profile이다.
 - privacy guard
 
 server round 조합은 별도 YAML group이 아니라 최종 compose된
-`round_runtime.adapter_family_name`과 `round_runtime.aggregation_backend_name` leaf가
+`round_runtime.update_family_name`과 `round_runtime.aggregation_backend_name` leaf가
 직접 소유한다. baseline/ablation은 profile 파일을 새로 만들지 말고
 `round_runtime.*` leaf를 직접 override한다.
 

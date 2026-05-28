@@ -63,9 +63,10 @@ conf/
 
 최종 method/runtime vocabulary는
 `docs/architecture/target-method-runtime-structure.md`를 기준으로 한다. 현재
-`round_runtime.adapter_family_name`은 v1 실행 field이고, prototype 기반 update까지
-포괄하는 target 구조에서는 `update_family_name` 또는
-`trainable_state_family_name`으로 전환한다.
+`round_runtime.update_family_name`이 실행 update family를 고르는 field다. v1
+adapter-family 이름은 payload/report compatibility field로만 해석하고, prototype
+기반 update까지 포괄하는 target 구조에서는 `update_family_name` 또는
+`trainable_state_family_name`을 기준으로 한다.
 
 `execution_context/query_data_source`는 query-domain 데이터 주소록과 선택값을
 소유한다. `query_data_sources`에 source별 labeled/unlabeled/validation/test JSONL을

@@ -175,7 +175,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 - `client_count_sweep.output_dir`
 - `client_pool_split.labeled_ratio`
 - `client_pool_split.unlabeled_ratio`
-- `round_runtime.adapter_family_name`
+- `round_runtime.update_family_name`
 - `round_runtime.aggregation_backend_name`
 - `training_task.objective.confidence_threshold`
 - `training_task.objective.margin_threshold`
@@ -252,12 +252,12 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 
 주의:
 
-- `aggregation_backend_name`과 `adapter_family_name`은 `round_runtime.*`로 노출된다.
-  기본값은 entrypoint leaf의 `peft_classifier` / `fedavg`다. `lora_classifier`
+- `aggregation_backend_name`과 `update_family_name`은 `round_runtime.*`로 노출된다.
+  기본값은 entrypoint leaf의 `peft_text_classifier` / `fedavg`다. `lora_classifier`
   실행 leaf는 제거됐고, 해당 이름은 old-run artifact/report reader compatibility
   표면에만 남긴다.
 - `local_update_profile`은 local update 조합을 고르고, server round 조합은
-  `round_runtime.adapter_family_name`과 `round_runtime.aggregation_backend_name`을
+  `round_runtime.update_family_name`과 `round_runtime.aggregation_backend_name`을
   직접 override한다. high-level compose preset은 중복 source-of-truth를 피하기 위해
   두지 않는다.
 - `diagonal_scale`/prototype scorer fallback은 현재 FL SSL simulation에서 제거했다.
@@ -280,11 +280,11 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   승인 대상이다.
 - 현재 기본 `fl_method.composition_mode`는 `manual`이며 lower axes는
   `query_ssl_method.algorithm_name`, `round_runtime.aggregation_backend_name`,
-  `round_runtime.adapter_family_name`에서 자동 파생된다. 기본 조합은
-  `FixMatch + FedAvg + PEFT-classifier`이고 method descriptor를 참조하지 않는다.
+  `round_runtime.update_family_name`에서 자동 파생된다. 기본 조합은
+  `FixMatch + FedAvg + PEFT text classifier`이고 method descriptor를 참조하지 않는다.
   일회성 ablation은
   `strategy_axes/ssl/consistency_method=...`,
-  `round_runtime.adapter_family_name=...`,
+  `round_runtime.update_family_name=...`,
   `round_runtime.aggregation_backend_name=...`로 직접 고른다.
 - manual `Query SSL + PEFT-classifier` 경로의 local optimizer step 수는
   `min(training_task.max_steps, training_task.local_epochs * full_epoch_steps)`로

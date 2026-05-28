@@ -106,7 +106,7 @@ central fixed embedding + classifier seed
 - `local_update_profile`은 local update 실행 조합 preset이고,
   `strategy_axes/trainable_state/update_family`와
   `round_runtime.aggregation_backend_name`은 server round 실행 조합을 고르는 leaf다.
-  v1 `round_runtime.adapter_family_name`은 payload compatibility field로 남아 있고,
+  v1 adapter-family 이름은 payload compatibility field로만 남아 있고,
   method-specific local objective와 server policy 의미는 profile이 아니라
   `methods/`의 descriptor/policy module이 소유한다.
 - method identity와 local/server policy 의미는 `methods/`가 소유한다. `agent`와

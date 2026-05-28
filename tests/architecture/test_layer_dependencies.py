@@ -2081,8 +2081,10 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
         CONF_SRC / "README.md",
         SCRIPTS_SRC / "README.md",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
+        CONF_SRC / "strategy_axes" / "fl" / "README.md",
         REPO_ROOT / "docs" / "project_execution_plan.md",
         REPO_ROOT / "docs" / "strategy_surface_map.md",
+        REPO_ROOT / "docs" / "contracts" / "fl_ssl_method_capability_matrix.md",
         REPO_ROOT / "docs" / "operations" / "local-runbook.md",
     )
     forbidden_snippets = (
@@ -2092,9 +2094,11 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
         "FedAvg + FixMatch + LoRA-classifier",
         "LoRA-classifier simulation 병목",
         "method-owned LoRA-classifier",
+        "LoRA-classifier",
         "lora_classifier model builder",
         "LoRA-classifier `partitioned_delta_average`",
         "lora_classifier leaf",
+        "round_runtime.adapter_family_name",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"

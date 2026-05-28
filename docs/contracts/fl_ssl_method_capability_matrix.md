@@ -2,7 +2,7 @@
 
 이 문서는 FedMatch/FedLGMatch/(FL)^2의 FL SSL capability 차이를 정리한다.
 FedMatch는 첫 method로 선택되어 capability surface와 원본 core/config snapshot,
-method-owned tensor local objective core를 추가했다. 현재 LoRA-classifier logical
+method-owned tensor local objective core를 추가했다. 현재 PEFT encoder logical
 partition step, physical trainable partition step, PEFT-backed partitioned model
 builder, partitioned global state 보존, C2S sparse upload projection,
 method-owned local simulation bridge는
@@ -28,13 +28,13 @@ policy가 된다.
   - custom exchange는 descriptor에서 선언할 수 있지만 default live runtime에서는
     bootstrap/finalize 전에 실패한다.
   - simulation에서는 `peer_context=fixed_probe_output_knn`가 이전 round
-    client-local LoRA snapshot과 validation probe vector 기반 helper context를 만든다.
+    client-local PEFT encoder snapshot과 validation probe vector 기반 helper context를 만든다.
 - `DefaultServerPolicyExecutor`
   - 현재는 `round_runtime_aggregation_backend` + `round_active_pair_only`만 지원한다.
   - custom server policy는 method-specific 분기가 아니라 capability executor 추가로
     열어야 한다.
 - `manual` composition
-  - FixMatch/FlexMatch/FreeMatch/PseudoLabel + FedAvg + LoRA-classifier 같은 lower-axis
+  - FixMatch/FlexMatch/FreeMatch/PseudoLabel + FedAvg + PEFT text classifier 같은 lower-axis
     baseline/ablation용이다.
 - `method_owned` composition
   - FedMatch/FedLGMatch/(FL)^2처럼 client objective와 server/round policy를 함께
@@ -65,16 +65,16 @@ policy가 된다.
   - 현재 status는 `partitioned_trainable_state_slice_v1`이다. 원본 설정값,
     confidence filter, agreement pseudo-label vote, KDTree 우선 helper
     nearest-neighbor selection, supervised/unsupervised FedMatch tensor loss는 method
-    package에 고정했다. LoRA concrete slice를 넘어 DoRA 같은 PEFT adapter 교체를
+    package에 고정했다. 현재 LoRA PEFT mechanism slice를 넘어 DoRA 같은 PEFT adapter 교체를
     허용하는 partitioned trainable state primitive를 단계적으로 열고 있다.
   - `methods/adaptation/peft_text_classifier/federated_ssl/`는 method-owned
     objective를 PEFT text-classifier model/loaders, logical/physical partition
     delta, shared update payload로 실행하는 adapter-family slice다. FedMatch method
     의미는 `methods/federated_ssl/fedmatch/`에서 읽는다.
-  - helper prediction exchange는 이전 round client-local LoRA snapshot과 validation
+  - helper prediction exchange는 이전 round client-local PEFT encoder snapshot과 validation
     probe vector 기반 simulation slice로 실행된다. labels-at-server는
     `server_only_seed + supervised_seed_step` server runtime과 client-local `psi`
-    upload slice로 실행된다. 현재 labels-at-client slice는 기존 LoRA-classifier
+    upload slice로 실행된다. 현재 labels-at-client slice는 PEFT encoder
     FedAvg merged delta와 `fedmatch_partitioned`에서 쓰는 `partitioned_deltas`를
     함께 제출한다. C2S/S2C는 원본 `delta_threshold`/`l1_threshold` 의미를 반영해
     sparse projection을 적용한다. S2C는 round 사이 client-local partition snapshot을
@@ -92,21 +92,21 @@ policy가 된다.
 
 | 후보 | 논문 setting과 핵심 아이디어 | 현재 TraceMind fit | 필요한 capability | 구현 난도 | 권장 순서 |
 |---|---|---|---|---|---|
-| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core는 method package에 있고, LoRA-classifier partitioned runtime slice, helper peer-context simulation slice, labels-at-server supervised seed server step, partitioned global state, sparse S2C/C2S projection, communication accounting은 열림. full 원본 parity에는 reduced/main run 관측 검증이 추가로 필요하다. | 중간 | 1순위, partitioned trainable state slice opened |
+| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core는 method package에 있고, PEFT encoder partitioned runtime slice, helper peer-context simulation slice, labels-at-server supervised seed server step, partitioned global state, sparse S2C/C2S projection, communication accounting은 열림. full 원본 parity에는 reduced/main run 관측 검증이 추가로 필요하다. | 중간 | 1순위, partitioned trainable state slice opened |
 | FedLGMatch | local/global pseudo-label을 함께 쓰는 FSSL. global pseudo-label state를 round마다 활용할 가능성이 높다. | 현재 global model/prototype은 있으나 global pseudo-label cache/state는 별도 policy로 고정되지 않았다. | method-owned descriptor, local objective, `round_state_exchange`로 global/local pseudo-label statistics, custom server/round policy 가능성. | 높음 | 2순위 |
 | (FL)^2 | labels-at-server setting. server에 소량 labeled data, client는 unlabeled data 중심. | 현재 main split은 client에 labeled source도 분배한다. 논문 setting을 맞추려면 dataset/split policy부터 바꿔야 한다. | server-labeled seed regime, client unlabeled-only local objective, server-owned threshold/calibration state, custom round policy 가능성. | 높음 | 3순위 |
 
 ## First Method Recommendation
 
 첫 구현 후보는 FedMatch로 확정했다. 현재 완료된 범위는 capability surface,
-원본 core/config snapshot, tensor local objective core, LoRA-classifier partitioned
+원본 core/config snapshot, tensor local objective core, PEFT encoder partitioned
 runtime slice다.
 
 이유:
 
 - 현재 TraceMind main comparison은 `shared_client_seed + client별 unlabeled` split을
   기본으로 두고, `client_local_split`도 legacy/ablation으로 유지한다.
-- 현재 기본 조합인 `FixMatch + FedAvg + LoRA-classifier`에서 local objective만 더
+- 현재 기본 조합인 `FixMatch + FedAvg + PEFT text classifier`에서 local objective만 더
   깊게 method-owned로 바꾸는 경로가 가장 짧다.
 - FedMatch descriptor는 공통 `partitioned` update capability와 `uniform`
   aggregation weight를 요구하도록 capability validator에 고정했다. `sigma/psi`
@@ -122,14 +122,14 @@ runtime slice다.
 
 FedMatch 다음 구현 결정:
 
-- parameter decomposition은 우선 기존 `lora_classifier` family 위에서
+- parameter decomposition은 현재 `peft_text_classifier` update family 위에서
   generic `partitioned` update capability로 표현한다. `sigma/psi` partition scheme은
   FedMatch-local metadata로 두고, shared contract를 바꾸는 payload split은 실제 필요가
   확인될 때만 연다.
 - server update/delta 해석은 `server_update_policy`로 분리했다. 현재 실행되는 FedMatch
-  slice는 `fedavg_merged_delta`로 merged LoRA-classifier delta를 기존 FedAvg path에
+  slice는 `fedavg_merged_delta`로 merged PEFT encoder delta를 기존 FedAvg path에
   제출하거나, `fedmatch_partitioned`로 shared update의 `partitioned_deltas`를
-  LoRA-classifier `partitioned_delta_average` simulation backend에서 소비한다. 이
+  PEFT encoder `partitioned_delta_average` simulation backend에서 소비한다. 이
   backend는 원본 sparse S2C/C2S sync 전체가 아니라 logical partition delta 평균
   simulation slice다.
   FixMatch 같은 stateless local SSL policy는 method-owned simulation runtime에서
@@ -148,7 +148,7 @@ FedMatch 다음 구현 결정:
   vector를 이용해 FedMatch KL loss에 연결한다.
 - labels-at-server variant는 `server_only_seed + supervised_seed_step` capability로
   simulation에서 열었다. server step은 round open 전에 bootstrap labeled rows로
-  active LoRA-classifier state를 발행하고, client side는 unlabeled-only `psi`
+  active PEFT encoder state를 발행하고, client side는 unlabeled-only `psi`
   partition update를 제출한다.
 
 FedMatch 원본에서 보존한 기본값:
