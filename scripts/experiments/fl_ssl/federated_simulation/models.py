@@ -327,6 +327,7 @@ class FederatedRoundRuntimeConfig:
     runtime_payloads: dict[str, object] = field(default_factory=dict)
     round_runtime_payload_builder: str | None = None
     local_objective_executors: tuple[str, ...] = ()
+    server_step_executors: dict[str, str] = field(default_factory=dict)
     initial_state_builder: str | None = None
     validation_evaluator: str | None = None
     final_projection_builder: str | None = None
@@ -342,6 +343,7 @@ class FederatedRoundRuntimeConfig:
         runtime_payloads: Mapping[str, object] | None = None,
         round_runtime_payload_builder: str | None = None,
         local_objective_executors: tuple[str, ...] = (),
+        server_step_executors: Mapping[str, str] | None = None,
         initial_state_builder: str | None = None,
         validation_evaluator: str | None = None,
         final_projection_builder: str | None = None,
@@ -354,6 +356,13 @@ class FederatedRoundRuntimeConfig:
         self.runtime_payloads = dict(runtime_payloads or {})
         self.round_runtime_payload_builder = round_runtime_payload_builder
         self.local_objective_executors = local_objective_executors
+        self.server_step_executors = {
+            _normalize_round_runtime_name(
+                key,
+                field_name="server_step_executors key",
+            ): str(value)
+            for key, value in (server_step_executors or {}).items()
+        }
         self.initial_state_builder = initial_state_builder
         self.validation_evaluator = validation_evaluator
         self.final_projection_builder = final_projection_builder
@@ -384,6 +393,19 @@ class FederatedRoundRuntimeConfig:
         if self.runtime_payload_key is not None:
             return self.runtime_payloads.get(self.runtime_payload_key)
         return self.runtime_payloads.get(self.update_family_name)
+
+    def server_step_executor_for_policy(self, policy_name: object) -> str | None:
+        """선택된 server step policy를 이 update family runtime executor로 해석한다."""
+
+        normalized_policy = _optional_str(policy_name)
+        if normalized_policy is None:
+            return None
+        return self.server_step_executors.get(
+            _normalize_round_runtime_name(
+                normalized_policy,
+                field_name="server_step_policy",
+            )
+        )
 
 
 @dataclass(frozen=True, slots=True)

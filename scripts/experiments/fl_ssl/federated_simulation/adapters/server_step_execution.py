@@ -32,7 +32,7 @@ def require_supported_server_step(
         _load_server_step_executor(server_step_executor)
         return
     raise NotImplementedError(
-        "server_step_policy is declared without a simulation executor: "
+        "selected update family has no simulation executor for server_step_policy: "
         f"{capability_plan.server_step_policy_name}"
     )
 
@@ -60,7 +60,7 @@ def run_server_step_if_supported(
         return ServerStepExecution(active=active, metrics={})
     if not request.server_step_executor:
         raise NotImplementedError(
-            "server_step_policy is declared without a simulation executor: "
+            "selected update family has no simulation executor for server_step_policy: "
             f"runtime: {capability_plan.server_step_policy_name}"
         )
     executor = _load_server_step_executor(request.server_step_executor)
@@ -75,5 +75,5 @@ def run_server_step_if_supported(
 def _load_server_step_executor(executor_path: str) -> Any:
     return load_configured_callable(
         executor_path,
-        field_name="server_step_policy.executor",
+        field_name="round_runtime.server_step_executors entry",
     )

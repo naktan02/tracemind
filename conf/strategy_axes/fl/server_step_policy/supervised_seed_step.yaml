@@ -1,4 +1,3 @@
 # @package server_step_policy
 
 name: supervised_seed_step
-executor: scripts.runtime_adapters.federated_server.peft_encoder_server_step.run_peft_encoder_supervised_seed_step

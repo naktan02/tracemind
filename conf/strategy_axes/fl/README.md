@@ -31,6 +31,9 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 legacy/ablation으로 남긴다. `server_only_seed`는 materialized artifact와 run request
 metadata를 보존하고, method-owned descriptor, `server_step_policy=supervised_seed_step`,
 client-unlabeled regime 조합에서 round open 전 supervised server seed step을 실행한다.
+실제 runtime executor path는 server_step_policy leaf가 아니라 선택된
+`strategy_axes/trainable_state/update_family` leaf의 `server_step_executors`가
+소유한다.
 
 `materialized_split`은 이미 생성된 manifest를 고르는 실행 selector다. 이 축은
 source pair와 labeled budget을 같이 고정해서 `query_data_selection.*`와
@@ -51,7 +54,7 @@ routing 의미는 FedMatch method package가 소유한다.
 해석하는 runtime이다. FedMatch의 partitioned update 해석은 generic Hydra leaf가
 아니라 method descriptor가 파생하는 method-local server update policy다.
 `server_step_policy`는 server-side supervised seed step 여부이고, server update/delta
-해석과 섞지 않는다.
+해석이나 update-family별 executor path와 섞지 않는다.
 `local_ssl_policy=query_ssl_method`는 실제 이름을 `query_ssl_method.algorithm_name`에서
 읽어 `fixmatch`, `flexmatch`, `freematch` 같은 기존 Query SSL algorithm parameter
 surface를 재사용한다. `fedmatch_agreement`처럼 method-local objective는 method

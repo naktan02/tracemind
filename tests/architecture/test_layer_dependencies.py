@@ -2619,6 +2619,7 @@ def test_diagonal_scale_no_longer_has_update_family_initialization_leaf() -> Non
 def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> None:
     checked_paths = (
         CONF_SRC / "README.md",
+        MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "README.md",
         SCRIPTS_SRC / "README.md",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
         CONF_SRC / "strategy_axes" / "fl" / "README.md",

@@ -73,15 +73,16 @@
   - aggregation 결과의 `aggregated_artifacts` 저장은 main_server가 수행하지만,
     artifact payload 의미와 next-state projection은 `methods/adaptation/<family>/`가
     소유한다
-  - LoRA-classifier FedAvg methods strategy는 inline delta와 server-owned
-    `aggregation_artifact::` JSON artifact-ref update를 집계한다. client update는
+  - active PEFT text encoder update family는 inline debug delta와 server-owned
+    `aggregation_artifact::` JSON artifact-ref update를 집계할 수 있다. client update는
     base revision 기준 delta이고, 다음 state가 참조하는 server aggregate artifact는
-    누적된 global LoRA/head parameter snapshot이다. `agent-local://` ref는 서버
-    direct accept 단계에서 거부한다. agent/simulation runtime이 먼저 server-owned
-    artifact ref로 upload/materialize해야 한다
+    누적된 trainable parameter snapshot이다. `agent-local://` ref는 서버 direct accept
+    단계에서 거부한다. agent/simulation runtime이 먼저 server-owned artifact ref로
+    upload/materialize해야 한다
   - update accept 단계는 envelope의 active manifest revision뿐 아니라 active payload
-    adapter의 payload compatibility도 확인한다. PEFT-classifier는 payload의 model/base
-    revision/scope, backbone, LoRA config, label schema가 active state와 같아야 한다
+    adapter의 payload compatibility도 확인한다. PEFT text encoder payload는
+    model/base revision/scope, backbone, PEFT adapter config, label schema가 active
+    state와 같아야 한다
 - `acceptance/`
   - 중복 제출, 신뢰 정책, 라운드 상태 검증
 

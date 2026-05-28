@@ -10,6 +10,7 @@ SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
 METHODS_FEDERATED_SRC = REPO_ROOT / "methods" / "federated"
 METHODS_FEDERATED_SSL_SRC = REPO_ROOT / "methods" / "federated_ssl"
+CONF_SRC = REPO_ROOT / "conf"
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
@@ -143,6 +144,37 @@ def test_fl_simulation_config_callable_loading_is_centralized() -> None:
         "fully-qualified path 파싱과 import 규칙은 scripts/configured_callable.py에 "
         "모은다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_server_step_policy_leaf_does_not_own_update_family_executor() -> None:
+    policy_path = (
+        CONF_SRC
+        / "strategy_axes"
+        / "fl"
+        / "server_step_policy"
+        / "supervised_seed_step.yaml"
+    )
+    update_family_path = (
+        CONF_SRC
+        / "strategy_axes"
+        / "trainable_state"
+        / "update_family"
+        / "peft_text_encoder.yaml"
+    )
+    policy_source = policy_path.read_text(encoding="utf-8")
+    update_family_source = update_family_path.read_text(encoding="utf-8")
+
+    assert "executor:" not in policy_source, (
+        "server_step_policy leaf는 server-side step 여부만 고른다. family-specific "
+        "runtime executor는 update_family leaf가 소유한다.\n"
+        f"path={_relative_repo_path(policy_path)}"
+    )
+    assert "server_step_executors:" in update_family_source, (
+        "update family leaf가 server step policy 이름을 runtime executor로 매핑해야 "
+        "prototype/linear 등 다음 trainable_state를 추가할 때 server_step_policy를 "
+        "수정하지 않는다.\n"
+        f"path={_relative_repo_path(update_family_path)}"
     )
 
 

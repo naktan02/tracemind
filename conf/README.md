@@ -51,6 +51,8 @@ conf/
   실제 objective core는 `methods/ssl/algorithms/*`가 소유한다.
 - update family와 runtime callable path는
   `strategy_axes/trainable_state/update_family`가 선언한다.
+- server-side step 여부는 `strategy_axes/fl/server_step_policy`가 고르고,
+  update family별 executor mapping은 `round_runtime.server_step_executors`가 소유한다.
 - aggregation backend는 `round_runtime.aggregation_backend_name`으로 고른다.
 - PEFT text encoder runtime 값은 `strategy_axes/adaptation/transformer_backbone`과
   `strategy_axes/adaptation/peft_adapter`에서 온다.

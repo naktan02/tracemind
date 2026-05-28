@@ -1033,7 +1033,7 @@ def test_federated_simulation_method_owned_fedmatch_uses_method_local_policy() -
     assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
 
 
-def test_federated_simulation_server_step_policy_declares_executor() -> None:
+def test_federated_simulation_update_family_declares_server_step_executor() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
@@ -1044,10 +1044,11 @@ def test_federated_simulation_server_step_policy_declares_executor() -> None:
 
     assert cfg.server_step_policy.name == "supervised_seed_step"
     assert (
-        cfg.server_step_policy.executor
+        cfg.round_runtime.server_step_executors.supervised_seed_step
         == "scripts.runtime_adapters.federated_server.peft_encoder_server_step."
         "run_peft_encoder_supervised_seed_step"
     )
+    assert "executor" not in cfg.server_step_policy
 
 
 def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> None:
