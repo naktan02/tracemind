@@ -2032,9 +2032,35 @@ def test_diagonal_scale_no_longer_has_update_family_initialization_leaf() -> Non
 
     assert not existing_paths, (
         "diagonal_scale는 target update-family 축이 아니다. v1 shared contract와 "
-        "legacy fallback 값이 남아 있더라도 methods-level 구현 폴더나 "
+        "legacy shared compatibility 값이 남아 있더라도 methods-level 구현 폴더나 "
         "trainable_state/update_family leaf를 다시 만들지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_paths)}"
+    )
+
+
+def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> None:
+    checked_paths = (
+        CONF_SRC / "README.md",
+        SCRIPTS_SRC / "README.md",
+        REPO_ROOT / "docs" / "operations" / "local-runbook.md",
+    )
+    forbidden_snippets = (
+        "legacy fallback",
+        "--expected-adapter-family lora_classifier",
+        "--expect-lora-classifier-aggregate-snapshot",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "active config/runbook 문서는 현재 PEFT verifier 예시를 사용한다. "
+        "lora_classifier verifier flag와 diagonal_scale fallback 표현은 legacy "
+        "audit/contract 문서에만 남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
 

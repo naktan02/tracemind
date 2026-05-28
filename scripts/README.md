@@ -250,13 +250,13 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expected-run-control-output-dir runs/_smoke/fl_ssl \
   --expected-ssl-algorithm fixmatch \
   --expected-ssl-method fixmatch_usb_v1 \
-  --expected-adapter-family lora_classifier \
+  --expected-adapter-family peft_classifier \
   --expected-aggregation fedavg \
   --expected-delta-format server_uploaded_artifact_ref \
   --expect-shared-update-count-matches-round-updates \
   --expect-server-owned-update-artifacts \
   --expect-no-agent-local-update-refs \
-  --expect-lora-classifier-aggregate-snapshot \
+  --expect-peft-classifier-aggregate-snapshot \
   --expected-embedding-backend transformers_mxbai \
   --expected-embedding-device cuda \
   --expected-embedding-local-files-only true \
