@@ -151,11 +151,11 @@ central fixed embedding + classifier seed
   `methods/adaptation/peft_text_classifier/federated_ssl/`의 method-neutral
   adapter-family slice가 소유한다. FedMatch의 `sigma/psi` 의미는
   `methods/federated_ssl/fedmatch/`에서 읽는다.
-  현재 server path는 원본 sparse sigma/psi sync가 아니라 LoRA-classifier merged
+  현재 server path는 원본 sparse sigma/psi sync가 아니라 PEFT-classifier merged
   delta/FedAvg 또는 `server_update_policy=fedmatch_partitioned`에서
-  LoRA-classifier `partitioned_delta_average` simulation backend다. 이 backend는
+  PEFT-classifier `partitioned_delta_average` simulation backend다. 이 backend는
   원본 sparse sigma/psi sync 전체가 아니라 logical partition delta 평균 slice다.
-  이전 round client-local LoRA snapshot 기반 helper weak-probability provider와
+  이전 round client-local PEFT snapshot 기반 helper weak-probability provider와
   labels-at-server supervised seed server step은 simulation에서 활성화했다. sparse
   S2C/C2S는 client-local previous partition snapshot과 partitioned global state 기준
   simulation slice로 활성화했다.

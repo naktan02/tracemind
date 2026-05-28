@@ -254,7 +254,8 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 
 - `aggregation_backend_name`과 `adapter_family_name`은 `round_runtime.*`로 노출된다.
   기본값은 entrypoint leaf의 `peft_classifier` / `fedavg`다. `lora_classifier`
-  leaf는 기존 override와 run artifact 호환을 위한 fallback이다.
+  실행 leaf는 제거됐고, 해당 이름은 old-run artifact/report reader compatibility
+  표면에만 남긴다.
 - `local_update_profile`은 local update 조합을 고르고, server round 조합은
   `round_runtime.adapter_family_name`과 `round_runtime.aggregation_backend_name`을
   직접 override한다. high-level compose preset은 중복 source-of-truth를 피하기 위해

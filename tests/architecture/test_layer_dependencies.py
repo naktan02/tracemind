@@ -2042,12 +2042,21 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
     checked_paths = (
         CONF_SRC / "README.md",
         SCRIPTS_SRC / "README.md",
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
+        REPO_ROOT / "docs" / "project_execution_plan.md",
+        REPO_ROOT / "docs" / "strategy_surface_map.md",
         REPO_ROOT / "docs" / "operations" / "local-runbook.md",
     )
     forbidden_snippets = (
         "legacy fallback",
         "--expected-adapter-family lora_classifier",
         "--expect-lora-classifier-aggregate-snapshot",
+        "FedAvg + FixMatch + LoRA-classifier",
+        "LoRA-classifier simulation 병목",
+        "method-owned LoRA-classifier",
+        "lora_classifier model builder",
+        "LoRA-classifier `partitioned_delta_average`",
+        "lora_classifier leaf",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
@@ -2057,9 +2066,9 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
     ]
 
     assert not violations, (
-        "active config/runbook 문서는 현재 PEFT verifier 예시를 사용한다. "
-        "lora_classifier verifier flag와 diagonal_scale fallback 표현은 legacy "
-        "audit/contract 문서에만 남긴다.\n"
+        "active config/runbook 문서는 현재 PEFT verifier와 PEFT-classifier "
+        "실행 용어를 사용한다. lora_classifier verifier flag와 active 경로의 "
+        "LoRA-classifier 표기는 legacy audit/contract 문서에만 남긴다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 

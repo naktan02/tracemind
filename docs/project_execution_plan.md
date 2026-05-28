@@ -100,7 +100,7 @@ central fixed embedding + classifier seed
   쌓는다. smoke 산출물은 같은 하위 구조를 `runs/_smoke/fl_ssl/...` 아래에
   쌓는다. 기존 `runs/federated_simulation*` 산출물도 같은 구조로 마이그레이션했다.
 - 현재 FL SSL 기본 실행 조합은 descriptor 없는
-  `manual + FixMatch + FedAvg + LoRA-classifier`다.
+  `manual + FixMatch + FedAvg + PEFT-classifier`다.
 - `manual` mode는 논문 method가 아니라
   `query_ssl_method/round_runtime.*` 조합 baseline/ablation용이다.
   report/index에는 `execution_role=manual_baseline`으로 기록하고
@@ -244,10 +244,10 @@ Runtime translation:
 
 현재 체크포인트:
 
-- 실제 PEFT executor 기준 `FedAvg + FixMatch + LoRA-classifier` 1-round smoke는
+- 실제 PEFT executor 기준 `FedAvg + FixMatch + PEFT-classifier` 1-round smoke는
   완료했다. report metadata는 `query_ssl_method.algorithm_name=fixmatch`로
   `methods/ssl/algorithms/*`가 실제 local objective를 소유함을 남긴다.
-- LoRA/classifier delta artifact 경로는 `agent-local://` ref를 server-owned
+- PEFT adapter/classifier-head delta artifact 경로는 `agent-local://` ref를 server-owned
   `aggregation_artifact::` ref로 upload/materialize할 수 있게 닫았다.
   server direct accept는 server-owned ref와 inline debug payload만 수락한다.
 - `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`, `30 rounds` main
@@ -284,7 +284,7 @@ Runtime translation:
 
 다음 우선순위:
 
-1. FedMatch reduced run 전에 LoRA-classifier simulation 병목을 줄인다.
+1. FedMatch reduced run 전에 PEFT-classifier simulation 병목을 줄인다.
    확인된 병목은 client/round마다 `AutoModel.from_pretrained()`로 frozen backbone을
    재로딩하는 것, helper snapshot마다 helper model을 다시 materialize하는 것,
    매 round 전체 validation/probe를 반복 평가하는 것이다.
@@ -294,17 +294,17 @@ Runtime translation:
    label distribution, query id hash가 남는다. 이후 reduced run에서는 이 probe surface가
    helper selection vector 계산 입력이다.
 3. runtime resource cache seam은 `methods.common` protocol과 simulation run-scoped
-   in-memory cache로 열었다. `lora_classifier` model builder는 cache가 있으면
+   in-memory cache로 열었다. PEFT text-classifier model builder는 cache가 있으면
    tokenizer와 frozen backbone base를 재사용하고, client별 LoRA/head state를 별도 model
    instance에 로드한다. Helper provider도 같은 cache를 통해 backbone/tokenizer 재로딩
    비용을 줄인다.
 4. helper snapshot별 materialized helper model cache를 추가했다. 같은 run에서 동일
-   helper snapshot이 다시 선택되면 LoRA-classifier model 복원과 parameter load를
+   helper snapshot이 다시 선택되면 PEFT-classifier model 복원과 parameter load를
    재사용한다.
 5. client-local pseudo-label quality 진단은 `diagnostic_view.max_rows=512` 기본값의
    deterministic subset으로 줄인다. 이는 학습 pool을 자르는 정책이 아니라 보고용
    diagnostics 입력만 줄이는 공통 runtime capability이며, manual Query SSL과 FedMatch
-   method-owned LoRA-classifier 경로가 같이 사용한다.
+   method-owned PEFT-classifier 경로가 같이 사용한다.
 6. client round별 `timing_breakdown`을 report에 남긴다. 다음 reduced run에서
    model prepare, training loop, pseudo-label diagnostics, helper/peer snapshot,
    update materialization 중 실제 병목을 숫자로 확인한다.
@@ -330,7 +330,7 @@ Runtime translation:
    `ssl_method.local_budget_policy=original_method`를 명시한 별도 faithful run에서만
    사용한다.
 11. 같은 split/seed/budget에서 현행
-   `FedAvg + FixMatch + LoRA-classifier` manual baseline과 FedMatch method-owned slice를
+   `FedAvg + FixMatch + PEFT-classifier` manual baseline과 FedMatch method-owned slice를
    비교 가능한 reduced report로 맞춘다. target 구조에서는 이 manual baseline을
    `update_family=peft_text_classifier`로 표현한다.
 12. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는

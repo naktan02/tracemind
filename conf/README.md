@@ -186,7 +186,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `client_pool_split`
   - 각 client shard 안에서 local labeled/unlabeled pool 비율을 deterministic하게
     나눈다.
-  - manual `FedAvg + FixMatch + LoRA-classifier` 조합은 client별
+  - manual `FedAvg + FixMatch + PEFT-classifier` 조합은 client별
     `labeled_rows`와 `unlabeled_rows`를 함께 local SSL 학습 입력으로 사용한다.
     legacy inline-delta fallback은 `unlabeled` partition만 pseudo-label training
     후보로 쓴다.
