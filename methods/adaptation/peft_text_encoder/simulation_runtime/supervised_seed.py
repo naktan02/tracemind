@@ -37,6 +37,31 @@ PEFT_ENCODER_SEED_ADAPTER_ARTIFACT_SLOT = (
 PEFT_ENCODER_SEED_CLASSIFIER_HEAD_ARTIFACT_SLOT = (
     peft_fedavg_projection.CLASSIFIER_HEAD_ARTIFACT_SLOT
 )
+PEFT_ENCODER_SUPERVISED_SEED_STEP_SEED_OFFSET = 7919
+PEFT_ENCODER_SUPERVISED_SEED_REVISION_SUFFIX = "server_seed"
+
+
+def build_peft_encoder_supervised_seed_revision(
+    *,
+    base_model_revision: str,
+) -> str:
+    """server supervised seed step publication model revision을 만든다."""
+
+    return f"{base_model_revision}_{PEFT_ENCODER_SUPERVISED_SEED_REVISION_SUFFIX}"
+
+
+def peft_encoder_supervised_seed_step_seed(
+    *,
+    base_seed: int,
+    round_index: int,
+) -> int:
+    """server supervised seed step의 deterministic seed를 계산한다."""
+
+    return (
+        int(base_seed)
+        + PEFT_ENCODER_SUPERVISED_SEED_STEP_SEED_OFFSET
+        + int(round_index)
+    )
 
 
 @dataclass(frozen=True, slots=True)

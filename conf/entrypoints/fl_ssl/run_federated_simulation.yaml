@@ -145,13 +145,13 @@ round_runtime:
       pooling: ${paper_backbone.pooling}
       max_length: ${paper_backbone.max_length}
       task_prefix: ${paper_backbone.task_prefix}
-      peft_adapter_name: ${lora.peft_adapter_name}
-      rank: ${lora.rank}
-      alpha: ${lora.alpha}
-      dropout: ${lora.dropout}
-      bias: ${lora.bias}
-      target_modules: ${lora.target_modules}
-      use_rslora: ${lora.use_rslora}
+      peft_adapter_name: ${peft_adapter.peft_adapter_name}
+      rank: ${peft_adapter.rank}
+      alpha: ${peft_adapter.alpha}
+      dropout: ${peft_adapter.dropout}
+      bias: ${peft_adapter.bias}
+      target_modules: ${peft_adapter.target_modules}
+      use_rslora: ${peft_adapter.use_rslora}
       artifact_format: simulation_peft_classifier_state_ref
       peft_adapter_artifact_ref: null
       classifier_head_artifact_ref: null

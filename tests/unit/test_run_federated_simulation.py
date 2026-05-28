@@ -90,6 +90,10 @@ from scripts.experiments.fl_ssl.federated_simulation.io.resume_checkpoint import
     resume_checkpoint_path,
     write_resume_checkpoint,
 )
+from scripts.experiments.fl_ssl.federated_simulation.model_revisions import (
+    INITIAL_SIMULATION_MODEL_REVISION,
+    build_simulation_model_revision,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientRoundSummary,
     FederatedClientPoolSplitConfig,
@@ -968,7 +972,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
             ),
             validation_client_shards=(),
             server_runtime=server_runtime,  # type: ignore[arg-type]
-            initial_model_revision="sim_rev_0000",
+            initial_model_revision=INITIAL_SIMULATION_MODEL_REVISION,
             initial_validation=object(),  # type: ignore[arg-type]
             active=active,
         ),
@@ -979,6 +983,21 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
 
     assert result.model_revision == "sim_rev_0001_server_seed"
     assert result.active.adapter_state.model_revision == "sim_rev_0001_server_seed"
+    assert (
+        supervised_seed_runtime.build_peft_encoder_supervised_seed_revision(
+            base_model_revision=build_simulation_model_revision(1)
+        )
+        == "sim_rev_0001_server_seed"
+    )
+    assert (
+        supervised_seed_runtime.peft_encoder_supervised_seed_step_seed(
+            base_seed=request.seed,
+            round_index=1,
+        )
+        == request.seed
+        + supervised_seed_runtime.PEFT_ENCODER_SUPERVISED_SEED_STEP_SEED_OFFSET
+        + 1
+    )
     assert result.metrics["server_step_labeled_count"] == 1.0
     assert result.metrics["server_step_epochs"] == 2.0
     assert result.metrics["server_step_batch_size"] == 3.0

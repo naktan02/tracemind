@@ -352,6 +352,8 @@ def test_federated_server_peft_runtime_adapter_keeps_method_core_in_methods() ->
         "load_peft_encoder_base_parameters_into_model",
         "materialize_base_peft_encoder_state",
         "build_dataloader",
+        "+ 7919",
+        "sim_rev_{round_index:04d}_server_seed",
     )
     violations: list[tuple[Path, str]] = []
     for path in (server_step_path, final_projection_path):
@@ -372,6 +374,57 @@ def test_federated_server_peft_runtime_adapter_keeps_method_core_in_methods() ->
         "scripts federated_server PEFT adapter는 request/context/publication bridge만 "
         "맡는다. 모델 빌드, state materialization, seed step, projection assembly는 "
         "methods/adaptation/peft_text_encoder/simulation_runtime/로 둔다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
+def test_fl_simulation_model_revision_policy_is_centralized() -> None:
+    policy_path = (
+        REPO_ROOT
+        / "scripts"
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "model_revisions.py"
+    )
+    checked_paths = (
+        REPO_ROOT
+        / "scripts"
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "flow"
+        / "bootstrap.py",
+        REPO_ROOT
+        / "scripts"
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "flow"
+        / "round_loop.py",
+        REPO_ROOT
+        / "scripts"
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "io"
+        / "communication_cost_estimates.py",
+    )
+    forbidden_snippets = ("sim_rev_0000", "f\"sim_rev_", "f'sim_rev_")
+    violations: list[tuple[Path, str]] = []
+    for path in checked_paths:
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
+
+    assert policy_path.exists(), (
+        "FL simulation model revision naming은 한 helper에서 관리한다.\n"
+        f"path={_relative_repo_path(policy_path)}"
+    )
+    assert not violations, (
+        "bootstrap/round/report helper에 simulation revision 형식을 다시 박지 않는다. "
+        "federated_simulation/model_revisions.py를 사용한다.\n"
         f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
 

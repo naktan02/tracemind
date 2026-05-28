@@ -8,6 +8,8 @@ from methods.adaptation.peft_text_encoder.simulation_runtime.supervised_seed imp
     PEFT_ENCODER_SEED_ADAPTER_ARTIFACT_SLOT,
     PEFT_ENCODER_SEED_CLASSIFIER_HEAD_ARTIFACT_SLOT,
     build_peft_encoder_supervised_seed_projection,
+    build_peft_encoder_supervised_seed_revision,
+    peft_encoder_supervised_seed_step_seed,
 )
 from methods.adaptation.peft_text_encoder.update_family_runtime import (
     is_peft_encoder_update_family,
@@ -25,6 +27,9 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
 )
 from scripts.experiments.fl_ssl.federated_simulation.io.run_artifact_writer import (
     RunArtifactWriter,
+)
+from scripts.experiments.fl_ssl.federated_simulation.model_revisions import (
+    build_simulation_model_revision,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
@@ -71,7 +76,9 @@ def run_peft_encoder_supervised_seed_step(
         round_index=round_index,
     )
     now = datetime.now(timezone.utc)
-    next_model_revision = f"sim_rev_{round_index:04d}_server_seed"
+    next_model_revision = build_peft_encoder_supervised_seed_revision(
+        base_model_revision=build_simulation_model_revision(round_index)
+    )
     artifact_refs = build_server_aggregate_artifact_refs(
         artifact_namespace=request.round_runtime_config.update_family_name,
         next_model_revision=next_model_revision,
@@ -91,7 +98,10 @@ def run_peft_encoder_supervised_seed_step(
         peft_config=runtime_payload.training_backend_config,
         trainer_runtime_config=request.local_trainer_runtime_config,
         runtime_resource_cache=bootstrapped.runtime_resource_cache,
-        seed=int(request.seed) + 7919 + int(round_index),
+        seed=peft_encoder_supervised_seed_step_seed(
+            base_seed=request.seed,
+            round_index=round_index,
+        ),
         epochs=seed_parameters.epochs,
         batch_size=seed_parameters.batch_size,
         learning_rate=float(request.training_task_config.learning_rate),

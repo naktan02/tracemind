@@ -159,15 +159,16 @@ def test_peft_encoder_model_builder_uses_peft_adapter_builder(
 
         def build_backbone(self, *, backbone_base, context):
             captured["backbone_base"] = backbone_base
-            captured["peft_adapter_name"] = context.cfg.lora.peft_adapter_name
-            captured["rank"] = context.cfg.lora.rank
+            peft_adapter = context.cfg.peft_adapter
+            captured["peft_adapter_name"] = peft_adapter.peft_adapter_name
+            captured["rank"] = peft_adapter.rank
             captured["lora_config_cls"] = context.lora_config_cls
             captured["task_type"] = context.task_type
             captured["get_peft_model"] = context.get_peft_model
             return backbone_base
 
         def build_summary(self, *, cfg):
-            return {"adapter_name": cfg.lora.peft_adapter_name}
+            return {"adapter_name": cfg.peft_adapter.peft_adapter_name}
 
     def _fake_get_peft_model(backbone_base, _peft_config):
         return backbone_base

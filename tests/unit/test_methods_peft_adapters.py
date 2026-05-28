@@ -26,7 +26,7 @@ def _cfg(**overrides):
         "use_rslora": False,
     }
     values.update(overrides)
-    return SimpleNamespace(lora=SimpleNamespace(**values))
+    return SimpleNamespace(peft_adapter=SimpleNamespace(**values))
 
 
 def test_peft_adapter_registry_builds_lora_summary() -> None:

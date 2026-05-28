@@ -21,6 +21,9 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     BootstrappedSimulation,
     PeerContextSimulationState,
 )
+from scripts.experiments.fl_ssl.federated_simulation.model_revisions import (
+    INITIAL_SIMULATION_MODEL_REVISION,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     FederatedDatasetSplit,
@@ -75,7 +78,7 @@ def bootstrap_simulation(
             runtime_resource_cache=runtime_resource_cache,
         )
 
-    initial_model_revision = "sim_rev_0000"
+    initial_model_revision = INITIAL_SIMULATION_MODEL_REVISION
     now = datetime.now(timezone.utc)
     initial_state = build_initial_shared_state(
         round_runtime_config=request.round_runtime_config,

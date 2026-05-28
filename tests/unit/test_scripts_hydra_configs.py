@@ -581,7 +581,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert "adapter_family_name" not in cfg.round_runtime
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.paper_backbone.name == "mxbai_encoder"
-    assert cfg.lora.name == "default"
+    assert cfg.peft_adapter.name == "default"
     assert cfg.training_task.objective.algorithm_profile_name == (
         "peft_pseudo_label_v1"
     )
@@ -1441,7 +1441,7 @@ def test_train_peft_supervised_classifier_defaults_to_gpu_online_scaffold() -> N
     assert cfg.runtime.device == "cuda"
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
-    assert cfg.lora.target_modules == "all-linear"
+    assert cfg.peft_adapter.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
     assert cfg.output_dir == "runs/train_peft_supervised_classifier"
     assert cfg.central_ssl_budget.output_root == "runs"

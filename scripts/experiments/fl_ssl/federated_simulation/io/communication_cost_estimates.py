@@ -6,6 +6,10 @@ import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from scripts.experiments.fl_ssl.federated_simulation.model_revisions import (
+    build_active_model_revision_for_round,
+)
+
 COMMUNICATION_ESTIMATE_SCHEMA_VERSION = "fl_ssl_artifact_communication_cost.v1"
 SPARSE_VALUE_BYTES = 4
 SPARSE_INDEX_BYTES = 4
@@ -35,7 +39,7 @@ def build_artifact_communication_estimate(
         )
         round_c2s_payload = _round_c2s_payload_bytes(round_payload)
         round_c2s_artifact = _round_c2s_artifact_bytes(round_payload)
-        active_revision = f"sim_rev_{max(0, round_index - 1):04d}"
+        active_revision = build_active_model_revision_for_round(round_index)
         state_bytes = _global_state_material_bytes(
             run_dir=run_dir,
             model_revision=active_revision,

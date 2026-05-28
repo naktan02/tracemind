@@ -8,7 +8,10 @@ from typing import Any
 from torch import nn
 
 from methods.adaptation.peft_adapters.base import PeftAdapterBuildContext
-from methods.adaptation.peft_adapters.registry import register_peft_adapter_builder
+from methods.adaptation.peft_adapters.registry import (
+    peft_adapter_config_from_cfg,
+    register_peft_adapter_builder,
+)
 
 
 def resolve_target_modules(raw_value: Any) -> str | list[str]:
@@ -32,33 +35,34 @@ class LoraPeftAdapterBuilder:
         backbone_base: nn.Module,
         context: PeftAdapterBuildContext,
     ) -> nn.Module:
-        cfg = context.cfg
+        peft_adapter = peft_adapter_config_from_cfg(context.cfg)
         lora_config = context.lora_config_cls(
-            r=int(cfg.lora.rank),
-            lora_alpha=int(cfg.lora.alpha),
-            lora_dropout=float(cfg.lora.dropout),
-            target_modules=resolve_target_modules(cfg.lora.target_modules),
-            bias=str(cfg.lora.bias),
-            use_rslora=self._use_rslora(cfg=cfg),
+            r=int(peft_adapter.rank),
+            lora_alpha=int(peft_adapter.alpha),
+            lora_dropout=float(peft_adapter.dropout),
+            target_modules=resolve_target_modules(peft_adapter.target_modules),
+            bias=str(peft_adapter.bias),
+            use_rslora=self._use_rslora(cfg=context.cfg),
             task_type=context.task_type.FEATURE_EXTRACTION,
         )
         return context.get_peft_model(backbone_base, lora_config)
 
     def build_summary(self, *, cfg: Any) -> dict[str, Any]:
+        peft_adapter = peft_adapter_config_from_cfg(cfg)
         return {
             "adapter_name": self.adapter_name,
-            "rank": int(cfg.lora.rank),
-            "alpha": int(cfg.lora.alpha),
-            "dropout": float(cfg.lora.dropout),
-            "bias": str(cfg.lora.bias),
-            "target_modules": resolve_target_modules(cfg.lora.target_modules),
+            "rank": int(peft_adapter.rank),
+            "alpha": int(peft_adapter.alpha),
+            "dropout": float(peft_adapter.dropout),
+            "bias": str(peft_adapter.bias),
+            "target_modules": resolve_target_modules(peft_adapter.target_modules),
             "use_rslora": self._use_rslora(cfg=cfg),
         }
 
     def _use_rslora(self, *, cfg: Any) -> bool:
         if self.use_rslora_override is not None:
             return self.use_rslora_override
-        return bool(cfg.lora.use_rslora)
+        return bool(peft_adapter_config_from_cfg(cfg).use_rslora)
 
 
 @register_peft_adapter_builder("lora")

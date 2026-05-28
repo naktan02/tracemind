@@ -26,18 +26,29 @@ def register_peft_adapter_builder(
     return _decorator
 
 
+def peft_adapter_config_from_cfg(cfg):
+    """Hydra/root config에서 PEFT adapter parameter surface를 찾는다."""
+
+    if hasattr(cfg, "peft_adapter"):
+        return cfg.peft_adapter
+    if hasattr(cfg, "lora"):
+        return cfg.lora
+    raise ValueError("PEFT adapter config must define peft_adapter.")
+
+
 def resolve_peft_adapter_name(cfg) -> str:
     """Hydra cfg에서 PEFT adapter 이름을 해석한다."""
 
+    peft_adapter = peft_adapter_config_from_cfg(cfg)
     explicit_name = str(
-        getattr(cfg.lora, "peft_adapter_name", "")
-        or getattr(cfg.lora, "adapter_name", "")
-        or getattr(cfg.lora, "method", "")
+        getattr(peft_adapter, "peft_adapter_name", "")
+        or getattr(peft_adapter, "adapter_name", "")
+        or getattr(peft_adapter, "method", "")
         or ""
     ).strip()
     if explicit_name:
         return explicit_name
-    if bool(getattr(cfg.lora, "use_rslora", False)):
+    if bool(getattr(peft_adapter, "use_rslora", False)):
         return "rslora"
     return "lora"
 

@@ -11,6 +11,7 @@ from torch import nn
 from methods.adaptation.peft_adapters.base import PeftAdapterBuildContext
 from methods.adaptation.peft_adapters.registry import (
     build_peft_adapter_builder,
+    peft_adapter_config_from_cfg,
     resolve_peft_adapter_name,
 )
 from methods.adaptation.peft_text_encoder.config import (
@@ -234,7 +235,7 @@ def _peft_adapter_cfg_from_training_config(
     """PEFT adapter builder가 기대하는 config surface로 trainer config를 맞춘다."""
 
     return SimpleNamespace(
-        lora=SimpleNamespace(
+        peft_adapter=SimpleNamespace(
             peft_adapter_name=peft_config.peft_adapter_name,
             rank=peft_config.rank,
             alpha=peft_config.alpha,
@@ -333,15 +334,7 @@ def build_model(
             **(
                 peft_adapter_builder.build_summary(cfg=cfg)
                 if peft_adapter_builder is not None
-                else {
-                    "adapter_name": "loaded_from_checkpoint",
-                    "rank": int(cfg.lora.rank),
-                    "alpha": int(cfg.lora.alpha),
-                    "dropout": float(cfg.lora.dropout),
-                    "bias": str(cfg.lora.bias),
-                    "target_modules": str(cfg.lora.target_modules),
-                    "use_rslora": bool(cfg.lora.use_rslora),
-                }
+                else _loaded_checkpoint_peft_adapter_summary(cfg)
             ),
         },
         "initial_checkpoint": {
@@ -351,3 +344,16 @@ def build_model(
         "parameter_counts": count_parameters(model),
     }
     return model, tokenizer, summary
+
+
+def _loaded_checkpoint_peft_adapter_summary(cfg: Any) -> dict[str, object]:
+    peft_adapter = peft_adapter_config_from_cfg(cfg)
+    return {
+        "adapter_name": "loaded_from_checkpoint",
+        "rank": int(peft_adapter.rank),
+        "alpha": int(peft_adapter.alpha),
+        "dropout": float(peft_adapter.dropout),
+        "bias": str(peft_adapter.bias),
+        "target_modules": str(peft_adapter.target_modules),
+        "use_rslora": bool(peft_adapter.use_rslora),
+    }

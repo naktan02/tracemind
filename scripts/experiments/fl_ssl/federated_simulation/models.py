@@ -34,6 +34,13 @@ FL_DATA_SOURCE_MODES = frozenset(
         FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT,
     }
 )
+PROJECTION_DATASET_VALIDATION = "validation"
+PROJECTION_DATASET_TEST = "test"
+DEFAULT_PROJECTION_DATASETS = (
+    PROJECTION_DATASET_VALIDATION,
+    PROJECTION_DATASET_TEST,
+)
+PROJECTION_DATASETS = frozenset(DEFAULT_PROJECTION_DATASETS)
 
 ClientEvaluationSummary = simulation_result_models.ClientEvaluationSummary
 ClientRoundSummary = simulation_result_models.ClientRoundSummary
@@ -169,7 +176,7 @@ class FederatedFinalProjectionConfig:
     """최종 global PEFT representation projection artifact 설정."""
 
     enabled: bool = True
-    dataset_names: tuple[str, ...] = ("validation", "test")
+    dataset_names: tuple[str, ...] = DEFAULT_PROJECTION_DATASETS
     fail_on_error: bool = False
 
     @classmethod
@@ -179,7 +186,10 @@ class FederatedFinalProjectionConfig:
     ) -> "FederatedFinalProjectionConfig":
         if source is None:
             return cls()
-        raw_dataset_names = source.get("dataset_names", ("validation", "test"))
+        raw_dataset_names = source.get(
+            "dataset_names",
+            DEFAULT_PROJECTION_DATASETS,
+        )
         if isinstance(raw_dataset_names, str):
             dataset_names = tuple(
                 name.strip() for name in raw_dataset_names.split(",") if name.strip()
@@ -190,13 +200,12 @@ class FederatedFinalProjectionConfig:
             )
         return cls(
             enabled=bool(source.get("enabled", True)),
-            dataset_names=dataset_names or ("validation", "test"),
+            dataset_names=dataset_names or DEFAULT_PROJECTION_DATASETS,
             fail_on_error=bool(source.get("fail_on_error", False)),
         )
 
     def __post_init__(self) -> None:
-        allowed_names = {"validation", "test"}
-        unsupported_names = sorted(set(self.dataset_names) - allowed_names)
+        unsupported_names = sorted(set(self.dataset_names) - PROJECTION_DATASETS)
         if unsupported_names:
             raise ValueError(
                 "final_projection.dataset_names only supports validation/test: "

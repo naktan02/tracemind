@@ -28,6 +28,9 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     QuerySslAlgorithmSyncSimulationState,
     RoundExecution,
 )
+from scripts.experiments.fl_ssl.federated_simulation.model_revisions import (
+    build_simulation_model_revision,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRoundSummary,
     SimulationRunRequest,
@@ -168,7 +171,7 @@ def run_one_round(
     )
     round_timing["round_peer_state_build_seconds"] = time.perf_counter() - started_at
 
-    next_model_revision = f"sim_rev_{round_index:04d}"
+    next_model_revision = build_simulation_model_revision(round_index)
     started_at = time.perf_counter()
     next_active, aggregation_metrics = _finalize_round_publication(
         request=request,

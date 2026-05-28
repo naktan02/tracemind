@@ -1,4 +1,4 @@
-# @package lora
+# @package peft_adapter
 
 name: default
 peft_adapter_name: lora

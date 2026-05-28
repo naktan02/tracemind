@@ -14,6 +14,8 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    PROJECTION_DATASET_TEST,
+    PROJECTION_DATASET_VALIDATION,
     SimulationRunRequest,
 )
 from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
@@ -51,8 +53,8 @@ def _projection_rows_by_dataset_name(
     request: SimulationRunRequest,
 ) -> dict[str, Any]:
     rows_by_name = {
-        "validation": request.validation_rows,
-        "test": request.test_rows,
+        PROJECTION_DATASET_VALIDATION: request.validation_rows,
+        PROJECTION_DATASET_TEST: request.test_rows,
     }
     return {
         dataset_name: rows
