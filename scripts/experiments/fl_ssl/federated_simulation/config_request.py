@@ -83,7 +83,7 @@ def build_simulation_request_from_config(
     )
     round_runtime_payloads = _build_round_runtime_payloads(cfg.round_runtime)
     round_runtime_config = FederatedRoundRuntimeConfig(
-        adapter_family_name=str(cfg.round_runtime.adapter_family_name),
+        adapter_family_name=_resolve_round_payload_adapter_kind(cfg.round_runtime),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
         update_family_name=str(cfg.round_runtime.update_family_name),
         runtime_payload_key=_optional_config_str(
@@ -275,6 +275,24 @@ def _optional_config_str(cfg: DictConfig, key: str) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _resolve_round_payload_adapter_kind(round_runtime: DictConfig) -> str:
+    """update-family leaf가 선언한 v1 payload adapter kind를 읽는다."""
+
+    payload_adapter_kind = _optional_config_str(round_runtime, "payload_adapter_kind")
+    if payload_adapter_kind is not None:
+        return payload_adapter_kind
+
+    legacy_adapter_family = _optional_config_str(round_runtime, "adapter_family_name")
+    if legacy_adapter_family is not None:
+        return legacy_adapter_family
+
+    raise ValueError(
+        "round_runtime payload adapter kind compatibility alias is required. "
+        "Set strategy_axes/trainable_state/update_family so it declares "
+        "payload_adapter_kind, or provide legacy round_runtime.adapter_family_name."
+    )
 
 
 def _optional_config_str_tuple(cfg: DictConfig, key: str) -> tuple[str, ...]:

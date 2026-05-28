@@ -571,6 +571,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         "round_runtime.lora_classifier",
         "runtime_payload_for_adapter_family",
         "classifier_head_bootstrap_logit_scale",
+        "adapter_family_name=str(cfg.round_runtime.adapter_family_name)",
     )
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:
