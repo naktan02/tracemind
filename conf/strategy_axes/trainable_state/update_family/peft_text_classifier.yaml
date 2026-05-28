@@ -1,6 +1,8 @@
 # @package round_runtime
 
 update_family_name: peft_text_classifier
+payload_adapter_kind: peft_classifier
+adapter_family_name: ${.payload_adapter_kind}
 runtime_payload_key: peft_text_classifier
 composition_slug_builder: methods.adaptation.peft_text_classifier.runtime_family.build_peft_text_classifier_composition_slug
 round_runtime_payload_builder: scripts.runtime_adapters.federated_server.peft_encoder_round_runtime.build_peft_encoder_round_runtime_payloads

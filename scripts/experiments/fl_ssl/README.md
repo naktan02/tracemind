@@ -311,7 +311,6 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   fl_method.composition_mode=manual \
   strategy_axes/ssl/consistency_method=flexmatch_usb_v1 \
   strategy_axes/trainable_state/update_family=peft_text_classifier \
-  round_runtime.adapter_family_name=peft_classifier \
   round_runtime.aggregation_backend_name=fedavg \
   fl_data.source_mode=materialized_client_split \
   fl_data.split_manifest=data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json \
@@ -453,7 +452,6 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   strategy_axes/ssl/consistency_method=flexmatch_usb_v1 \
   strategy_axes/trainable_state/update_family=peft_text_classifier \
-  round_runtime.adapter_family_name=peft_classifier \
   round_runtime.aggregation_backend_name=fedavg \
   fl_data.source_mode=materialized_client_split \
   fl_data.split_manifest=data/datasets/fl_client_splits/shared_client_labeled/labeled-ourafla_reddit_unlabeled-ourafla_reddit_validation-ourafla_reddit_test-ourafla_reddit_shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42/manifest.json \

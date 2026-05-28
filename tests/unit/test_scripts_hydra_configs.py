@@ -530,6 +530,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "methods.adaptation.peft_text_classifier.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     )
+    assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.paper_backbone.name == "mxbai_encoder"
@@ -1230,7 +1231,6 @@ def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> N
                 "fl_method.composition_mode=manual",
                 "strategy_axes/fl/shard_policy=dirichlet_alpha03",
                 "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
-                "round_runtime.adapter_family_name=peft_classifier",
                 "round_runtime.aggregation_backend_name=fedavg",
                 "fl_data.source_mode=materialized_client_split",
                 f"fl_data.split_manifest={split_manifest}",
@@ -1338,7 +1338,6 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
                 "fl_method.composition_mode=manual",
-                "round_runtime.adapter_family_name=peft_classifier",
                 "round_runtime.aggregation_backend_name=fedavg",
             ],
         )

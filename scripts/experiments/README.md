@@ -42,8 +42,9 @@
     `round_runtime`, `training_task`, `validation`, `report` section이다.
   - `strategy_axes/fl/local_update_profile`은 local update backend,
     scoring/evidence, privacy 조합을 소유한다.
-  - `round_runtime.adapter_family_name`과 `round_runtime.aggregation_backend_name`은
-    adapter family와 aggregation backend 조합을 직접 고른다.
+  - `strategy_axes/trainable_state/update_family`가 update family와 v1 payload adapter
+    compatibility alias를 선언하고, `round_runtime.aggregation_backend_name`은
+    aggregation backend를 직접 고른다.
   - `strategy_axes/fl/method_descriptor`는 method identity/report metadata를
     소유하고, 실제 runtime 구현이 완료된 method만 열어야 한다.
 - `central_classifier_seed/train_softmax_classifier.py`

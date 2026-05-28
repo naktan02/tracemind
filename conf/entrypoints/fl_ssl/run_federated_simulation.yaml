@@ -130,9 +130,9 @@ train_batch_size: ${training_task.batch_size}
 query_ssl_strong_view_policy: first_aug
 
 # `local_update_profile`은 agent local SSL update 정책을 소유한다.
-# server round의 adapter family와 aggregation backend는 leaf 값으로 직접 고른다.
+# server round의 update family는 strategy_axes/trainable_state/update_family가
+# 소유하고, v1 payload adapter kind compatibility alias도 해당 leaf가 선언한다.
 round_runtime:
-  adapter_family_name: peft_classifier
   aggregation_backend_name: fedavg
   # canonical PEFT-classifier runtime payload leaf다. LoRA/DoRA 등 mechanism은
   # peft_adapter_name과 adapter parameters로 구분한다.

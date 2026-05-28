@@ -155,6 +155,8 @@ Adapter 뒤로 옮긴다.
   runtime payload key와 runtime adapter callable을 선언한다. local objective executor,
   initial state builder, validation evaluator, final projection builder, transient
   resource cleaner는 scripts가 family 구현을 직접 import하지 않기 위한 설정 표면이다.
+  migration window 동안 v1 shared payload가 필요한 family는 `payload_adapter_kind`와
+  `adapter_family_name` compatibility alias도 이 leaf에서만 선언한다.
 - `conf/strategy_axes/fl/method_descriptor/<method>.yaml`은 method identity 선택
   표면이다. method-local objective 이름을 별도 generic leaf로 다시 노출하지 않는다.
 - `fedmatch_agreement`, `sigma/psi`, FedMatch helper 기본값은
@@ -175,8 +177,10 @@ Adapter 뒤로 옮긴다.
   `diagonal_scale`는 target update-family 축이 아니므로
   `conf/strategy_axes/trainable_state/update_family/diagonal_scale.yaml`과
   `methods/adaptation/diagonal_scale/**`는 제거된 상태를 유지한다.
-- `round_runtime.adapter_family_name`은 현재 실행 field다. 최종 migration에서는
-  `round_runtime.update_family_name` 또는 `trainable_state_family_name`으로 바꾼다.
+- `round_runtime.adapter_family_name`은 현재 v1 payload/aggregation compatibility
+  alias다. root entrypoint가 직접 고르지 않고 update-family leaf가 필요할 때만
+  선언한다. 최종 migration에서는 `round_runtime.update_family_name` 또는
+  `trainable_state_family_name`으로 교체한다.
 - legacy field는 제거 조건이 있는 compatibility layer로만 유지한다. 삭제된
   methods-level direct import shim은 다시 만들지 않는다.
 

@@ -472,6 +472,23 @@ def test_fl_entrypoint_does_not_embed_lora_classifier_runtime_scope() -> None:
     )
 
 
+def test_fl_entrypoint_does_not_own_payload_adapter_family_alias() -> None:
+    path = CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "adapter_family_name:",
+        "payload_adapter_kind:",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "FL root entrypoint는 실행 update family와 aggregation backend만 조합한다. "
+        "v1 payload adapter kind compatibility alias는 "
+        "strategy_axes/trainable_state/update_family leaf가 소유한다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_fl_simulation_runtime_model_does_not_embed_lora_classifier_scope() -> None:
     checked_paths = (
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "models.py",
