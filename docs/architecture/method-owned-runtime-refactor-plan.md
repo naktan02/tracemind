@@ -38,6 +38,8 @@ method-only aggregation 변형을 묶을 수 있다. 두 개 이상 방법론에
 - local update backend, scoring, privacy guard, update-family aggregation core는
   `methods/adaptation/<family>/` 또는 `methods/classification/<family>/`가 소유한다.
 - runtime/API fallback은 `methods/federated_ssl/runtime_fallbacks.py` 하나로 제한한다.
+  agent training fallback과 main_server round runtime fallback은 named profile로
+  같은 파일에 두고, runtime adapter는 env/request parsing만 맡는다.
 - runtime/objective compatibility는 `methods/adaptation/runtime_objective_compatibility.py`
   dispatcher와 family-local 구현이 맡는다.
 - `main_server`는 generic payload adapter, aggregation executor, artifact ref capability,

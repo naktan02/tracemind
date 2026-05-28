@@ -78,12 +78,13 @@ def build_simulation_request_from_config(
         to_plain_dict(cfg.local_update_profile)
     )
     execution_plan = _build_execution_plan(cfg)
+    round_runtime_payloads = _build_round_runtime_payloads(cfg.round_runtime)
     training_task_config = _build_training_task_config(
         cfg.training_task,
         task_type=_resolve_training_task_type(cfg=cfg, execution_plan=execution_plan),
         local_update_profile=local_update_profile,
+        round_runtime=cfg.round_runtime,
     )
-    round_runtime_payloads = _build_round_runtime_payloads(cfg.round_runtime)
     round_runtime_config = FederatedRoundRuntimeConfig(
         payload_adapter_kind=_resolve_round_payload_adapter_kind(cfg.round_runtime),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
@@ -349,8 +350,12 @@ def _build_training_task_config(
     *,
     task_type: str,
     local_update_profile: LocalUpdateProfile,
+    round_runtime: DictConfig,
 ) -> FederatedTrainingTaskConfig:
-    objective_config = to_plain_dict(cfg.objective)
+    objective_config = _merge_round_runtime_objective_payload(
+        objective_config=to_plain_dict(cfg.objective),
+        round_runtime=round_runtime,
+    )
     selection_policy = to_plain_dict(cfg.selection_policy)
     training_objective = TrainingObjectiveConfig.from_mapping(objective_config)
     require_training_objective_matches_local_update_profile(
@@ -370,6 +375,58 @@ def _build_training_task_config(
         objective_config=training_objective,
         selection_policy=TrainingSelectionPolicy.from_mapping(selection_policy),
     )
+
+
+def _merge_round_runtime_objective_payload(
+    *,
+    objective_config: dict[str, object],
+    round_runtime: DictConfig,
+) -> dict[str, object]:
+    """update-family leaf가 선언한 runtime payload를 objective extra로 주입한다."""
+
+    scope = _optional_config_str(round_runtime, "training_objective_payload_scope")
+    if scope is None:
+        return objective_config
+
+    runtime_payloads = to_plain_dict(round_runtime.get("runtime_payloads", {}))
+    payload_key = (
+        _optional_config_str(round_runtime, "training_objective_payload_key")
+        or _optional_config_str(round_runtime, "runtime_payload_key")
+        or _optional_config_str(round_runtime, "update_family_name")
+    )
+    if payload_key is None:
+        raise ValueError(
+            "round_runtime.training_objective_payload_scope requires "
+            "training_objective_payload_key, runtime_payload_key, or "
+            "update_family_name."
+        )
+    payload = runtime_payloads.get(payload_key)
+    if not isinstance(payload, dict):
+        raise ValueError(
+            "round_runtime.runtime_payloads must include objective payload key: "
+            f"{payload_key!r}."
+        )
+    excluded_keys = set(
+        _optional_config_str_tuple(
+            round_runtime,
+            "training_objective_payload_excluded_keys",
+        )
+    )
+    injected_payload = {
+        key: value for key, value in payload.items() if key not in excluded_keys
+    }
+    explicit_payload = objective_config.get(scope)
+    if explicit_payload is not None and not isinstance(explicit_payload, dict):
+        raise ValueError(
+            f"training_task.objective.{scope} must be a mapping when present."
+        )
+    return {
+        **objective_config,
+        scope: {
+            **injected_payload,
+            **(explicit_payload or {}),
+        },
+    }
 
 
 def _build_round_runtime_payloads(cfg: DictConfig) -> dict[str, object]:

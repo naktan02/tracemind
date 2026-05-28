@@ -178,6 +178,29 @@ def test_server_step_policy_leaf_does_not_own_update_family_executor() -> None:
     )
 
 
+def test_fl_entrypoint_does_not_embed_update_family_objective_payload_scope() -> None:
+    entrypoint_path = (
+        CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml"
+    )
+    update_family_path = (
+        CONF_SRC
+        / "strategy_axes"
+        / "trainable_state"
+        / "update_family"
+        / "peft_text_encoder.yaml"
+    )
+    entrypoint_source = entrypoint_path.read_text(encoding="utf-8")
+    update_family_source = update_family_path.read_text(encoding="utf-8")
+
+    assert "training_objective_payload_scope: peft_classifier" in update_family_source
+    assert "    peft_classifier:\n" not in entrypoint_source, (
+        "FL entrypoint는 PEFT text encoder objective extra scope를 직접 하드코딩하지 "
+        "않는다. update_family leaf가 runtime payload를 어떤 objective scope로 "
+        "주입할지 선언하고, script runner는 generic merge만 수행한다.\n"
+        f"path={_relative_repo_path(entrypoint_path)}"
+    )
+
+
 def test_fl_aggregation_weight_policy_meaning_stays_in_methods() -> None:
     script_path = FL_SIMULATION_IO_SRC / "aggregation_diagnostics.py"
     methods_path = METHODS_FEDERATED_SRC / "aggregation_weighting.py"

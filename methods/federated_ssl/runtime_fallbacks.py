@@ -8,8 +8,12 @@ compatibility fallback을 소유한다. 실험 실행값의 source of truth는 H
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from methods.adaptation.peft_text_encoder.config import (
+    PEFT_ENCODER_PAYLOAD_ADAPTER_KIND,
+    PEFT_ENCODER_TRAINING_BACKEND_NAME,
+)
 from methods.common.config_reading import freeze_mapping
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
@@ -204,12 +208,38 @@ class RuntimeFallbackTrainingProfile:
         return float(value)
 
 
+@dataclass(frozen=True, slots=True)
+class RuntimeFallbackServerRoundProfile:
+    """명시 round runtime config가 없는 live/API 요청용 fallback profile."""
+
+    profile_name: str
+    payload_adapter_kind: str
+    update_family_name: str
+    aggregation_backend_name: str
+    method_descriptor_name: str | None = None
+    aggregation_backend_overrides: Mapping[str, TrainingConfigScalar] = field(
+        default_factory=dict
+    )
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "aggregation_backend_overrides",
+            freeze_mapping(self.aggregation_backend_overrides),
+        )
+
+
 PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK_NAME = "pseudo_label_self_training.v1"
+PEFT_TEXT_ENCODER_FEDAVG_SERVER_ROUND_RUNTIME_FALLBACK_NAME = (
+    "default_peft_text_encoder_fedavg.v1"
+)
+PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME = "peft_text_encoder"
+FEDAVG_AGGREGATION_BACKEND_NAME = "fedavg"
 
 RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
     {
         "algorithm_profile_name": "prototype_pseudo_label_v1",
-        "training_backend_name": "peft_classifier_trainer",
+        "training_backend_name": PEFT_ENCODER_TRAINING_BACKEND_NAME,
         "confidence_threshold": 0.6,
         "margin_threshold": 0.02,
         "example_generation_backend_name": WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
@@ -244,6 +274,12 @@ PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK = RuntimeFallbackTrainingProfile(
 )
 
 RUNTIME_FALLBACK_TRAINING_PROFILE = PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK
+RUNTIME_FALLBACK_SERVER_ROUND_PROFILE = RuntimeFallbackServerRoundProfile(
+    profile_name=PEFT_TEXT_ENCODER_FEDAVG_SERVER_ROUND_RUNTIME_FALLBACK_NAME,
+    payload_adapter_kind=PEFT_ENCODER_PAYLOAD_ADAPTER_KIND,
+    update_family_name=PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME,
+    aggregation_backend_name=FEDAVG_AGGREGATION_BACKEND_NAME,
+)
 
 
 def build_runtime_fallback_training_objective_config(

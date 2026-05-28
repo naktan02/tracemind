@@ -7,6 +7,10 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from methods.federated_ssl.runtime_fallbacks import (
+    RUNTIME_FALLBACK_SERVER_ROUND_PROFILE,
+)
+
 from ..aggregation.models import AggregationConfigScalar
 
 ROUND_PAYLOAD_ADAPTER_KIND_ENV = "TRACEMIND_ROUND_PAYLOAD_ADAPTER_KIND"
@@ -31,10 +35,16 @@ class ServerRoundRuntimeProfile:
 
 
 DEFAULT_PEFT_CLASSIFIER_SERVER_ROUND_RUNTIME_PROFILE = ServerRoundRuntimeProfile(
-    profile_name="default_peft_classifier.v1",
-    payload_adapter_kind="peft_classifier",
-    update_family_name="peft_text_encoder",
-    aggregation_backend_name="fedavg",
+    profile_name=RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.profile_name,
+    payload_adapter_kind=RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.payload_adapter_kind,
+    update_family_name=RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.update_family_name,
+    aggregation_backend_name=(
+        RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.aggregation_backend_name
+    ),
+    method_descriptor_name=RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.method_descriptor_name,
+    aggregation_backend_overrides=dict(
+        RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.aggregation_backend_overrides
+    ),
 )
 DEFAULT_SERVER_ROUND_RUNTIME_PROFILE = (
     DEFAULT_PEFT_CLASSIFIER_SERVER_ROUND_RUNTIME_PROFILE

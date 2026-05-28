@@ -121,11 +121,13 @@ scripts/
 
 5. `scripts`의 Interface는 config load, execution plan resolve, runtime context 구성,
    core 호출, output write로 제한한다.
-   `conf/strategy_axes/trainable_state/update_family/*`는 update family 이름과
-   runtime payload key, methods-owned initial state builder, validation evaluator,
-   final projection builder, transient resource cleaner path를 제공할 수 있다.
-   `conf/strategy_axes/fl/server_step_policy/*`처럼 runtime capability leaf도
-   필요하면 runtime adapter executor path를 선언할 수 있다.
+  `conf/strategy_axes/trainable_state/update_family/*`는 update family 이름과
+  runtime payload key, methods-owned initial state builder, validation evaluator,
+  final projection builder, transient resource cleaner path를 제공할 수 있다.
+  runtime payload 일부를 TrainingTask objective extra로 전달해야 하는 family는
+  objective payload scope와 제외 key를 같은 update-family leaf에 선언한다.
+  `conf/strategy_axes/fl/server_step_policy/*`처럼 runtime capability leaf도
+  필요하면 runtime adapter executor path를 선언할 수 있다.
    scripts는 이 callable을 import/execute하는 generic adapter만 소유하고,
    `linear_head`, `peft_text_encoder`, `prototype_pack` 같은
    family별 초기화/평가 분기나 `supervised_seed_step`의 PEFT 세부 구현을 직접

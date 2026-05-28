@@ -3,6 +3,12 @@
 update_family_name: peft_text_encoder
 payload_adapter_kind: peft_classifier
 runtime_payload_key: peft_text_encoder
+training_objective_payload_scope: peft_classifier
+training_objective_payload_key: peft_text_encoder
+training_objective_payload_excluded_keys:
+  - artifact_format
+  - peft_adapter_artifact_ref
+  - classifier_head_artifact_ref
 composition_slug_builder: methods.adaptation.peft_text_encoder.update_family_runtime.build_peft_text_encoder_composition_slug
 round_runtime_payload_builder: methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime.build_peft_encoder_round_runtime_payloads
 local_objective_executors:

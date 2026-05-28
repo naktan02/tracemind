@@ -51,6 +51,9 @@ conf/
   실제 objective core는 `methods/ssl/algorithms/*`가 소유한다.
 - update family와 runtime callable path는
   `strategy_axes/trainable_state/update_family`가 선언한다.
+- update family가 runtime payload 일부를 training objective extra로 넘겨야 하면,
+  entrypoint가 family 이름으로 분기하지 않고 update-family leaf의
+  `training_objective_payload_scope` 선언을 따른다.
 - server-side step 여부는 `strategy_axes/fl/server_step_policy`가 고르고,
   update family별 executor mapping은 `round_runtime.server_step_executors`가 소유한다.
 - aggregation backend는 `round_runtime.aggregation_backend_name`으로 고른다.

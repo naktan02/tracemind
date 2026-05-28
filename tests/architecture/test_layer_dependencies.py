@@ -1538,6 +1538,7 @@ def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
         "lora_use_dora",
         "lora_ranks",
         "lora_alphas",
+        "replace(/^lora_/",
         "loraConfigLabel",
         "loraVariantLabel",
         "sameLoraConfig",
@@ -1804,6 +1805,25 @@ def test_server_round_runtime_config_isolates_legacy_adapter_profile() -> None:
     )
     assert "legacy_diagonal_scale" not in source
     assert 'payload_adapter_name="diagonal_scale"' not in source
+    assert "RUNTIME_FALLBACK_SERVER_ROUND_PROFILE" in source, (
+        "server runtime config는 live/API fallback 값을 직접 소유하지 않고 "
+        "methods.federated_ssl.runtime_fallbacks의 named profile을 읽는다."
+    )
+    forbidden_active_default_literals = (
+        'profile_name="default_peft_classifier.v1"',
+        'payload_adapter_kind="peft_classifier"',
+        'update_family_name="peft_text_encoder"',
+        'aggregation_backend_name="fedavg"',
+    )
+    violations = [
+        snippet for snippet in forbidden_active_default_literals if snippet in source
+    ]
+    assert not violations, (
+        "main_server runtime config는 기본 payload/update/aggregation 선택 문자열을 "
+        "직접 하드코딩하지 않는다. live/API compatibility fallback은 "
+        "runtime_fallbacks.py의 named profile이 소유한다.\n"
+        f"violations={violations}"
+    )
 
 
 def test_privacy_guards_do_not_register_removed_diagonal_scale_guard() -> None:

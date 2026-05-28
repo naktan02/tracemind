@@ -3749,7 +3749,7 @@ function formatDistribution(value) {
 
 function shortRun(runId) {
   if (!runId) return "-";
-  return runId.replace(/^lora_/, "").replace(/_2026_.*/, "");
+  return runId.replace(/_2026_.*/, "");
 }
 
 function escapeHtml(value) {
