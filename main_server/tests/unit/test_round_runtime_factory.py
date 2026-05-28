@@ -215,17 +215,17 @@ def test_round_runtime_config_builds_registered_family_and_backend() -> None:
     )
 
 
-def test_round_runtime_config_builds_lora_classifier_family() -> None:
+def test_round_runtime_config_builds_peft_classifier_family() -> None:
     service = build_round_manager_service_from_config(
         ServerRoundRuntimeConfig(
-            payload_adapter_kind="lora_classifier",
+            payload_adapter_kind="peft_classifier",
             aggregation_backend_name="fedavg",
         )
     )
 
-    assert service.adapter_family.adapter_kind == "lora_classifier"
-    assert service.adapter_family.aggregation_backend.adapter_kind == "lora_classifier"
-    assert service.adapter_family.accepted_update_formats == ("lora_classifier_update",)
+    assert service.adapter_family.adapter_kind == "peft_classifier"
+    assert service.adapter_family.aggregation_backend.adapter_kind == "peft_classifier"
+    assert service.adapter_family.accepted_update_formats == ("peft_classifier_update",)
 
 
 def test_round_runtime_config_rejects_incompatible_family_backend() -> None:
@@ -259,7 +259,7 @@ def test_round_runtime_config_rejects_method_recipe_runtime_pair_drift(
     with pytest.raises(ValueError, match="method recipe does not support"):
         build_round_manager_service_from_config(
             ServerRoundRuntimeConfig(
-                payload_adapter_kind="lora_classifier",
+                payload_adapter_kind="peft_classifier",
                 aggregation_backend_name="fedavg",
                 method_descriptor_name=TEST_METHOD_NAME,
             )

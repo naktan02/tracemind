@@ -61,7 +61,7 @@ class FederatedPeftEncoderRuntimeConfig:
         return self.training_backend_config.to_backbone_payload()
 
     def lora_config_payload(self) -> dict[str, str | int | float | bool]:
-        """legacy lora_classifier state에 넣을 LoRA mechanism config snapshot."""
+        """PEFT adapter mechanism이 LoRA일 때 쓰는 config snapshot."""
 
         return self.training_backend_config.to_lora_config_payload()
 

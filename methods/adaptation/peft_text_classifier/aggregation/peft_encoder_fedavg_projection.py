@@ -30,11 +30,6 @@ from methods.federated.aggregation_weighting import (
     AggregationWeightPolicy,
     aggregation_weight_for_update,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
-    LoraClassifierDelta,
-    LoraClassifierState,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
     PeftClassifierDelta,
@@ -51,11 +46,10 @@ from ..update.materialization import (
 )
 from .peft_encoder_state_projection import build_peft_encoder_state_projection
 
-LORA_ADAPTER_ARTIFACT_SLOT = "lora_adapter"
 PEFT_ADAPTER_ARTIFACT_SLOT = "peft_adapter"
 CLASSIFIER_HEAD_ARTIFACT_SLOT = "classifier_head"
-PeftEncoderStatePayload = LoraClassifierState | PeftClassifierState
-PeftEncoderDeltaPayload = LoraClassifierDelta | PeftClassifierDelta
+PeftEncoderStatePayload = PeftClassifierState
+PeftEncoderDeltaPayload = PeftClassifierDelta
 
 
 @dataclass(frozen=True, slots=True)
@@ -315,15 +309,11 @@ def _payload_snapshot(payload) -> dict[str, object]:
 def _adapter_config_snapshot(
     payload: PeftEncoderStatePayload | PeftEncoderDeltaPayload,
 ) -> dict[str, object]:
-    if isinstance(payload, PeftClassifierState | PeftClassifierDelta):
-        return payload.peft_adapter_config.model_dump(mode="json")
-    return payload.lora_config.model_dump(mode="json")
+    return payload.peft_adapter_config.model_dump(mode="json")
 
 
 def _adapter_artifact_slot(base_state: PeftEncoderStatePayload) -> str:
-    if isinstance(base_state, PeftClassifierState):
-        return PEFT_ADAPTER_ARTIFACT_SLOT
-    return LORA_ADAPTER_ARTIFACT_SLOT
+    return PEFT_ADAPTER_ARTIFACT_SLOT
 
 
 def _validate_peft_encoder_fedavg_overrides(
@@ -377,15 +367,6 @@ def _register_peft_encoder_fedavg_strategy(
     )
 
 
-_register_peft_encoder_fedavg_strategy(
-    adapter_kind=LORA_CLASSIFIER_ADAPTER_KIND,
-    state_type=LoraClassifierState,
-    update_type=LoraClassifierDelta,
-    context="LoRA-classifier",
-    aliases=("lora_classifier_fedavg",),
-    core_function_name=compute_peft_encoder_fedavg.__name__,
-    aggregate=aggregate_peft_encoder_fedavg,
-)
 _register_peft_encoder_fedavg_strategy(
     adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
     state_type=PeftClassifierState,

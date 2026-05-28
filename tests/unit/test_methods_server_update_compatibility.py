@@ -10,8 +10,6 @@ from methods.adaptation.server_update_compatibility import (
 from shared.src.contracts.adapter_contract_families.factories import (
     make_diagonal_delta_payload,
     make_identity_state_payload,
-    make_lora_classifier_delta_payload,
-    make_lora_classifier_state_payload,
     make_peft_classifier_delta_payload,
     make_peft_classifier_state_payload,
 )
@@ -60,16 +58,6 @@ def test_unknown_adapter_kind_compatibility_defaults_to_noop() -> None:
     )
 
 
-def test_lora_compatibility_accepts_matching_active_state() -> None:
-    state = _lora_state()
-    update = _lora_update()
-
-    require_server_compatible_update_payload(
-        update_payload=update,
-        active_state=state,
-    )
-
-
 def test_peft_classifier_compatibility_accepts_matching_active_state() -> None:
     state = _peft_state()
     update = _peft_update()
@@ -87,7 +75,15 @@ def test_peft_classifier_compatibility_accepts_matching_active_state() -> None:
         ("base_model_revision", {"base_model_revision": "rev_999"}),
         ("training_scope", {"training_scope": "head_only"}),
         ("backbone", {"backbone": {**_BACKBONE, "backbone_revision": "v2"}}),
-        ("lora_config", {"lora_config": {**_LORA_CONFIG, "rank": 4}}),
+        (
+            "peft_adapter_config",
+            {
+                "peft_adapter_config": {
+                    **_PEFT_CONFIG,
+                    "parameters": {**_LORA_CONFIG, "rank": 4},
+                }
+            },
+        ),
         (
             "label_schema",
             {
@@ -104,66 +100,18 @@ def test_peft_classifier_compatibility_accepts_matching_active_state() -> None:
         ),
     ],
 )
-def test_lora_compatibility_rejects_payload_drift(
+def test_peft_classifier_compatibility_rejects_payload_drift(
     field_name: str,
     update_kwargs: dict[str, object],
 ) -> None:
-    state = _lora_state()
-    update = _lora_update(**update_kwargs)
+    state = _peft_state()
+    update = _peft_update(**update_kwargs)
 
     with pytest.raises(ValueError, match=field_name):
         require_server_compatible_update_payload(
             update_payload=update,
             active_state=state,
         )
-
-
-def test_peft_classifier_compatibility_rejects_adapter_config_drift() -> None:
-    state = _peft_state()
-    update = _peft_update(
-        peft_adapter_config={
-            **_PEFT_CONFIG,
-            "parameters": {**_LORA_CONFIG, "rank": 4},
-        }
-    )
-
-    with pytest.raises(ValueError, match="peft_adapter_config"):
-        require_server_compatible_update_payload(
-            update_payload=update,
-            active_state=state,
-        )
-
-
-def _lora_state():
-    return make_lora_classifier_state_payload(
-        model_id="mxbai-peft-classifier",
-        model_revision="rev_000",
-        training_scope="adapter_only",
-        backbone=_BACKBONE,
-        lora_config=_LORA_CONFIG,
-        label_schema=["anxiety", "normal"],
-    )
-
-
-def _lora_update(**overrides: object):
-    values = {
-        "model_id": "mxbai-peft-classifier",
-        "base_model_revision": "rev_000",
-        "training_scope": "adapter_only",
-        "backbone": _BACKBONE,
-        "lora_config": _LORA_CONFIG,
-        "label_schema": ["anxiety", "normal"],
-        "example_count": 2,
-        "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.1, -0.2]},
-        "classifier_head_weight_deltas": {
-            "anxiety": [0.1, 0.0],
-            "normal": [0.0, -0.1],
-        },
-        "classifier_head_bias_deltas": {"anxiety": 0.01, "normal": -0.01},
-        "delta_format": "inline_delta",
-    }
-    values.update(overrides)
-    return make_lora_classifier_delta_payload(**values)
 
 
 def _peft_state():

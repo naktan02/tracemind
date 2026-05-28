@@ -22,14 +22,11 @@ from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
     RoundBaseSnapshotCache,
     RoundBaseSnapshotCacheKey,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierState,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
 
-PeftEncoderState = LoraClassifierState | PeftClassifierState
+PeftEncoderState = PeftClassifierState
 
 PEFT_ENCODER_BASE_PARTITIONED_STATE_MATERIALIZER_NAME = (
     "peft_encoder_base_partitioned_state_v1"

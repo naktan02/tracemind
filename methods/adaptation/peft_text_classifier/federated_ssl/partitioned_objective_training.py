@@ -81,10 +81,6 @@ from methods.ssl.state import (
     export_query_ssl_algorithm_state,
     load_query_ssl_algorithm_state,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
-    LoraClassifierDelta,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     PeftClassifierDelta,
@@ -638,12 +634,8 @@ def run_partitioned_peft_encoder_training_core(
     )
 
 
-def _payload_format_for_update(
-    update_payload: LoraClassifierDelta | PeftClassifierDelta,
-) -> str:
-    if isinstance(update_payload, PeftClassifierDelta):
-        return PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
-    return LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+def _payload_format_for_update(update_payload: PeftClassifierDelta) -> str:
+    return PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
 
 
 def _build_psi_query_ssl_algorithm(

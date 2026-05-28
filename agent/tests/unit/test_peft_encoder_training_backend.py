@@ -42,9 +42,6 @@ from methods.adaptation.query_text_views.local_training_budget import (
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_delta_payload,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierDelta,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     PeftClassifierDelta,
@@ -234,43 +231,6 @@ def _example(
     )
 
 
-def test_legacy_lora_backend_builds_artifact_ref_update_without_text() -> None:
-    backend = PeftEncoderTrainingBackend.from_legacy_lora_objective_config(
-        TrainingObjectiveConfig(
-            training_backend_name="lora_classifier_trainer",
-            extras={
-                "lora_classifier_trainer.rank": 16,
-                "lora_classifier_trainer.alpha": 32,
-                "lora_classifier_trainer.label_schema": ("anxiety,depression,normal"),
-            },
-        )
-    )
-
-    update = backend.build_update(
-        training_task=_build_task(),
-        model_manifest=_build_manifest(),
-        accepted_examples=(_example(),),
-        created_at=datetime(2026, 4, 21, 12, 30, tzinfo=timezone.utc),
-    )
-
-    assert isinstance(update, LoraClassifierDelta)
-    assert update.adapter_kind == "lora_classifier"
-    assert update.schema_version == "lora_classifier_delta.v1"
-    assert update.label_schema == ["anxiety", "depression", "normal"]
-    assert update.lora_config.rank == 16
-    assert update.lora_config.alpha == 32
-    assert update.delta_format == "agent_local_artifact_ref"
-    assert update.lora_delta_artifact_ref == (
-        "agent-local://lora_classifier/round_peft_001/task_peft_001/"
-        "20260421T123000000000Z/lora_delta"
-    )
-    assert update.classifier_head_delta_artifact_ref is not None
-    assert update.mean_confidence == pytest.approx(0.92)
-    assert update.label_counts == {"anxiety": 1}
-    assert update.l2_norm() == 0.0
-    assert "오늘 너무 불안해요" not in update.model_dump_json()
-
-
 def test_peft_classifier_backend_builds_v2_artifact_ref_update() -> None:
     backend = build_shared_adapter_training_backend(
         "peft_classifier_trainer",
@@ -357,20 +317,8 @@ def test_peft_encoder_training_backend_is_registered() -> None:
         for entry in list_shared_adapter_training_backend_catalog_entries()
     }
 
-    assert "lora_classifier_trainer" in (
-        list_registered_shared_adapter_training_backend_names()
-    )
     assert backend.adapter_kind == "peft_classifier"
     assert backend.payload_format == "peft_classifier_update"
-    assert (
-        catalog_entries["lora_classifier_trainer"].metadata["requires_raw_text"] is True
-    )
-    assert (
-        catalog_entries["lora_classifier_trainer"].metadata[
-            "supports_live_stored_event_runtime"
-        ]
-        is False
-    )
     assert "peft_classifier_trainer" in (
         list_registered_shared_adapter_training_backend_names()
     )

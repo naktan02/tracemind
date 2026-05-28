@@ -7,7 +7,6 @@ from typing import Any
 
 from methods.adaptation.peft_text_classifier.config import (
     PeftEncoderTrainingBackendConfig,
-    build_legacy_lora_classifier_training_backend_config,
     build_peft_classifier_training_backend_config,
 )
 from methods.adaptation.peft_text_classifier.training.delta_extraction import (
@@ -31,23 +30,14 @@ from methods.evaluation.classification_payload import (
     build_classification_evaluation_payload,
 )
 from methods.federated.aggregation.base import FederatedAggregationContext
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierState,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
-LORA_CLASSIFIER_EVALUATOR_NAME = "lora_classifier_eval"
 PEFT_CLASSIFIER_EVALUATOR_NAME = "peft_classifier_eval"
-PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES = (
-    PEFT_CLASSIFIER_EVALUATOR_NAME,
-    LORA_CLASSIFIER_EVALUATOR_NAME,
-)
-LORA_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND = "lora_classifier_logits_softmax"
-LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND = "lora_classifier_top1_probability"
+PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES = (PEFT_CLASSIFIER_EVALUATOR_NAME,)
 PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND = "peft_classifier_logits_softmax"
 PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND = "peft_classifier_top1_probability"
 
@@ -112,9 +102,9 @@ def evaluate_peft_encoder_state_payload(
     batch_size: int,
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
-    loss_kind: str = "cross_entropy_from_lora_classifier_logits",
-    score_distribution_kind: str = LORA_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND,
-    selection_confidence_kind: str = LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND,
+    loss_kind: str = "cross_entropy_from_peft_classifier_logits",
+    score_distribution_kind: str = PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND,
+    selection_confidence_kind: str = PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND,
 ) -> dict[str, object]:
     """PEFT encoder global state 평가 결과를 canonical payload로 반환한다."""
 
@@ -154,12 +144,11 @@ def evaluate_peft_encoder_validation_payload(
 ) -> dict[str, object]:
     """FL validation runtime이 넘긴 PEFT-backed classifier state를 평가한다."""
 
-    if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
+    if not isinstance(adapter_state, PeftClassifierState):
         raise ValueError(
             "PEFT-backed classifier evaluation requires classifier state; "
             f"got {type(adapter_state).__name__}."
         )
-    is_peft_classifier = isinstance(adapter_state, PeftClassifierState)
     return evaluate_peft_encoder_state_payload(
         rows=rows,
         labels=adapter_state.label_schema,
@@ -172,21 +161,9 @@ def evaluate_peft_encoder_validation_payload(
         batch_size=batch_size,
         seed=seed,
         runtime_resource_cache=runtime_resource_cache,
-        loss_kind=(
-            "cross_entropy_from_peft_classifier_logits"
-            if is_peft_classifier
-            else "cross_entropy_from_lora_classifier_logits"
-        ),
-        score_distribution_kind=(
-            PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND
-            if is_peft_classifier
-            else LORA_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND
-        ),
-        selection_confidence_kind=(
-            PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND
-            if is_peft_classifier
-            else LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND
-        ),
+        loss_kind="cross_entropy_from_peft_classifier_logits",
+        score_distribution_kind=PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND,
+        selection_confidence_kind=PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND,
     )
 
 
@@ -234,7 +211,7 @@ def require_peft_encoder_validation_backend(
 ) -> None:
     """PEFT encoder state에 prototype scorer validation이 붙는 drift를 막는다."""
 
-    if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
+    if not isinstance(adapter_state, PeftClassifierState):
         return
     if scorer_backend_name in PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES:
         return
@@ -248,10 +225,10 @@ def require_peft_encoder_validation_backend(
 
 def require_peft_encoder_state(
     adapter_state: object,
-) -> LoraClassifierState | PeftClassifierState:
+) -> PeftClassifierState:
     """runtime adapter가 넘긴 shared state를 PEFT-backed classifier state로 검증한다."""
 
-    if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
+    if not isinstance(adapter_state, PeftClassifierState):
         raise ValueError(
             "PEFT-backed classifier evaluation requires classifier state; "
             f"got {type(adapter_state).__name__}."
@@ -261,9 +238,7 @@ def require_peft_encoder_state(
 
 def _build_evaluation_training_backend_config(
     *,
-    adapter_state: LoraClassifierState | PeftClassifierState,
+    adapter_state: PeftClassifierState,
     objective_config: TrainingObjectiveConfig | None,
 ) -> PeftEncoderTrainingBackendConfig:
-    if isinstance(adapter_state, PeftClassifierState):
-        return build_peft_classifier_training_backend_config(objective_config)
-    return build_legacy_lora_classifier_training_backend_config(objective_config)
+    return build_peft_classifier_training_backend_config(objective_config)

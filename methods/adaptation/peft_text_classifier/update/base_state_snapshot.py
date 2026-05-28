@@ -4,37 +4,22 @@ from __future__ import annotations
 
 from typing import cast
 
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierState,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
 
 PEFT_ENCODER_BASE_STATE_MATERIALIZER_NAME = "peft_encoder_base_state.v1"
-LORA_CLASSIFIER_BASE_STATE_MATERIALIZER_NAME = PEFT_ENCODER_BASE_STATE_MATERIALIZER_NAME
 
 
 def peft_encoder_base_state_artifact_refs(
-    state: LoraClassifierState | PeftClassifierState,
+    state: PeftClassifierState,
 ) -> tuple[tuple[str, str], ...]:
     """Base state cache key에 들어갈 artifact ref fingerprint를 반환한다."""
 
-    if isinstance(state, PeftClassifierState):
-        return (
-            (
-                "peft_adapter_artifact_ref",
-                _ref_value(state.peft_adapter_artifact_ref),
-            ),
-            (
-                "classifier_head_artifact_ref",
-                _ref_value(state.classifier_head_artifact_ref),
-            ),
-        )
     return (
         (
-            "lora_adapter_artifact_ref",
-            _ref_value(state.lora_adapter_artifact_ref),
+            "peft_adapter_artifact_ref",
+            _ref_value(state.peft_adapter_artifact_ref),
         ),
         (
             "classifier_head_artifact_ref",

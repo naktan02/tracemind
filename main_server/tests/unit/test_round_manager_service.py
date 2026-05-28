@@ -28,11 +28,11 @@ from methods.federated_ssl.runtime_fallbacks import (
     RUNTIME_FALLBACK_TRAINING_PROFILE,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_lora_classifier_delta_payload,
-    make_lora_classifier_state_payload,
+    make_peft_classifier_delta_payload,
+    make_peft_classifier_state_payload,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierState,
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierState,
 )
 from shared.src.contracts.model_contracts import (  # noqa: E402
     ModelManifest,
@@ -50,7 +50,7 @@ def _build_peft_classifier_round_family():
     )
 
 
-def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> None:
+def test_round_manager_publishes_peft_classifier_next_state(tmp_path: Path) -> None:
     repository = shared_adapter_state_repository_module.SharedAdapterStateRepository(
         state_root=tmp_path / "shared_states"
     )
@@ -60,27 +60,27 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
         )
     )
     repository.save_shared_adapter_state(
-        make_lora_classifier_state_payload(
+        make_peft_classifier_state_payload(
             model_id="tracemind-peft",
             model_revision="rev_000",
             training_scope="adapter_only",
-            backbone=_lora_backbone(),
-            lora_config=_lora_config(),
+            backbone=_peft_backbone(),
+            peft_adapter_config=_peft_adapter_config(),
             label_schema=("anxiety", "normal"),
             updated_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
         )
     )
     update_repository.save_shared_adapter_update(
-        "u_lora_1",
-        make_lora_classifier_delta_payload(
+        "u_peft_1",
+        make_peft_classifier_delta_payload(
             model_id="tracemind-peft",
             base_model_revision="rev_000",
             training_scope="adapter_only",
-            backbone=_lora_backbone(),
-            lora_config=_lora_config(),
+            backbone=_peft_backbone(),
+            peft_adapter_config=_peft_adapter_config(),
             label_schema=("anxiety", "normal"),
             example_count=2,
-            lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.4]},
+            peft_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.4]},
             classifier_head_weight_deltas={
                 "anxiety": [0.2, -0.1],
                 "normal": [-0.2, 0.1],
@@ -93,10 +93,10 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
     )
     service = RoundManagerService(
         adapter_family=build_shared_adapter_round_family(
-            "lora_classifier",
+            "peft_classifier",
             aggregation_backend_name="fedavg",
             aggregation_backend_overrides={
-                "artifact_ref_prefix": "server-aggregate://test_lora"
+                "artifact_ref_prefix": "server-aggregate://test_peft"
             },
             aggregation_artifact_store=AggregationArtifactStore(
                 state_root=tmp_path / "aggregate_artifacts"
@@ -122,14 +122,14 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
             updates=[
                 TrainingUpdateEnvelope(
                     schema_version="training_update_envelope.v1",
-                    update_id="u_lora_1",
+                    update_id="u_peft_1",
                     round_id="round_0001",
                     task_id="task_001",
                     model_id="tracemind-peft",
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
-                    payload_ref=update_repository.ref_for_update("u_lora_1"),
-                    payload_format="lora_classifier_update",
+                    payload_ref=update_repository.ref_for_update("u_peft_1"),
+                    payload_format="peft_classifier_update",
                     example_count=2,
                     client_metrics={"mean_loss": 0.1},
                 )
@@ -138,23 +138,23 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
         )
     )
 
-    assert isinstance(publication.next_state, LoraClassifierState)
+    assert isinstance(publication.next_state, PeftClassifierState)
     assert publication.next_manifest.model_revision == "rev_001"
     assert publication.next_manifest.auxiliary_artifact_versions == {}
     assert publication.next_manifest.artifact_ref == repository.ref_for_revision(
         "rev_001"
     )
-    assert publication.next_state.lora_adapter_artifact_ref == (
-        "server-aggregate://test_lora/rev_001/lora_adapter"
+    assert publication.next_state.peft_adapter_artifact_ref == (
+        "server-aggregate://test_peft/rev_001/peft_adapter"
     )
     assert publication.next_state.classifier_head_artifact_ref == (
-        "server-aggregate://test_lora/rev_001/classifier_head"
+        "server-aggregate://test_peft/rev_001/classifier_head"
     )
-    assert publication.aggregated_metrics["lora_parameter_count"] == 1.0
+    assert publication.aggregated_metrics["peft_parameter_count"] == 1.0
     loaded = repository.load_shared_adapter_state_from_ref(
         publication.next_manifest.artifact_ref
     )
-    assert isinstance(loaded, LoraClassifierState)
+    assert isinstance(loaded, PeftClassifierState)
     assert loaded.model_revision == "rev_001"
     assert publication.aggregated_metrics["example_count"] == 2.0
 
@@ -265,27 +265,27 @@ def test_round_manager_uses_injected_clock_for_publication_time(
         )
     )
     repository.save_shared_adapter_state(
-        make_lora_classifier_state_payload(
+        make_peft_classifier_state_payload(
             model_id="tracemind-peft",
             model_revision="rev_000",
             training_scope="adapter_only",
-            backbone=_lora_backbone(),
-            lora_config=_lora_config(),
+            backbone=_peft_backbone(),
+            peft_adapter_config=_peft_adapter_config(),
             label_schema=("anxiety", "normal"),
             updated_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
         )
     )
     update_repository.save_shared_adapter_update(
         "u1",
-        make_lora_classifier_delta_payload(
+        make_peft_classifier_delta_payload(
             model_id="tracemind-peft",
             base_model_revision="rev_000",
             training_scope="adapter_only",
-            backbone=_lora_backbone(),
-            lora_config=_lora_config(),
+            backbone=_peft_backbone(),
+            peft_adapter_config=_peft_adapter_config(),
             label_schema=("anxiety", "normal"),
             example_count=2,
-            lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.4]},
+            peft_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.4]},
             classifier_head_weight_deltas={
                 "anxiety": [0.2, -0.1],
                 "normal": [-0.2, 0.1],
@@ -299,10 +299,10 @@ def test_round_manager_uses_injected_clock_for_publication_time(
     fixed_time = datetime(2026, 3, 30, 15, 0, tzinfo=timezone.utc)
     service = RoundManagerService(
         adapter_family=build_shared_adapter_round_family(
-            "lora_classifier",
+            "peft_classifier",
             aggregation_backend_name="fedavg",
             aggregation_backend_overrides={
-                "artifact_ref_prefix": "server-aggregate://clock_lora"
+                "artifact_ref_prefix": "server-aggregate://clock_peft"
             },
             aggregation_artifact_store=AggregationArtifactStore(
                 state_root=tmp_path / "aggregate_artifacts"
@@ -337,7 +337,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
                     payload_ref=update_repository.ref_for_update("u1"),
-                    payload_format="lora_classifier_update",
+                    payload_format="peft_classifier_update",
                     example_count=2,
                     client_metrics={"mean_loss": 0.1},
                 )
@@ -351,7 +351,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
     assert publication.next_state.updated_at == fixed_time
 
 
-def _lora_backbone() -> dict[str, str | int]:
+def _peft_backbone() -> dict[str, str | int]:
     return {
         "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
         "backbone_revision": "main",
@@ -363,13 +363,15 @@ def _lora_backbone() -> dict[str, str | int]:
     }
 
 
-def _lora_config() -> dict[str, str | int | float | bool]:
+def _peft_adapter_config() -> dict[str, object]:
     return {
         "peft_adapter_name": "lora",
-        "rank": 8,
-        "alpha": 16,
-        "dropout": 0.1,
-        "bias": "none",
-        "target_modules": "all-linear",
-        "use_rslora": False,
+        "parameters": {
+            "rank": 8,
+            "alpha": 16,
+            "dropout": 0.1,
+            "bias": "none",
+            "target_modules": "all-linear",
+            "use_rslora": False,
+        },
     }

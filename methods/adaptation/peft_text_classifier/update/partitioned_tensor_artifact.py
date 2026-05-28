@@ -13,7 +13,7 @@ from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
 )
 
 PARTITIONED_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
-    "lora_classifier_client_partitioned_delta_tensor_artifact.v1"
+    "peft_encoder_client_partitioned_delta_tensor_artifact.v1"
 )
 PARTITIONED_DELTA_TENSOR_ARTIFACT_FORMAT = "safetensors"
 PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "partition_index_json"

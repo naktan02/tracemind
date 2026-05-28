@@ -44,10 +44,6 @@ from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from methods.ssl.state import export_query_ssl_algorithm_state
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
-    LoraClassifierDelta,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     PeftClassifierDelta,
@@ -131,7 +127,7 @@ class QuerySslPeftEncoderClientTrainingResult:
     """FL round loop가 서버 제출과 client summary에 쓰는 local training 결과."""
 
     update_envelope: TrainingUpdateEnvelope
-    update_payload: LoraClassifierDelta | PeftClassifierDelta
+    update_payload: PeftClassifierDelta
     candidate_count: int
     accepted_count: int
     local_step_plan: QuerySslLocalStepPlan
@@ -394,12 +390,8 @@ def _measure(timing_recorder: TimingRecorder | None, key: str) -> Any:
     return timing_recorder.measure(key)
 
 
-def _payload_format_for_update(
-    update_payload: LoraClassifierDelta | PeftClassifierDelta,
-) -> str:
-    if isinstance(update_payload, PeftClassifierDelta):
-        return PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
-    return LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+def _payload_format_for_update(update_payload: PeftClassifierDelta) -> str:
+    return PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
 
 
 def _build_unlabeled_loader(

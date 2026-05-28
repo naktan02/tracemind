@@ -8,18 +8,12 @@ from typing import Protocol, runtime_checkable
 from methods.adaptation.runtime_objective_compatibility import (
     register_runtime_objective_compatibility_validator,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
 )
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
-from .config import (
-    build_legacy_lora_classifier_training_backend_config,
-    build_peft_classifier_training_backend_config,
-)
+from .config import build_peft_classifier_training_backend_config
 
 
 @runtime_checkable
@@ -34,40 +28,6 @@ class PeftEncoderRuntimePayloadConfig(Protocol):
 
     def peft_adapter_config_payload(self) -> Mapping[str, object]:
         """State/update payload에 기록할 PEFT adapter config snapshot."""
-
-
-@register_runtime_objective_compatibility_validator(LORA_CLASSIFIER_ADAPTER_KIND)
-def require_lora_classifier_runtime_matches_objective(
-    *,
-    runtime_config: object,
-    objective_config: TrainingObjectiveConfig | None,
-) -> None:
-    """bootstrap state와 local update가 같은 backbone/LoRA snapshot을 쓰게 한다."""
-
-    lora_runtime_config = _as_lora_classifier_runtime_config(runtime_config)
-    objective_backend_config = build_legacy_lora_classifier_training_backend_config(
-        objective_config
-    )
-    mismatches: dict[str, object] = {}
-    if lora_runtime_config.backbone_payload() != (
-        objective_backend_config.to_backbone_payload()
-    ):
-        mismatches["backbone"] = {
-            "round_runtime": lora_runtime_config.backbone_payload(),
-            "training_objective": objective_backend_config.to_backbone_payload(),
-        }
-    if lora_runtime_config.lora_config_payload() != (
-        objective_backend_config.to_lora_config_payload()
-    ):
-        mismatches["lora_config"] = {
-            "round_runtime": lora_runtime_config.lora_config_payload(),
-            "training_objective": objective_backend_config.to_lora_config_payload(),
-        }
-    if mismatches:
-        raise ValueError(
-            "LoRA-classifier round runtime payload must match "
-            f"training_task.objective shared payload config: {mismatches}."
-        )
 
 
 @register_runtime_objective_compatibility_validator(PEFT_CLASSIFIER_ADAPTER_KIND)
@@ -104,12 +64,6 @@ def require_peft_encoder_runtime_matches_objective(
             "PEFT-classifier round runtime payload must match "
             f"training_task.objective shared payload config: {mismatches}."
         )
-
-
-def _as_lora_classifier_runtime_config(
-    runtime_config: object,
-) -> PeftEncoderRuntimePayloadConfig:
-    return _as_peft_encoder_runtime_config(runtime_config)
 
 
 def _as_peft_encoder_runtime_config(

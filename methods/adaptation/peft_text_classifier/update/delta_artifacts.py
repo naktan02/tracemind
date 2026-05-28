@@ -1,7 +1,4 @@
-"""PEFT-encoder classifier delta artifact materialization rules.
-
-`lora_classifier` names remain only as v1 payload compatibility aliases.
-"""
+"""PEFT-encoder classifier delta artifact materialization rules."""
 
 from __future__ import annotations
 
@@ -13,9 +10,6 @@ from methods.adaptation.peft_text_classifier.config import (
     PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
     PEFT_ENCODER_DELTA_FORMAT_INLINE,
     PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
-)
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierDelta,
 )
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierDelta,
@@ -318,8 +312,8 @@ class PeftEncoderDeltaMaterializer:
 def upload_agent_local_peft_encoder_update(
     *,
     artifact_store: PeftEncoderDeltaArtifactStore,
-    update_payload: LoraClassifierDelta | PeftClassifierDelta,
-) -> LoraClassifierDelta | PeftClassifierDelta:
+    update_payload: PeftClassifierDelta,
+) -> PeftClassifierDelta:
     """agent-local delta artifact ref를 server-owned ref로 materialize한다."""
 
     update_fields: dict[str, object] = {}
@@ -366,7 +360,7 @@ def upload_agent_local_peft_encoder_update(
 def server_owned_peft_encoder_update_artifact_byte_count(
     *,
     artifact_store: PeftEncoderDeltaArtifactStore,
-    update_payload: LoraClassifierDelta | PeftClassifierDelta,
+    update_payload: PeftClassifierDelta,
 ) -> int:
     """server-owned update artifact ref들의 파일 크기를 합산한다."""
 
@@ -380,16 +374,12 @@ def server_owned_peft_encoder_update_artifact_byte_count(
 
 
 def _adapter_delta_artifact_ref(
-    update_payload: LoraClassifierDelta | PeftClassifierDelta,
+    update_payload: PeftClassifierDelta,
 ) -> str | None:
-    if isinstance(update_payload, PeftClassifierDelta):
-        return update_payload.peft_adapter_delta_artifact_ref
-    return update_payload.lora_delta_artifact_ref
+    return update_payload.peft_adapter_delta_artifact_ref
 
 
 def _adapter_delta_artifact_ref_field(
-    update_payload: LoraClassifierDelta | PeftClassifierDelta,
+    update_payload: PeftClassifierDelta,
 ) -> str:
-    if isinstance(update_payload, PeftClassifierDelta):
-        return "peft_adapter_delta_artifact_ref"
-    return "lora_delta_artifact_ref"
+    return "peft_adapter_delta_artifact_ref"

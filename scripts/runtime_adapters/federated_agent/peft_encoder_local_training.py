@@ -59,9 +59,6 @@ from scripts.runtime_adapters.federated_agent.base_state_materialization import 
     load_peft_encoder_base_parameters,
     load_peft_encoder_base_partition_parameters,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierState,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
@@ -111,7 +108,7 @@ def run_method_owned_peft_encoder_local_training(
 ) -> QuerySslPeftEncoderClientTrainingResult:
     """simulation runtime state를 선택된 method-owned PEFT encoder core에 연결한다."""
 
-    if not isinstance(active_adapter_state, LoraClassifierState | PeftClassifierState):
+    if not isinstance(active_adapter_state, PeftClassifierState):
         raise ValueError(
             "Method-owned PEFT classifier local training requires active classifier "
             "state."
@@ -218,7 +215,7 @@ def run_query_ssl_peft_encoder_local_training(
 ) -> QuerySslPeftEncoderClientTrainingResult:
     """simulation runtime state를 Query SSL PEFT encoder core에 연결한다."""
 
-    if not isinstance(active_adapter_state, LoraClassifierState | PeftClassifierState):
+    if not isinstance(active_adapter_state, PeftClassifierState):
         raise ValueError(
             "Query SSL PEFT classifier local training requires active classifier state."
         )

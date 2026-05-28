@@ -109,8 +109,8 @@ from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_lora_classifier_delta_payload,
-    make_lora_classifier_state_payload,
+    make_peft_classifier_delta_payload,
+    make_peft_classifier_state_payload,
 )
 from shared.src.contracts.adapter_contract_families.registry import (
     register_shared_adapter_payload_family,
@@ -432,7 +432,7 @@ def _build_service(
     return service, active_manifest, round_repository
 
 
-def _build_lora_service(
+def _build_peft_service(
     *,
     tmp_path: Path,
     fixed_time: datetime,
@@ -444,12 +444,12 @@ def _build_lora_service(
         )
     )
     state_repository.save_shared_adapter_state(
-        make_lora_classifier_state_payload(
+        make_peft_classifier_state_payload(
             model_id="tracemind-embed",
             model_revision="rev_000",
             training_scope="adapter_only",
-            backbone=_lora_backbone_payload(),
-            lora_config=_lora_config_payload(),
+            backbone=_peft_backbone_payload(),
+            peft_adapter_config=_peft_adapter_config_payload(),
             label_schema=["anxiety", "normal"],
         )
     )
@@ -478,7 +478,7 @@ def _build_lora_service(
         ),
         round_manager_service=RoundManagerService(
             adapter_family=build_shared_adapter_round_family(
-                "lora_classifier",
+                "peft_classifier",
                 aggregation_backend_name="fedavg",
             ),
             artifact_repository=state_repository,
@@ -493,7 +493,7 @@ def _build_lora_service(
     return service, active_manifest, round_repository
 
 
-def _lora_backbone_payload() -> dict[str, object]:
+def _peft_backbone_payload() -> dict[str, object]:
     return {
         "backbone_model_id": "mxbai",
         "backbone_revision": "main",
@@ -505,15 +505,17 @@ def _lora_backbone_payload() -> dict[str, object]:
     }
 
 
-def _lora_config_payload() -> dict[str, object]:
+def _peft_adapter_config_payload() -> dict[str, object]:
     return {
         "peft_adapter_name": "lora",
-        "rank": 8,
-        "alpha": 16,
-        "dropout": 0.1,
-        "bias": "none",
-        "target_modules": "all-linear",
-        "use_rslora": False,
+        "parameters": {
+            "rank": 8,
+            "alpha": 16,
+            "dropout": 0.1,
+            "bias": "none",
+            "target_modules": "all-linear",
+            "use_rslora": False,
+        },
     }
 
 
@@ -610,12 +612,12 @@ def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
     tmp_path: Path,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, _active_manifest, round_repository = _build_lora_service(
+    service, _active_manifest, round_repository = _build_peft_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
     record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
-    update_payload = make_lora_classifier_delta_payload(
+    update_payload = make_peft_classifier_delta_payload(
         model_id="tracemind-embed",
         base_model_revision="rev_000",
         training_scope="adapter_only",
@@ -628,18 +630,20 @@ def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
             "max_length": 256,
             "task_prefix": "",
         },
-        lora_config={
+        peft_adapter_config={
             "peft_adapter_name": "lora",
-            "rank": 8,
-            "alpha": 16,
-            "dropout": 0.1,
-            "bias": "none",
-            "target_modules": "all-linear",
-            "use_rslora": False,
+            "parameters": {
+                "rank": 8,
+                "alpha": 16,
+                "dropout": 0.1,
+                "bias": "none",
+                "target_modules": "all-linear",
+                "use_rslora": False,
+            },
         },
         label_schema=["anxiety", "normal"],
         example_count=2,
-        lora_delta_artifact_ref="agent-local://agent_001/lora_delta",
+        peft_adapter_delta_artifact_ref="agent-local://agent_001/lora_delta",
         classifier_head_delta_artifact_ref=(
             "agent-local://agent_001/classifier_head_delta"
         ),
@@ -649,14 +653,14 @@ def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
     update = make_training_update_submission(
         envelope=TrainingUpdateEnvelope(
             schema_version="training_update_envelope.v1",
-            update_id="lora_update_001",
+            update_id="peft_update_001",
             round_id=record.round_id,
             task_id=record.training_task.task_id,
             model_id="tracemind-embed",
             base_model_revision="rev_000",
             training_scope="adapter_only",
-            payload_ref="client-submission::lora_update_001",
-            payload_format="lora_classifier_update",
+            payload_ref="client-submission::peft_update_001",
+            payload_format="peft_classifier_update",
             example_count=2,
             client_metrics={"mean_loss": 0.2},
         ),
@@ -668,24 +672,30 @@ def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
     assert round_repository.load_round(record.round_id).updates == ()
 
 
-def test_round_lifecycle_rejects_lora_payload_manifest_drift_at_accept(
+def test_round_lifecycle_rejects_peft_payload_manifest_drift_at_accept(
     tmp_path: Path,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, _active_manifest, round_repository = _build_lora_service(
+    service, _active_manifest, round_repository = _build_peft_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
     record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
-    update_payload = make_lora_classifier_delta_payload(
+    update_payload = make_peft_classifier_delta_payload(
         model_id="tracemind-embed",
         base_model_revision="rev_000",
         training_scope="adapter_only",
-        backbone=_lora_backbone_payload(),
-        lora_config={**_lora_config_payload(), "rank": 4},
+        backbone=_peft_backbone_payload(),
+        peft_adapter_config={
+            **_peft_adapter_config_payload(),
+            "parameters": {
+                **_peft_adapter_config_payload()["parameters"],
+                "rank": 4,
+            },
+        },
         label_schema=["anxiety", "normal"],
         example_count=2,
-        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
+        peft_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
         classifier_head_weight_deltas={
             "anxiety": [0.2],
             "normal": [-0.2],
@@ -698,21 +708,21 @@ def test_round_lifecycle_rejects_lora_payload_manifest_drift_at_accept(
     update = make_training_update_submission(
         envelope=TrainingUpdateEnvelope(
             schema_version="training_update_envelope.v1",
-            update_id="lora_update_001",
+            update_id="peft_update_001",
             round_id=record.round_id,
             task_id=record.training_task.task_id,
             model_id="tracemind-embed",
             base_model_revision="rev_000",
             training_scope="adapter_only",
-            payload_ref="client-submission::lora_update_001",
-            payload_format="lora_classifier_update",
+            payload_ref="client-submission::peft_update_001",
+            payload_format="peft_classifier_update",
             example_count=2,
             client_metrics={"mean_loss": 0.2},
         ),
         update_payload=update_payload,
     )
 
-    with pytest.raises(RoundValidationError, match="lora_config"):
+    with pytest.raises(RoundValidationError, match="peft_adapter_config"):
         service.accept_update_submission(record.round_id, update)
     assert round_repository.load_round(record.round_id).updates == ()
 
@@ -801,7 +811,7 @@ def test_round_lifecycle_rejects_payload_format_outside_active_family(
         fixed_time=fixed_time,
     )
     record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
-    update_payload = make_lora_classifier_delta_payload(
+    update_payload = make_peft_classifier_delta_payload(
         model_id="tracemind-embed",
         base_model_revision="rev_000",
         training_scope="adapter_only",
@@ -814,18 +824,20 @@ def test_round_lifecycle_rejects_payload_format_outside_active_family(
             "max_length": 256,
             "task_prefix": "",
         },
-        lora_config={
+        peft_adapter_config={
             "peft_adapter_name": "lora",
-            "rank": 8,
-            "alpha": 16,
-            "dropout": 0.1,
-            "bias": "none",
-            "target_modules": "all-linear",
-            "use_rslora": False,
+            "parameters": {
+                "rank": 8,
+                "alpha": 16,
+                "dropout": 0.1,
+                "bias": "none",
+                "target_modules": "all-linear",
+                "use_rslora": False,
+            },
         },
         label_schema=["anxiety", "normal"],
         example_count=2,
-        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
+        peft_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
         classifier_head_weight_deltas={
             "anxiety": [0.2],
             "normal": [-0.2],
@@ -838,14 +850,14 @@ def test_round_lifecycle_rejects_payload_format_outside_active_family(
     update = make_training_update_submission(
         envelope=TrainingUpdateEnvelope(
             schema_version="training_update_envelope.v1",
-            update_id="lora_update_001",
+            update_id="peft_update_001",
             round_id=record.round_id,
             task_id=record.training_task.task_id,
             model_id="tracemind-embed",
             base_model_revision="rev_000",
             training_scope="adapter_only",
-            payload_ref="client-submission::lora_update_001",
-            payload_format="lora_classifier_update",
+            payload_ref="client-submission::peft_update_001",
+            payload_format="peft_classifier_update",
             example_count=2,
             client_metrics={"mean_loss": 0.2},
         ),

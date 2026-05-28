@@ -30,12 +30,12 @@ from shared.src.contracts.adapter_contract_families.classifier_head import (
     ClassifierHeadState,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_lora_classifier_delta_payload,
-    make_lora_classifier_state_payload,
+    make_peft_classifier_delta_payload,
+    make_peft_classifier_state_payload,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierDelta,
-    LoraClassifierState,
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierDelta,
+    PeftClassifierState,
 )
 
 
@@ -52,23 +52,23 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
         "linear_head_fedavg_projection"
     )
     assert (
-        entries["lora_classifier.fedavg"].implementation_module
+        entries["peft_classifier.fedavg"].implementation_module
         == "methods.adaptation.peft_text_classifier.aggregation."
         "peft_encoder_fedavg_projection"
     )
     assert (
-        entries["lora_classifier.fedavg"].metadata[
+        entries["peft_classifier.fedavg"].metadata[
             "requires_inline_or_materialized_artifacts"
         ]
         is True
     )
     assert (
-        entries["lora_classifier.partitioned_delta_average"].implementation_module
+        entries["peft_classifier.partitioned_delta_average"].implementation_module
         == "methods.adaptation.peft_text_classifier.aggregation."
         "peft_encoder_partitioned_projection"
     )
     assert (
-        entries["lora_classifier.partitioned_delta_average"].metadata[
+        entries["peft_classifier.partitioned_delta_average"].metadata[
             "requires_partitioned_deltas"
         ]
         is True
@@ -151,14 +151,14 @@ def test_classifier_head_fedavg_aggregation_updates_weights_and_biases() -> None
     )
 
 
-def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
+def test_peft_classifier_fedavg_aggregation_publishes_next_state_refs(
     tmp_path,
 ) -> None:
     artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
     artifact_store.save_json_artifact(
-        "rev_000/lora_adapter",
+        "rev_000/peft_adapter",
         {
-            "lora_parameters": {
+            "peft_parameters": {
                 "encoder.q_proj.lora_A": [1.0, 1.0],
                 "encoder.extra.lora_A": [0.5],
             }
@@ -178,14 +178,14 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
         },
     )
     backend = build_shared_adapter_aggregation_backend(
-        adapter_kind="lora_classifier",
+        adapter_kind="peft_classifier",
         backend_name="fedavg",
-        overrides={"artifact_ref_prefix": "server-aggregate://test_lora"},
+        overrides={"artifact_ref_prefix": "server-aggregate://test_peft"},
         artifact_store=artifact_store,
     )
-    base_state = _build_lora_state(
-        lora_adapter_artifact_ref=artifact_store.ref_for_artifact(
-            "rev_000/lora_adapter"
+    base_state = _build_peft_state(
+        peft_adapter_artifact_ref=artifact_store.ref_for_artifact(
+            "rev_000/peft_adapter"
         ),
         classifier_head_artifact_ref=artifact_store.ref_for_artifact(
             "rev_000/classifier_head"
@@ -195,8 +195,8 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
     result = backend.aggregate(
         base_state=base_state,
         update_payloads=(
-            _build_lora_update(
-                lora_deltas={
+            _build_peft_update(
+                peft_deltas={
                     "encoder.q_proj.lora_A": [0.2, 0.4],
                     "encoder.q_proj.lora_B": [0.1, -0.1],
                 },
@@ -208,8 +208,8 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
                 example_count=2,
                 mean_confidence=0.9,
             ),
-            _build_lora_update(
-                lora_deltas={
+            _build_peft_update(
+                peft_deltas={
                     "encoder.q_proj.lora_A": [0.0, 0.1],
                     "encoder.q_proj.lora_B": [0.2, 0.2],
                 },
@@ -227,29 +227,29 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
     )
 
     assert isinstance(backend, MethodAggregationBackend)
-    assert backend.adapter_kind == "lora_classifier"
-    assert isinstance(result.next_state, LoraClassifierState)
+    assert backend.adapter_kind == "peft_classifier"
+    assert isinstance(result.next_state, PeftClassifierState)
     assert result.next_state.model_revision == "rev_001"
-    assert result.next_state.lora_adapter_artifact_ref == (
-        "server-aggregate://test_lora/rev_001/lora_adapter"
+    assert result.next_state.peft_adapter_artifact_ref == (
+        "server-aggregate://test_peft/rev_001/peft_adapter"
     )
     assert result.next_state.classifier_head_artifact_ref == (
-        "server-aggregate://test_lora/rev_001/classifier_head"
+        "server-aggregate://test_peft/rev_001/classifier_head"
     )
     assert result.next_state.artifact_format == "server_aggregated_artifact_ref"
     assert result.aggregated_artifacts
-    lora_artifact = artifact_store.load_json_artifact(
-        artifact_ref=result.next_state.lora_adapter_artifact_ref
+    peft_artifact = artifact_store.load_json_artifact(
+        artifact_ref=result.next_state.peft_adapter_artifact_ref
     )
     head_artifact = artifact_store.load_json_artifact(
         artifact_ref=result.next_state.classifier_head_artifact_ref
     )
-    assert lora_artifact["lora_parameters"] == {
+    assert peft_artifact["peft_parameters"] == {
         "encoder.extra.lora_A": pytest.approx([0.5]),
         "encoder.q_proj.lora_A": pytest.approx([1.1333333333333333, 1.3]),
         "encoder.q_proj.lora_B": pytest.approx([0.13333333333333333, 0.0]),
     }
-    assert lora_artifact["applied_lora_parameter_deltas"][
+    assert peft_artifact["applied_peft_parameter_deltas"][
         "encoder.q_proj.lora_A"
     ] == pytest.approx([0.13333333333333333, 0.3])
     assert head_artifact["classifier_head_weights"]["anxiety"] == pytest.approx(
@@ -269,13 +269,13 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
     assert result.update_count == 2
 
 
-def test_lora_classifier_partitioned_delta_average_publishes_next_state_refs(
+def test_peft_classifier_partitioned_delta_average_publishes_next_state_refs(
     tmp_path,
 ) -> None:
     artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
     artifact_store.save_json_artifact(
-        "rev_000/lora_adapter",
-        {"lora_parameters": {"encoder.q_proj.lora_A": [1.0, 1.0]}},
+        "rev_000/peft_adapter",
+        {"peft_parameters": {"encoder.q_proj.lora_A": [1.0, 1.0]}},
     )
     artifact_store.save_json_artifact(
         "rev_000/classifier_head",
@@ -288,40 +288,40 @@ def test_lora_classifier_partitioned_delta_average_publishes_next_state_refs(
         },
     )
     backend = build_shared_adapter_aggregation_backend(
-        adapter_kind="lora_classifier",
+        adapter_kind="peft_classifier",
         backend_name="partitioned_delta_average",
-        overrides={"artifact_ref_prefix": "server-aggregate://partitioned_lora"},
+        overrides={"artifact_ref_prefix": "server-aggregate://partitioned_peft"},
         artifact_store=artifact_store,
     )
 
     result = backend.aggregate(
-        base_state=_build_lora_state(
-            lora_adapter_artifact_ref=artifact_store.ref_for_artifact(
-                "rev_000/lora_adapter"
+        base_state=_build_peft_state(
+            peft_adapter_artifact_ref=artifact_store.ref_for_artifact(
+                "rev_000/peft_adapter"
             ),
             classifier_head_artifact_ref=artifact_store.ref_for_artifact(
                 "rev_000/classifier_head"
             ),
         ),
         update_payloads=(
-            make_lora_classifier_delta_payload(
+            make_peft_classifier_delta_payload(
                 model_id="tracemind-peft",
                 base_model_revision="rev_000",
                 training_scope="adapter_only",
-                backbone=_lora_backbone(),
-                lora_config=_lora_config(),
+                backbone=_peft_backbone(),
+                peft_adapter_config=_peft_adapter_config(),
                 label_schema=("anxiety", "normal"),
                 example_count=2,
                 partitioned_deltas={
                     "sigma": {
-                        "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.2, 0.0]},
+                        "peft_parameter_deltas": {"encoder.q_proj.lora_A": [0.2, 0.0]},
                         "classifier_head_weight_deltas": {
                             "anxiety": [0.1, 0.0],
                             "normal": [-0.1, 0.0],
                         },
                     },
                     "psi": {
-                        "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.1, 0.3]},
+                        "peft_parameter_deltas": {"encoder.q_proj.lora_A": [0.1, 0.3]},
                         "classifier_head_weight_deltas": {
                             "anxiety": [0.2, 0.2],
                             "normal": [-0.2, -0.2],
@@ -340,20 +340,20 @@ def test_lora_classifier_partitioned_delta_average_publishes_next_state_refs(
     )
 
     assert isinstance(backend, MethodAggregationBackend)
-    assert backend.adapter_kind == "lora_classifier"
-    lora_artifact = artifact_store.load_json_artifact(
-        artifact_ref=result.next_state.lora_adapter_artifact_ref or ""
+    assert backend.adapter_kind == "peft_classifier"
+    peft_artifact = artifact_store.load_json_artifact(
+        artifact_ref=result.next_state.peft_adapter_artifact_ref or ""
     )
     head_artifact = artifact_store.load_json_artifact(
         artifact_ref=result.next_state.classifier_head_artifact_ref or ""
     )
-    assert lora_artifact["lora_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
+    assert peft_artifact["peft_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
         [1.3, 1.3]
     )
-    assert lora_artifact["partitioned_lora_parameters"]["sigma"][
+    assert peft_artifact["partitioned_peft_parameters"]["sigma"][
         "encoder.q_proj.lora_A"
     ] == pytest.approx([1.2, 1.0])
-    assert lora_artifact["partitioned_lora_parameters"]["psi"][
+    assert peft_artifact["partitioned_peft_parameters"]["psi"][
         "encoder.q_proj.lora_A"
     ] == pytest.approx([1.1, 1.3])
     assert head_artifact["classifier_head_weights"]["anxiety"] == pytest.approx(
@@ -377,13 +377,13 @@ def test_lora_classifier_partitioned_delta_average_publishes_next_state_refs(
     assert result.update_count == 1
 
 
-def test_lora_classifier_partitioned_delta_average_reads_partitioned_artifact_ref(
+def test_peft_classifier_partitioned_delta_average_reads_partitioned_artifact_ref(
     tmp_path,
 ) -> None:
     artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
     artifact_store.save_json_artifact(
-        "rev_000/lora_adapter",
-        {"lora_parameters": {"encoder.q_proj.lora_A": [1.0, 1.0]}},
+        "rev_000/peft_adapter",
+        {"peft_parameters": {"encoder.q_proj.lora_A": [1.0, 1.0]}},
     )
     artifact_store.save_json_artifact(
         "rev_000/classifier_head",
@@ -403,14 +403,14 @@ def test_lora_classifier_partitioned_delta_average_reads_partitioned_artifact_re
         payload={
             "partitions": {
                 "sigma": {
-                    "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.2, 0.0]},
+                    "peft_parameter_deltas": {"encoder.q_proj.lora_A": [0.2, 0.0]},
                     "classifier_head_weight_deltas": {
                         "anxiety": [0.1, 0.0],
                         "normal": [-0.1, 0.0],
                     },
                 },
                 "psi": {
-                    "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.1, 0.3]},
+                    "peft_parameter_deltas": {"encoder.q_proj.lora_A": [0.1, 0.3]},
                     "classifier_head_weight_deltas": {
                         "anxiety": [0.2, 0.2],
                         "normal": [-0.2, -0.2],
@@ -421,28 +421,28 @@ def test_lora_classifier_partitioned_delta_average_reads_partitioned_artifact_re
         },
     )
     backend = build_shared_adapter_aggregation_backend(
-        adapter_kind="lora_classifier",
+        adapter_kind="peft_classifier",
         backend_name="partitioned_delta_average",
-        overrides={"artifact_ref_prefix": "server-aggregate://partitioned_lora"},
+        overrides={"artifact_ref_prefix": "server-aggregate://partitioned_peft"},
         artifact_store=artifact_store,
     )
 
     result = backend.aggregate(
-        base_state=_build_lora_state(
-            lora_adapter_artifact_ref=artifact_store.ref_for_artifact(
-                "rev_000/lora_adapter"
+        base_state=_build_peft_state(
+            peft_adapter_artifact_ref=artifact_store.ref_for_artifact(
+                "rev_000/peft_adapter"
             ),
             classifier_head_artifact_ref=artifact_store.ref_for_artifact(
                 "rev_000/classifier_head"
             ),
         ),
         update_payloads=(
-            make_lora_classifier_delta_payload(
+            make_peft_classifier_delta_payload(
                 model_id="tracemind-peft",
                 base_model_revision="rev_000",
                 training_scope="adapter_only",
-                backbone=_lora_backbone(),
-                lora_config=_lora_config(),
+                backbone=_peft_backbone(),
+                peft_adapter_config=_peft_adapter_config(),
                 label_schema=("anxiety", "normal"),
                 example_count=2,
                 partitioned_deltas_artifact_ref=partitioned_ref,
@@ -457,22 +457,22 @@ def test_lora_classifier_partitioned_delta_average_reads_partitioned_artifact_re
         aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
     )
 
-    lora_artifact = artifact_store.load_json_artifact(
-        artifact_ref=result.next_state.lora_adapter_artifact_ref or ""
+    peft_artifact = artifact_store.load_json_artifact(
+        artifact_ref=result.next_state.peft_adapter_artifact_ref or ""
     )
-    assert lora_artifact["lora_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
+    assert peft_artifact["peft_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
         [1.3, 1.3]
     )
     assert result.aggregated_metrics["server_update_partitioned"] == 1.0
 
 
-def test_lora_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
+def test_peft_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
     tmp_path,
 ) -> None:
     artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
     artifact_store.save_json_artifact(
-        "rev_000/lora_adapter",
-        {"lora_parameters": {"encoder.q_proj.lora_A": [1.0, 1.0]}},
+        "rev_000/peft_adapter",
+        {"peft_parameters": {"encoder.q_proj.lora_A": [1.0, 1.0]}},
     )
     artifact_store.save_json_artifact(
         "rev_000/classifier_head",
@@ -515,28 +515,28 @@ def test_lora_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
         metadata=metadata,
     )
     backend = build_shared_adapter_aggregation_backend(
-        adapter_kind="lora_classifier",
+        adapter_kind="peft_classifier",
         backend_name="partitioned_delta_average",
-        overrides={"artifact_ref_prefix": "server-aggregate://partitioned_lora"},
+        overrides={"artifact_ref_prefix": "server-aggregate://partitioned_peft"},
         artifact_store=artifact_store,
     )
 
     result = backend.aggregate(
-        base_state=_build_lora_state(
-            lora_adapter_artifact_ref=artifact_store.ref_for_artifact(
-                "rev_000/lora_adapter"
+        base_state=_build_peft_state(
+            peft_adapter_artifact_ref=artifact_store.ref_for_artifact(
+                "rev_000/peft_adapter"
             ),
             classifier_head_artifact_ref=artifact_store.ref_for_artifact(
                 "rev_000/classifier_head"
             ),
         ),
         update_payloads=(
-            make_lora_classifier_delta_payload(
+            make_peft_classifier_delta_payload(
                 model_id="tracemind-peft",
                 base_model_revision="rev_000",
                 training_scope="adapter_only",
-                backbone=_lora_backbone(),
-                lora_config=_lora_config(),
+                backbone=_peft_backbone(),
+                peft_adapter_config=_peft_adapter_config(),
                 label_schema=("anxiety", "normal"),
                 example_count=2,
                 partitioned_deltas_artifact_ref=partitioned_ref,
@@ -551,31 +551,31 @@ def test_lora_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
         aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
     )
 
-    lora_artifact = artifact_store.load_json_artifact(
-        artifact_ref=result.next_state.lora_adapter_artifact_ref or ""
+    peft_artifact = artifact_store.load_json_artifact(
+        artifact_ref=result.next_state.peft_adapter_artifact_ref or ""
     )
-    assert lora_artifact["lora_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
+    assert peft_artifact["peft_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
         [1.3, 1.3]
     )
     assert result.aggregated_metrics["server_update_partitioned"] == 1.0
 
 
-def test_lora_classifier_fedavg_two_rounds_accumulates_global_snapshot(
+def test_peft_classifier_fedavg_two_rounds_accumulates_global_snapshot(
     tmp_path,
 ) -> None:
     artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
     backend = build_shared_adapter_aggregation_backend(
-        adapter_kind="lora_classifier",
+        adapter_kind="peft_classifier",
         backend_name="fedavg",
-        overrides={"artifact_ref_prefix": "server-aggregate://test_lora"},
+        overrides={"artifact_ref_prefix": "server-aggregate://test_peft"},
         artifact_store=artifact_store,
     )
 
     first_result = backend.aggregate(
-        base_state=_build_lora_state(),
+        base_state=_build_peft_state(),
         update_payloads=(
-            _build_lora_update(
-                lora_deltas={"encoder.q_proj.lora_A": [0.2, 0.4]},
+            _build_peft_update(
+                peft_deltas={"encoder.q_proj.lora_A": [0.2, 0.4]},
                 head_weight_deltas={
                     "anxiety": [0.2, -0.1],
                     "normal": [-0.2, 0.1],
@@ -591,9 +591,9 @@ def test_lora_classifier_fedavg_two_rounds_accumulates_global_snapshot(
     second_result = backend.aggregate(
         base_state=first_result.next_state,
         update_payloads=(
-            _build_lora_update(
+            _build_peft_update(
                 base_model_revision="rev_001",
-                lora_deltas={
+                peft_deltas={
                     "encoder.q_proj.lora_A": [0.3, -0.3],
                     "encoder.q_proj.lora_B": [0.1, 0.1],
                 },
@@ -605,9 +605,9 @@ def test_lora_classifier_fedavg_two_rounds_accumulates_global_snapshot(
                 example_count=1,
                 mean_confidence=0.7,
             ),
-            _build_lora_update(
+            _build_peft_update(
                 base_model_revision="rev_001",
-                lora_deltas={
+                peft_deltas={
                     "encoder.q_proj.lora_A": [0.0, 0.3],
                     "encoder.q_proj.lora_B": [0.2, -0.2],
                 },
@@ -625,22 +625,22 @@ def test_lora_classifier_fedavg_two_rounds_accumulates_global_snapshot(
     )
 
     first_lora = artifact_store.load_json_artifact(
-        artifact_ref=first_result.next_state.lora_adapter_artifact_ref
+        artifact_ref=first_result.next_state.peft_adapter_artifact_ref
     )
     first_head = artifact_store.load_json_artifact(
         artifact_ref=first_result.next_state.classifier_head_artifact_ref
     )
     second_lora = artifact_store.load_json_artifact(
-        artifact_ref=second_result.next_state.lora_adapter_artifact_ref
+        artifact_ref=second_result.next_state.peft_adapter_artifact_ref
     )
     second_head = artifact_store.load_json_artifact(
         artifact_ref=second_result.next_state.classifier_head_artifact_ref
     )
 
     _assert_vector_mapping_accumulates(
-        before=first_lora["lora_parameters"],
-        delta=second_lora["applied_lora_parameter_deltas"],
-        after=second_lora["lora_parameters"],
+        before=first_lora["peft_parameters"],
+        delta=second_lora["applied_peft_parameter_deltas"],
+        after=second_lora["peft_parameters"],
     )
     _assert_vector_mapping_accumulates(
         before=first_head["classifier_head_weights"],
@@ -655,14 +655,14 @@ def test_lora_classifier_fedavg_two_rounds_accumulates_global_snapshot(
     assert second_result.next_state.model_revision == "rev_002"
 
 
-def test_lora_classifier_fedavg_materializes_server_owned_artifact_updates(
+def test_peft_classifier_fedavg_materializes_server_owned_artifact_updates(
     tmp_path,
 ) -> None:
     artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
     artifact_store.save_json_artifact(
         "u1/lora_delta",
         {
-            "lora_parameter_deltas": {
+            "peft_parameter_deltas": {
                 "encoder.q_proj.lora_A": [0.2, 0.4],
                 "encoder.q_proj.lora_B": [0.1, -0.1],
             }
@@ -683,26 +683,26 @@ def test_lora_classifier_fedavg_materializes_server_owned_artifact_updates(
     )
     backend = MethodAggregationBackend(
         strategy=build_federated_aggregation_strategy(
-            adapter_kind="lora_classifier",
+            adapter_kind="peft_classifier",
             method_name="fedavg",
-            overrides={"artifact_ref_prefix": "server-aggregate://test_lora"},
+            overrides={"artifact_ref_prefix": "server-aggregate://test_peft"},
         ),
-        overrides={"artifact_ref_prefix": "server-aggregate://test_lora"},
+        overrides={"artifact_ref_prefix": "server-aggregate://test_peft"},
         artifact_loader=artifact_store,
     )
 
     result = backend.aggregate(
-        base_state=_build_lora_state(),
+        base_state=_build_peft_state(),
         update_payloads=(
-            make_lora_classifier_delta_payload(
+            make_peft_classifier_delta_payload(
                 model_id="tracemind-peft",
                 base_model_revision="rev_000",
                 training_scope="adapter_only",
-                backbone=_lora_backbone(),
-                lora_config=_lora_config(),
+                backbone=_peft_backbone(),
+                peft_adapter_config=_peft_adapter_config(),
                 label_schema=("anxiety", "normal"),
                 example_count=2,
-                lora_delta_artifact_ref=artifact_store.ref_for_artifact(
+                peft_adapter_delta_artifact_ref=artifact_store.ref_for_artifact(
                     "u1/lora_delta"
                 ),
                 classifier_head_delta_artifact_ref=(
@@ -717,8 +717,8 @@ def test_lora_classifier_fedavg_materializes_server_owned_artifact_updates(
         aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
     )
 
-    assert result.next_state.lora_adapter_artifact_ref == (
-        "server-aggregate://test_lora/rev_001/lora_adapter"
+    assert result.next_state.peft_adapter_artifact_ref == (
+        "server-aggregate://test_peft/rev_001/peft_adapter"
     )
     assert result.aggregated_metrics["client_count"] == 1.0
     assert result.aggregated_metrics["lora_parameter_count"] == 2.0
@@ -735,25 +735,25 @@ def test_aggregation_artifact_store_defaults_to_main_server_state_root() -> None
         store.ref_for_artifact("../escape")
 
 
-def test_lora_classifier_fedavg_rejects_agent_local_artifact_only_updates() -> None:
+def test_peft_classifier_fedavg_rejects_agent_local_artifact_only_updates() -> None:
     backend = build_shared_adapter_aggregation_backend(
-        adapter_kind="lora_classifier",
+        adapter_kind="peft_classifier",
         backend_name="fedavg",
     )
 
     with pytest.raises(FileNotFoundError, match="Unsupported aggregation artifact ref"):
         backend.aggregate(
-            base_state=_build_lora_state(),
+            base_state=_build_peft_state(),
             update_payloads=(
-                make_lora_classifier_delta_payload(
+                make_peft_classifier_delta_payload(
                     model_id="tracemind-peft",
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
-                    backbone=_lora_backbone(),
-                    lora_config=_lora_config(),
+                    backbone=_peft_backbone(),
+                    peft_adapter_config=_peft_adapter_config(),
                     label_schema=("anxiety", "normal"),
                     example_count=1,
-                    lora_delta_artifact_ref="agent-local://u1/lora_delta",
+                    peft_adapter_delta_artifact_ref="agent-local://u1/lora_delta",
                     classifier_head_delta_artifact_ref=(
                         "agent-local://u1/classifier_head_delta"
                     ),
@@ -766,7 +766,7 @@ def test_lora_classifier_fedavg_rejects_agent_local_artifact_only_updates() -> N
         )
 
 
-def _lora_backbone() -> dict[str, str | int]:
+def _peft_backbone() -> dict[str, str | int]:
     return {
         "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
         "backbone_revision": "main",
@@ -778,54 +778,56 @@ def _lora_backbone() -> dict[str, str | int]:
     }
 
 
-def _lora_config() -> dict[str, str | int | float | bool]:
+def _peft_adapter_config() -> dict[str, object]:
     return {
         "peft_adapter_name": "lora",
-        "rank": 8,
-        "alpha": 16,
-        "dropout": 0.1,
-        "bias": "none",
-        "target_modules": "all-linear",
-        "use_rslora": False,
+        "parameters": {
+            "rank": 8,
+            "alpha": 16,
+            "dropout": 0.1,
+            "bias": "none",
+            "target_modules": "all-linear",
+            "use_rslora": False,
+        },
     }
 
 
-def _build_lora_state(
+def _build_peft_state(
     *,
-    lora_adapter_artifact_ref: str | None = None,
+    peft_adapter_artifact_ref: str | None = None,
     classifier_head_artifact_ref: str | None = None,
-) -> LoraClassifierState:
-    return make_lora_classifier_state_payload(
+) -> PeftClassifierState:
+    return make_peft_classifier_state_payload(
         model_id="tracemind-peft",
         model_revision="rev_000",
         training_scope="adapter_only",
-        backbone=_lora_backbone(),
-        lora_config=_lora_config(),
+        backbone=_peft_backbone(),
+        peft_adapter_config=_peft_adapter_config(),
         label_schema=("anxiety", "normal"),
-        lora_adapter_artifact_ref=lora_adapter_artifact_ref,
+        peft_adapter_artifact_ref=peft_adapter_artifact_ref,
         classifier_head_artifact_ref=classifier_head_artifact_ref,
         updated_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
     )
 
 
-def _build_lora_update(
+def _build_peft_update(
     *,
     base_model_revision: str = "rev_000",
-    lora_deltas: dict[str, list[float]],
+    peft_deltas: dict[str, list[float]],
     head_weight_deltas: dict[str, list[float]],
     head_bias_deltas: dict[str, float],
     example_count: int,
     mean_confidence: float,
-) -> LoraClassifierDelta:
-    return make_lora_classifier_delta_payload(
+) -> PeftClassifierDelta:
+    return make_peft_classifier_delta_payload(
         model_id="tracemind-peft",
         base_model_revision=base_model_revision,
         training_scope="adapter_only",
-        backbone=_lora_backbone(),
-        lora_config=_lora_config(),
+        backbone=_peft_backbone(),
+        peft_adapter_config=_peft_adapter_config(),
         label_schema=("anxiety", "normal"),
         example_count=example_count,
-        lora_parameter_deltas=lora_deltas,
+        peft_parameter_deltas=peft_deltas,
         classifier_head_weight_deltas=head_weight_deltas,
         classifier_head_bias_deltas=head_bias_deltas,
         delta_format="inline_delta",

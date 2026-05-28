@@ -2,7 +2,7 @@
   "defaults": {
     "expected_seed": 42,
     "expected_shard_policy_name": "dirichlet_label_skew",
-    "expected_payload_adapter_kind": "lora_classifier",
+    "expected_payload_adapter_kind": "peft_classifier",
     "expected_aggregation": "fedavg",
     "expected_delta_format": "server_uploaded_artifact_ref",
     "expected_run_control_output_dir": "runs/fl_ssl",
@@ -15,7 +15,7 @@
   "artifacts": [
     {
       "name": "fedmatch_alpha03_shared_client_reduced_5round",
-      "report": "runs/fl_ssl/fedmatch/fedmatch__lora_classifier__fedmatch_partitioned/labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/clients10_rounds5/20260526T120100Z/reports/fl_ssl_main_comparison.report.json",
+      "report": "runs/fl_ssl/fedmatch/fedmatch__peft_classifier__fedmatch_partitioned/labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/clients10_rounds5/20260526T120100Z/reports/fl_ssl_main_comparison.report.json",
       "expectation": {
         "expected_completed_rounds": 5,
         "expected_round_budget": 5,

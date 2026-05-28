@@ -12,8 +12,8 @@ materialization, FL SSL execution primitive를 맡는다.
 - local update payload builder와 artifact materialization
 - FL SSL adapter-family execution primitive 연결
 - `initial_query_ssl_algorithm_state` 입력과 `query_ssl_algorithm_state` 결과 보존
-- `adapter_family_module.py`에서 v1 `lora_classifier`와 v2 `peft_classifier`
-  contract alias를 이 implementation root에 연결
+- `adapter_family_module.py`에서 active `peft_classifier` contract를 이
+  implementation root에 연결
 
 ## 금지
 

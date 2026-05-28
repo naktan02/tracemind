@@ -6,9 +6,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierState,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
@@ -16,16 +13,14 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 from ..update.materialization import (
     CLASSIFIER_HEAD_STATE_BIASES_KEY,
     CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
-    LORA_STATE_PARAMETERS_KEY,
     PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
     PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
-    PARTITIONED_LORA_STATE_PARAMETERS_KEY,
     PARTITIONED_PEFT_STATE_PARAMETERS_KEY,
     PEFT_STATE_PARAMETERS_KEY,
     PeftEncoderMaterializedState,
 )
 
-PeftEncoderStatePayload = LoraClassifierState | PeftClassifierState
+PeftEncoderStatePayload = PeftClassifierState
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +50,7 @@ def build_peft_encoder_state_projection(
     next_lora_parameters = _apply_vector_deltas(
         base_parameters.lora_parameters,
         lora_parameter_deltas,
-        field_name=LORA_STATE_PARAMETERS_KEY,
+        field_name=PEFT_STATE_PARAMETERS_KEY,
     )
     next_classifier_head_weights = _apply_vector_deltas(
         base_parameters.classifier_head_weights,
@@ -129,22 +124,7 @@ def _build_next_state(
     classifier_head_artifact_ref: str,
     artifact_format: str,
 ) -> PeftEncoderStatePayload:
-    if isinstance(base_state, PeftClassifierState):
-        return PeftClassifierState(
-            schema_version=base_state.schema_version,
-            adapter_kind=base_state.adapter_kind,
-            model_id=base_state.model_id,
-            model_revision=next_model_revision,
-            training_scope=base_state.training_scope,
-            updated_at=updated_at,
-            backbone=base_state.backbone,
-            peft_adapter_config=base_state.peft_adapter_config,
-            label_schema=base_state.label_schema,
-            peft_adapter_artifact_ref=lora_adapter_artifact_ref,
-            classifier_head_artifact_ref=classifier_head_artifact_ref,
-            artifact_format=artifact_format,
-        )
-    return LoraClassifierState(
+    return PeftClassifierState(
         schema_version=base_state.schema_version,
         adapter_kind=base_state.adapter_kind,
         model_id=base_state.model_id,
@@ -152,30 +132,24 @@ def _build_next_state(
         training_scope=base_state.training_scope,
         updated_at=updated_at,
         backbone=base_state.backbone,
-        lora_config=base_state.lora_config,
+        peft_adapter_config=base_state.peft_adapter_config,
         label_schema=base_state.label_schema,
-        lora_adapter_artifact_ref=lora_adapter_artifact_ref,
+        peft_adapter_artifact_ref=lora_adapter_artifact_ref,
         classifier_head_artifact_ref=classifier_head_artifact_ref,
         artifact_format=artifact_format,
     )
 
 
 def _adapter_parameters_key(base_state: PeftEncoderStatePayload) -> str:
-    if isinstance(base_state, PeftClassifierState):
-        return PEFT_STATE_PARAMETERS_KEY
-    return LORA_STATE_PARAMETERS_KEY
+    return PEFT_STATE_PARAMETERS_KEY
 
 
 def _partitioned_adapter_parameters_key(base_state: PeftEncoderStatePayload) -> str:
-    if isinstance(base_state, PeftClassifierState):
-        return PARTITIONED_PEFT_STATE_PARAMETERS_KEY
-    return PARTITIONED_LORA_STATE_PARAMETERS_KEY
+    return PARTITIONED_PEFT_STATE_PARAMETERS_KEY
 
 
 def _applied_adapter_deltas_key(base_state: PeftEncoderStatePayload) -> str:
-    if isinstance(base_state, PeftClassifierState):
-        return "applied_peft_parameter_deltas"
-    return "applied_lora_parameter_deltas"
+    return "applied_peft_parameter_deltas"
 
 
 def _json_vector_mapping(

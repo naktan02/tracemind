@@ -9,9 +9,6 @@ from datetime import datetime
 from methods.adaptation.query_text_views.local_training_budget import (
     QuerySslLocalStepPlan,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierDelta,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierDelta,
 )
@@ -39,7 +36,7 @@ from .partitioned_delta import PeftEncoderPartitionDelta
 class QuerySslPeftEncoderUpdateBuildResult:
     """FL adapter가 envelope과 summary에 쓰는 Query SSL local update 결과."""
 
-    update_payload: LoraClassifierDelta | PeftClassifierDelta
+    update_payload: PeftClassifierDelta
     client_metrics: Mapping[str, float]
     accepted_unlabeled_count: int
 
@@ -137,7 +134,7 @@ def build_query_ssl_peft_encoder_update_payload(
 
 def build_query_ssl_peft_encoder_client_metrics(
     *,
-    update_payload: LoraClassifierDelta | PeftClassifierDelta,
+    update_payload: PeftClassifierDelta,
     step_plan: QuerySslLocalStepPlan,
     history_record: Mapping[str, object],
     labeled_count: int,

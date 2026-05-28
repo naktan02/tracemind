@@ -6,15 +6,12 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Protocol
 
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierState,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
 
 
-class LoraClassifierInitialStateConfig(Protocol):
+class PeftEncoderInitialStateConfig(Protocol):
     """Initial shared state 생성에 필요한 PEFT encoder classifier config surface."""
 
     artifact_format: str
@@ -31,34 +28,9 @@ class LoraClassifierInitialStateConfig(Protocol):
         """State payload에 기록할 PEFT adapter config snapshot."""
 
 
-def build_initial_lora_classifier_state(
-    *,
-    config: LoraClassifierInitialStateConfig,
-    model_id: str,
-    model_revision: str,
-    training_scope: str,
-    labels: Sequence[str],
-    updated_at: datetime,
-) -> LoraClassifierState:
-    """simulation/runtime bootstrap용 v1 lora_classifier state를 만든다."""
-
-    return LoraClassifierState(
-        model_id=model_id,
-        model_revision=model_revision,
-        training_scope=training_scope,
-        updated_at=updated_at,
-        backbone=dict(config.backbone_payload()),
-        lora_config=dict(config.lora_config_payload()),
-        label_schema=[str(label) for label in labels],
-        lora_adapter_artifact_ref=config.lora_adapter_artifact_ref,
-        classifier_head_artifact_ref=config.classifier_head_artifact_ref,
-        artifact_format=config.artifact_format,
-    )
-
-
 def build_initial_peft_classifier_state(
     *,
-    config: LoraClassifierInitialStateConfig,
+    config: PeftEncoderInitialStateConfig,
     model_id: str,
     model_revision: str,
     training_scope: str,

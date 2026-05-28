@@ -9,15 +9,11 @@ from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_partitioned_projection as peft_part_projection,
 )
 from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
 )
 
 
-@register_federated_ssl_server_update_backend_resolver(LORA_CLASSIFIER_ADAPTER_KIND)
 @register_federated_ssl_server_update_backend_resolver(PEFT_CLASSIFIER_ADAPTER_KIND)
 def resolve_peft_encoder_federated_ssl_server_update_backend(
     *,

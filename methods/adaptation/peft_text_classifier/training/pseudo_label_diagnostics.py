@@ -29,7 +29,7 @@ from methods.evaluation.pseudo_label_quality import (
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
-class LoraClassifierDiagnosticsRuntimeConfig(Protocol):
+class PeftEncoderDiagnosticsRuntimeConfig(Protocol):
     """pseudo-label diagnostics가 필요한 runtime surface."""
 
     device: str
@@ -82,7 +82,7 @@ def build_final_snapshot_pseudo_label_quality(
     labels: Sequence[str],
     lora_config: PeftEncoderTrainingBackendConfig,
     acceptance_threshold: float | None,
-    trainer_runtime_config: LoraClassifierDiagnosticsRuntimeConfig,
+    trainer_runtime_config: PeftEncoderDiagnosticsRuntimeConfig,
     unlabeled_batch_size: int,
     tokenization_cache: TextTokenizationCache | None,
     tokenization_cache_namespace: str,

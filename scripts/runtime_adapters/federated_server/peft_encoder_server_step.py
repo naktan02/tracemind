@@ -40,9 +40,6 @@ from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
     build_server_aggregate_artifact_refs,
     build_simulation_aggregation_context,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierState,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
@@ -66,7 +63,7 @@ def run_peft_encoder_supervised_seed_step(
     runtime_payload = peft_encoder_runtime_payload(request.round_runtime_config)
     if runtime_payload is None:
         raise ValueError("PEFT-backed classifier runtime config is required.")
-    if not isinstance(active.adapter_state, LoraClassifierState | PeftClassifierState):
+    if not isinstance(active.adapter_state, PeftClassifierState):
         raise ValueError("supervised_seed_step requires active classifier state.")
     if not bootstrapped.dataset_split.bootstrap_rows:
         raise ValueError("supervised_seed_step requires server bootstrap_rows.")
@@ -154,8 +151,6 @@ def run_peft_encoder_supervised_seed_step(
 
 
 def _adapter_artifact_slot(
-    adapter_state: LoraClassifierState | PeftClassifierState,
+    adapter_state: PeftClassifierState,
 ) -> str:
-    if isinstance(adapter_state, PeftClassifierState):
-        return peft_fedavg_projection.PEFT_ADAPTER_ARTIFACT_SLOT
-    return peft_fedavg_projection.LORA_ADAPTER_ARTIFACT_SLOT
+    return peft_fedavg_projection.PEFT_ADAPTER_ARTIFACT_SLOT

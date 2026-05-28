@@ -9,10 +9,10 @@ import torch
 from torch import Tensor
 
 MERGED_LORA_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
-    "lora_classifier_client_merged_lora_delta_tensor_artifact.v1"
+    "peft_encoder_client_merged_adapter_delta_tensor_artifact.v1"
 )
 MERGED_HEAD_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
-    "lora_classifier_client_merged_head_delta_tensor_artifact.v1"
+    "peft_encoder_client_merged_head_delta_tensor_artifact.v1"
 )
 MERGED_DELTA_TENSOR_ARTIFACT_FORMAT = "safetensors"
 LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "lora_delta_index_json"

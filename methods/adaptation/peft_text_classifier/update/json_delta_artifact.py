@@ -9,10 +9,10 @@ from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
 )
 from shared.src.contracts.training_contracts import TrainingTask
 
-LORA_DELTA_ARTIFACT_SCHEMA_VERSION = "lora_classifier_client_delta_artifact.v1"
-HEAD_DELTA_ARTIFACT_SCHEMA_VERSION = "lora_classifier_client_head_delta_artifact.v1"
+LORA_DELTA_ARTIFACT_SCHEMA_VERSION = "peft_encoder_client_delta_artifact.v1"
+HEAD_DELTA_ARTIFACT_SCHEMA_VERSION = "peft_encoder_client_head_delta_artifact.v1"
 PARTITIONED_DELTA_ARTIFACT_SCHEMA_VERSION = (
-    "lora_classifier_client_partitioned_delta_artifact.v1"
+    "peft_encoder_client_partitioned_delta_artifact.v1"
 )
 
 

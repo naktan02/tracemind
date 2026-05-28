@@ -1,7 +1,4 @@
-"""PEFT-backed classifier training backend config parsing.
-
-`lora_classifier` 이름은 v1 payload/config compatibility surface로 유지한다.
-"""
+"""PEFT-backed classifier training backend config parsing."""
 
 from __future__ import annotations
 
@@ -23,13 +20,9 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
 )
 
-LORA_CLASSIFIER_TRAINING_BACKEND_NAME = "lora_classifier_trainer"
 PEFT_CLASSIFIER_TRAINING_BACKEND_NAME = "peft_classifier_trainer"
-LORA_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE = "lora_classifier_trainer"
 PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE = "peft_classifier_trainer"
-LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE = "lora_classifier"
 PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE = "peft_classifier"
-LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND = "lora_classifier"
 PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND = "peft_classifier"
 PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL = "agent_local_artifact_ref"
 PEFT_ENCODER_DELTA_FORMAT_INLINE = "inline_delta"
@@ -125,13 +118,8 @@ class PeftEncoderTrainingBackendConfig:
         set_normalized_str(self, "delta_format", self.delta_format)
         set_normalized_str(self, "artifact_ref_prefix", self.artifact_ref_prefix)
         set_normalized_str(self, "payload_adapter_kind", self.payload_adapter_kind)
-        if self.payload_adapter_kind not in {
-            LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
-            PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
-        }:
-            raise ValueError(
-                "payload_adapter_kind must be lora_classifier or peft_classifier."
-            )
+        if self.payload_adapter_kind != PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND:
+            raise ValueError("payload_adapter_kind must be peft_classifier.")
         text_keys = tuple(
             str(value).strip()
             for value in self.text_metadata_keys
@@ -222,33 +210,7 @@ class PeftEncoderTrainingBackendConfig:
         }
 
 
-@dataclass(frozen=True, slots=True)
-class LoraClassifierTrainingBackendConfig(PeftEncoderTrainingBackendConfig):
-    """v1 LoRA-classifier payload compatibility trainer snapshot."""
-
-    artifact_ref_prefix: str = "agent-local://lora_classifier"
-    payload_adapter_kind: str = LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND
-
-
 PeftClassifierTrainingBackendConfig = PeftEncoderTrainingBackendConfig
-
-
-def build_legacy_lora_classifier_training_backend_config(
-    objective_config: TrainingObjectiveConfig | None,
-    *,
-    family_extra_scope: str = LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE,
-    training_backend_extra_scope: str = LORA_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
-) -> LoraClassifierTrainingBackendConfig:
-    """objective config에서 LoRA-classifier trainer 설정을 읽는다."""
-
-    if objective_config is None:
-        return LoraClassifierTrainingBackendConfig()
-
-    extras = {
-        **objective_config.get_component_extras(family_extra_scope),
-        **objective_config.get_component_extras(training_backend_extra_scope),
-    }
-    return LoraClassifierTrainingBackendConfig.from_mapping(extras)
 
 
 def build_peft_classifier_training_backend_config(
@@ -269,9 +231,6 @@ def build_peft_classifier_training_backend_config(
     return replace(
         config,
         payload_adapter_kind=PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
-        artifact_ref_prefix="agent-local://peft_classifier"
-        if config.artifact_ref_prefix == "agent-local://lora_classifier"
-        else config.artifact_ref_prefix,
     )
 
 

@@ -917,16 +917,16 @@ def test_peft_config_class_owns_canonical_defaults() -> None:
         "PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL",
         "PEFT_ENCODER_DELTA_FORMAT_INLINE",
         "PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED",
-        "class LoraClassifierTrainingBackendConfig(PeftEncoderTrainingBackendConfig):",
-        'artifact_ref_prefix: str = "agent-local://lora_classifier"',
-        "payload_adapter_kind: str = LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND",
-        "def build_legacy_lora_classifier_training_backend_config(",
     )
     missing = [snippet for snippet in required_snippets if snippet not in source]
     forbidden_snippets = (
         "PeftClassifierTrainingBackendConfig = LoraClassifierTrainingBackendConfig",
         "PeftEncoderTrainingBackendConfig = LoraClassifierTrainingBackendConfig",
+        "class LoraClassifierTrainingBackendConfig",
+        "def build_legacy_lora_classifier_training_backend_config(",
         "def build_lora_classifier_training_backend_config(",
+        'artifact_ref_prefix: str = "agent-local://lora_classifier"',
+        "payload_adapter_kind: str = LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND",
         "LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL",
         "LORA_CLASSIFIER_DELTA_FORMAT_INLINE",
         "LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED",
@@ -935,31 +935,28 @@ def test_peft_config_class_owns_canonical_defaults() -> None:
 
     assert not missing and not violations, (
         "PEFT encoder config가 canonical class/default를 소유하고, "
-        "LoraClassifierTrainingBackendConfig는 v1 compatibility subclass로만 "
-        "남아야 한다.\n"
+        "active training config에서 v1 lora_classifier payload producer를 "
+        "다시 열지 않는다.\n"
         f"missing={missing}\nviolations={violations}"
     )
 
 
-def test_peft_training_backend_marks_legacy_lora_factories() -> None:
+def test_peft_training_backend_does_not_register_legacy_lora_factories() -> None:
     path = PEFT_TEXT_CLASSIFIER_SRC / "training_backend.py"
     source = path.read_text(encoding="utf-8")
-    required_snippets = (
-        "def from_legacy_lora_objective_config(",
-        "def build_legacy_lora_classifier_training_backend(",
-    )
     forbidden_snippets = (
         "def from_objective_config(",
+        "def from_legacy_lora_objective_config(",
+        "def build_legacy_lora_classifier_training_backend(",
         "def build_lora_classifier_training_backend(",
+        '"lora_classifier_trainer"',
     )
-    missing = [snippet for snippet in required_snippets if snippet not in source]
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
-    assert not missing and not violations, (
-        "PEFT training backend의 v1 lora_classifier_trainer 경로는 legacy "
-        "compatibility factory 이름으로 드러나야 한다. active PEFT factory처럼 "
-        "보이는 generic/lora 이름을 다시 만들지 않는다.\n"
-        f"missing={missing}\nviolations={violations}"
+    assert not violations, (
+        "PEFT training backend는 active v2 peft_classifier_trainer만 등록한다. "
+        "v1 lora_classifier_trainer producer alias를 다시 만들지 않는다.\n"
+        f"violations={violations}"
     )
 
 
@@ -1001,9 +998,6 @@ def test_adapter_family_module_resolver_does_not_embed_concrete_family_map() -> 
 
 
 def test_peft_method_modules_use_canonical_config_type_name() -> None:
-    allowed_paths = {
-        Path("methods/adaptation/peft_text_classifier/config.py"),
-    }
     checked_roots = (
         PEFT_TEXT_CLASSIFIER_SRC,
         METHODS_FEDERATED_SSL_SRC / "fedmatch",
@@ -1012,15 +1006,14 @@ def test_peft_method_modules_use_canonical_config_type_name() -> None:
         _relative_repo_path(path)
         for root in checked_roots
         for path in _iter_python_files(root)
-        if _relative_repo_path(path) not in allowed_paths
-        and "LoraClassifierTrainingBackendConfig" in path.read_text(encoding="utf-8")
+        if "LoraClassifierTrainingBackendConfig" in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
         "PEFT text-classifier/FedMatch active method modules는 canonical "
-        "PeftEncoderTrainingBackendConfig type 이름을 사용한다. legacy "
-        "LoraClassifierTrainingBackendConfig는 config.py의 v1 compatibility "
-        "subclass/builder에만 남긴다.\n"
+        "PeftEncoderTrainingBackendConfig type 이름을 사용한다. v1 "
+        "LoraClassifierTrainingBackendConfig subclass/builder를 다시 만들지 "
+        "않는다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 

@@ -1,7 +1,4 @@
-"""PEFT-encoder classifier aggregation artifact materialization helpers.
-
-`lora_classifier` 함수명은 v1 contract compatibility surface로 남긴다.
-"""
+"""PEFT-encoder classifier aggregation artifact materialization helpers."""
 
 from __future__ import annotations
 
@@ -16,10 +13,6 @@ from torch import Tensor
 from methods.federated.aggregation.base import (
     AggregationJsonArtifactLoader,
     FederatedAggregationContext,
-)
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LoraClassifierDelta,
-    LoraClassifierState,
 )
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierDelta,
@@ -41,8 +34,8 @@ PARTITIONED_LORA_STATE_PARAMETERS_KEY = "partitioned_lora_parameters"
 PARTITIONED_PEFT_STATE_PARAMETERS_KEY = "partitioned_peft_parameters"
 PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "partitioned_classifier_head_weights"
 PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY = "partitioned_classifier_head_biases"
-PeftEncoderStatePayload = LoraClassifierState | PeftClassifierState
-PeftEncoderDeltaPayload = LoraClassifierDelta | PeftClassifierDelta
+PeftEncoderStatePayload = PeftClassifierState
+PeftEncoderDeltaPayload = PeftClassifierDelta
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,9 +145,8 @@ def materialize_base_peft_encoder_partitioned_state(
 ) -> dict[str, PeftEncoderMaterializedState]:
     """server-published artifact에 저장된 partition별 global state를 읽는다.
 
-    shared `LoraClassifierState` 계약은 merged LoRA/head artifact ref만 가진다.
-    partitioned state는 그 artifact payload 안의 optional methods-owned metadata로
-    보존하고, 없으면 아직 partitioned global state가 없는 것으로 본다.
+    partitioned state는 PEFT adapter artifact payload 안의 optional methods-owned
+    metadata로 보존하고, 없으면 아직 partitioned global state가 없는 것으로 본다.
     """
 
     peft_adapter_artifact_ref = _peft_adapter_artifact_ref(base_state)
@@ -495,25 +487,19 @@ def _load_base_lora_parameters(
 def _peft_adapter_artifact_ref(
     state: PeftEncoderStatePayload,
 ) -> str | None:
-    if isinstance(state, PeftClassifierState):
-        return state.peft_adapter_artifact_ref
-    return state.lora_adapter_artifact_ref
+    return state.peft_adapter_artifact_ref
 
 
 def _peft_adapter_delta_artifact_ref(
     payload: PeftEncoderDeltaPayload,
 ) -> str | None:
-    if isinstance(payload, PeftClassifierDelta):
-        return payload.peft_adapter_delta_artifact_ref
-    return payload.lora_delta_artifact_ref
+    return payload.peft_adapter_delta_artifact_ref
 
 
 def _peft_parameter_deltas(
     payload: PeftEncoderDeltaPayload,
 ) -> dict[str, list[float]] | None:
-    if isinstance(payload, PeftClassifierDelta):
-        return payload.peft_parameter_deltas
-    return payload.lora_parameter_deltas
+    return payload.peft_parameter_deltas
 
 
 def _partition_peft_parameter_deltas(partition: object) -> object:
@@ -523,9 +509,7 @@ def _partition_peft_parameter_deltas(partition: object) -> object:
 
 
 def _peft_parameter_deltas_field_name(payload: PeftEncoderDeltaPayload) -> str:
-    if isinstance(payload, PeftClassifierDelta):
-        return "peft_parameter_deltas"
-    return "lora_parameter_deltas"
+    return "peft_parameter_deltas"
 
 
 def _load_base_classifier_head_parameters(
