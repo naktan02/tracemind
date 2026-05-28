@@ -987,7 +987,6 @@ def test_federated_simulation_method_owned_fedmatch_uses_method_local_policy() -
             overrides=[
                 "strategy_axes/fl/method_descriptor=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl/server_update_policy=fedmatch_partitioned",
                 "strategy_axes/fl/update_partition_policy=partitioned",
                 "strategy_axes/fl/aggregation_weight_policy=uniform",
                 "strategy_axes/fl/peer_context_policy=fixed_probe_output_knn",
@@ -1001,7 +1000,6 @@ def test_federated_simulation_method_owned_fedmatch_uses_method_local_policy() -
     )
 
     assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
-    assert cfg.server_update_policy.name == "fedmatch_partitioned"
     assert capability_plan.local_ssl_policy_name == "fedmatch_agreement"
     assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
     assert capability_plan.update_partition_policy_name == "partitioned"
@@ -1033,7 +1031,6 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
                 "run_controls/fl_ssl/budget=reduced",
                 "strategy_axes/fl/method_descriptor=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl/server_update_policy=fedmatch_partitioned",
                 "strategy_axes/fl/update_partition_policy=partitioned",
                 "strategy_axes/fl/aggregation_weight_policy=uniform",
                 "strategy_axes/fl/peer_context_policy=fixed_probe_output_knn",
@@ -1048,7 +1045,6 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
     assert cfg.federated_run_budget.name == "reduced"
     assert cfg.federated_run_budget.rounds == 5
     assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
-    assert cfg.server_update_policy.name == "fedmatch_partitioned"
     assert capability_plan.local_ssl_policy_name == "fedmatch_agreement"
     assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
     assert capability_plan.update_partition_policy_name == "partitioned"

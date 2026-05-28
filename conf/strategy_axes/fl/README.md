@@ -48,8 +48,8 @@ FedMatch는 이 공통 축 중 `partitioned` update capability와 `uniform` aggr
 weight를 요구하는 method descriptor로 표현된다. `sigma/psi` partition 이름과 loss
 routing 의미는 FedMatch method package가 소유한다.
 `server_update_policy=fedavg_merged_delta`는 현재 merged delta를 기존 FedAvg path로
-해석하는 runtime이고, `fedmatch_partitioned`는 shared update의 `partitioned_deltas`를
-PEFT encoder `partitioned_delta_average` simulation backend로 해석한다.
+해석하는 runtime이다. FedMatch의 partitioned update 해석은 generic Hydra leaf가
+아니라 method descriptor가 파생하는 method-local server update policy다.
 `server_step_policy`는 server-side supervised seed step 여부이고, server update/delta
 해석과 섞지 않는다.
 `local_ssl_policy=query_ssl_method`는 실제 이름을 `query_ssl_method.algorithm_name`에서

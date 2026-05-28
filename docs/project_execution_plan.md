@@ -276,8 +276,8 @@ Runtime translation:
   baseline 계열 historical artifact는 현재 로컬에 없어 current manifest 대상에서
   제외했다.
 - FedMatch method-owned smoke는 `peer_context=fixed_probe_output_knn`,
-  `server_update_policy=fedmatch_partitioned`,
-  `method_descriptor=fedmatch`에서 파생되는 `fedmatch_agreement` 조합으로
+  `method_descriptor=fedmatch`에서 파생되는 `fedmatch_agreement`와
+  `fedmatch_partitioned` 조합으로
   2026-05-22에 확인했다. 현재 target 구조에서는 `fedmatch_agreement`를 generic
   `local_ssl_policy` leaf가 아니라 `methods/federated_ssl/fedmatch/`가 소유하는
   method-local objective로 둔다.
@@ -326,7 +326,7 @@ Runtime translation:
 10. 최적화 후 FedMatch method-owned reduced run을 다시 닫았다. 확인 대상은 현행
    v1 field 기준
    `method_owned`, `method_descriptor=fedmatch`에서 파생되는 `fedmatch_agreement`,
-   `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
+   `fedmatch_partitioned`, `peer_context=fixed_probe_output_knn`,
    helper injection, `partitioned_deltas_artifact_ref` 소비, final report metadata였다.
    2026-05-26 `10 clients`, `5 rounds`, `max_steps=20`,
    `local_budget_policy=iteration_capped` run은 artifact communication estimate를

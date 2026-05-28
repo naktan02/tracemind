@@ -16,6 +16,10 @@ from methods.federated.client_split import (
     LABELED_EXPOSURE_SERVER_ONLY_SEED,
     LABELED_EXPOSURE_SHARED_CLIENT_SEED,
 )
+from methods.federated_ssl.method_config_surface import (
+    default_method_server_update_policy_name,
+)
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 
 
 def build_fl_ssl_run_dir(
@@ -91,7 +95,7 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
         method_name = _select(cfg, "ssl_method.name", default=None) or "method_owned"
         update_family = _resolve_update_runtime_slug(cfg)
         server_update_policy = (
-            _select(cfg, "server_update_policy.name", default=None)
+            _resolve_method_owned_server_update_policy(cfg, method_name=method_name)
             or _select(cfg, "round_runtime.aggregation_backend_name", default=None)
             or "unknown_server_update"
         )
@@ -114,6 +118,22 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
     return "__".join(
         _slugify(part)
         for part in (query_ssl_method, update_family, aggregation_backend)
+    )
+
+
+def _resolve_method_owned_server_update_policy(
+    cfg: DictConfig,
+    *,
+    method_name: str,
+) -> str | None:
+    try:
+        descriptor = resolve_federated_ssl_method_descriptor(str(method_name))
+    except ValueError:
+        return _select(cfg, "server_update_policy.name", default=None)
+    return default_method_server_update_policy_name(descriptor) or _select(
+        cfg,
+        "server_update_policy.name",
+        default=None,
     )
 
 

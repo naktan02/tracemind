@@ -66,6 +66,22 @@ def default_method_local_ssl_policy_name(
     return None
 
 
+def default_method_server_update_policy_name(
+    method_descriptor: FederatedSslMethodDescriptor,
+) -> str | None:
+    """method descriptor module이 선언한 기본 server update policy 이름을 읽는다."""
+
+    method_module = _import_method_descriptor_module(method_descriptor.name)
+    value = getattr(method_module, "DEFAULT_SERVER_UPDATE_POLICY_NAME", None)
+    if value is not None:
+        text = str(value).strip()
+        return text or None
+    names = method_descriptor.required_capabilities.server_update_policy_names
+    if len(names) == 1:
+        return names[0]
+    return None
+
+
 def _client_step_mapping(
     descriptor: FederatedSslMethodDescriptor,
 ) -> dict[str, object]:

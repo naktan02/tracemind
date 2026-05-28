@@ -69,7 +69,7 @@ policy가 된다.
     package에 고정했다. 현재 LoRA PEFT mechanism slice를 넘어 DoRA 같은 PEFT adapter 교체를
     허용하는 partitioned trainable state primitive를 단계적으로 열고 있다.
   - `methods/adaptation/peft_text_encoder/federated_ssl/`는 method-owned
-    objective를 PEFT text-classifier model/loaders, logical/physical partition
+    objective를 PEFT text encoder model/loaders, logical/physical partition
     delta, shared update payload로 실행하는 update-family runtime primitive다.
     FedMatch method 의미는 `methods/federated_ssl/fedmatch/`에서 읽는다.
   - helper prediction exchange는 이전 round client-local PEFT encoder snapshot과 validation

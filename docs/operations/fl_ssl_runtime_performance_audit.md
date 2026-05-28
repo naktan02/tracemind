@@ -16,9 +16,9 @@ truth는 `shared/src/contracts/adapter_contract_families/lora_classifier.py`다.
 
 - Method: `fl_method.composition_mode=method_owned`,
   `strategy_axes/fl/method_descriptor=fedmatch`
-- Runtime axes: `server_update_policy=fedmatch_partitioned`,
-  `update_partition_policy=partitioned`, `aggregation_weight_policy=uniform`,
-  `peer_context_policy=fixed_probe_output_knn`,
+- Runtime axes: `update_partition_policy=partitioned`,
+  `aggregation_weight_policy=uniform`, `peer_context_policy=fixed_probe_output_knn`
+- Method-derived policies: `server_update_policy=fedmatch_partitioned`,
   `local_ssl_policy=fedmatch_agreement`
 - Split: `shared_general_reddit_pc100_alpha03_clients10`
 - Budget: `run_controls/fl_ssl/budget=reduced`, `10 clients`, `5 rounds`,
@@ -64,12 +64,13 @@ truth는 `shared/src/contracts/adapter_contract_families/lora_classifier.py`다.
 
 공통 조건:
 
-- Method: FedMatch method-owned LoRA-classifier
+- Method: FedMatch method-owned PEFT text encoder
 - Split: shared client seed, Dirichlet alpha=0.3, clients=10, seed=42
 - Budget: reduced, 5 rounds, `max_steps=20`
 - Runtime: `gpu_local + mxbai`, CUDA
-- Command axis: `server_update_policy=fedmatch_partitioned`,
-  `update_partition_policy=partitioned`, `peer_context_policy=fixed_probe_output_knn`,
+- Command axis: `update_partition_policy=partitioned`,
+  `peer_context_policy=fixed_probe_output_knn`
+- Method-derived policies: `server_update_policy=fedmatch_partitioned`,
   `local_ssl_policy=fedmatch_agreement`
 
 비교 run:
@@ -183,14 +184,14 @@ partitioned path 전용 적용:
 
 공통 조건:
 
-- Method: FedMatch method-owned LoRA-classifier
+- Method: FedMatch method-owned PEFT text encoder
 - Scenario: `labels-at-server`
 - Split: server-only seed, Dirichlet alpha=0.3, clients=2, seed=42
 - Budget: smoke override, 1 round, `training_task.max_steps=1`
 - Runtime: `gpu_local + mxbai`, CUDA
 - Capability: `server_step_policy=supervised_seed_step`,
-  `server_update_policy=fedmatch_partitioned`,
-  `local_supervision_regime=client_unlabeled_only`,
+  `local_supervision_regime=client_unlabeled_only`
+- Method-derived policies: `server_update_policy=fedmatch_partitioned`,
   `local_ssl_policy=fedmatch_agreement`
 
 결과:

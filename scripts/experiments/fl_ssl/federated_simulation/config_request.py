@@ -25,6 +25,7 @@ from methods.federated_ssl.local_update_profile import (
 from methods.federated_ssl.method_config_surface import (
     build_federated_ssl_method_config_surface,
     default_method_local_ssl_policy_name,
+    default_method_server_update_policy_name,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.experiments.fl_ssl.federated_simulation.config_utils import (
@@ -223,7 +224,10 @@ def _build_capability_plan(
             cfg=cfg,
             execution_plan=resolved_execution_plan,
         ),
-        server_update_policy=optional_plain_dict(cfg, "server_update_policy"),
+        server_update_policy=_resolve_server_update_policy_mapping(
+            cfg=cfg,
+            execution_plan=resolved_execution_plan,
+        ),
         query_multiview_source=optional_plain_dict(cfg, "query_multiview_source"),
     )
 
@@ -263,6 +267,45 @@ def _resolve_local_ssl_policy_mapping(
         "name": local_ssl_policy_names[0],
         "parameter_source": "method_descriptor",
     }
+
+
+def _resolve_server_update_policy_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned server update policy는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "server_update_policy")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "server_update_policy")
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    default_policy_name = default_method_server_update_policy_name(descriptor)
+    if default_policy_name is not None:
+        if (
+            default_policy_name
+            not in descriptor.required_capabilities.server_update_policy_names
+        ):
+            raise ValueError(
+                "method default server update policy must be supported by "
+                "descriptor.required_capabilities.server_update_policy_names: "
+                f"method={descriptor.name}, value={default_policy_name!r}, "
+                "supported="
+                f"{list(descriptor.required_capabilities.server_update_policy_names)!r}."
+            )
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
+    names = descriptor.required_capabilities.server_update_policy_names
+    if not names:
+        return optional_plain_dict(cfg, "server_update_policy")
+    if len(names) != 1:
+        raise ValueError(
+            "method-owned server_update_policy derivation requires exactly one "
+            "descriptor.required_capabilities.server_update_policy_names entry or "
+            "DEFAULT_SERVER_UPDATE_POLICY_NAME: "
+            f"method={descriptor.name}, values={list(names)!r}."
+        )
+    return {"name": names[0], "parameter_source": "method_descriptor"}
 
 
 def _optional_config_str(cfg: DictConfig, key: str) -> str | None:

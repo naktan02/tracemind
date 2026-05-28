@@ -223,7 +223,7 @@ manual baseline의 composition 폴더는 `query_ssl_method + update family +
 aggregation_backend`를 쓴다. `peft_text_encoder`처럼 PEFT mechanism이 별도 축인
 family는 `peft_text_encoder_lora`처럼 실제 `peft_adapter_name`을 붙인다. FedMatch 같은
 `method_owned` run은 Query SSL lower axis가 아니라
-`method_descriptor + update family + server_update_policy`를 쓴다.
+`method_descriptor + update family + method-derived server update policy`를 쓴다.
 
 split 폴더명은 labeled/unlabeled source, labeled exposure, seed만 사람이 읽는
 이름으로 남긴다. Dirichlet alpha, manifest hash, 전체 source JSONL 경로 같은 세부
@@ -237,8 +237,8 @@ materialized split manifest를 source of truth로 본다.
 
 FedMatch physical partition smoke/reduced report는 preset을 새로 만들지 않고 leaf
 override 조합을 verifier로 고정한다. 최소 검증 축은
-`ssl_method=fedmatch`, `server_update_policy=fedmatch_partitioned`,
-`update_partition_policy=partitioned`, `aggregation_weight_policy=uniform`,
+`ssl_method=fedmatch`, `update_partition_policy=partitioned`,
+`aggregation_weight_policy=uniform`,
 `peer_context_policy=fixed_probe_output_knn`,
 `ssl_method.implementation_status=partitioned_trainable_state_slice_v1`,
 `ssl_method.local_budget_policy=iteration_capped`,
@@ -359,7 +359,6 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=reduced \
   fl_method.composition_mode=method_owned \
   strategy_axes/fl/method_descriptor=fedmatch \
-  strategy_axes/fl/server_update_policy=fedmatch_partitioned \
   strategy_axes/fl/update_partition_policy=partitioned \
   strategy_axes/fl/aggregation_weight_policy=uniform \
   strategy_axes/fl/peer_context_policy=fixed_probe_output_knn

@@ -22,7 +22,7 @@
   training entrypoint. 현재는 PEFT text encoder runtime bridge로 위임한다.
 - `server_step_parameters.py`: labels-at-server supervised seed step budget 해석
 
-PEFT text-classifier에서 FedMatch를 실행하는 family-specific bridge와 partitioned
+PEFT text encoder에서 FedMatch를 실행하는 family-specific bridge와 partitioned
 optimizer loop의 source of truth는
 `methods/adaptation/peft_text_encoder/federated_ssl/`다. 기존
 `methods/adaptation/lora_classifier/federated_ssl/` direct import path는 삭제됐다.
@@ -93,16 +93,17 @@ probability provider, `labels-at-server` client-local `psi` upload slice,
 `server_step_policy=supervised_seed_step` simulation path, sparse S2C/C2S projection,
 client-local previous partition snapshot accounting은 simulation slice로 열렸지만
 실제 네트워크 packet 측정은 artifact estimate로 남긴다.
-현재 실행 server path는 `server_step_policy=none`에서
-`server_update_policy=fedavg_merged_delta`면 PEFT encoder FedAvg가 merged
-delta를 aggregation하고, `server_update_policy=fedmatch_partitioned`면 simulation
-runtime이 PEFT encoder `partitioned_delta_average` backend로 `partitioned_deltas`를
-소비한다. 이 backend는 client sparse projection 이후 제출된 PEFT encoder
-partition delta를 평균하는 simulation slice다.
+현재 실행 server path는 `server_step_policy=none`에서 manual
+`server_update_policy=fedavg_merged_delta`면 PEFT encoder FedAvg가 merged delta를
+aggregation한다. FedMatch method-owned 실행에서는 descriptor가 파생한
+`fedmatch_partitioned` 정책에 따라 simulation runtime이 PEFT encoder
+`partitioned_delta_average` backend로 `partitioned_deltas`를 소비한다. 이 backend는
+client sparse projection 이후 제출된 PEFT encoder partition delta를 평균하는
+simulation slice다.
 `fedmatch_agreement`는 원본 FedMatch agreement objective 의미다. generic
 `local_ssl_policy` leaf로 고르지 않고 `method_descriptor=fedmatch`의 method config에서
-파생한다. 이 기본 선택은 `descriptor.py`의 method-owned metadata가 소유하며,
-`server_update_policy=fedmatch_partitioned`와 함께 써야 한다.
+파생한다. 이 기본 선택과 `fedmatch_partitioned` server update policy는
+`descriptor.py`의 method-owned metadata가 소유한다.
 `server_step_policy=supervised_seed_step`은 round open 전에 server bootstrap rows로
 PEFT encoder active state를 한 번 더 발행한 뒤 client round를 시작한다.
 

@@ -9,11 +9,11 @@ experiment package로 이해하면 된다.
 중요:
 
 - 이 패키지는 현재 로드맵에서 `시스템 FL 트랙`에 해당한다.
-- `central PEFT-classifier` 논문 비교선을 먼저 닫은 뒤, winner를 FL로 옮길 때
+- `central PEFT text encoder` 논문 비교선을 먼저 닫은 뒤, winner를 FL로 옮길 때
   이 패키지가 직접적인 기준 entrypoint가 된다.
 
 현재 v1에서 이 패키지의 기본 비교선은
-`raw query rows -> local Query SSL PEFT-classifier -> server delta aggregation`이다.
+`raw query rows -> local Query SSL PEFT text encoder -> server delta aggregation`이다.
 기존 embedding/prototype scorer fallback은 제거했다. 나중에 prototype 기반
 방법론이 실제 비교 method로 확정되면 method-owned capability로 다시 붙인다.
 
@@ -24,7 +24,7 @@ experiment package로 이해하면 된다.
 2. `simulation.py`
    - `SimulationRunRequest` -> bootstrap -> round loop -> result 조립 흐름
 3. `flow/bootstrap.py`
-   - 초기 PEFT-classifier shared state와 manifest active pair 생성
+   - 초기 PEFT text encoder shared state와 manifest active pair 생성
 4. `flow/round_loop.py`
    - round open, client execution 호출, publication, post-aggregation validation
 5. `flow/result_builder.py`
@@ -54,7 +54,7 @@ experiment package로 이해하면 된다.
    - `methods/adaptation/runtime_objective_compatibility.py` dispatcher를 통해
      method-owned runtime/objective compatibility rule을 simulation request에 적용
 11. `adapters/evaluation.py`
-   - PEFT-classifier validation evaluator 실행 wiring
+   - PEFT text encoder validation evaluator 실행 wiring
 12. `adapters/sharding.py`
    - `methods/federated/shard_policy/`의 row adapter
 13. `io/`
@@ -88,7 +88,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - `strategy_axes/fl/local_update_profile`에서 compose된다.
   - agent local update를 만드는 training/evidence/scoring/privacy 조합 profile이다.
   - `validation_*` 필드는 local update scorer와 분리된 validation evaluator를
-    고른다. PEFT-classifier profile은 `peft_classifier_eval`을 사용한다.
+    고른다. PEFT text encoder profile은 `peft_classifier_eval`을 사용한다.
 - `ssl_method`
   - `strategy_axes/fl/method_descriptor`에서 compose된다.
   - method-owned 논문 method identity/report metadata와
@@ -134,7 +134,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
     `local_ssl_policy=query_ssl_method`, `query_multiview_source=materialized_rows`다.
   - FedMatch method-owned slice는 `peer_context=fixed_probe_output_knn`와
     `server_update=fedmatch_partitioned`를 실행할 수 있다. 이때 local runtime이
-    `partitioned_deltas`를 생산하고, server runtime이 PEFT-classifier
+    `partitioned_deltas`를 생산하고, server runtime이 PEFT text encoder
     `partitioned_delta_average` backend로 소비한다.
   - `server_update_policy`는 server가 merged/partitioned update payload를 어떤
     의미로 해석할지 나타내며, server-side supervised seed step 여부인
@@ -330,9 +330,9 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - `weak_strong_pair`는 generic multiview input backend다.
   real agent의 stored scored event 경로는 아직 weak/strong view를 저장하지 않으므로
   현재는 simulation/row-source 경로가 우선이다.
-- validation은 `peft_classifier_eval`을 기본으로 사용한다. 모든 validation row를 classifier
-  forward로 평가하므로 accepted ratio는 성능 판단 metric이 아니다.
-- 기본 manual `FixMatch + FedAvg + PEFT-classifier` 경로는
+- validation은 `peft_classifier_eval`을 기본으로 사용한다. 모든 validation row를
+  linear head forward로 평가하므로 accepted ratio는 성능 판단 metric이 아니다.
+- 기본 manual `FixMatch + FedAvg + PEFT text encoder` 경로는
   `methods/ssl/algorithms/*` Query SSL algorithm과 실제 PEFT text encoder/head
   trainer를 호출해 artifact-ref delta update를 만든다. `agent-local://` ref는
   simulation round loop에서 server-owned `aggregation_artifact::` ref로
@@ -351,7 +351,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - validation scorer를 바꾸고 싶으면 `adapters/evaluation.py`와
   `local_update_profile.validation_*` config를 함께 본다. training objective의
   `scorer_backend_name`은 pseudo-label/evidence selection 경로이고,
-  PEFT-classifier 성능 평가는 `peft_classifier_eval`이 맡는다.
+  PEFT text encoder 성능 평가는 `peft_classifier_eval`이 맡는다.
 - threshold, scorer, privacy knob의 현재 노출 범위는
   [docs/strategy_surface_map.md](../../../../docs/strategy_surface_map.md)를
   먼저 보는 편이 빠르다.

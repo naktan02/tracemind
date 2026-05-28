@@ -152,7 +152,6 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
             "federated_run_budget": {"client_count": 10, "rounds": 1},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "ssl_method": {"name": "fedmatch"},
-            "server_update_policy": {"name": "fedmatch_partitioned"},
             "round_runtime": _peft_text_encoder_round_runtime(),
             "fl_method": {"composition_mode": "method_owned"},
         }

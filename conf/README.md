@@ -151,7 +151,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `training_task.local_epochs`, `training_task.batch_size`,
   `training_task.max_steps`
   - FL round에서 각 client가 수행하는 local optimizer 반복을 소유한다.
-  - manual `Query SSL + PEFT-classifier`에서는 실제 step 수가
+  - manual `Query SSL + PEFT text encoder`에서는 실제 step 수가
     `min(max_steps, local_epochs * full_epoch_steps)`로 계산된다.
   - `batch_size`는 labeled loader step 수를 바꾸고, 기본 설정에서는
     `query_ssl_method.unlabeled_batch_size=${training_task.batch_size}`라서
@@ -186,7 +186,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `client_pool_split`
   - 각 client shard 안에서 local labeled/unlabeled pool 비율을 deterministic하게
     나눈다.
-  - manual `FedAvg + FixMatch + PEFT-classifier` 조합은 client별
+  - manual `FedAvg + FixMatch + PEFT text encoder` 조합은 client별
     `labeled_rows`와 `unlabeled_rows`를 함께 local SSL 학습 입력으로 사용한다.
     legacy inline-delta fallback은 `unlabeled` partition만 pseudo-label training
     후보로 쓴다.
