@@ -2049,7 +2049,7 @@ def test_simulation_server_runtime_maps_partitioned_server_update_to_backend() -
 def test_simulation_server_runtime_rejects_partitioned_policy_for_non_peft_family() -> (
     None
 ):
-    with pytest.raises(ValueError, match="not supported by adapter family"):
+    with pytest.raises(ValueError, match="not supported by payload adapter"):
         resolve_simulation_aggregation_backend_name(
             payload_adapter_kind="unsupported_family",
             aggregation_backend_name="fedavg",

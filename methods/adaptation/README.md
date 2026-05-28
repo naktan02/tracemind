@@ -11,10 +11,10 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
 
 - `local_update_backend.py`: agent가 호출하는 local update backend port
 - `local_update_registry.py`: method-owned local update backend lookup/catalog facade
-- `adapter_family_modules.py`: adapter-kind contract 이름을 implementation module root로
-  해석하는 resolver. concrete alias는 resolver가 아니라 구현 owner 옆
-  `adapter_family_module.py` manifest가 등록한다.
-- `server_update_materialization.py`: adapter family별 서버 materialization
+- `payload_adapter_modules.py`: payload adapter contract 이름을 implementation module
+  root로 해석하는 resolver. concrete alias는 resolver가 아니라 구현 owner 옆
+  `payload_adapter_module.py` manifest가 등록한다.
+- `server_update_materialization.py`: payload family별 서버 materialization
   preflight를 찾아 실행하는 dispatcher
 - `privacy_guards/`: shared adapter update clipping/DP policy core와 registry
 - `peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와 registry.
@@ -30,11 +30,11 @@ modality-independent linear classifier head primitive는
 rank, alpha, target module 같은 실행 파라미터는 code folder가 아니라 config에서
 선택한다.
 
-`methods/adaptation/<family>/aggregation/*.py` 같은 family별 aggregation
+`methods/adaptation/<family>/aggregation/*.py` 같은 payload/update-family별 aggregation
 module은 payload delta 해석과 next-state materialization을 맡는 method-owned
 경계다. generic FedAvg 산술과 strategy wiring은
 `methods/federated/aggregation/fedavg/`에 두고, family 상세는 `main_server`가
-아니라 해당 adapter family package에 둔다. 제거된 legacy family 구현 폴더를
+아니라 해당 payload family package에 둔다. 제거된 legacy family 구현 폴더를
 compatibility 명분으로 되살리지 않는다.
 
 서버 update preflight도 같은 기준을 따른다. `methods/adaptation/server_update_*`

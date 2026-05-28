@@ -95,7 +95,7 @@ class FederatedAggregationResult:
 
 
 class FederatedAggregationStrategy(Protocol):
-    """adapter family별 update들을 다음 shared state로 집계하는 strategy."""
+    """payload adapter별 update들을 다음 shared state로 집계하는 strategy."""
 
     adapter_kind: str
     method_name: str
@@ -107,7 +107,7 @@ class FederatedAggregationStrategy(Protocol):
         update_payloads: Sequence[SharedAdapterUpdate],
         context: FederatedAggregationContext,
     ) -> FederatedAggregationResult:
-        """같은 adapter family update들을 다음 state로 집계한다."""
+        """같은 payload adapter update들을 다음 state로 집계한다."""
 
 
 FederatedAggregationStrategyFactory = Callable[

@@ -1,7 +1,7 @@
 # PEFT Text Encoder Federated SSL Primitives
 
 `peft_encoder/federated_ssl/`은 PEFT text encoder variant가 FL SSL method와 만나는
-adapter-family 실행 primitive를 소유한다.
+update-family 실행 primitive를 소유한다.
 
 ## 책임
 

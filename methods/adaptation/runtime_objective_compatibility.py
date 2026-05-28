@@ -6,15 +6,15 @@ import importlib
 from collections.abc import Callable
 from typing import Protocol
 
-from methods.adaptation.adapter_family_modules import (
-    adapter_family_module_name,
-    normalize_adapter_kind,
+from methods.adaptation.payload_adapter_modules import (
+    normalize_payload_adapter_kind,
+    payload_adapter_module_name,
 )
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
 class AdapterRuntimeObjectiveCompatibilityValidator(Protocol):
-    """adapter family별 runtime/objective drift 검증 함수 표면."""
+    """payload adapter별 runtime/objective drift 검증 함수 표면."""
 
     def __call__(
         self,
@@ -37,9 +37,9 @@ def register_runtime_objective_compatibility_validator(
     [AdapterRuntimeObjectiveCompatibilityValidator],
     AdapterRuntimeObjectiveCompatibilityValidator,
 ]:
-    """adapter family 구현 옆에서 runtime/objective compatibility 검증을 등록한다."""
+    """payload adapter owner 옆에서 runtime/objective compatibility 검증을 등록한다."""
 
-    normalized_adapter_kind = _normalize_adapter_kind(adapter_kind)
+    normalized_adapter_kind = _normalize_payload_adapter_kind(adapter_kind)
 
     def _decorator(
         validator: AdapterRuntimeObjectiveCompatibilityValidator,
@@ -61,9 +61,9 @@ def require_adapter_runtime_matches_objective(
     runtime_config: object | None,
     objective_config: TrainingObjectiveConfig | None,
 ) -> None:
-    """adapter family runtime config와 local objective payload config drift를 막는다."""
+    """runtime config와 local objective payload config drift를 막는다."""
 
-    normalized_adapter_kind = _normalize_adapter_kind(adapter_kind)
+    normalized_adapter_kind = _normalize_payload_adapter_kind(adapter_kind)
     validator = _RUNTIME_OBJECTIVE_COMPATIBILITY_VALIDATORS.get(normalized_adapter_kind)
     if validator is None:
         _import_runtime_compatibility_module_for_adapter_kind(normalized_adapter_kind)
@@ -83,8 +83,8 @@ def require_adapter_runtime_matches_objective(
 def _import_runtime_compatibility_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
-    module_name = adapter_family_module_name(
-        adapter_kind=normalized_adapter_kind,
+    module_name = payload_adapter_module_name(
+        payload_adapter_kind=normalized_adapter_kind,
         submodule="runtime_compatibility",
     )
     try:
@@ -95,5 +95,5 @@ def _import_runtime_compatibility_module_for_adapter_kind(
         raise
 
 
-def _normalize_adapter_kind(adapter_kind: str) -> str:
-    return normalize_adapter_kind(adapter_kind)
+def _normalize_payload_adapter_kind(adapter_kind: str) -> str:
+    return normalize_payload_adapter_kind(adapter_kind)

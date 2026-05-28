@@ -7,11 +7,11 @@
 
 - SSL objective, pseudo-label, loss, thresholding 같은 method 계산
 - PEFT/adaptation 적용 방식
-- adapter family별 local update 계산 방식
+- payload/update-family별 local update 계산 방식
 - shared adapter scoring과 privacy guard 계산 방식
 - federated aggregation의 순수 계산 core
 - FL-SSL composition에서 재사용되는 method 조립 규칙
-- FedProx 같은 adapter-family 중립 local objective regularizer 계산
+- FedProx 같은 payload/update-family 중립 local objective regularizer 계산
 - FL SSL method별 local objective, server policy, round policy 의미
 - prototype scoring/evidence 같은 local inference/training 공통 mechanism
 - prototype 기반 학습 input view 계산
@@ -64,7 +64,7 @@ confidence/weighting, consistency loss, distribution alignment, local regularize
 teacher/memory, mix/adversarial, FL round-state 같은 새 변화 축을 요구하면 해당
 방법론 추가 작업에 축 분리를 함께 포함한다. 기존 training loop나 runtime adapter에
 method-specific 분기를 누적하지 않는다.
-adapter family가 method-owned objective를 실행해야 할 때도
+payload/update family가 method-owned objective를 실행해야 할 때도
 `methods/adaptation/<family>/federated_ssl/<method>_*.py`를 기본값으로 만들지
 않는다. family 폴더는 `partitioned_training_loop.py` 같은 실행 primitive를 소유하고,
 method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/`에서 읽힌다.
@@ -81,7 +81,7 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   selection hook
 - `methods/adaptation/peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와
   registry
-- `methods/adaptation/local_objective_regularizers/`: FedProx처럼 adapter family와
+- `methods/adaptation/local_objective_regularizers/`: FedProx처럼 payload/update family와
   분리된 client-local objective regularizer
 - `methods/classification/linear_head/`: modality-independent linear classifier head
   primitive와 classifier-head projection

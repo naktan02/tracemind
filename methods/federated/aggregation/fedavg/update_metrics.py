@@ -13,7 +13,7 @@ from methods.federated.aggregation.fedavg.weighted_average import (
 
 @dataclass(frozen=True, slots=True)
 class FedAvgObservationMetricUpdate:
-    """adapter family와 무관하게 FedAvg가 관측하는 client update metric."""
+    """payload adapter와 무관하게 FedAvg가 관측하는 client update metric."""
 
     example_count: int
     mean_confidence: float | None
@@ -24,7 +24,7 @@ class FedAvgObservationMetricUpdate:
 def aggregate_update_observation_metrics(
     updates: Sequence[FedAvgObservationMetricUpdate],
 ) -> dict[str, float]:
-    """adapter family와 무관한 FedAvg update 관측 metric을 example weight로 집계한다."""
+    """payload adapter와 무관한 FedAvg update metric을 example weight로 집계한다."""
 
     weights = [float(update.example_count) for update in updates]
     mean_confidences = [update.mean_confidence for update in updates]

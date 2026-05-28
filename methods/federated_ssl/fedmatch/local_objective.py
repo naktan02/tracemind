@@ -252,7 +252,7 @@ def build_fedmatch_partitioned_tensor_objective(
     *,
     omit_regularization_for_single_trainable_model: bool = False,
 ) -> FedMatchPartitionedTensorObjective:
-    """adapter-family partitioned runtime에 넘길 FedMatch objective를 만든다."""
+    """update-family partitioned runtime에 넘길 FedMatch objective를 만든다."""
 
     return FedMatchPartitionedTensorObjective(
         parameters=parameters,

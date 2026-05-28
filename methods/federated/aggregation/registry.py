@@ -6,9 +6,9 @@ import importlib
 import pkgutil
 from collections.abc import Iterable, Mapping
 
-from methods.adaptation.adapter_family_modules import (
-    adapter_family_module_name,
-    adapter_family_module_root,
+from methods.adaptation.payload_adapter_modules import (
+    payload_adapter_module_name,
+    payload_adapter_module_root,
 )
 from methods.federated.aggregation.base import (
     AggregationConfigScalar,
@@ -81,7 +81,7 @@ def get_federated_aggregation_method_spec(
     adapter_kind: str,
     method_name: str,
 ) -> FederatedAggregationMethodSpec:
-    """adapter family와 method 이름에 맞는 method metadata를 반환한다."""
+    """payload adapter kind와 method 이름에 맞는 method metadata를 반환한다."""
 
     normalized_key = (adapter_kind.strip().lower(), method_name.strip().lower())
     module_method_name = _adapter_method_module_name(
@@ -107,7 +107,7 @@ def build_federated_aggregation_strategy(
     method_name: str,
     overrides: Mapping[str, AggregationConfigScalar] | None = None,
 ) -> FederatedAggregationStrategy:
-    """adapter family와 aggregation method 이름으로 methods-owned strategy를 만든다."""
+    """payload adapter kind와 aggregation method 이름으로 strategy를 만든다."""
 
     normalized_key = (adapter_kind.strip().lower(), method_name.strip().lower())
     module_method_name = _adapter_method_module_name(
@@ -172,14 +172,14 @@ def _import_adapter_aggregation_module(
     normalized_adapter_kind: str,
     normalized_method_name: str,
 ) -> None:
-    module_name = adapter_family_module_name(
-        adapter_kind=normalized_adapter_kind,
+    module_name = payload_adapter_module_name(
+        payload_adapter_kind=normalized_adapter_kind,
         submodule=f"aggregation.{normalized_method_name.replace('-', '_')}",
     )
     if _try_import_module(module_name):
         return
 
-    _import_adapter_family_aggregation_modules(normalized_adapter_kind)
+    _import_payload_adapter_aggregation_modules(normalized_adapter_kind)
 
 
 def _import_aggregation_package_modules() -> None:
@@ -234,8 +234,10 @@ def _import_classification_aggregation_modules() -> None:
             importlib.import_module(module_info.name)
 
 
-def _import_adapter_family_aggregation_modules(normalized_adapter_kind: str) -> None:
-    module_root = adapter_family_module_root(normalized_adapter_kind)
+def _import_payload_adapter_aggregation_modules(
+    normalized_adapter_kind: str,
+) -> None:
+    module_root = payload_adapter_module_root(normalized_adapter_kind)
     if not _try_import_module(module_root):
         return
     package = importlib.import_module(module_root)

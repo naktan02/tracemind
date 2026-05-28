@@ -8,9 +8,9 @@ from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
-    validate_federated_ssl_adapter_family_compatibility,
     validate_federated_ssl_capability_compatibility,
     validate_federated_ssl_local_ssl_policy_alignment,
+    validate_federated_ssl_payload_adapter_compatibility,
     validate_federated_ssl_profile_compatibility,
     validate_federated_ssl_simulation_runtime_support,
 )
@@ -158,7 +158,7 @@ def _require_runtime_compatibility(
     local_adapter_kind = resolve_federated_training_backend_adapter_kind(
         objective_config=request.training_task_config.objective_config,
     )
-    validate_federated_ssl_adapter_family_compatibility(
+    validate_federated_ssl_payload_adapter_compatibility(
         local_update_profile=request.local_update_profile,
         local_update_adapter_kind=local_adapter_kind,
         round_payload_adapter_kind=request.round_runtime_config.payload_adapter_kind,

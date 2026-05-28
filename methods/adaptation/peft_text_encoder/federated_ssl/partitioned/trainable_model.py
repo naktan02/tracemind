@@ -59,7 +59,7 @@ class PartitionedTrainableTextClassifier(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class TrainableAdapterPartitionPlan:
-    """Method-owned partition names interpreted by adapter-family execution."""
+    """Method-owned partition names interpreted by update-family execution."""
 
     partition_names: tuple[str, ...]
     composition_policy: str = PARTITION_COMPOSITION_SUM_LOGITS

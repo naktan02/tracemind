@@ -983,8 +983,9 @@ def test_local_update_registry_does_not_embed_peft_backend_override() -> None:
     )
 
 
-def test_adapter_family_module_resolver_does_not_embed_concrete_family_map() -> None:
-    path = METHODS_SRC / "adaptation" / "adapter_family_modules.py"
+def test_payload_adapter_module_resolver_does_not_embed_concrete_family_map() -> None:
+    path = METHODS_SRC / "adaptation" / "payload_adapter_modules.py"
+    removed_path = METHODS_SRC / "adaptation" / "adapter_family_modules.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         '"classifier_head":',
@@ -995,9 +996,14 @@ def test_adapter_family_module_resolver_does_not_embed_concrete_family_map() -> 
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
+    assert not removed_path.exists(), (
+        "adapter_family_modules.py 이름은 legacy adapter-family 용어를 되살린다. "
+        "payload adapter kind -> implementation owner 해석은 "
+        "payload_adapter_modules.py가 소유한다."
+    )
     assert not violations, (
-        "adapter family module resolver는 concrete family alias table을 소유하지 "
-        "않는다. alias 선언은 구현 owner 옆 adapter_family_module manifest에 둔다.\n"
+        "payload adapter module resolver는 concrete alias table을 소유하지 "
+        "않는다. alias 선언은 구현 owner 옆 payload_adapter_module manifest에 둔다.\n"
         f"{chr(10).join(f'- {snippet}' for snippet in violations)}"
     )
 
@@ -2524,7 +2530,7 @@ def test_privacy_guards_stay_runtime_and_objective_agnostic() -> None:
     )
 
 
-def test_agent_scoring_backends_do_not_keep_adapter_family_modules() -> None:
+def test_agent_scoring_backends_do_not_keep_payload_family_modules() -> None:
     package_root = AGENT_SRC / "services" / "inference" / "scoring_backends"
     forbidden_fragments = ("classifier_head", "diagonal_scale", "lora_classifier")
     violations = [
@@ -2534,7 +2540,8 @@ def test_agent_scoring_backends_do_not_keep_adapter_family_modules() -> None:
     ]
 
     assert not violations, (
-        "adapter-family별 scoring core는 methods/adaptation/<family>가 소유한다. "
+        "payload/update-family별 scoring core는 "
+        "methods/adaptation/<family>가 소유한다. "
         "agent scoring backend package에는 generic bridge와 local runtime glue만 "
         "둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
@@ -2553,18 +2560,18 @@ def test_server_update_materialization_dispatcher_stays_family_agnostic() -> Non
     source = dispatcher_path.read_text(encoding="utf-8")
 
     assert not violations, (
-        "server update materialization dispatcher는 adapter family별 payload "
-        "contract를 직접 알지 않는다. family-specific preflight는 "
+        "server update materialization dispatcher는 payload family별 contract를 "
+        "직접 알지 않는다. family-specific preflight는 "
         "methods/adaptation/<family>/server_preflight.py에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
     assert "agent-local://" not in source, (
-        "agent-local artifact ref 정책은 dispatcher가 아니라 해당 adapter family가 "
+        "agent-local artifact ref 정책은 dispatcher가 아니라 해당 payload family가 "
         "소유한다."
     )
     assert "peft_classifier" not in source, (
         "dispatcher는 PEFT-classifier family 이름도 하드코딩하지 않는다. "
-        "패키지 경로 alias는 구현 owner 옆 adapter_family_module manifest가 소유한다."
+        "패키지 경로 alias는 구현 owner 옆 payload_adapter_module manifest가 소유한다."
     )
 
 
@@ -2579,7 +2586,7 @@ def test_server_update_compatibility_dispatcher_stays_family_agnostic() -> None:
     source = dispatcher_path.read_text(encoding="utf-8")
 
     assert not sorted(imports & forbidden_imports), (
-        "server update compatibility dispatcher는 adapter family별 payload "
+        "server update compatibility dispatcher는 payload family별 "
         "contract를 직접 알지 않는다."
     )
     assert "lora_classifier" not in source
@@ -2598,7 +2605,7 @@ def test_runtime_objective_compatibility_dispatcher_stays_family_agnostic() -> N
     source = dispatcher_path.read_text(encoding="utf-8")
 
     assert not violations, (
-        "runtime/objective compatibility dispatcher는 adapter family별 payload "
+        "runtime/objective compatibility dispatcher는 payload family별 "
         "contract를 직접 알지 않는다. family-specific 검증은 "
         "methods/adaptation/<family>/runtime_compatibility.py에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
@@ -2608,7 +2615,7 @@ def test_runtime_objective_compatibility_dispatcher_stays_family_agnostic() -> N
     )
     assert "peft_classifier" not in source, (
         "dispatcher는 PEFT-classifier family 이름도 하드코딩하지 않는다. "
-        "패키지 경로 alias는 구현 owner 옆 adapter_family_module manifest가 소유한다."
+        "패키지 경로 alias는 구현 owner 옆 payload_adapter_module manifest가 소유한다."
     )
 
 

@@ -86,7 +86,7 @@ def validate_federated_ssl_profile_compatibility(
             f"{context.method_descriptor.name} does not support simulation runtime."
         )
 
-    validate_federated_ssl_adapter_family_compatibility(
+    validate_federated_ssl_payload_adapter_compatibility(
         local_update_profile=context.local_update_profile,
         local_update_adapter_kind=context.local_update_adapter_kind,
         round_payload_adapter_kind=context.round_payload_adapter_kind,
@@ -124,7 +124,7 @@ def validate_federated_ssl_profile_compatibility(
         )
 
 
-def validate_federated_ssl_adapter_family_compatibility(
+def validate_federated_ssl_payload_adapter_compatibility(
     *,
     local_update_profile: LocalUpdateProfile | None,
     local_update_adapter_kind: str,
@@ -151,7 +151,7 @@ def validate_federated_ssl_adapter_family_compatibility(
     )
     raise ValueError(
         "FL SSL compatibility failed: local_update_profile and round_runtime "
-        "must target the same adapter family: "
+        "must target the same payload adapter kind: "
         f"local_update_profile={profile_name}, "
         f"local_update_adapter_kind={normalized_local_adapter_kind}, "
         f"round_payload_adapter_kind={normalized_round_payload_adapter_kind}."

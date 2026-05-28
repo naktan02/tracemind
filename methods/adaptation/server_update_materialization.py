@@ -5,9 +5,9 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable
 
-from methods.adaptation.adapter_family_modules import (
-    adapter_family_module_name,
-    normalize_adapter_kind,
+from methods.adaptation.payload_adapter_modules import (
+    normalize_payload_adapter_kind,
+    payload_adapter_module_name,
 )
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
@@ -26,9 +26,9 @@ def register_server_update_materialization_validator(
     [ServerUpdateMaterializationValidator],
     ServerUpdateMaterializationValidator,
 ]:
-    """adapter family 구현 옆에서 서버 materialization preflight를 등록한다."""
+    """payload adapter 구현 owner 옆에서 서버 materialization preflight를 등록한다."""
 
-    normalized_adapter_kind = _normalize_adapter_kind(adapter_kind)
+    normalized_adapter_kind = _normalize_payload_adapter_kind(adapter_kind)
 
     def _decorator(
         validator: ServerUpdateMaterializationValidator,
@@ -49,7 +49,9 @@ def require_server_materializable_update_payload(
 ) -> None:
     """서버가 finalize 전에 materialize할 수 없는 update payload를 거부한다."""
 
-    normalized_adapter_kind = _normalize_adapter_kind(update_payload.adapter_kind)
+    normalized_adapter_kind = _normalize_payload_adapter_kind(
+        update_payload.adapter_kind
+    )
     validator = _SERVER_UPDATE_MATERIALIZATION_VALIDATORS.get(normalized_adapter_kind)
     if validator is None:
         _import_materialization_module_for_adapter_kind(normalized_adapter_kind)
@@ -63,8 +65,8 @@ def require_server_materializable_update_payload(
 def _import_materialization_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
-    module_name = adapter_family_module_name(
-        adapter_kind=normalized_adapter_kind,
+    module_name = payload_adapter_module_name(
+        payload_adapter_kind=normalized_adapter_kind,
         submodule="server_preflight",
     )
     try:
@@ -75,5 +77,5 @@ def _import_materialization_module_for_adapter_kind(
         raise
 
 
-def _normalize_adapter_kind(adapter_kind: str) -> str:
-    return normalize_adapter_kind(adapter_kind)
+def _normalize_payload_adapter_kind(adapter_kind: str) -> str:
+    return normalize_payload_adapter_kind(adapter_kind)

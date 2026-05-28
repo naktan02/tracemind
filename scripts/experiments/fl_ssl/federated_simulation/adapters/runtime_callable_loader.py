@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from functools import cache
 from importlib import import_module
 from typing import Any
 
 
-@cache
 def load_configured_callable(callable_path: str, *, field_name: str) -> Any:
     """Hydra config가 선언한 fully-qualified callable을 로드한다."""
 

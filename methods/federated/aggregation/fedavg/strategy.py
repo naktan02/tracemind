@@ -36,7 +36,7 @@ FedAvgAggregate = Callable[
 
 @dataclass(frozen=True, slots=True)
 class FedAvgAdapterStrategySpec:
-    """FedAvg가 한 adapter family payload를 처리하는 method-owned spec."""
+    """FedAvg가 한 payload adapter update를 처리하는 method-owned spec."""
 
     adapter_kind: str
     state_type: type[object]
@@ -52,7 +52,7 @@ class FedAvgAdapterStrategySpec:
 
 @dataclass(slots=True)
 class FedAvgAggregationStrategy:
-    """Adapter family contract를 FedAvg method core에 연결하는 strategy."""
+    """Payload adapter contract를 FedAvg method core에 연결하는 strategy."""
 
     spec: FedAvgAdapterStrategySpec
     overrides: Mapping[str, AggregationConfigScalar] | None = None
@@ -65,7 +65,7 @@ class FedAvgAggregationStrategy:
 
     @property
     def adapter_kind(self) -> str:
-        """이 strategy가 처리하는 shared adapter family discriminator."""
+        """이 strategy가 처리하는 shared payload adapter discriminator."""
 
         return self.spec.adapter_kind
 
@@ -76,7 +76,7 @@ class FedAvgAggregationStrategy:
         update_payloads: Sequence[SharedAdapterUpdate],
         context: FederatedAggregationContext,
     ) -> FederatedAggregationResult:
-        """공통 lineage/type 검증 후 family별 FedAvg projection을 호출한다."""
+        """공통 lineage/type 검증 후 payload-family FedAvg projection을 호출한다."""
 
         typed_base_state = _require_typed_base_state(
             base_state=base_state,
@@ -102,7 +102,7 @@ class FedAvgAggregationStrategy:
 
 
 def register_fedavg_adapter_strategy(spec: FedAvgAdapterStrategySpec) -> None:
-    """adapter family projection module에서 FedAvg strategy를 등록한다."""
+    """payload adapter projection module에서 FedAvg strategy를 등록한다."""
 
     register_federated_aggregation_strategy(
         adapter_kind=spec.adapter_kind,

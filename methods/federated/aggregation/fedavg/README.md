@@ -1,7 +1,7 @@
 # FedAvg Aggregation
 
 `fedavg/`는 example_count 기반 FedAvg의 공통 산술과 strategy wiring을 소유한다.
-adapter family별 delta 해석과 next-state 계산은 각 family package가 소유한다.
+payload adapter별 delta 해석과 next-state 계산은 각 family package가 소유한다.
 
 ## 파일 역할
 
@@ -13,7 +13,7 @@ adapter family별 delta 해석과 next-state 계산은 각 family package가 소
 publication metadata는 server context가 제공하고, server-owned artifact ref는
 main_server가 넘긴 resolver/loader capability를 통해서만 생성하거나 읽는다.
 
-Adapter family별 FedAvg core와 payload projection은 각 family가 소유한다.
+Payload adapter별 FedAvg core와 payload projection은 각 family가 소유한다.
 
 - `methods/classification/linear_head/aggregation/linear_head_fedavg_projection.py`
 - `methods/adaptation/peft_text_encoder/aggregation/peft_encoder_fedavg_projection.py`

@@ -137,7 +137,7 @@ runner, agent, main_server는 FedMatch 이름이 아니라 capability를 통해 
 FedMatch 원본 의미 보존은 한 번에 열지 않는다.
 
 1. Adapter-family guard를 먼저 세운다. `sigma/psi` 이름은 FedMatch package가 소유하고,
-   LoRA/DoRA 같은 PEFT 구현은 adapter-family partition mechanism으로 격리한다.
+   LoRA/DoRA 같은 PEFT 구현은 update-family partition mechanism으로 격리한다.
 2. Local physical partition을 연다. client 안에서 `sigma`와 `psi` adapter/head
    parameter를 실제로 분리하고, supervised objective는 `sigma`, unsupervised objective와
    L1/L2는 `psi`로 routing한다.
@@ -146,7 +146,7 @@ FedMatch 원본 의미 보존은 한 번에 열지 않는다.
 4. Sparse C2S upload projection을 연다. client upload는 원본 `delta_threshold`와
    `psi` `l1_threshold`를 반영해 의미 있게 변한 partition delta만 남긴다.
 5. Composition policy를 연결한다. evaluation, pseudo-label diagnostics, UMAP은
-   method가 선언한 partition 조합을 adapter-family composed forward로 실행한다.
+   method가 선언한 partition 조합을 update-family composed forward로 실행한다.
 6. Sparse S2C sync와 communication accounting을 연다. server-to-client transport는
    client-local previous partition snapshot 대비 changed element ratio를 기록하고,
    helper payload까지 포함한 S2C 비용을 report에 남긴다.

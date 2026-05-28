@@ -6,9 +6,9 @@ import importlib
 from collections.abc import Callable
 from typing import Protocol
 
-from methods.adaptation.adapter_family_modules import (
-    adapter_family_module_name,
-    normalize_adapter_kind,
+from methods.adaptation.payload_adapter_modules import (
+    normalize_payload_adapter_kind,
+    payload_adapter_module_name,
 )
 from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDAVG_MERGED_DELTA
 
@@ -37,9 +37,9 @@ def register_federated_ssl_server_update_backend_resolver(
     [FederatedSslServerUpdateBackendResolver],
     FederatedSslServerUpdateBackendResolver,
 ]:
-    """adapter family 구현 옆에서 FL SSL server update resolver를 등록한다."""
+    """payload adapter 구현 owner 옆에서 FL SSL server update resolver를 등록한다."""
 
-    normalized_adapter_kind = _normalize_adapter_kind(adapter_kind)
+    normalized_adapter_kind = _normalize_payload_adapter_kind(adapter_kind)
 
     def _decorator(
         resolver: FederatedSslServerUpdateBackendResolver,
@@ -71,14 +71,14 @@ def resolve_federated_ssl_server_update_backend_name(
     if normalized_policy == SERVER_UPDATE_FEDAVG_MERGED_DELTA:
         return aggregation_backend_name
 
-    normalized_adapter_kind = _normalize_adapter_kind(payload_adapter_kind)
+    normalized_adapter_kind = _normalize_payload_adapter_kind(payload_adapter_kind)
     resolver = _SERVER_UPDATE_BACKEND_RESOLVERS.get(normalized_adapter_kind)
     if resolver is None:
         _import_federated_ssl_module_for_adapter_kind(normalized_adapter_kind)
         resolver = _SERVER_UPDATE_BACKEND_RESOLVERS.get(normalized_adapter_kind)
     if resolver is None:
         raise ValueError(
-            "server_update_policy is not supported by adapter family: "
+            "server_update_policy is not supported by payload adapter: "
             f"{normalized_policy} with {normalized_adapter_kind}."
         )
     return resolver(
@@ -90,8 +90,8 @@ def resolve_federated_ssl_server_update_backend_name(
 def _import_federated_ssl_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
-    module_name = adapter_family_module_name(
-        adapter_kind=normalized_adapter_kind,
+    module_name = payload_adapter_module_name(
+        payload_adapter_kind=normalized_adapter_kind,
         submodule="federated_ssl.server_update_policy",
     )
     try:
@@ -102,5 +102,5 @@ def _import_federated_ssl_module_for_adapter_kind(
         raise
 
 
-def _normalize_adapter_kind(adapter_kind: str) -> str:
-    return normalize_adapter_kind(adapter_kind)
+def _normalize_payload_adapter_kind(adapter_kind: str) -> str:
+    return normalize_payload_adapter_kind(adapter_kind)
