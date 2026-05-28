@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
 )
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfigPayload,
@@ -30,7 +30,7 @@ def _task(*, secure_required: bool = False) -> TrainingTask:
         learning_rate=0.1,
         max_steps=1,
         objective_config=TrainingObjectiveConfigPayload(
-            training_backend_name="lora_classifier_trainer"
+            training_backend_name="peft_classifier_trainer"
         ),
         selection_policy=TrainingSelectionPolicyPayload(),
         secure_aggregation=SecureAggregationConfigPayload(
@@ -47,7 +47,7 @@ def _envelope():
         model_id="model",
         base_model_revision="rev_1",
         payload_ref="/tmp/update.json",
-        payload_format=DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+        payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
         example_count=1,
         client_metrics={"accepted_ratio": 1.0},
     )

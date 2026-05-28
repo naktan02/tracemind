@@ -95,7 +95,7 @@ def _training_task_config() -> object:
         gradient_clip_norm=1.0,
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
-                "training_backend_name": "lora_classifier_trainer",
+                "training_backend_name": "peft_classifier_trainer",
                 "confidence_threshold": 0.0,
                 "margin_threshold": 0.0,
             }
