@@ -1,4 +1,4 @@
-"""LoRA-classifier merged delta tensor artifact helpers."""
+"""PEFT encoder merged delta tensor artifact helpers."""
 
 from __future__ import annotations
 

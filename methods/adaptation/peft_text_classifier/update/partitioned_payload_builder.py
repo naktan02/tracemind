@@ -1,4 +1,4 @@
-"""LoRA-classifier partitioned payload builder helpers."""
+"""PEFT encoder partitioned payload builder helpers."""
 
 from __future__ import annotations
 

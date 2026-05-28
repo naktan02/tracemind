@@ -1,4 +1,4 @@
-"""LoRA-classifier logical partition delta helpers."""
+"""PEFT encoder logical partition delta helpers."""
 
 from __future__ import annotations
 

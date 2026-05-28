@@ -99,7 +99,7 @@ def resolve_peft_encoder_label_schema(
     missing_labels = sorted({row.label for row in rows} - set(labels))
     if missing_labels:
         raise ValueError(
-            "LoRA-classifier label_schema must include accepted labels: "
+            "PEFT encoder classifier label_schema must include accepted labels: "
             f"{missing_labels}."
         )
     return labels

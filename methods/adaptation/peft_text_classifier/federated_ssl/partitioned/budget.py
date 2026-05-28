@@ -1,4 +1,4 @@
-"""LoRA-classifier partitioned local training budget 해석 helper."""
+"""PEFT encoder partitioned local training budget 해석 helper."""
 
 from __future__ import annotations
 

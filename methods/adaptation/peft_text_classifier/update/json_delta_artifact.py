@@ -1,4 +1,4 @@
-"""LoRA-classifier JSON delta artifact payload builders."""
+"""PEFT encoder JSON delta artifact payload builders."""
 
 from __future__ import annotations
 

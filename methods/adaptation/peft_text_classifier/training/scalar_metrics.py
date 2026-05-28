@@ -1,4 +1,4 @@
-"""LoRA-classifier training scalar metric accumulation primitive."""
+"""PEFT encoder classifier training scalar metric accumulation primitive."""
 
 from __future__ import annotations
 

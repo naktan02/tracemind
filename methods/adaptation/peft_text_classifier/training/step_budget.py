@@ -1,4 +1,4 @@
-"""LoRA-classifier epoch/step budget 해석 primitive."""
+"""PEFT encoder classifier epoch/step budget 해석 primitive."""
 
 from __future__ import annotations
 

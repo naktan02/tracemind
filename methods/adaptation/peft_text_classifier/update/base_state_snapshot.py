@@ -1,4 +1,4 @@
-"""LoRA-classifier base state materialization cache identity."""
+"""PEFT encoder base state materialization cache identity."""
 
 from __future__ import annotations
 

@@ -1617,6 +1617,44 @@ def test_peft_text_classifier_does_not_keep_legacy_lora_pass_through_aliases() -
     )
 
 
+def test_peft_text_classifier_active_module_docs_use_peft_names() -> None:
+    checked_paths = (
+        PEFT_TEXT_CLASSIFIER_SRC / "initial_state.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "update" / "base_state_snapshot.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "update" / "json_delta_artifact.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "update" / "local_update.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "update" / "materialization.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "update" / "merged_tensor_artifact.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "update" / "partitioned_payload_builder.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "update" / "partitioned_tensor_artifact.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "training" / "batching.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "training" / "optimizer_step.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "training" / "partitioned_deltas.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "training" / "pseudo_label_diagnostics.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "training" / "scalar_metrics.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "training" / "step_budget.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "federated_ssl" / "partitioned" / "budget.py",
+        PEFT_TEXT_CLASSIFIER_SRC / "federated_ssl" / "partitioned" / "training_loop.py",
+    )
+    forbidden_snippets = (
+        "LoRA-classifier",
+        "lora_classifier shared payload",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "PEFT text classifier active module docstrings/error text는 PEFT 이름을 "
+        "사용한다. v1 lora_classifier 이름은 schema constant, legacy factory, "
+        "compatibility validator처럼 실제 v1 경계에만 남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_test_only_federated_ssl_fixture_stays_family_contract_agnostic() -> None:
     fixture_path = TEST_FIXTURES_SRC / "federated_ssl_dummy_method.py"
     imports = _collect_absolute_imports(fixture_path)

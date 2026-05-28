@@ -1,4 +1,4 @@
-"""LoRA-classifier optimizer step lifecycle primitive."""
+"""PEFT encoder classifier optimizer step lifecycle primitive."""
 
 from __future__ import annotations
 

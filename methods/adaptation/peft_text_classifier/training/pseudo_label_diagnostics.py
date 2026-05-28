@@ -1,4 +1,4 @@
-"""LoRA-classifier pseudo-label 품질 진단 helper."""
+"""PEFT encoder classifier pseudo-label 품질 진단 helper."""
 
 from __future__ import annotations
 

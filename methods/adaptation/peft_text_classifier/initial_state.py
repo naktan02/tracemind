@@ -1,4 +1,4 @@
-"""LoRA-classifier initial shared state construction."""
+"""PEFT encoder classifier initial shared state construction."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def build_initial_lora_classifier_state(
     labels: Sequence[str],
     updated_at: datetime,
 ) -> LoraClassifierState:
-    """simulation/runtime bootstrap용 LoRA-classifier initial state를 만든다."""
+    """simulation/runtime bootstrap용 v1 lora_classifier state를 만든다."""
 
     return LoraClassifierState(
         model_id=model_id,

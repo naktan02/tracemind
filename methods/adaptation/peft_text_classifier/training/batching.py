@@ -1,4 +1,4 @@
-"""LoRA-classifier training batch iteration helpers."""
+"""PEFT encoder classifier training batch iteration helpers."""
 
 from __future__ import annotations
 

@@ -408,7 +408,7 @@ def _load_classifier_head_artifact(
 ) -> tuple[dict[str, list[float]], dict[str, float]]:
     if payload.classifier_head_delta_artifact_ref is None:
         raise ValueError(
-            "LoRA-classifier artifact materialization requires "
+            "PEFT encoder artifact materialization requires "
             "classifier_head_delta_artifact_ref."
         )
     tensor_artifact = _try_load_classifier_head_tensor_artifact(

@@ -275,7 +275,7 @@ def train_physical_partitioned_adapter_classifier(
 
     이 함수는 FedMatch 이름이나 concrete PEFT adapter 종류를 해석하지 않는다.
     caller가 지정한 supervised/unsupervised partition에 objective를 라우팅하고,
-    현재 `lora_classifier` shared payload로 projection 가능한 partition delta를
+    현재 PEFT encoder shared payload로 projection 가능한 partition delta를
     반환한다.
     """
 
