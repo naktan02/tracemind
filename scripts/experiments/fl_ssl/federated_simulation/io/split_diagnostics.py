@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from collections import Counter
 
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (
     numeric_summary,
@@ -16,6 +15,10 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
     FederatedReportConfig,
+)
+from shared.src.contracts.labeled_query_row_contracts import (
+    LabeledQueryRow,
+    count_labeled_query_rows_by_label,
 )
 
 
@@ -142,9 +145,8 @@ def _split_status(
     return "not_configured"
 
 
-def label_distribution(rows: list[object]) -> dict[str, int]:
-    counter = Counter(str(row["mapped_label_4"]) for row in rows)
-    return dict(sorted(counter.items()))
+def label_distribution(rows: list[LabeledQueryRow]) -> dict[str, int]:
+    return count_labeled_query_rows_by_label(rows)
 
 
 def label_entropy(distribution: dict[str, int]) -> float:

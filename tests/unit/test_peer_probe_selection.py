@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from methods.federated_ssl.diagnostic_sampling import (
+    hash_query_ids,
+    select_deterministic_diagnostic_rows,
+    select_label_balanced_probe_rows,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.diagnostic_view import (
     build_client_diagnostic_unlabeled_view,
 )
@@ -68,6 +73,41 @@ def test_fixed_peer_probe_selects_label_balanced_deterministic_subset() -> None:
     }
 
 
+def test_label_balanced_probe_core_is_order_independent() -> None:
+    rows = [
+        _row("a1", "anxiety"),
+        _row("a2", "anxiety"),
+        _row("d1", "depression"),
+        _row("d2", "depression"),
+        _row("n1", "normal"),
+        _row("n2", "normal"),
+        _row("s1", "suicidal"),
+        _row("s2", "suicidal"),
+    ]
+
+    selected_a = select_label_balanced_probe_rows(rows=rows, max_rows=4, seed=52)
+    selected_b = select_label_balanced_probe_rows(
+        rows=list(reversed(rows)),
+        max_rows=4,
+        seed=52,
+    )
+
+    assert [row["query_id"] for row in selected_a] == [
+        row["query_id"] for row in selected_b
+    ]
+    assert {row["mapped_label_4"] for row in selected_a} == {
+        "anxiety",
+        "depression",
+        "normal",
+        "suicidal",
+    }
+
+
+def test_probe_query_id_hash_uses_sequence_order() -> None:
+    assert hash_query_ids(("a", "b", "c")) == hash_query_ids(("a", "b", "c"))
+    assert hash_query_ids(("a", "b", "c")) != hash_query_ids(("c", "b", "a"))
+
+
 def test_fixed_peer_probe_disabled_uses_original_rows_without_manifest() -> None:
     rows = [_row("a1", "anxiety"), _row("d1", "depression")]
 
@@ -114,6 +154,32 @@ def test_client_diagnostic_view_selects_deterministic_subset() -> None:
     assert [row["query_id"] for row in selected_a] != [
         row["query_id"] for row in selected_c
     ]
+
+
+def test_diagnostic_view_sampling_core_is_order_independent() -> None:
+    rows = [_row(f"q{index:03d}", "normal") for index in range(10)]
+
+    selected_a = select_deterministic_diagnostic_rows(
+        rows=rows,
+        max_rows=4,
+        run_seed=42,
+        seed_offset=3,
+        round_index=2,
+        client_id="agent_01",
+    )
+    selected_b = select_deterministic_diagnostic_rows(
+        rows=list(reversed(rows)),
+        max_rows=4,
+        run_seed=42,
+        seed_offset=3,
+        round_index=2,
+        client_id="agent_01",
+    )
+
+    assert [row["query_id"] for row in selected_a] == [
+        row["query_id"] for row in selected_b
+    ]
+    assert len(selected_a) == 4
 
 
 def test_client_diagnostic_view_disabled_uses_full_pool() -> None:

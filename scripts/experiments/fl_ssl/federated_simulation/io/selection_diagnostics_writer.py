@@ -10,7 +10,10 @@ from typing import Any
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDiagnosticsConfig,
 )
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import (
+    LabeledQueryRow,
+    get_labeled_query_row_mapped_label,
+)
 
 
 class SelectionDiagnosticsWriter:
@@ -69,10 +72,11 @@ class SelectionDiagnosticsWriter:
             label_distribution = (
                 None if evidence is None else evidence.label_distribution
             )
+            true_label = get_labeled_query_row_mapped_label(row)
 
             stage_counts[selection_stage] += 1
-            by_true_label[str(row["mapped_label_4"])]["total"] += 1
-            by_true_label[str(row["mapped_label_4"])][selection_stage] += 1
+            by_true_label[true_label]["total"] += 1
+            by_true_label[true_label][selection_stage] += 1
             by_predicted_label[candidate.label]["total"] += 1
             by_predicted_label[candidate.label][selection_stage] += 1
 
@@ -82,7 +86,7 @@ class SelectionDiagnosticsWriter:
                         "round_id": round_id,
                         "client_id": client_id,
                         "query_id": query_id,
-                        "true_label": row["mapped_label_4"],
+                        "true_label": true_label,
                         "predicted_label": candidate.label,
                         "confidence": candidate.confidence,
                         "margin": candidate.margin,
@@ -93,9 +97,7 @@ class SelectionDiagnosticsWriter:
                         "final_accepted": candidate.accepted,
                         "selection_stage": selection_stage,
                         "pre_cap_rank": selection_context.pre_cap_rank,
-                        "is_prediction_correct": (
-                            candidate.label == row["mapped_label_4"]
-                        ),
+                        "is_prediction_correct": candidate.label == true_label,
                         "view_kind": example.view_kind,
                         "confidence_kind": candidate.confidence_kind,
                         "category_scores": raw_scores,

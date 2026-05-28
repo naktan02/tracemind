@@ -35,6 +35,9 @@ from scripts.runtime_adapters.federated_server.initial_state_factory import (
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
 from shared.src.contracts.common_types import TrainingTaskType
+from shared.src.contracts.labeled_query_row_contracts import (
+    get_labeled_query_row_mapped_label,
+)
 from shared.src.contracts.model_contracts import ModelManifest
 
 from ..io.resume_checkpoint import load_resume_checkpoint
@@ -204,7 +207,7 @@ def _category_labels(request: SimulationRunRequest) -> tuple[str, ...]:
     return tuple(
         sorted(
             {
-                str(row["mapped_label_4"])
+                get_labeled_query_row_mapped_label(row)
                 for row in (*request.train_rows, *request.validation_rows)
             }
         )

@@ -77,6 +77,8 @@ update-family leaf와 method-owned capability로 붙인다.
 - `adapters/`
   - method descriptor, client local execution, runtime compatibility, sharding,
     validation scorer 연결
+  - diagnostic view와 peer probe adapter는 config와 manifest만 조립하고 row
+    sampling algorithm은 `methods/federated_ssl/diagnostic_sampling.py`에 위임
 - `io/`
   - JSONL row load, artifact writer, diagnostics writer, report builder/writer
 

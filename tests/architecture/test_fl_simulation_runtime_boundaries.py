@@ -8,6 +8,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
+METHODS_FEDERATED_SSL_SRC = REPO_ROOT / "methods" / "federated_ssl"
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
@@ -141,6 +142,43 @@ def test_fl_simulation_config_callable_loading_is_centralized() -> None:
         "fully-qualified path 파싱과 import 규칙은 scripts/configured_callable.py에 "
         "모은다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_fl_simulation_diagnostic_sampling_core_stays_in_methods() -> None:
+    checked_paths = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "diagnostic_view.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "peer_probe.py",
+    )
+    forbidden_snippets = (
+        "import random",
+        "import hashlib",
+        "random.Random(",
+        "hashlib.sha256(",
+        "defaultdict(",
+    )
+    violations = [
+        (_relative_repo_path(path), snippet)
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert (METHODS_FEDERATED_SSL_SRC / "diagnostic_sampling.py").exists()
+    assert not violations, (
+        "FL diagnostic/probe row sampling algorithm은 methods/federated_ssl이 "
+        "소유한다. scripts adapter는 config와 manifest 조립만 맡는다.\n"
+        f"violations={violations}"
     )
 
 

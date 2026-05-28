@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-import random
 from collections.abc import Sequence
 
+from methods.federated_ssl.diagnostic_sampling import (
+    DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM,
+    normalize_sampling_policy_name,
+    select_deterministic_diagnostic_rows,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDiagnosticViewConfig,
 )
@@ -23,15 +27,17 @@ def build_client_diagnostic_unlabeled_view(
 
     if not config.enabled or len(rows) <= config.max_rows:
         return tuple(rows)
-    normalized_policy = config.selection_policy.strip().lower().replace("-", "_")
-    if normalized_policy != "deterministic_random":
+    normalized_policy = normalize_sampling_policy_name(config.selection_policy)
+    if normalized_policy != DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM:
         raise ValueError(
             "diagnostic_view.selection_policy currently supports "
-            "deterministic_random only."
+            f"{DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM} only."
         )
-    sorted_rows = sorted(rows, key=lambda row: str(row["query_id"]))
-    rng = random.Random(
-        f"{int(run_seed) + int(config.seed_offset)}:{int(round_index)}:{client_id}"
+    return select_deterministic_diagnostic_rows(
+        rows=rows,
+        max_rows=config.max_rows,
+        run_seed=run_seed,
+        seed_offset=config.seed_offset,
+        round_index=round_index,
+        client_id=client_id,
     )
-    selected_indices = sorted(rng.sample(range(len(sorted_rows)), config.max_rows))
-    return tuple(sorted_rows[index] for index in selected_indices)

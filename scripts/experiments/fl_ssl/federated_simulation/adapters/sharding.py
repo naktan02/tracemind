@@ -16,7 +16,10 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     FederatedDatasetSplit,
 )
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import (
+    LabeledQueryRow,
+    get_labeled_query_row_mapped_label,
+)
 
 
 def split_rows_for_federation(
@@ -66,7 +69,7 @@ def split_rows_into_client_shards(
 
 
 def _row_label(row: LabeledQueryRow) -> str:
-    return str(row["mapped_label_4"])
+    return get_labeled_query_row_mapped_label(row)
 
 
 def _to_client_shards(

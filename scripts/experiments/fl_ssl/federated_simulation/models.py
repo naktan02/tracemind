@@ -8,6 +8,11 @@ from pathlib import Path
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.diagnostic_sampling import (
+    DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM,
+    PEER_PROBE_LABEL_BALANCED,
+    normalize_sampling_policy_name,
+)
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 from scripts.experiments.fl_ssl.federated_simulation import (
@@ -125,7 +130,7 @@ class FederatedDiagnosticViewConfig:
     """client-local pseudo-label diagnostics에 쓸 unlabeled subset 설정."""
 
     enabled: bool = True
-    selection_policy: str = "deterministic_random"
+    selection_policy: str = DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM
     max_rows: int = 512
     seed_offset: int = 1309
 
@@ -139,17 +144,20 @@ class FederatedDiagnosticViewConfig:
         return cls(
             enabled=bool(source.get("enabled", True)),
             selection_policy=str(
-                source.get("selection_policy", "deterministic_random")
+                source.get("selection_policy", DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM)
             ).strip(),
             max_rows=int(source.get("max_rows", 512)),
             seed_offset=int(source.get("seed_offset", 1309)),
         )
 
     def __post_init__(self) -> None:
-        if self.selection_policy != "deterministic_random":
+        if (
+            normalize_sampling_policy_name(self.selection_policy)
+            != DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM
+        ):
             raise ValueError(
                 "diagnostic_view.selection_policy currently supports "
-                "deterministic_random only."
+                f"{DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM} only."
             )
         if self.max_rows <= 0:
             raise ValueError("diagnostic_view.max_rows must be positive.")
@@ -459,7 +467,7 @@ class FederatedPeerProbeConfig:
     """peer helper selection vector를 만들 fixed probe surface 설정."""
 
     enabled: bool = True
-    selection_policy: str = "label_balanced"
+    selection_policy: str = PEER_PROBE_LABEL_BALANCED
     max_rows: int = 128
     seed_offset: int = 907
 
@@ -473,16 +481,20 @@ class FederatedPeerProbeConfig:
         return cls(
             enabled=bool(source.get("enabled", True)),
             selection_policy=str(
-                source.get("selection_policy", "label_balanced")
+                source.get("selection_policy", PEER_PROBE_LABEL_BALANCED)
             ).strip(),
             max_rows=int(source.get("max_rows", 128)),
             seed_offset=int(source.get("seed_offset", 907)),
         )
 
     def __post_init__(self) -> None:
-        if self.selection_policy != "label_balanced":
+        if (
+            normalize_sampling_policy_name(self.selection_policy)
+            != PEER_PROBE_LABEL_BALANCED
+        ):
             raise ValueError(
-                "peer_probe.selection_policy currently supports label_balanced only."
+                "peer_probe.selection_policy currently supports "
+                f"{PEER_PROBE_LABEL_BALANCED} only."
             )
         if self.max_rows <= 0:
             raise ValueError("peer_probe.max_rows must be positive.")
