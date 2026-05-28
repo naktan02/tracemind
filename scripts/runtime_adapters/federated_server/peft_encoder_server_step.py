@@ -45,7 +45,7 @@ def run_peft_encoder_supervised_seed_step(
     active: ActiveSimulationState,
     round_index: int,
 ) -> server_step_execution.ServerStepExecution:
-    """PEFT-backed text classifier server supervised seed step을 실행한다."""
+    """PEFT text encoder server supervised seed step을 실행한다."""
 
     update_family_name = request.round_runtime_config.update_family_name
     if not is_peft_encoder_update_family(update_family_name):

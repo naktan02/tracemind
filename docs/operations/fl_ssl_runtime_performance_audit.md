@@ -216,13 +216,13 @@ partitioned path 전용 적용:
   `--expect-server-owned-update-artifacts` 사용 시 primary LoRA/head artifact뿐 아니라
   `partitioned_deltas_artifact_ref` 단독 update도 server-owned artifact로 검증한다.
 - 이 smoke는 `partitioned_delta.safetensors` 존재, agent-local ref 미노출, 최종
-  LoRA-classifier aggregate snapshot 존재까지 PASS했다.
+  PEFT text encoder aggregate snapshot 존재까지 PASS했다.
 
 해석:
 
 - 원본 FedMatch의 `server_batch_size=100`은 CIFAR/ResNet 기준 값이라
-  Transformer LoRA-classifier server step에는 그대로 적용하기 어렵다.
-- main fair comparison의 LoRA-classifier batch 기준과 맞추기 위해 labels-at-server
+  Transformer PEFT text encoder server step에는 그대로 적용하기 어렵다.
+- main fair comparison의 PEFT text encoder batch 기준과 맞추기 위해 labels-at-server
   reduced run은 원본값을 report에 보존하되
   `+ssl_method.parameter_overrides.server_batch_size=12`를 명시한다.
   이 override는 batch 메모리 단위 조정이며 labeled source, objective, round count,
@@ -232,7 +232,7 @@ partitioned path 전용 적용:
 
 조건:
 
-- Method: FedMatch method-owned LoRA-classifier
+- Method: FedMatch method-owned PEFT text encoder
 - Scenario: `labels-at-server`
 - Split: server-only seed, Dirichlet alpha=0.3, clients=10, seed=42
 - Budget: reduced, 5 rounds, `training_task.max_steps=20`
@@ -246,7 +246,7 @@ partitioned path 전용 적용:
 - `verify_federated_report_artifacts.py` PASS:
   completed rounds 5, client count 10, server-only seed split, FedMatch descriptor,
   server-owned partitioned update artifact, agent-local ref 미노출, 최종
-  LoRA-classifier aggregate snapshot 존재를 확인했다.
+  PEFT text encoder aggregate snapshot 존재를 확인했다.
 
 결과:
 
@@ -307,7 +307,7 @@ Client timing:
 - `strategy_axes/fl/materialized_split` selector가 긴
   `fl_data.split_manifest=...` override 없이 source pair, labeled budget, shard
   policy, manifest path를 함께 고정하는지 확인한다.
-- FedMatch 전용 경로가 아니라 manual `FixMatch + FedAvg + LoRA-classifier`에서도
+- FedMatch 전용 경로가 아니라 manual `FixMatch + PEFT text encoder + FedAvg`에서도
   공통 FL SSL runtime 최적화가 적용되는지 확인한다.
 
 조건:
@@ -497,7 +497,7 @@ Client timing:
 - simulation runtime resource로 `RoundBaseSnapshotCache`를 추가했다.
 - round 시작 시 cache를 clear하고, 같은 round 안에서 동일 active global base state
   materialization을 공유한다.
-- cache 자체는 family/method 의미를 모른다. LoRA-classifier는 첫 integration으로
+- cache 자체는 family/method 의미를 모른다. PEFT text encoder는 첫 integration으로
   `adapter_kind`, `model_revision`, state artifact refs, schema version을 key로 사용한다.
 - manual Query SSL/FedAvg 경로와 method-owned FedMatch 경로 모두 같은
   `round_base_snapshot_cache`를 통과한다.

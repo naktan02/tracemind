@@ -174,7 +174,7 @@ class PeftEncoderTrainingBackend:
     def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload:
         if not isinstance(update, PeftClassifierDelta):
             raise TypeError(
-                "PeftEncoderTrainingBackend expects PEFT classifier delta "
+                "PeftEncoderTrainingBackend expects PEFT text encoder delta "
                 f"for payload conversion, got {type(update)!r}."
             )
         return update
@@ -196,7 +196,7 @@ def build_peft_encoder_client_metrics(
 ) -> dict[str, float]:
     if not isinstance(update, PeftClassifierDelta):
         raise TypeError(
-            "PeftEncoderTrainingBackend expects PEFT classifier delta "
+            "PeftEncoderTrainingBackend expects PEFT text encoder delta "
             f"for metric extraction, got {type(update)!r}."
         )
     return {

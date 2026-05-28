@@ -272,7 +272,7 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expect-shared-update-count-matches-round-updates \
   --expect-server-owned-update-artifacts \
   --expect-no-agent-local-update-refs \
-  --expect-peft-classifier-aggregate-snapshot \
+  --expect-peft-encoder-aggregate-snapshot \
   --expected-embedding-backend transformers_mxbai \
   --expected-embedding-device cuda \
   --expected-embedding-local-files-only true \

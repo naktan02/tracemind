@@ -47,7 +47,7 @@ class FederatedReportExpectation:
     expect_server_owned_update_artifacts: bool = False
     expect_partitioned_update_artifact_refs: bool = False
     expect_no_agent_local_update_refs: bool = False
-    expect_peft_classifier_aggregate_snapshot: bool = False
+    expect_peft_encoder_aggregate_snapshot: bool = False
     expected_communication_estimate_schema_version: str | None = None
     expect_partitioned_sparse_s2c_estimates: bool = False
     expected_embedding_metadata_status: str | None = None

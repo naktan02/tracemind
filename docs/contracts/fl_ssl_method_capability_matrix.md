@@ -107,7 +107,7 @@ runtime slice다.
 
 - 현재 TraceMind main comparison은 `shared_client_seed + client별 unlabeled` split을
   기본으로 두고, `client_local_split`도 legacy/ablation으로 유지한다.
-- 현재 기본 조합인 `FixMatch + FedAvg + PEFT text encoder`에서 local objective만 더
+- 현재 기본 조합인 `FixMatch + PEFT text encoder + FedAvg`에서 local objective만 더
   깊게 method-owned로 바꾸는 경로가 가장 짧다.
 - FedMatch descriptor는 공통 `partitioned` update capability와 `uniform`
   aggregation weight를 요구하도록 capability validator에 고정했다. `sigma/psi`

@@ -134,7 +134,7 @@ query_ssl_strong_view_policy: first_aug
 # 소유하고, v1 shared payload kind는 payload_adapter_kind로만 노출한다.
 round_runtime:
   aggregation_backend_name: fedavg
-  # canonical PEFT-classifier runtime payload leaf다. LoRA/DoRA 등 mechanism은
+  # canonical PEFT text encoder runtime payload leaf다. LoRA/DoRA 등 mechanism은
   # peft_adapter_name과 adapter parameters로 구분한다.
   runtime_payloads:
     peft_text_encoder:

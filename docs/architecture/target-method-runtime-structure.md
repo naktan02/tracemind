@@ -35,10 +35,11 @@ prototype까지 포함하는 실행 축은 `update_family_name` 또는
 `trainable_state_family_name`으로 표현한다.
 
 `text`가 붙은 이름은 의도적으로 modality-specific이다. `peft_text_encoder`는
-text encoder, tokenizer, text view 생성, PEFT adapter, linear head가 함께 움직이는
-update family다. 반대로 `linear_head`, `prototype_pack`, `classifier_logits`,
-`prototype_similarity`는 embedding/vector 위에서 동작하는 modality-neutral primitive나
-family로 둔다. 이미지나 오디오를 추가할 때는 text-specific family를 억지로 확장하지
+text encoder, tokenizer, text view 생성, PEFT adapter, head/scorer가 함께 움직이는
+update family다. 현재 기본 head primitive는 `linear_head`지만 runner와 report는
+그 사실로 분기하지 않는다. 반대로 `linear_head`, `prototype_pack`,
+`classifier_logits`, `prototype_similarity`는 embedding/vector 위에서 동작하는
+modality-neutral primitive나 family로 둔다. 이미지나 오디오를 추가할 때는 text-specific family를 억지로 확장하지
 않고 `vision_peft_classifier`, `audio_peft_classifier`, 또는 여러 modality에서 실제로
 같은 Interface가 검증된 뒤의 `peft_embedding_classifier` 같은 새 update family를
 `methods/`와 `conf/strategy_axes/trainable_state/update_family/`에 추가한다.
@@ -99,8 +100,9 @@ scripts/
 
 1. `linear_head`는 작은 classification primitive다.
    `peft_text_encoder`와 같은 레벨의 큰 adaptation family로 키우지 않는다.
-   PEFT text encoder 안에는 classifier head가 포함될 수 있지만, 그 family는
-   text encoder, PEFT adapter, classifier head를 함께 학습하는 더 큰 Module이다.
+   PEFT text encoder 안에는 현재 linear head가 포함될 수 있지만, 그 family는
+   text encoder, PEFT adapter, head/scorer를 함께 학습하는 더 큰 Module이다.
+   scripts와 report는 head 구현이 linear인지 prototype인지 직접 알지 않는다.
 
 2. `prototype_pack`은 LoRA 같은 adapter mechanism이 아니다.
    하지만 FL 관점에서는 client가 만들고 server가 해석하는 update family가 될 수
@@ -146,7 +148,7 @@ Adapter 뒤로 옮긴다.
   Module에 들어가야 하고, method identity가 scripts, agent, main_server로 새면 안 된다.
 - `methods/classification/linear_head`는 classifier 학습 runtime 전체가 아니라
   linear head의 scoring/bootstrap/projection primitive다.
-- `methods/adaptation/peft_text_encoder`는 text encoder, PEFT mechanism, linear head를
+- `methods/adaptation/peft_text_encoder`는 text encoder, PEFT mechanism, head/scorer를
   함께 학습하는 update family다. 여기서 LoRA는 mechanism이고 family 이름이 아니다.
 - `methods/prototype/*`는 prototype pack 생성, scoring, evidence, training input,
   projection을 소유한다. prototype은 adapter mechanism이 아니라 update family 또는
@@ -217,8 +219,9 @@ Adapter 뒤로 옮긴다.
 
 ### 3단계: methods 구조 정리
 
-- `methods/classification/linear_head`가 modality-independent linear classifier head의
-  canonical 구현 위치다.
+- `methods/classification/linear_head`가 현재 modality-independent linear classifier
+  head primitive의 canonical 구현 위치다. 새 head/scorer 방식이 추가되어도
+  scripts/report가 linear 이름으로 바뀌지 않아야 한다.
 - `methods/adaptation/peft_text_encoder`가 PEFT text encoder update family의
   canonical 구현 위치다.
 - `methods/adaptation/query_text_views`는 text query input/view glue 역할만

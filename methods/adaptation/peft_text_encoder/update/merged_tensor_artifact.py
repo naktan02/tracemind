@@ -72,10 +72,10 @@ def build_classifier_head_delta_tensor_artifact(
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
 ) -> tuple[dict[str, Tensor], dict[str, str]]:
-    """merged classifier-head delta를 safetensors payload와 index로 변환한다."""
+    """merged head delta를 safetensors payload와 index로 변환한다."""
 
     if not classifier_head_weight_deltas:
-        raise ValueError("Classifier-head tensor artifact requires weight deltas.")
+        raise ValueError("Head tensor artifact requires weight deltas.")
     tensors: dict[str, Tensor] = {}
     index: dict[str, object] = {
         "schema_version": MERGED_HEAD_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION,
@@ -112,24 +112,24 @@ def parse_classifier_head_delta_tensor_artifact(
     tensors: Mapping[str, Tensor],
     metadata: Mapping[str, str],
 ) -> tuple[dict[str, list[float]], dict[str, float]]:
-    """safetensors payload와 index를 merged classifier-head delta로 복원한다."""
+    """safetensors payload와 index를 merged head delta로 복원한다."""
 
     index = _load_index(
         metadata=metadata,
         metadata_key=HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
         schema_version=MERGED_HEAD_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION,
-        artifact_name="Classifier-head delta",
+        artifact_name="Head delta",
     )
     return (
         _read_vector_mapping(
             tensors=tensors,
             source=index.get("classifier_head_weight_deltas", {}),
-            artifact_name="Classifier-head weight delta",
+            artifact_name="Head weight delta",
         ),
         _read_scalar_mapping(
             tensors=tensors,
             source=index.get("classifier_head_bias_deltas", {}),
-            artifact_name="Classifier-head bias delta",
+            artifact_name="Head bias delta",
         ),
     )
 

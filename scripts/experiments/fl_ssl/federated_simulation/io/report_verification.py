@@ -266,7 +266,7 @@ def verify_federated_simulation_report_payload(
     )
     _expect_equal(
         errors,
-        "objective.classifier.delta_format",
+        "objective.peft_text_encoder.delta_format",
         report_artifacts.peft_encoder_objective_value(objective, "delta_format"),
         expectation.expected_delta_format,
     )
@@ -453,8 +453,8 @@ def _verify_shared_update_artifacts(
             update_payload=update_payload,
             expectation=expectation,
         )
-    if expectation.expect_peft_classifier_aggregate_snapshot:
-        _verify_classifier_aggregate_snapshot(
+    if expectation.expect_peft_encoder_aggregate_snapshot:
+        _verify_peft_encoder_aggregate_snapshot(
             errors=errors,
             run_dir=run_dir,
             rounds=rounds,
@@ -565,7 +565,7 @@ def _requires_shared_update_artifact_check(
             expectation.expect_server_owned_update_artifacts,
             expectation.expect_partitioned_update_artifact_refs,
             expectation.expect_no_agent_local_update_refs,
-            expectation.expect_peft_classifier_aggregate_snapshot,
+            expectation.expect_peft_encoder_aggregate_snapshot,
         )
     )
 
@@ -735,7 +735,7 @@ def _aggregation_artifact_path(run_dir: Path, artifact_ref: str) -> Path:
     return json_path
 
 
-def _verify_classifier_aggregate_snapshot(
+def _verify_peft_encoder_aggregate_snapshot(
     *,
     errors: list[str],
     run_dir: Path,
@@ -743,7 +743,7 @@ def _verify_classifier_aggregate_snapshot(
 ) -> None:
     if not rounds:
         errors.append(
-            "rounds must not be empty when peft classifier aggregate snapshot "
+            "rounds must not be empty when PEFT text encoder aggregate snapshot "
             "is expected."
         )
         return
@@ -751,7 +751,7 @@ def _verify_classifier_aggregate_snapshot(
     model_revision = final_round.get("model_revision")
     if not isinstance(model_revision, str) or not model_revision:
         errors.append(
-            "rounds[-1].model_revision is required when peft classifier aggregate "
+            "rounds[-1].model_revision is required when PEFT text encoder aggregate "
             "snapshot is expected."
         )
         return
@@ -766,6 +766,6 @@ def _verify_classifier_aggregate_snapshot(
         for artifact_path in candidate:
             if not artifact_path.exists():
                 errors.append(
-                    "peft classifier aggregate snapshot artifact does not exist: "
+                    "PEFT text encoder aggregate snapshot artifact does not exist: "
                     f"{artifact_path}."
                 )

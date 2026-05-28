@@ -32,11 +32,11 @@ def require_peft_encoder_update_matches_active_state(
 
     if not isinstance(update_payload, PeftClassifierDelta):
         raise ValueError(
-            "PEFT encoder/head compatibility expects a PEFT classifier delta payload."
+            "PEFT encoder/head compatibility expects a PEFT text encoder delta payload."
         )
     if not isinstance(active_state, PeftClassifierState):
         raise ValueError(
-            "PEFT encoder/head compatibility expects active PEFT classifier state."
+            "PEFT encoder/head compatibility expects active PEFT text encoder state."
         )
 
     _require_equal("model_id", update_payload.model_id, active_state.model_id)
@@ -75,7 +75,8 @@ def require_peft_encoder_update_is_server_materializable(
 
     if not isinstance(update_payload, PeftClassifierDelta):
         raise ValueError(
-            "PEFT encoder/head materialization expects a PEFT classifier delta payload."
+            "PEFT encoder/head materialization expects a PEFT text encoder "
+            "delta payload."
         )
 
     peft_ref_required = _peft_parameter_deltas(update_payload) is None

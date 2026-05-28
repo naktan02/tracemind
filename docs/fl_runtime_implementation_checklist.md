@@ -47,8 +47,8 @@ source of truth로 본다.
   aggregation, delta format, round record/update count를 담는지
   `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 재검증할 수 있다.
   runtime metadata 도입 뒤 생성된 report는 같은 verifier로 GPU/mxbai metadata까지
-  기대값으로 고정할 수 있다. LoRA-classifier artifact-ref run은 shared update 수,
-  `aggregation_artifact::` ref, `agent-local://` ref 미노출, 최종 LoRA/head aggregate
+  기대값으로 고정할 수 있다. PEFT text encoder artifact-ref run은 shared update 수,
+  `aggregation_artifact::` ref, `agent-local://` ref 미노출, 최종 PEFT adapter/head aggregate
   snapshot 존재까지 같은 verifier로 확인한다. FedMatch physical-partition run은
   `fedmatch_partitioned`, `partitioned`, `uniform`, `fixed_probe_output_knn`,
   `fedmatch_agreement`, `partitioned_deltas_artifact_ref`를 verifier expectation으로
@@ -94,7 +94,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   aggregation weight를 요구하고, `sigma/psi` scheme, confidence filter/agreement
   pseudo-label/KDTree 우선 helper nearest-neighbor selection,
   supervised/unsupervised tensor loss는
-  FedMatch method core에 고정했다. PEFT text-classifier trainer 한 step의 logical
+  FedMatch method core에 고정했다. PEFT text encoder trainer 한 step의 logical
   partition delta split과 method-owned local simulation wiring은
   `methods/adaptation/peft_text_encoder/federated_ssl/`의 method-neutral
   update-family runtime primitive가 소유한다. 삭제된 `lora_classifier/federated_ssl`
@@ -109,18 +109,18 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   확인했다. 1-round smoke는 previous client snapshot이 없어 helper count 0이 정상이고,
   2-client 2-round smoke에서는 round 2에서 helper count/refreshed가 1.0으로 기록됐다.
   report verification CLI도 PASS했다.
-- [x] FedMatch reduced run 전에 LoRA-classifier simulation 병목을 줄인다.
+- [x] FedMatch reduced run 전에 PEFT text encoder simulation 병목을 줄인다.
   현재 병목은 client/round마다 frozen transformer backbone/tokenizer를 재로딩하는 것,
   helper snapshot마다 helper model을 materialize하는 것, 전체 validation rows를
   fixed probe처럼 사용하는 것이었다. `fixed_probe_output_knn` probe는
   `peer_probe.selection_policy=label_balanced`, `max_rows=128` 기본값의 deterministic
   subset + manifest/hash로 계약화했다. 공통 runtime resource cache seam도
   `methods.common` protocol과 simulation run-scoped in-memory cache로 열었고,
-  LoRA-classifier model builder는 cache가 있으면 tokenizer와 frozen backbone base를
+  PEFT text encoder model builder는 cache가 있으면 tokenizer와 frozen backbone base를
   재사용한다. Helper snapshot별 materialized helper model도 같은 cache로 재사용한다.
   client-local pseudo-label quality 진단은 `diagnostic_view.max_rows=512` 기본값의
   deterministic subset으로 줄였다. 이는 manual Query SSL 경로와 FedMatch
-  method-owned LoRA-classifier 경로가 같이 쓰는 simulation runtime capability다.
+  method-owned PEFT text encoder 경로가 같이 쓰는 simulation runtime capability다.
   FedMatch method-owned local budget은 main fair comparison에서
   `local_budget_policy=iteration_capped`와 `max_steps=20`을 쓴다. 원본
   labels-at-client budget은 `ssl_method.local_budget_policy=original_method`를
@@ -137,7 +137,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   닫혔지만 성능 해석은 별도 method/ablation 비교에서 다룬다.
 - [x] server update/delta 해석 축과 local SSL objective 축을 분리했다.
   `server_update_policy=fedavg_merged_delta`는 현재 merged delta/FedAvg runtime이고,
-  `fedmatch_partitioned`는 LoRA-classifier `partitioned_delta_average` simulation backend로
+  `fedmatch_partitioned`는 PEFT text encoder `partitioned_delta_average` simulation backend로
   shared update의 inline `partitioned_deltas` 또는 server-owned
   `partitioned_deltas_artifact_ref`를 소비한다. runtime 기본 경로는 큰 partitioned
   material을 artifact로 저장하고 payload에는 ref/metadata만 남긴다. 이 effective backend 해석은
@@ -200,18 +200,18 @@ methods/evaluation/                            # stable metric helper만
   `strategy_axes/trainable_state/update_family=peft_text_encoder`,
   `round_runtime.payload_adapter_kind=peft_classifier`,
   `round_runtime.aggregation_backend_name=fedavg` leaf 조합을 compose할 수 있다.
-- [x] PEFT-classifier FedAvg는 두 라운드에서
+- [x] PEFT text encoder FedAvg는 두 라운드에서
   `previous global snapshot + round aggregated delta = next global snapshot`
   수식을 테스트로 고정했다.
 - [x] FL simulation inline-delta 경로도 `sim_rev_0002 = sim_rev_0001 +
   round2 applied delta` 수식을 테스트로 고정했다.
-- [x] manual `Query SSL + PEFT-classifier` simulation 경로는
-  `methods/ssl/algorithms/*`와 실제 PEFT LoRA/classifier local trainer를 호출한다.
-- [x] method-owned FedMatch LoRA simulation 경로는 manual Query SSL trainer를 우회해
-  FedMatch local objective를 LoRA-classifier family slice에서 호출하고, merged delta와
+- [x] manual `Query SSL + PEFT text encoder` simulation 경로는
+  `methods/ssl/algorithms/*`와 실제 PEFT adapter/head local trainer를 호출한다.
+- [x] method-owned FedMatch PEFT text encoder simulation 경로는 manual Query SSL trainer를 우회해
+  FedMatch local objective를 PEFT text encoder family slice에서 호출하고, merged delta와
   logical `sigma`/`psi` partition delta를 함께 제출한다.
 - [x] `fedmatch_partitioned` server update adapter를 simulation에 연결해 partitioned
-  LoRA-classifier delta를 aggregate하고 published state를 `sigma_plus_psi`로 만든다.
+  PEFT text encoder delta를 aggregate하고 published state를 `sigma_plus_psi`로 만든다.
 - [x] FixMatch 같은 stateless Query SSL local objective를 같은 partitioned sigma/psi
   loop의 `psi` objective로 주입하는 hybrid local trainer를 연다.
 - [x] manual Query SSL client별 local optimizer step 수는
@@ -244,7 +244,7 @@ methods/evaluation/                            # stable metric helper만
   client에 분배하고, 실제 labeled/unlabeled ratio는 report count로 기록한다.
 - [x] `client_count=1..10` sweep runner와 summary JSON을 추가했다.
 - [x] `client_count=1..10` 1-round summary는 report artifact verifier로
-  `FixMatch + FedAvg + LoRA-classifier` metadata를 재검증했다.
+  `FixMatch + PEFT text encoder + FedAvg` metadata를 재검증했다.
 - [ ] `gpu_local + mxbai` runtime metadata가 있는 main/sweep 산출물을 남긴다.
   현재는 `alpha=0.3` 같은 split의 1-round smoke와 5-round reduced ablation에서
   runtime metadata를 확인했다. runtime metadata 도입 전 50-round report와 1-round

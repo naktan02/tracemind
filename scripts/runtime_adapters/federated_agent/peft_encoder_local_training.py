@@ -109,8 +109,8 @@ def run_method_owned_peft_encoder_local_training(
 
     if not isinstance(active_adapter_state, PeftClassifierState):
         raise ValueError(
-            "Method-owned PEFT text encoder local training requires active classifier "
-            "state."
+            "Method-owned PEFT text encoder local training requires active PEFT "
+            "text encoder state."
         )
     effective_created_at = created_at or datetime.now(tz=timezone.utc)
     if base_parameters is None:
@@ -219,8 +219,8 @@ def run_query_ssl_peft_encoder_local_training(
 
     if not isinstance(active_adapter_state, PeftClassifierState):
         raise ValueError(
-            "Query SSL PEFT text encoder local training requires active classifier "
-            "state."
+            "Query SSL PEFT text encoder local training requires active PEFT "
+            "text encoder state."
         )
     effective_created_at = created_at or datetime.now(tz=timezone.utc)
     if base_parameters is None:

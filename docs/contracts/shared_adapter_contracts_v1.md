@@ -261,7 +261,7 @@ state payload의 핵심 의미:
      scaffold 고정값을 담는다.
 3. label schema
    - classifier head weight/bias의 label order와 의미를 고정한다.
-4. PEFT adapter/classifier artifact ref
+4. PEFT adapter/head artifact ref
    - 다음 global state가 참조하는 server-owned 누적 snapshot이다.
    - client update delta artifact와 같은 의미가 아니다.
 
@@ -269,7 +269,7 @@ update payload의 핵심 의미:
 
 1. `base_model_revision`
    - client가 local update를 계산한 기준 global revision이다.
-2. PEFT adapter/classifier delta artifact ref
+2. PEFT adapter/head delta artifact ref
    - 큰 weight delta는 `peft_adapter_delta_artifact_ref`,
      `classifier_head_delta_artifact_ref` 같은 artifact-ref 경로를 기본으로 한다.
 3. optional inline delta

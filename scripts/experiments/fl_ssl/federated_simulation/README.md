@@ -280,12 +280,12 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - 현재 기본 `fl_method.composition_mode`는 `manual`이며 lower axes는
   `query_ssl_method.algorithm_name`, `round_runtime.aggregation_backend_name`,
   `round_runtime.update_family_name`에서 자동 파생된다. 기본 조합은
-  `FixMatch + FedAvg + PEFT text encoder`이고 method descriptor를 참조하지 않는다.
+  `FixMatch + PEFT text encoder + FedAvg`이고 method descriptor를 참조하지 않는다.
   일회성 ablation은
   `strategy_axes/ssl/consistency_method=...`,
   `round_runtime.update_family_name=...`,
   `round_runtime.aggregation_backend_name=...`로 직접 고른다.
-- manual `Query SSL + PEFT-classifier` 경로의 local optimizer step 수는
+- manual `Query SSL + PEFT text encoder` 경로의 local optimizer step 수는
   `min(training_task.max_steps, training_task.local_epochs * full_epoch_steps)`로
   계산된다. `full_epoch_steps`는 labeled/unlabeled loader step 수의 max이며,
   loader step 수는 `training_task.batch_size`와
@@ -332,7 +332,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   현재는 simulation/row-source 경로가 우선이다.
 - validation은 `peft_classifier_eval`을 기본으로 사용한다. 모든 validation row를
   linear head forward로 평가하므로 accepted ratio는 성능 판단 metric이 아니다.
-- 기본 manual `FixMatch + FedAvg + PEFT text encoder` 경로는
+- 기본 manual `FixMatch + PEFT text encoder + FedAvg` 경로는
   `methods/ssl/algorithms/*` Query SSL algorithm과 실제 PEFT text encoder/head
   trainer를 호출해 artifact-ref delta update를 만든다. `agent-local://` ref는
   simulation round loop에서 server-owned `aggregation_artifact::` ref로

@@ -2,14 +2,14 @@
 
 이 폴더는 FL SSL 실험 entrypoint만 둔다. FL method identity와 method-only
 정책은 `methods/federated_ssl/`, SSL objective core는 `methods/ssl`,
-PEFT-classifier 계산 core는
+PEFT text encoder 계산 core는
 `methods/adaptation/peft_text_encoder`, 실행 조합과 파라미터는
 `conf/` Hydra config가 소유한다.
 
 현재 기본 실행은 논문 method가 아니라 manual baseline이다.
 
 ```text
-FixMatch USB objective + PEFT-classifier local update + FedAvg aggregation
+FixMatch USB objective + PEFT text encoder local update + FedAvg aggregation
 ```
 
 FedMatch/FedLGMatch 같은 method-owned FL SSL method는 선택/구현 전까지
@@ -189,7 +189,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 ```
 
 이 명령은 방법론을 새로 고르는 예시가 아니라, 기본 manual 조합
-`FixMatch + PEFT-classifier + FedAvg`를 고정 client split에서 `10 clients`,
+`FixMatch + PEFT text encoder + FedAvg`를 고정 client split에서 `10 clients`,
 `1 round`로 실행하는 예시다. `federated_run_budget.client_count`와
 `federated_run_budget.rounds`는 임의 override 가능하다. 단, long-run guard를
 넘는 실행은 현재 정책상 피한다.
@@ -313,7 +313,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   training_task.max_steps=20
 ```
 
-위 명령은 `FlexMatch + PEFT-classifier + FedAvg` manual 조합이다.
+위 명령은 `FlexMatch + PEFT text encoder + FedAvg` manual 조합이다.
 client 수와 round 수는 `federated_run_budget.client_count`,
 `federated_run_budget.rounds`로 바꾼다. client가 중앙으로 update를 보내기 전
 local optimizer step 상한은 `training_task.max_steps`로 조절한다. 고정 split을
@@ -365,7 +365,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 ```
 
 현재 FedMatch는 descriptor, capability surface, 원본 core/config snapshot,
-method-owned PEFT-classifier local objective, partitioned update 제출, peer helper
+method-owned PEFT text encoder local objective, partitioned update 제출, peer helper
 context injection, labels-at-server supervised seed step까지 simulation slice에서
 실행된다. sparse S2C/C2S는 client-local previous partition snapshot과 partitioned
 global state 기준 simulation slice로 실행되며, 통신량은 report 생성 시 artifact
@@ -398,7 +398,7 @@ injection을 검증할 때는 `helper_refresh_interval=1`만 override하고, 논
 smoke에서는 helper count가 0인 것이 정상이고, 최소 2 rounds가 필요하다. 2026-05-22
 기준 `2 clients x 2 rounds x max_steps=1` smoke에서 round 2 helper injection은
 확인했지만 약 10분이 걸렸다. 10-client 5-round reduced로 올리기 전에는
-PEFT-classifier simulation의 frozen backbone/tokenizer 재로딩과 helper model
+PEFT text encoder simulation의 frozen backbone/tokenizer 재로딩과 helper model
 materialization 병목을 줄였고, 비교용 reduced는 `10 clients`, `5 rounds`,
 `max_steps=20`으로 검증했다. FedMatch도 main fair comparison에서는
 `ssl_method.local_budget_policy=iteration_capped` 기본값을 사용한다. 원본
@@ -435,7 +435,7 @@ manual Query SSL 경로와 FedMatch method-owned 경로 모두 `diagnostic_view`
 ## 예시: FlexMatch Shared Labeled 5라운드 Reduced Run
 
 이미 materialize된 `shared_client_seed` 10-client Dirichlet alpha=0.3 split을
-고정 입력으로 사용해 `FlexMatch + PEFT-classifier + FedAvg` manual 조합을
+고정 입력으로 사용해 `FlexMatch + PEFT text encoder + FedAvg` manual 조합을
 5라운드 실행한다. 모든 client는 같은 labeled seed를 보고, unlabeled shard만
 client별 non-IID로 나뉜다. 각 client의 round당 local optimizer step 상한은
 `training_task.max_steps=20`이고, central SSL main과 맞춰 labeled/unlabeled

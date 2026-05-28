@@ -150,7 +150,7 @@ central fixed embedding + classifier seed
   FedMatch는 원본 repository/commit과 config snapshot, confidence filter,
   agreement pseudo-label vote, helper selection, sigma/psi partition 의미,
   supervised/unsupervised tensor local objective를 method package에 고정했다.
-  PEFT text-classifier logical partition 실행 loop와 method-owned local simulation bridge는
+  PEFT text encoder logical partition 실행 loop와 method-owned local simulation bridge는
   `methods/adaptation/peft_text_encoder/federated_ssl/`의 method-neutral
   update-family runtime primitive가 소유한다. FedMatch의 `sigma/psi` 의미는
   `methods/federated_ssl/fedmatch/`에서 읽는다.
@@ -207,11 +207,11 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   source row metadata 또는 translated text에서 agent-local raw text를 읽고,
   shared update payload에는 raw text 없이 PEFT adapter/head artifact ref와 통계만 남긴다.
   live stored-event runtime translation은 raw text 저장 경계가 정리될 때까지 2차 범위다.
-- PEFT-classifier FedAvg 경로는 inline PEFT adapter delta와 classifier-head
+- PEFT text encoder FedAvg 경로는 inline PEFT adapter delta와 head
   delta의 FedAvg shape/version을 methods-owned core로 검증한다. Server-owned
   `aggregation_artifact::` JSON artifact-ref update는 main_server가 제공한 loader로
   materialize한다. client는 base revision 기준 delta를 보내고, 서버는
-  `base global state + aggregated delta`를 다음 LoRA/head state artifact snapshot으로
+  `base global state + aggregated delta`를 다음 PEFT adapter/head state artifact snapshot으로
   저장한다. `agent-local://` ref는 upload 경로가 붙기 전까지 거부한다.
 - FL simulation 기본 조합은 `composition_mode=manual`,
   `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
@@ -221,9 +221,9 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   payload family와 prototype scorer fallback은 FL SSL simulation에서 제거했으며, 실제 method로
   다시 필요해질 때 method-owned capability로 추가한다. 이 조합은
   `strategy_axes/fl/method_descriptor`를 compose하지 않는다.
-- 기본 manual PEFT-classifier simulation 경로는 `query_ssl_method.algorithm_name`으로
+- 기본 manual PEFT text encoder simulation 경로는 `query_ssl_method.algorithm_name`으로
   `methods/ssl/algorithms/*`를 resolve하고, client별 `labeled_rows`와
-  `unlabeled_rows`로 실제 PEFT adapter/classifier local optimizer를 실행한다.
+  `unlabeled_rows`로 실제 PEFT adapter/head local optimizer를 실행한다.
   update는 server-owned uploaded artifact ref로 제출된다. 실제 step 수는
   `min(training_task.max_steps, training_task.local_epochs * full_epoch_steps)`이며,
   `training_task.batch_size`와 `query_ssl_method.unlabeled_batch_size`가

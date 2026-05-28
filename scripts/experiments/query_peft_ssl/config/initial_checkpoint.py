@@ -86,7 +86,7 @@ def resolve_query_adaptation_initial_checkpoint(
         raise ValueError(
             "query_adaptation_initial_checkpoint is required for this experiment. "
             "Provide query_adaptation_initial_checkpoint.manifest_path or explicit "
-            "adapter/classifier paths. Fresh-start ablation이면 "
+            "adapter/head paths. Fresh-start ablation이면 "
             "`strategy_axes/adaptation/initial_checkpoint=none`으로 명시해라."
         )
 

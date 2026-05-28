@@ -1,4 +1,4 @@
-"""PEFT text encoder global classifier-head state 평가 core."""
+"""PEFT text encoder global head state 평가 core."""
 
 from __future__ import annotations
 
@@ -148,7 +148,7 @@ def evaluate_peft_encoder_validation_payload(
 
     if not isinstance(adapter_state, PeftClassifierState):
         raise ValueError(
-            "PEFT text encoder/head evaluation requires classifier state; "
+            "PEFT text encoder/head evaluation requires PEFT encoder state; "
             f"got {type(adapter_state).__name__}."
         )
     return evaluate_peft_encoder_state_payload(

@@ -897,7 +897,7 @@ def test_fl_simulation_unit_tests_use_active_peft_payload_surface() -> None:
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert not violations, (
-        "FL simulation unit fixture는 active PEFT-classifier payload surface를 "
+        "FL simulation unit fixture는 active PEFT text encoder payload surface를 "
         "검증한다. v1 lora_classifier/diagonal_scale payload 직접 생성은 shared "
         "contract compatibility 테스트로 격리한다.\n"
         f"{chr(10).join(f'- {snippet}' for snippet in violations)}"
@@ -2380,11 +2380,16 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
         REPO_ROOT / "docs" / "project_execution_plan.md",
         REPO_ROOT / "docs" / "strategy_surface_map.md",
         REPO_ROOT / "docs" / "contracts" / "fl_ssl_method_capability_matrix.md",
+        REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md",
         REPO_ROOT / "docs" / "operations" / "local-runbook.md",
     )
     forbidden_snippets = (
         "legacy fallback",
+        "PEFT-classifier",
+        "PEFT text-classifier",
         "--expected-payload-adapter-kind lora_classifier",
+        "--expect-peft-classifier-aggregate-snapshot",
+        "expect_peft_classifier_aggregate_snapshot",
         "--expect-lora-classifier-aggregate-snapshot",
         "FedAvg + FixMatch + LoRA-classifier",
         "LoRA-classifier simulation 병목",
@@ -2403,8 +2408,8 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
     ]
 
     assert not violations, (
-        "active config/runbook 문서는 현재 PEFT verifier와 PEFT-classifier "
-        "실행 용어를 사용한다. lora_classifier verifier flag와 active 경로의 "
+        "active config/runbook 문서는 현재 PEFT text encoder 실행 용어를 "
+        "사용한다. lora_classifier verifier flag, PEFT-classifier, "
         "LoRA-classifier 표기는 legacy audit/contract 문서에만 남긴다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
@@ -2667,7 +2672,7 @@ def test_server_update_materialization_dispatcher_stays_family_agnostic() -> Non
         "소유한다."
     )
     assert "peft_classifier" not in source, (
-        "dispatcher는 PEFT-classifier family 이름도 하드코딩하지 않는다. "
+        "dispatcher는 PEFT text encoder payload kind도 하드코딩하지 않는다. "
         "패키지 경로 alias는 구현 owner 옆 payload_adapter_module manifest가 소유한다."
     )
 
@@ -2711,7 +2716,7 @@ def test_runtime_objective_compatibility_dispatcher_stays_family_agnostic() -> N
         "dispatcher는 LoRA-classifier family 이름을 하드코딩하지 않는다."
     )
     assert "peft_classifier" not in source, (
-        "dispatcher는 PEFT-classifier family 이름도 하드코딩하지 않는다. "
+        "dispatcher는 PEFT text encoder payload kind도 하드코딩하지 않는다. "
         "패키지 경로 alias는 구현 owner 옆 payload_adapter_module manifest가 소유한다."
     )
 
@@ -2759,7 +2764,7 @@ def test_federated_ssl_server_update_dispatcher_stays_family_agnostic() -> None:
         "하드코딩하지 않는다."
     )
     assert "peft_classifier" not in source, (
-        "FL SSL server update dispatcher는 PEFT-classifier family 이름도 "
+        "FL SSL server update dispatcher는 PEFT text encoder payload kind도 "
         "하드코딩하지 않는다."
     )
 

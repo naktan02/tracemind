@@ -72,8 +72,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.expect_partitioned_update_artifact_refs
         ),
         expect_no_agent_local_update_refs=args.expect_no_agent_local_update_refs,
-        expect_peft_classifier_aggregate_snapshot=(
-            args.expect_peft_classifier_aggregate_snapshot
+        expect_peft_encoder_aggregate_snapshot=(
+            args.expect_peft_encoder_aggregate_snapshot
         ),
         expected_communication_estimate_schema_version=(
             args.expected_communication_estimate_schema_version
@@ -215,7 +215,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
     )
     parser.add_argument(
-        "--expect-peft-classifier-aggregate-snapshot",
+        "--expect-peft-encoder-aggregate-snapshot",
         action="store_true",
     )
     parser.add_argument("--expected-communication-estimate-schema-version")

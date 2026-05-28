@@ -546,7 +546,7 @@ def test_verify_federated_report_checks_server_owned_update_artifacts(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_peft_classifier_aggregate_snapshot=True,
+            expect_peft_encoder_aggregate_snapshot=True,
         ),
     )
 
@@ -575,19 +575,19 @@ def test_verify_federated_report_accepts_peft_classifier_v2_update_artifacts(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_peft_classifier_aggregate_snapshot=True,
+            expect_peft_encoder_aggregate_snapshot=True,
         ),
     )
 
     assert result.passed
 
 
-def test_peft_classifier_snapshot_expectation_is_canonical() -> None:
+def test_peft_encoder_snapshot_expectation_is_canonical() -> None:
     expectation = FederatedReportExpectation(
-        expect_peft_classifier_aggregate_snapshot=True,
+        expect_peft_encoder_aggregate_snapshot=True,
     )
 
-    assert expectation.expect_peft_classifier_aggregate_snapshot is True
+    assert expectation.expect_peft_encoder_aggregate_snapshot is True
 
 
 def test_verify_federated_report_accepts_partitioned_only_update_artifacts(
@@ -606,7 +606,7 @@ def test_verify_federated_report_accepts_partitioned_only_update_artifacts(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_peft_classifier_aggregate_snapshot=True,
+            expect_peft_encoder_aggregate_snapshot=True,
         ),
     )
 
@@ -894,7 +894,7 @@ def test_verify_federated_report_flags_agent_local_update_artifact_drift(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_peft_classifier_aggregate_snapshot=True,
+            expect_peft_encoder_aggregate_snapshot=True,
         ),
     )
 
@@ -945,7 +945,7 @@ def test_verify_federated_report_flags_peft_classifier_v2_artifact_ref_drift(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_peft_classifier_aggregate_snapshot=True,
+            expect_peft_encoder_aggregate_snapshot=True,
         ),
     )
 
@@ -1176,7 +1176,7 @@ def test_verify_artifact_manifest_applies_peft_snapshot_default(
                     "expected_shared_update_count_matches_round_updates": True,
                     "expect_server_owned_update_artifacts": True,
                     "expect_no_agent_local_update_refs": True,
-                    "expect_peft_classifier_aggregate_snapshot": True,
+                    "expect_peft_encoder_aggregate_snapshot": True,
                 },
                 "artifacts": [
                     {
@@ -1347,7 +1347,7 @@ def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
                     "expected_shared_update_count_matches_round_updates": True,
                     "expect_server_owned_update_artifacts": True,
                     "expect_no_agent_local_update_refs": True,
-                    "expect_peft_classifier_aggregate_snapshot": True,
+                    "expect_peft_encoder_aggregate_snapshot": True,
                 },
                 "artifacts": [
                     {

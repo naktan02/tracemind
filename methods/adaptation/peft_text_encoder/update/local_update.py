@@ -142,7 +142,7 @@ def build_peft_encoder_delta_payload_from_artifacts(
     mean_margin: float | None,
     created_at: datetime,
 ) -> PeftClassifierDelta:
-    """LoRA/head artifact snapshot을 shared delta payload로 정규화한다."""
+    """PEFT adapter/head artifact snapshot을 shared delta payload로 정규화한다."""
 
     if example_count <= 0:
         raise ValueError("example_count must be positive.")

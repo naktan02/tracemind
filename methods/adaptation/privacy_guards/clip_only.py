@@ -67,7 +67,7 @@ class ClipOnlyPrivacyGuard:
     catalog_entry=CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
 )
 def build_classifier_head_clip_only_privacy_guard() -> ClipOnlyPrivacyGuard:
-    """registry용 classifier-head clip-only privacy guard factory."""
+    """registry용 head clip-only privacy guard factory."""
 
     return ClipOnlyPrivacyGuard(
         guard_name="classifier_head_clip_only",

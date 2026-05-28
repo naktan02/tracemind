@@ -41,7 +41,7 @@ def load_peft_encoder_base_parameters(
     aggregated_at: datetime,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
 ) -> PeftEncoderMaterializedState:
-    """server-published PEFT-backed classifier base state를 materialize한다."""
+    """server-published PEFT text encoder base state를 materialize한다."""
 
     if round_base_snapshot_cache is None:
         return _materialize_peft_encoder_base_parameters(

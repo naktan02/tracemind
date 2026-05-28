@@ -1,1 +1,1 @@
-"""PEFT text encoder + linear head adaptation family."""
+"""PEFT text encoder + head adaptation family."""
