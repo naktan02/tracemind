@@ -222,8 +222,9 @@ def verify_federated_simulation_report_payload(
     )
     _expect_equal(
         errors,
-        "round_runtime.adapter_family_name",
-        round_runtime.get("adapter_family_name"),
+        "round_runtime.payload_adapter_kind",
+        round_runtime.get("payload_adapter_kind")
+        or round_runtime.get("adapter_family_name"),
         expectation.expected_adapter_family,
     )
     _expect_equal(

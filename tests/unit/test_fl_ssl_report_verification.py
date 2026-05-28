@@ -53,6 +53,7 @@ def _report_payload(
     local_ssl_policy: str = "query_ssl_method",
     delta_format: str = "server_uploaded_artifact_ref",
     objective_adapter_family: str = "lora_classifier",
+    payload_adapter_kind: str | None = None,
     embedding_backend: str = "transformers_mxbai",
     embedding_model_id: str = "mixedbread-ai/mxbai-embed-large-v1",
     embedding_device: str = "cuda",
@@ -106,6 +107,7 @@ def _report_payload(
                 f"{objective_adapter_family}.delta_format": delta_format,
             },
             "round_runtime": {
+                "payload_adapter_kind": payload_adapter_kind,
                 "adapter_family_name": adapter_family,
                 "update_family_name": update_family,
                 "aggregation_backend_name": aggregation,
@@ -336,9 +338,27 @@ def test_verify_federated_report_flags_method_and_runtime_drift() -> None:
         in result.errors
     )
     assert (
-        "round_runtime.adapter_family_name expected 'lora_classifier', "
+        "round_runtime.payload_adapter_kind expected 'lora_classifier', "
         "got 'diagonal_scale'." in result.errors
     )
+
+
+def test_verify_federated_report_prefers_payload_adapter_kind() -> None:
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=1,
+            round_budget=1,
+            adapter_family="lora_classifier",
+            payload_adapter_kind="peft_classifier",
+        ),
+        expectation=FederatedReportExpectation(
+            expected_adapter_family="peft_classifier",
+        ),
+    )
+
+    assert result.passed
 
 
 def test_verify_federated_report_flags_update_family_drift() -> None:
