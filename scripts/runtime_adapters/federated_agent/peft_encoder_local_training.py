@@ -7,11 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent.src.infrastructure.repositories.training_artifact_repository import (
-    TrainingArtifactRepository,
-)
 from agent.src.services.training.execution.query_ssl_local_training_service import (
-    QuerySslLocalTrainingService,
     QuerySslPeftEncoderLocalTrainingRequest,
 )
 from methods.adaptation.peft_text_encoder.config import (
@@ -58,6 +54,9 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
     load_peft_encoder_base_parameters_with_timing,
     load_peft_encoder_base_partition_parameters_with_timing,
+)
+from scripts.runtime_adapters.federated_agent.training_runtime import (
+    build_query_ssl_local_training_service,
 )
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
@@ -231,10 +230,8 @@ def run_query_ssl_peft_encoder_local_training(
             round_base_snapshot_cache=round_base_snapshot_cache,
             timing_recorder=timing_recorder,
         )
-    service = QuerySslLocalTrainingService(
-        repository=TrainingArtifactRepository(
-            state_root=output_dir / "agents" / client_id
-        ),
+    service = build_query_ssl_local_training_service(
+        client_state_root=output_dir / "agents" / client_id,
         backend=PeftEncoderTrainingBackend(
             config=peft_config,
         )

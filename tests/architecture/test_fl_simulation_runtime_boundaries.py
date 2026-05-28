@@ -390,6 +390,8 @@ def test_peft_local_training_bridge_delegates_runtime_io_helpers() -> None:
         "adapter_base_materialization_seconds",
         "adapter_base_partition_materialization_seconds",
         "agent_repository_save_seconds",
+        "TrainingArtifactRepository(",
+        "QuerySslLocalTrainingService(",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
     missing_owner_paths = [
@@ -404,6 +406,7 @@ def test_peft_local_training_bridge_delegates_runtime_io_helpers() -> None:
     assert not violations, (
         "peft_encoder_local_training.py는 local training core 연결만 맡는다. "
         "base-state materialization timing은 base_state_materialization.py가, "
-        "agent-local update 저장은 artifact_store.py가 소유한다.\n"
+        "agent-local update 저장은 artifact_store.py가, agent service 생성은 "
+        "training_runtime.py가 소유한다.\n"
         f"violations={violations}"
     )

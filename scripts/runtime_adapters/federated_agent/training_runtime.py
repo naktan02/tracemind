@@ -44,6 +44,26 @@ def build_federated_local_training_service(
     )
 
 
+def build_query_ssl_local_training_service(
+    *,
+    client_state_root: Path,
+    backend: Any | None = None,
+) -> Any:
+    """simulation client state root 기준 Query SSL local training service를 만든다."""
+
+    from agent.src.infrastructure.repositories.training_artifact_repository import (
+        TrainingArtifactRepository,
+    )
+    from agent.src.services.training.execution.query_ssl_local_training_service import (
+        QuerySslLocalTrainingService,
+    )
+
+    return QuerySslLocalTrainingService(
+        repository=TrainingArtifactRepository(state_root=client_state_root),
+        backend=backend,
+    )
+
+
 def run_federated_local_training(
     *,
     local_training_service: Any,
