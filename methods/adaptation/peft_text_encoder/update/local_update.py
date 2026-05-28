@@ -1,4 +1,4 @@
-"""PEFT-backed classifier local update core."""
+"""PEFT encoder head local update core."""
 
 from __future__ import annotations
 
@@ -151,7 +151,7 @@ def build_peft_encoder_delta_payload_from_artifacts(
         raise ValueError("example_count must be positive.")
     if config.payload_adapter_kind != PEFT_CLASSIFIER_ADAPTER_KIND:
         raise ValueError(
-            "PEFT-backed classifier update builder only supports "
+            "PEFT encoder head update builder only supports "
             f"peft_classifier payloads, got {config.payload_adapter_kind!r}."
         )
     return make_peft_classifier_delta_payload(

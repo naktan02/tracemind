@@ -1,4 +1,4 @@
-"""PEFT-backed classifier local training backend facade."""
+"""PEFT text encoder local training backend."""
 
 from __future__ import annotations
 
@@ -42,9 +42,9 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 )
 
 from .config import (
-    PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+    PEFT_ENCODER_TRAINING_BACKEND_NAME,
     PeftEncoderTrainingBackendConfig,
-    build_peft_classifier_training_backend_config,
+    build_peft_encoder_training_backend_config,
 )
 from .training.query_ssl_local_training import (
     PeftEncoderTrainerRuntimeConfig,
@@ -55,11 +55,11 @@ from .training.query_ssl_local_training import (
 )
 from .update.payload_builder import build_peft_encoder_delta_update
 
-PEFT_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
-    display_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+PEFT_ENCODER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name=PEFT_ENCODER_TRAINING_BACKEND_NAME,
+    display_name=PEFT_ENCODER_TRAINING_BACKEND_NAME,
     implementation_module=("methods.adaptation.peft_text_encoder.training_backend"),
-    core_method_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+    core_method_name=PEFT_ENCODER_TRAINING_BACKEND_NAME,
     family_name=PEFT_CLASSIFIER_ADAPTER_KIND,
     supported_adapter_kinds=(PEFT_CLASSIFIER_ADAPTER_KIND,),
     accepted_payload_formats=(PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,),
@@ -75,18 +75,18 @@ PEFT_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
 
 @dataclass(slots=True)
 class PeftEncoderTrainingBackend:
-    """raw text accepted example을 PEFT encoder classifier update payload로 바꾼다.
+    """raw text accepted example을 PEFT encoder update payload로 바꾼다.
 
     이 backend는 raw text를 shared payload에 넣지 않는다. 현재는 실제 LoRA
     weight 파일을 생성하는 executor 없이 계약-compatible artifact ref를 남긴다.
     이후 PEFT 실행기는 `train_executor.py` seam 뒤에 연결한다.
     """
 
-    backend_name: str = PEFT_CLASSIFIER_TRAINING_BACKEND_NAME
+    backend_name: str = PEFT_ENCODER_TRAINING_BACKEND_NAME
     payload_format: str = PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
     adapter_kind: str = PEFT_CLASSIFIER_ADAPTER_KIND
     config: PeftEncoderTrainingBackendConfig = field(
-        default_factory=lambda: build_peft_classifier_training_backend_config(None)
+        default_factory=lambda: build_peft_encoder_training_backend_config(None)
     )
     train_executor: PeftEncoderTrainExecutor | None = None
 
@@ -186,7 +186,7 @@ class PeftEncoderTrainingBackend:
         self,
         objective_config: TrainingObjectiveConfig | None,
     ) -> bool:
-        return self.config == build_peft_classifier_training_backend_config(
+        return self.config == build_peft_encoder_training_backend_config(
             objective_config
         )
 
@@ -203,25 +203,23 @@ def build_peft_encoder_client_metrics(
         ClientMetricKeys.MEAN_CONFIDENCE: update.mean_confidence or 0.0,
         ClientMetricKeys.MEAN_MARGIN: update.mean_margin or 0.0,
         ClientMetricKeys.DELTA_L2_NORM: update.l2_norm(),
-        "lora_training_rows": float(update.example_count),
-        "lora_label_schema_size": float(len(update.label_schema)),
-        "peft_classifier_training_rows": float(update.example_count),
-        "peft_classifier_label_schema_size": float(len(update.label_schema)),
+        ClientMetricKeys.SELECTED_EXAMPLES: float(update.example_count),
+        "label_schema_size": float(len(update.label_schema)),
     }
 
 
 @register_shared_adapter_training_backend(
-    PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
-    catalog_entry=PEFT_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
+    PEFT_ENCODER_TRAINING_BACKEND_NAME,
+    catalog_entry=PEFT_ENCODER_TRAINING_BACKEND_CATALOG_ENTRY,
 )
-def build_peft_classifier_training_backend(
+def build_peft_encoder_training_backend(
     objective_config: TrainingObjectiveConfig | None,
 ) -> PeftEncoderTrainingBackend:
-    """registry용 PEFT-classifier v2 training backend factory."""
+    """registry용 PEFT text encoder training backend factory."""
 
     return PeftEncoderTrainingBackend(
-        backend_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+        backend_name=PEFT_ENCODER_TRAINING_BACKEND_NAME,
         payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
         adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
-        config=build_peft_classifier_training_backend_config(objective_config),
+        config=build_peft_encoder_training_backend_config(objective_config),
     )

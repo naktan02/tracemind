@@ -1,4 +1,4 @@
-"""PEFT-classifier supervised server seed step primitive."""
+"""PEFT encoder head supervised server seed step primitive."""
 
 from __future__ import annotations
 

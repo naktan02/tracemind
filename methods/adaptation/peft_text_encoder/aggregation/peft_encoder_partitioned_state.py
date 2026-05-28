@@ -131,7 +131,7 @@ def _apply_vector_mapping(
         delta_vector = [float(value) for value in deltas.get(key, [])]
         if base_vector and delta_vector and len(base_vector) != len(delta_vector):
             raise ValueError(
-                f"Partitioned PEFT-classifier delta dimension mismatch for {key!r}."
+                f"Partitioned PEFT encoder head delta dimension mismatch for {key!r}."
             )
         if not base_vector:
             result[key] = delta_vector
@@ -178,7 +178,7 @@ def _merge_vector_mapping(
             continue
         if len(target[normalized_key]) != len(vector):
             raise ValueError(
-                "Partitioned PEFT-classifier deltas must share dimensions per key."
+                "Partitioned PEFT encoder head deltas must share dimensions per key."
             )
         target[normalized_key] = [
             left + right for left, right in zip(target[normalized_key], vector)

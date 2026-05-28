@@ -19,7 +19,7 @@ from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_encoder.evaluation import (
-    PEFT_CLASSIFIER_EVALUATOR_NAME,
+    PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
 )
 from methods.adaptation.peft_text_encoder.federated_ssl import (
     supervised_seed_step,
@@ -267,7 +267,7 @@ def _default_validation_config(
     *,
     confidence_threshold: float,
     margin_threshold: float,
-    scorer_backend_name: str = PEFT_CLASSIFIER_EVALUATOR_NAME,
+    scorer_backend_name: str = PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
     score_policy_name: str | None = None,
     score_top_k: int | None = None,
 ) -> FederatedValidationConfig:
@@ -289,7 +289,7 @@ def _default_peft_validation_config(
     return _default_validation_config(
         confidence_threshold=confidence_threshold,
         margin_threshold=margin_threshold,
-        scorer_backend_name=PEFT_CLASSIFIER_EVALUATOR_NAME,
+        scorer_backend_name=PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
         score_policy_name=None,
     )
 
@@ -2339,7 +2339,10 @@ def test_run_simulation_request_rejects_peft_runtime_objective_drift(
         ),
     )
 
-    with pytest.raises(ValueError, match="PEFT-classifier.*training_task.objective"):
+    with pytest.raises(
+        ValueError,
+        match="PEFT text encoder.*training_task.objective",
+    ):
         run_simulation_request(request)
 
 

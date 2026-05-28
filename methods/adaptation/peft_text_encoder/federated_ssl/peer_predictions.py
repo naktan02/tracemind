@@ -42,9 +42,7 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
 
 PEFT_ENCODER_PEER_SNAPSHOT_KIND = "peft_encoder_materialized_state.v1"
-PEFT_ENCODER_ACCEPTED_PEER_SNAPSHOT_KINDS = (
-    PEFT_ENCODER_PEER_SNAPSHOT_KIND,
-)
+PEFT_ENCODER_ACCEPTED_PEER_SNAPSHOT_KINDS = (PEFT_ENCODER_PEER_SNAPSHOT_KIND,)
 
 
 @dataclass(slots=True)
@@ -250,7 +248,7 @@ def build_peft_encoder_helper_probability_provider(
             continue
         if not isinstance(snapshot.payload, PeftEncoderMaterializedState):
             raise TypeError(
-                "PEFT-classifier helper snapshot payload must be "
+                "PEFT encoder head helper snapshot payload must be "
                 "PeftEncoderMaterializedState."
             )
         helper_snapshots.append(snapshot)

@@ -105,7 +105,7 @@ def materialize_base_peft_encoder_state(
         or base_state.classifier_head_artifact_ref is not None
     ):
         loader = context.require_artifact_loader(
-            context="PEFT-classifier base state materialization"
+            context="PEFT encoder head base state materialization"
         )
 
     peft_parameters: dict[str, list[float]] = {}
@@ -154,7 +154,7 @@ def materialize_base_peft_encoder_partitioned_state(
     ):
         return {}
     loader = context.require_artifact_loader(
-        context="PEFT-classifier partitioned base state materialization"
+        context="PEFT encoder head partitioned base state materialization"
     )
     partitioned_peft_parameters: dict[str, dict[str, list[float]]] = {}
     if peft_adapter_artifact_ref is not None:
@@ -207,7 +207,7 @@ def materialize_peft_encoder_update(
     peft_parameter_deltas = _peft_parameter_deltas(payload)
     if peft_parameter_deltas is None or payload.classifier_head_weight_deltas is None:
         loader = context.require_artifact_loader(
-            context="PEFT-classifier aggregation materialization"
+            context="PEFT encoder head aggregation materialization"
         )
 
     if peft_parameter_deltas is not None:
@@ -268,11 +268,11 @@ def materialize_peft_encoder_partitioned_update(
     if partitioned_deltas is None and payload.partitioned_deltas_artifact_ref:
         if context is None:
             raise ValueError(
-                "PEFT-classifier partitioned artifact materialization requires an "
+                "PEFT encoder head partitioned artifact materialization requires an "
                 "aggregation context."
             )
         loader = context.require_artifact_loader(
-            context="PEFT-classifier partitioned aggregation materialization"
+            context="PEFT encoder head partitioned aggregation materialization"
         )
         tensor_partitions = _try_load_partitioned_tensor_artifact(
             loader=loader,
@@ -286,14 +286,14 @@ def materialize_peft_encoder_partitioned_update(
         source = artifact.get("partitions", artifact)
         if not isinstance(source, Mapping):
             raise ValueError(
-                "PEFT-classifier partitioned delta artifact must contain a "
+                "PEFT encoder head partitioned delta artifact must contain a "
                 "mapping payload."
             )
         partitioned_deltas = source
 
     if partitioned_deltas is None:
         raise ValueError(
-            "PEFT-classifier partitioned aggregation requires partitioned_deltas "
+            "PEFT encoder head partitioned aggregation requires partitioned_deltas "
             "or partitioned_deltas_artifact_ref."
         )
     partitions: dict[str, PeftEncoderPartitionDelta] = {}
@@ -368,7 +368,7 @@ def _load_peft_parameter_deltas(
     artifact_ref = _peft_adapter_delta_artifact_ref(payload)
     if artifact_ref is None:
         raise ValueError(
-            "PEFT-classifier artifact materialization requires adapter delta "
+            "PEFT encoder head artifact materialization requires adapter delta "
             "artifact ref."
         )
     tensor_deltas = _try_load_peft_adapter_delta_tensor_artifact(

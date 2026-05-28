@@ -1,4 +1,4 @@
-"""PEFT-backed classifier runtime/objective compatibility rules."""
+"""PEFT text encoder runtime/objective compatibility rules."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 )
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
-from .config import build_peft_classifier_training_backend_config
+from .config import build_peft_encoder_training_backend_config
 
 
 @runtime_checkable
@@ -36,10 +36,10 @@ def require_peft_encoder_runtime_matches_objective(
     runtime_config: object,
     objective_config: TrainingObjectiveConfig | None,
 ) -> None:
-    """v2 PEFT-classifier state와 local update config drift를 막는다."""
+    """PEFT text encoder state와 local update config drift를 막는다."""
 
     runtime_payload_config = _as_peft_encoder_runtime_config(runtime_config)
-    objective_backend_config = build_peft_classifier_training_backend_config(
+    objective_backend_config = build_peft_encoder_training_backend_config(
         objective_config
     )
     mismatches: dict[str, object] = {}
@@ -61,7 +61,7 @@ def require_peft_encoder_runtime_matches_objective(
         }
     if mismatches:
         raise ValueError(
-            "PEFT-classifier round runtime payload must match "
+            "PEFT text encoder round runtime payload must match "
             f"training_task.objective shared payload config: {mismatches}."
         )
 
@@ -71,7 +71,7 @@ def _as_peft_encoder_runtime_config(
 ) -> PeftEncoderRuntimePayloadConfig:
     if not isinstance(runtime_config, PeftEncoderRuntimePayloadConfig):
         raise TypeError(
-            "PEFT-backed classifier runtime compatibility requires "
+            "PEFT text encoder runtime compatibility requires "
             "backbone_payload(), lora_config_payload(), and "
             "peft_adapter_config_payload()."
         )

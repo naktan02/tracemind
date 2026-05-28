@@ -37,7 +37,7 @@ def build_initial_peft_classifier_state(
     labels: Sequence[str],
     updated_at: datetime,
 ) -> PeftClassifierState:
-    """simulation/runtime bootstrap용 PEFT-classifier initial state를 만든다."""
+    """simulation/runtime bootstrap용 PEFT encoder head initial state를 만든다."""
 
     return PeftClassifierState(
         model_id=model_id,

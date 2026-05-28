@@ -11,10 +11,10 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
     AggregationArtifactStore,
 )
 from methods.adaptation.peft_text_encoder.config import (
-    PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
     PEFT_ENCODER_DELTA_FORMAT_INLINE,
     PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
+    PEFT_ENCODER_TRAINING_BACKEND_NAME,
     PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_encoder.federated_ssl import (
@@ -499,7 +499,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
             max_steps=3,
             gradient_clip_norm=None,
             objective_config=TrainingObjectiveConfig.from_mapping(
-                {"training_backend_name": PEFT_CLASSIFIER_TRAINING_BACKEND_NAME}
+                {"training_backend_name": PEFT_ENCODER_TRAINING_BACKEND_NAME}
             ),
             selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 1}),
             task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
@@ -593,9 +593,7 @@ def test_query_ssl_peft_encoder_delta_materialization_writes_server_owned_refs(
             metadata=head_metadata,
         )
     )
-    assert peft_adapter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
-        [0.1, -0.2]
-    )
+    assert peft_adapter_deltas["encoder.q_proj.lora_A"] == pytest.approx([0.1, -0.2])
     assert head_weight_deltas["anxiety"] == pytest.approx([0.3, -0.1])
     assert head_bias_deltas == pytest.approx(
         {

@@ -1,4 +1,4 @@
-"""PEFT-backed classifier training backend config parsing."""
+"""PEFT text encoder training backend config parsing."""
 
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
 )
 
-PEFT_CLASSIFIER_TRAINING_BACKEND_NAME = "peft_classifier_trainer"
-PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE = "peft_classifier_trainer"
-PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE = "peft_classifier"
-PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND = "peft_classifier"
+PEFT_ENCODER_TRAINING_BACKEND_NAME = "peft_classifier_trainer"
+PEFT_ENCODER_TRAINING_BACKEND_EXTRA_SCOPE = "peft_classifier_trainer"
+PEFT_ENCODER_PAYLOAD_EXTRA_SCOPE = "peft_classifier"
+PEFT_ENCODER_PAYLOAD_ADAPTER_KIND = "peft_classifier"
 PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL = "agent_local_artifact_ref"
 PEFT_ENCODER_DELTA_FORMAT_INLINE = "inline_delta"
 PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED = "server_uploaded_artifact_ref"
@@ -61,7 +61,7 @@ _CONFIG_EXTRA_KEYS = frozenset(
 
 @dataclass(frozen=True, slots=True)
 class PeftEncoderTrainingBackendConfig:
-    """PEFT encoder classifier update payload에 기록할 trainer snapshot."""
+    """PEFT text encoder update payload에 기록할 trainer snapshot."""
 
     backbone_model_id: str = "mixedbread-ai/mxbai-embed-large-v1"
     backbone_revision: str = "main"
@@ -88,7 +88,7 @@ class PeftEncoderTrainingBackendConfig:
         "weak_text",
     )
     label_schema: tuple[str, ...] = ()
-    payload_adapter_kind: str = PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND
+    payload_adapter_kind: str = PEFT_ENCODER_PAYLOAD_ADAPTER_KIND
 
     def __post_init__(self) -> None:
         set_normalized_str(self, "backbone_model_id", self.backbone_model_id)
@@ -118,7 +118,7 @@ class PeftEncoderTrainingBackendConfig:
         set_normalized_str(self, "delta_format", self.delta_format)
         set_normalized_str(self, "artifact_ref_prefix", self.artifact_ref_prefix)
         set_normalized_str(self, "payload_adapter_kind", self.payload_adapter_kind)
-        if self.payload_adapter_kind != PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND:
+        if self.payload_adapter_kind != PEFT_ENCODER_PAYLOAD_ADAPTER_KIND:
             raise ValueError("payload_adapter_kind must be peft_classifier.")
         text_keys = tuple(
             str(value).strip()
@@ -189,7 +189,7 @@ class PeftEncoderTrainingBackendConfig:
         }
 
     def to_lora_config_payload(self) -> dict[str, str | int | float | bool]:
-        """Shared payload에 들어갈 LoRA config snapshot."""
+        """LoRA-compatible shared payload config snapshot."""
 
         return {
             "peft_adapter_name": self.peft_adapter_name,
@@ -202,7 +202,7 @@ class PeftEncoderTrainingBackendConfig:
         }
 
     def to_peft_adapter_config_payload(self) -> dict[str, object]:
-        """v2 PEFT-classifier payload에 들어갈 mechanism-neutral config snapshot."""
+        """v2 PEFT payload에 들어갈 mechanism-neutral config snapshot."""
 
         return {
             "peft_adapter_name": self.peft_adapter_name,
@@ -210,30 +210,22 @@ class PeftEncoderTrainingBackendConfig:
         }
 
 
-PeftClassifierTrainingBackendConfig = PeftEncoderTrainingBackendConfig
-
-
-def build_peft_classifier_training_backend_config(
+def build_peft_encoder_training_backend_config(
     objective_config: TrainingObjectiveConfig | None,
-) -> PeftClassifierTrainingBackendConfig:
-    """objective config에서 PEFT-classifier v2 trainer 설정을 읽는다."""
+) -> PeftEncoderTrainingBackendConfig:
+    """objective config에서 PEFT text encoder trainer 설정을 읽는다."""
 
     if objective_config is None:
         config = PeftEncoderTrainingBackendConfig()
     else:
         extras = {
-            **objective_config.get_component_extras(PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE),
+            **objective_config.get_component_extras(PEFT_ENCODER_PAYLOAD_EXTRA_SCOPE),
             **objective_config.get_component_extras(
-                PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE
+                PEFT_ENCODER_TRAINING_BACKEND_EXTRA_SCOPE
             ),
         }
         config = PeftEncoderTrainingBackendConfig.from_mapping(extras)
     return replace(
         config,
-        payload_adapter_kind=PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
+        payload_adapter_kind=PEFT_ENCODER_PAYLOAD_ADAPTER_KIND,
     )
-
-
-build_peft_encoder_training_backend_config = (
-    build_peft_classifier_training_backend_config
-)

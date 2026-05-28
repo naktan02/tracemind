@@ -1,4 +1,4 @@
-"""Query SSL PEFT-backed classifier local update payload/metric 조립."""
+"""Query SSL PEFT encoder head local update payload/metric 조립."""
 
 from __future__ import annotations
 

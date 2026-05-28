@@ -1,4 +1,4 @@
-"""PEFT-backed classifier runtime family helpers."""
+"""PEFT text encoder runtime family helpers."""
 
 from __future__ import annotations
 
@@ -15,9 +15,9 @@ from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 from .config import (
-    PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+    PEFT_ENCODER_TRAINING_BACKEND_NAME,
     PeftEncoderTrainingBackendConfig,
-    build_peft_classifier_training_backend_config,
+    build_peft_encoder_training_backend_config,
 )
 from .initial_state import (
     PeftEncoderInitialStateConfig,
@@ -31,7 +31,7 @@ PEFT_ENCODER_UPDATE_FAMILIES = (PEFT_TEXT_ENCODER_UPDATE_FAMILY,)
 
 
 class PeftEncoderRoundRuntimeConfig(Protocol):
-    """PEFT-backed classifier runtime payload를 가진 round runtime surface."""
+    """PEFT text encoder runtime payload를 가진 round runtime surface."""
 
     update_family_name: str
 
@@ -40,7 +40,7 @@ class PeftEncoderRoundRuntimeConfig(Protocol):
 
 
 def is_peft_encoder_update_family(update_family_name: object) -> bool:
-    """runtime update family가 PEFT-backed classifier 계열인지 판정한다."""
+    """runtime update family가 PEFT text encoder 계열인지 판정한다."""
 
     return _normalize_family_name(update_family_name) in PEFT_ENCODER_UPDATE_FAMILIES
 
@@ -77,8 +77,7 @@ def build_initial_peft_encoder_state(
     if update_family_name == PEFT_TEXT_ENCODER_UPDATE_FAMILY:
         if runtime_payload is None:
             raise ValueError(
-                "peft_text_encoder round runtime requires configured runtime "
-                "payload."
+                "peft_text_encoder round runtime requires configured runtime payload."
             )
         return build_initial_peft_classifier_state(
             config=runtime_payload,
@@ -144,7 +143,7 @@ def build_training_backend_config_for_peft_encoder_state(
 ) -> PeftEncoderTrainingBackendConfig:
     """active state family에 맞는 local trainer config를 만든다."""
 
-    return build_peft_classifier_training_backend_config(objective_config)
+    return build_peft_encoder_training_backend_config(objective_config)
 
 
 def build_training_backend_for_peft_encoder_state(
@@ -159,7 +158,7 @@ def build_training_backend_for_peft_encoder_state(
         objective_config=objective_config,
     )
     return PeftEncoderTrainingBackend(
-        backend_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+        backend_name=PEFT_ENCODER_TRAINING_BACKEND_NAME,
         payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
         adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
         config=config,
@@ -188,7 +187,6 @@ def _require_peft_encoder_runtime_payload(
     ]
     if missing:
         raise TypeError(
-            "PEFT text encoder runtime payload is missing required surface: "
-            f"{missing}"
+            f"PEFT text encoder runtime payload is missing required surface: {missing}"
         )
     return cast(PeftEncoderInitialStateConfig, runtime_payload)

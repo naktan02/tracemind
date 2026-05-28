@@ -1,4 +1,4 @@
-"""PEFT-backed classifier final representation projection artifact writer."""
+"""PEFT encoder head final representation projection artifact writer."""
 
 from __future__ import annotations
 

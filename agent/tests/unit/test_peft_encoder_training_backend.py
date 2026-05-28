@@ -80,9 +80,7 @@ class _RecordingPeftEncoderTrainExecutor:
         del training_task, model_manifest, rows, config, created_at
         self.label_schema = label_schema
         return PeftEncoderTrainArtifacts(
-            peft_adapter_delta_artifact_ref=(
-                "agent-local://custom/peft_adapter_delta"
-            ),
+            peft_adapter_delta_artifact_ref=("agent-local://custom/peft_adapter_delta"),
             classifier_head_delta_artifact_ref=(
                 "agent-local://custom/classifier_head_delta"
             ),
@@ -351,7 +349,8 @@ def test_local_training_service_uses_peft_classifier_backend(
     assert result.update_payload is not None
     assert result.update_payload.adapter_kind == "peft_classifier"
     assert result.update_envelope.payload_format == "peft_classifier_update"
-    assert result.update_envelope.client_metrics["lora_training_rows"] == 1.0
+    assert result.update_envelope.client_metrics["selected_examples"] == 1.0
+    assert result.update_envelope.client_metrics["label_schema_size"] == 3.0
     assert result.update_envelope.client_metrics["delta_l2_norm"] == 0.0
     assert result.update_payload.label_counts == {"anxiety": 1}
 

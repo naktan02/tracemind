@@ -1,4 +1,4 @@
-"""PEFT-classifier aggregation 결과를 다음 global state artifact로 투영한다."""
+"""PEFT encoder head aggregation 결과를 다음 global state artifact로 투영한다."""
 
 from __future__ import annotations
 

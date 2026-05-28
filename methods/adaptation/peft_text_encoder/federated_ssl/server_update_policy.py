@@ -1,4 +1,4 @@
-"""PEFT-backed classifier family의 FL SSL server update policy 해석."""
+"""PEFT encoder head family의 FL SSL server update policy 해석."""
 
 from __future__ import annotations
 
@@ -20,11 +20,11 @@ def resolve_peft_encoder_federated_ssl_server_update_backend(
     server_update_policy_name: str,
     aggregation_backend_name: str,
 ) -> str:
-    """PEFT-backed classifier server update policy를 aggregation backend로 해석한다."""
+    """PEFT encoder head server update policy를 aggregation backend로 해석한다."""
 
     if server_update_policy_name != SERVER_UPDATE_FEDMATCH_PARTITIONED:
         raise ValueError(
-            "Unsupported PEFT-backed classifier FL SSL server_update_policy: "
+            "Unsupported PEFT encoder head FL SSL server_update_policy: "
             f"{server_update_policy_name}."
         )
     normalized_backend = aggregation_backend_name.strip().lower()

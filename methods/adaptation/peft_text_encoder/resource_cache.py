@@ -1,4 +1,4 @@
-"""PEFT-backed classifier runtime resource cache keys."""
+"""PEFT encoder head runtime resource cache keys."""
 
 from __future__ import annotations
 
@@ -18,20 +18,20 @@ def peft_encoder_resource_cache_key(
     kind: str,
     values: Mapping[str, object],
 ) -> str:
-    """PEFT-backed classifier runtime resource cache key를 만든다."""
+    """PEFT encoder head runtime resource cache key를 만든다."""
 
     payload = json.dumps(dict(values), sort_keys=True, separators=(",", ":"))
     return f"{PEFT_ENCODER_RESOURCE_CACHE_NAMESPACE}:{kind}:{payload}"
 
 
 def peft_encoder_resource_cache_prefix(kind: str) -> str:
-    """canonical PEFT-backed classifier runtime resource prefix."""
+    """canonical PEFT encoder head runtime resource prefix."""
 
     return f"{PEFT_ENCODER_RESOURCE_CACHE_NAMESPACE}:{kind}:"
 
 
 def clear_peft_encoder_transient_resource_cache(runtime_resource_cache: object) -> int:
-    """round 뒤 버려도 되는 무거운 PEFT-backed classifier cache를 비운다."""
+    """round 뒤 버려도 되는 무거운 PEFT encoder head cache를 비운다."""
 
     clear_resources = getattr(runtime_resource_cache, "clear_resources", None)
     if not callable(clear_resources):

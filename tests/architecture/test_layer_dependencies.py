@@ -916,7 +916,7 @@ def test_peft_config_class_owns_canonical_defaults() -> None:
     required_snippets = (
         "class PeftEncoderTrainingBackendConfig:",
         'artifact_ref_prefix: str = "agent-local://peft_classifier"',
-        "payload_adapter_kind: str = PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND",
+        "payload_adapter_kind: str = PEFT_ENCODER_PAYLOAD_ADAPTER_KIND",
         "PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL",
         "PEFT_ENCODER_DELTA_FORMAT_INLINE",
         "PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED",
@@ -952,6 +952,8 @@ def test_peft_training_backend_does_not_register_legacy_lora_factories() -> None
         "def from_legacy_lora_objective_config(",
         "def build_legacy_lora_classifier_training_backend(",
         "def build_lora_classifier_training_backend(",
+        "def build_peft_classifier_training_backend(",
+        "PEFT_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY",
         '"lora_classifier_trainer"',
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]

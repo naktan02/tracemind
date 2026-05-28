@@ -1,4 +1,4 @@
-"""Query SSL PEFT-backed classifier local training core."""
+"""Query SSL PEFT encoder head local training core."""
 
 from __future__ import annotations
 

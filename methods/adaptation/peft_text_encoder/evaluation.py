@@ -1,4 +1,4 @@
-"""PEFT-backed classifier global state 평가 core."""
+"""PEFT text encoder global classifier-head state 평가 core."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 
 from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
-    build_peft_classifier_training_backend_config,
+    build_peft_encoder_training_backend_config,
 )
 from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
@@ -36,10 +36,12 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
-PEFT_CLASSIFIER_EVALUATOR_NAME = "peft_classifier_eval"
-PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES = (PEFT_CLASSIFIER_EVALUATOR_NAME,)
-PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND = "peft_classifier_logits_softmax"
-PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND = "peft_classifier_top1_probability"
+PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME = "peft_classifier_eval"
+PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES = (
+    PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
+)
+PEFT_ENCODER_CLASSIFIER_DISTRIBUTION_KIND = "peft_classifier_logits_softmax"
+PEFT_ENCODER_CLASSIFIER_CONFIDENCE_KIND = "peft_classifier_top1_probability"
 
 
 def evaluate_peft_encoder_state(
@@ -103,8 +105,8 @@ def evaluate_peft_encoder_state_payload(
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     loss_kind: str = "cross_entropy_from_peft_classifier_logits",
-    score_distribution_kind: str = PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND,
-    selection_confidence_kind: str = PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND,
+    score_distribution_kind: str = PEFT_ENCODER_CLASSIFIER_DISTRIBUTION_KIND,
+    selection_confidence_kind: str = PEFT_ENCODER_CLASSIFIER_CONFIDENCE_KIND,
 ) -> dict[str, object]:
     """PEFT encoder global state 평가 결과를 canonical payload로 반환한다."""
 
@@ -142,11 +144,11 @@ def evaluate_peft_encoder_validation_payload(
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> dict[str, object]:
-    """FL validation runtime이 넘긴 PEFT-backed classifier state를 평가한다."""
+    """FL validation runtime이 넘긴 PEFT encoder head state를 평가한다."""
 
     if not isinstance(adapter_state, PeftClassifierState):
         raise ValueError(
-            "PEFT-backed classifier evaluation requires classifier state; "
+            "PEFT encoder head evaluation requires classifier state; "
             f"got {type(adapter_state).__name__}."
         )
     return evaluate_peft_encoder_state_payload(
@@ -162,8 +164,8 @@ def evaluate_peft_encoder_validation_payload(
         seed=seed,
         runtime_resource_cache=runtime_resource_cache,
         loss_kind="cross_entropy_from_peft_classifier_logits",
-        score_distribution_kind=PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND,
-        selection_confidence_kind=PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND,
+        score_distribution_kind=PEFT_ENCODER_CLASSIFIER_DISTRIBUTION_KIND,
+        selection_confidence_kind=PEFT_ENCODER_CLASSIFIER_CONFIDENCE_KIND,
     )
 
 
@@ -179,13 +181,13 @@ def evaluate_peft_encoder_simulation_validation_payload(
     scorer_backend_name: str,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> dict[str, object]:
-    """FL simulation이 넘긴 PEFT-backed classifier state를 평가한다."""
+    """FL simulation이 넘긴 PEFT encoder head state를 평가한다."""
 
     state = require_peft_encoder_state(adapter_state)
-    if scorer_backend_name not in PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES:
+    if scorer_backend_name not in PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES:
         raise ValueError(
-            "PEFT-backed classifier validation must use one of "
-            f"{PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES!r}: "
+            "PEFT encoder head validation must use one of "
+            f"{PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES!r}: "
             f"{scorer_backend_name!r}."
         )
     return evaluate_peft_encoder_validation_payload(
@@ -213,11 +215,11 @@ def require_peft_encoder_validation_backend(
 
     if not isinstance(adapter_state, PeftClassifierState):
         return
-    if scorer_backend_name in PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES:
+    if scorer_backend_name in PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES:
         return
     raise ValueError(
-        "PEFT-backed classifier validation must use one of "
-        f"{PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES!r}. "
+        "PEFT encoder head validation must use one of "
+        f"{PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES!r}. "
         f"{prototype_scorer_backend_name!r} is prototype/selection-only "
         "and does not read LoRA/classifier global state."
     )
@@ -226,11 +228,11 @@ def require_peft_encoder_validation_backend(
 def require_peft_encoder_state(
     adapter_state: object,
 ) -> PeftClassifierState:
-    """runtime adapter가 넘긴 shared state를 PEFT-backed classifier state로 검증한다."""
+    """runtime adapter가 넘긴 shared state를 PEFT encoder state로 검증한다."""
 
     if not isinstance(adapter_state, PeftClassifierState):
         raise ValueError(
-            "PEFT-backed classifier evaluation requires classifier state; "
+            "PEFT encoder head evaluation requires classifier state; "
             f"got {type(adapter_state).__name__}."
         )
     return adapter_state
@@ -241,4 +243,4 @@ def _build_evaluation_training_backend_config(
     adapter_state: PeftClassifierState,
     objective_config: TrainingObjectiveConfig | None,
 ) -> PeftEncoderTrainingBackendConfig:
-    return build_peft_classifier_training_backend_config(objective_config)
+    return build_peft_encoder_training_backend_config(objective_config)

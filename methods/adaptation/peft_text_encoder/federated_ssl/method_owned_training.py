@@ -1,4 +1,4 @@
-"""Method-owned PEFT-classifier local training core resolver."""
+"""Method-owned PEFT encoder head local training core resolver."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def resolve_method_owned_peft_encoder_training_core(
     entrypoint = descriptor.local_step.runtime_entrypoint
     if entrypoint is None:
         raise NotImplementedError(
-            "Method-owned PEFT-classifier local training core is not declared: "
+            "Method-owned PEFT encoder head local training core is not declared: "
             f"{method_name}"
         )
     return _load_method_owned_peft_encoder_training_core(entrypoint)
@@ -74,7 +74,7 @@ def _load_method_owned_peft_encoder_training_core(
     module_name, separator, function_name = entrypoint.partition(":")
     if not separator or not module_name.strip() or not function_name.strip():
         raise ValueError(
-            "method-owned PEFT-classifier runtime_entrypoint must use "
+            "method-owned PEFT encoder head runtime_entrypoint must use "
             "'module:function' format."
         )
     try:
@@ -82,15 +82,15 @@ def _load_method_owned_peft_encoder_training_core(
     except ModuleNotFoundError as error:
         if error.name == module_name.strip():
             raise NotImplementedError(
-                "Method-owned PEFT-classifier local training core module is not wired: "
-                f"{module_name}"
+                "Method-owned PEFT encoder head local training core module is "
+                f"not wired: {module_name}"
             ) from error
         raise
 
     core = getattr(module, function_name.strip(), None)
     if core is None:
         raise NotImplementedError(
-            "Method-owned PEFT-classifier local training core function is missing: "
+            "Method-owned PEFT encoder head local training core function is missing: "
             f"{entrypoint}"
         )
     return core
@@ -126,7 +126,7 @@ def run_method_owned_peft_encoder_training_core(
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslPeftEncoderClientTrainingResult:
-    """선택된 method-owned PEFT-classifier local training core를 실행한다."""
+    """선택된 method-owned PEFT encoder head local training core를 실행한다."""
 
     core = resolve_method_owned_peft_encoder_training_core(ssl_method_config.name)
     return core(

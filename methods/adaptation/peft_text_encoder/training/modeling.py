@@ -1,4 +1,4 @@
-"""PEFT-backed classifier scaffold 모델 빌더."""
+"""PEFT encoder head scaffold 모델 빌더."""
 
 from __future__ import annotations
 
