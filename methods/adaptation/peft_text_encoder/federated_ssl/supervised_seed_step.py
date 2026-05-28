@@ -47,7 +47,7 @@ def run_peft_encoder_supervised_seed_step_core(
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
     bootstrap_rows: Sequence[LabeledQueryRow],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
     seed: int,
@@ -71,7 +71,7 @@ def run_peft_encoder_supervised_seed_step_core(
     set_seed(int(seed))
     model, tokenizer = build_peft_encoder_text_classifier_from_config(
         labels=list(effective_labels),
-        lora_config=lora_config,
+        peft_config=peft_config,
         runtime_config=trainer_runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
@@ -87,8 +87,8 @@ def run_peft_encoder_supervised_seed_step_core(
         label_to_index=label_to_index,
         tokenizer=tokenizer,
         batch_size=batch_size,
-        max_length=lora_config.max_length,
-        task_prefix=lora_config.task_prefix,
+        max_length=peft_config.max_length,
+        task_prefix=peft_config.task_prefix,
         shuffle=True,
     )
     train_classifier(

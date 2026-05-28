@@ -53,7 +53,7 @@ class PeftEncoderHelperWeakProbabilityProvider:
 
     helper_snapshots: tuple[FederatedSslPeerClientSnapshot, ...]
     labels: tuple[str, ...]
-    lora_config: PeftEncoderTrainingBackendConfig
+    peft_config: PeftEncoderTrainingBackendConfig
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig
     device: str
     runtime_resource_cache: RuntimeResourceCache | None = None
@@ -80,7 +80,7 @@ class PeftEncoderHelperWeakProbabilityProvider:
                 _materialize_helper_model(
                     snapshot=snapshot,
                     labels=self.labels,
-                    lora_config=self.lora_config,
+                    peft_config=self.peft_config,
                     trainer_runtime_config=self.trainer_runtime_config,
                     runtime_resource_cache=self.runtime_resource_cache,
                 )
@@ -113,7 +113,7 @@ def build_peft_encoder_peer_client_snapshot(
     tokenizer: Any,
     probe_rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     probe_batch_size: int,
 ) -> FederatedSslPeerClientSnapshot | None:
@@ -123,7 +123,7 @@ def build_peft_encoder_peer_client_snapshot(
         model=model,
         tokenizer=tokenizer,
         probe_rows=probe_rows,
-        lora_config=lora_config,
+        peft_config=peft_config,
         trainer_runtime_config=trainer_runtime_config,
         probe_batch_size=probe_batch_size,
     )
@@ -150,7 +150,7 @@ def compute_peft_encoder_probe_vector(
     model: PeftEncoderTextClassifier,
     tokenizer: Any,
     probe_rows: Sequence[LabeledQueryRow],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     probe_batch_size: int,
 ) -> tuple[float, ...] | None:
@@ -163,8 +163,8 @@ def compute_peft_encoder_probe_vector(
         rows=effective_rows,
         tokenizer=tokenizer,
         batch_size=max(1, int(probe_batch_size)),
-        max_length=lora_config.max_length,
-        task_prefix=lora_config.task_prefix,
+        max_length=peft_config.max_length,
+        task_prefix=peft_config.task_prefix,
         shuffle=False,
     )
     probability_sum: Tensor | None = None
@@ -233,7 +233,7 @@ def build_peft_encoder_helper_probability_provider(
     peer_context: FederatedSslPeerContext | None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None,
     labels: Sequence[str],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> PeftEncoderHelperWeakProbabilityProvider | None:
@@ -259,7 +259,7 @@ def build_peft_encoder_helper_probability_provider(
     return PeftEncoderHelperWeakProbabilityProvider(
         helper_snapshots=tuple(helper_snapshots),
         labels=tuple(str(label) for label in labels),
-        lora_config=lora_config,
+        peft_config=peft_config,
         trainer_runtime_config=trainer_runtime_config,
         runtime_resource_cache=runtime_resource_cache,
         device=trainer_runtime_config.device,
@@ -270,7 +270,7 @@ def _materialize_helper_model(
     *,
     snapshot: FederatedSslPeerClientSnapshot,
     labels: tuple[str, ...],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> PeftEncoderTextClassifier:
@@ -279,7 +279,7 @@ def _materialize_helper_model(
     cache_key = _helper_model_cache_key(
         snapshot=snapshot,
         labels=labels,
-        lora_config=lora_config,
+        peft_config=peft_config,
         trainer_runtime_config=trainer_runtime_config,
     )
     if runtime_resource_cache is not None:
@@ -293,7 +293,7 @@ def _materialize_helper_model(
 
     model, _tokenizer = build_peft_encoder_text_classifier_from_config(
         labels=list(labels),
-        lora_config=lora_config,
+        peft_config=peft_config,
         runtime_config=trainer_runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
@@ -313,7 +313,7 @@ def _helper_model_cache_key(
     *,
     snapshot: FederatedSslPeerClientSnapshot,
     labels: tuple[str, ...],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
 ) -> str:
     if not isinstance(snapshot.payload, PeftEncoderMaterializedState):
@@ -322,8 +322,8 @@ def _helper_model_cache_key(
         "client_id": snapshot.client_id,
         "payload_hash": _materialized_state_hash(snapshot.payload),
         "labels": labels,
-        "backbone": lora_config.to_backbone_payload(),
-        "lora": lora_config.to_lora_config_payload(),
+        "backbone": peft_config.to_backbone_payload(),
+        "lora": peft_config.to_lora_config_payload(),
         "device": trainer_runtime_config.device,
         "classifier_dropout": trainer_runtime_config.classifier_dropout,
     }

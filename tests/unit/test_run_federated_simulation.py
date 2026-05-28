@@ -27,6 +27,10 @@ from methods.adaptation.peft_text_encoder.federated_ssl import (
 from methods.adaptation.peft_text_encoder.federated_ssl.peer_predictions import (
     PEFT_ENCODER_PEER_SNAPSHOT_KIND,
 )
+from methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime import (
+    FederatedPeftEncoderRuntimeConfig,
+    build_peft_encoder_round_runtime_payloads,
+)
 from methods.adaptation.peft_text_encoder.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
 )
@@ -121,10 +125,6 @@ from scripts.runtime_adapters.federated_agent.peft_encoder_local_training import
 from scripts.runtime_adapters.federated_server import peft_encoder_server_step
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
-)
-from scripts.runtime_adapters.federated_server.peft_encoder_round_runtime import (
-    FederatedPeftEncoderRuntimeConfig,
-    build_peft_encoder_round_runtime_payloads,
 )
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
@@ -1261,7 +1261,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         is previous_algorithm_state
     )
     assert execution.query_ssl_algorithm_state is returned_algorithm_state
-    assert "lora_config" not in trainer_calls[0]
+    assert "peft_config" not in trainer_calls[0]
     accepted_payload = server_runtime.accepted[0][2]
     assert accepted_payload.delta_format == (PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED)
     assert accepted_payload.peft_adapter_delta_artifact_ref.startswith(

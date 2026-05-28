@@ -503,7 +503,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "build_peft_text_encoder_composition_slug"
     )
     assert cfg.round_runtime.round_runtime_payload_builder == (
-        "scripts.runtime_adapters.federated_server.peft_encoder_round_runtime."
+        "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
         "build_peft_encoder_round_runtime_payloads"
     )
     assert list(cfg.round_runtime.local_objective_executors) == [
@@ -741,7 +741,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "build_peft_text_encoder_composition_slug"
     )
     assert cfg.round_runtime.round_runtime_payload_builder == (
-        "scripts.runtime_adapters.federated_server.peft_encoder_round_runtime."
+        "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
         "build_peft_encoder_round_runtime_payloads"
     )
     assert list(cfg.round_runtime.local_objective_executors) == [

@@ -54,11 +54,11 @@ def test_partitioned_peft_encoder_builder_loads_base_state_into_each_partition()
     def classifier_factory(
         *,
         labels: list[str],
-        lora_config: PeftEncoderTrainingBackendConfig,
+        peft_config: PeftEncoderTrainingBackendConfig,
         runtime_config: TinyRuntimeConfig,
         runtime_resource_cache: object | None = None,
     ) -> tuple[nn.Module, Any]:
-        del lora_config, runtime_config
+        del peft_config, runtime_config
         calls.append((tuple(labels), runtime_resource_cache))
         return TinyPeftEncoderTextClassifier(), tokenizer
 
@@ -88,7 +88,7 @@ def test_partitioned_peft_encoder_builder_loads_base_state_into_each_partition()
         partition_names=("sigma", "psi"),
         labels=("anxiety", "normal"),
         base_parameters=base_parameters,
-        lora_config=PeftEncoderTrainingBackendConfig(),
+        peft_config=PeftEncoderTrainingBackendConfig(),
         runtime_config=TinyRuntimeConfig(),
         runtime_resource_cache=cache,  # type: ignore[arg-type]
         classifier_factory=classifier_factory,  # type: ignore[arg-type]
@@ -130,7 +130,7 @@ def test_partitioned_peft_encoder_builder_rejects_invalid_inputs() -> None:
             partition_names=("sigma", "sigma"),
             labels=("anxiety", "normal"),
             base_parameters=base_parameters,
-            lora_config=PeftEncoderTrainingBackendConfig(),
+            peft_config=PeftEncoderTrainingBackendConfig(),
             runtime_config=TinyRuntimeConfig(),
             classifier_factory=_unused_classifier_factory,  # type: ignore[arg-type]
         )
@@ -140,7 +140,7 @@ def test_partitioned_peft_encoder_builder_rejects_invalid_inputs() -> None:
             partition_names=("sigma", "psi"),
             labels=("anxiety", "anxiety"),
             base_parameters=base_parameters,
-            lora_config=PeftEncoderTrainingBackendConfig(),
+            peft_config=PeftEncoderTrainingBackendConfig(),
             runtime_config=TinyRuntimeConfig(),
             classifier_factory=_unused_classifier_factory,  # type: ignore[arg-type]
         )
@@ -195,7 +195,7 @@ def test_partitioned_peft_encoder_builder_prefers_partition_base_state() -> None
         labels=("anxiety", "normal"),
         base_parameters=base_parameters,
         base_partition_parameters=partition_base_parameters,
-        lora_config=PeftEncoderTrainingBackendConfig(),
+        peft_config=PeftEncoderTrainingBackendConfig(),
         runtime_config=TinyRuntimeConfig(),
         classifier_factory=_tiny_classifier_factory,  # type: ignore[arg-type]
     )
@@ -215,20 +215,20 @@ def test_partitioned_peft_encoder_builder_prefers_partition_base_state() -> None
 def _tiny_classifier_factory(
     *,
     labels: list[str],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     runtime_config: TinyRuntimeConfig,
     runtime_resource_cache: object | None = None,
 ) -> tuple[nn.Module, Any]:
-    del labels, lora_config, runtime_config, runtime_resource_cache
+    del labels, peft_config, runtime_config, runtime_resource_cache
     return TinyPeftEncoderTextClassifier(), object()
 
 
 def _unused_classifier_factory(
     *,
     labels: list[str],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     runtime_config: TinyRuntimeConfig,
     runtime_resource_cache: object | None = None,
 ) -> tuple[nn.Module, Any]:  # pragma: no cover - validation fails first.
-    del labels, lora_config, runtime_config, runtime_resource_cache
+    del labels, peft_config, runtime_config, runtime_resource_cache
     raise AssertionError("classifier_factory should not be called.")

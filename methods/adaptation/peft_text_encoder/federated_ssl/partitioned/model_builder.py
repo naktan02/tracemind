@@ -36,7 +36,7 @@ class PeftEncoderTextClassifierFactory(Protocol):
         self,
         *,
         labels: list[str],
-        lora_config: PeftEncoderTrainingBackendConfig,
+        peft_config: PeftEncoderTrainingBackendConfig,
         runtime_config: PeftEncoderPartitionRuntimeConfig,
         runtime_resource_cache: RuntimeResourceCache | None = None,
     ) -> tuple[nn.Module, Any]:
@@ -58,7 +58,7 @@ def build_partitioned_peft_encoder_text_classifier_from_config(
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
     base_partition_parameters: Mapping[str, PeftEncoderMaterializedState] | None = None,
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     runtime_config: PeftEncoderPartitionRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     classifier_factory: PeftEncoderTextClassifierFactory = (
@@ -81,7 +81,7 @@ def build_partitioned_peft_encoder_text_classifier_from_config(
     for partition_name in plan.partition_names:
         partition_model, partition_tokenizer = classifier_factory(
             labels=list(normalized_labels),
-            lora_config=lora_config,
+            peft_config=peft_config,
             runtime_config=runtime_config,
             runtime_resource_cache=runtime_resource_cache,
         )

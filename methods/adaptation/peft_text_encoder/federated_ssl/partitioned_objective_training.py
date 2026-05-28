@@ -180,7 +180,7 @@ def run_partitioned_peft_encoder_training_core(
     query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig | None,
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
@@ -220,14 +220,14 @@ def run_partitioned_peft_encoder_training_core(
         )
 
     tokenization_cache = resolve_text_tokenization_cache(runtime_resource_cache)
-    tokenization_cache_namespace_value = tokenization_cache_namespace(lora_config)
+    tokenization_cache_namespace_value = tokenization_cache_namespace(peft_config)
     with _measure(timing_recorder, "core_model_prepare_seconds"):
         with _measure(timing_recorder, "core_seed_seconds"):
             set_seed(int(seed))
         with _measure(timing_recorder, "core_model_build_seconds"):
             model, tokenizer = build_peft_encoder_text_classifier_from_config(
                 labels=list(effective_labels),
-                lora_config=lora_config,
+                peft_config=peft_config,
                 runtime_config=trainer_runtime_config,
                 runtime_resource_cache=runtime_resource_cache,
             )
@@ -264,8 +264,8 @@ def run_partitioned_peft_encoder_training_core(
                 label_to_index=label_to_index,
                 tokenizer=tokenizer,
                 batch_size=labeled_batch_size,
-                max_length=lora_config.max_length,
-                task_prefix=lora_config.task_prefix,
+                max_length=peft_config.max_length,
+                task_prefix=peft_config.task_prefix,
                 shuffle=True,
                 tokenization_cache=tokenization_cache,
                 tokenization_cache_namespace=tokenization_cache_namespace_value,
@@ -277,8 +277,8 @@ def run_partitioned_peft_encoder_training_core(
             rows=effective_unlabeled_rows,
             tokenizer=tokenizer,
             batch_size=resolved_unlabeled_batch_size,
-            max_length=lora_config.max_length,
-            task_prefix=lora_config.task_prefix,
+            max_length=peft_config.max_length,
+            task_prefix=peft_config.task_prefix,
             shuffle=True,
             strong_view_policy=strong_view_policy,
             tokenization_cache=tokenization_cache,
@@ -356,7 +356,7 @@ def run_partitioned_peft_encoder_training_core(
                     labels=effective_labels,
                     base_parameters=base_parameters,
                     base_partition_parameters=effective_base_partition_parameters,
-                    lora_config=lora_config,
+                    peft_config=peft_config,
                     runtime_config=trainer_runtime_config,
                     runtime_resource_cache=runtime_resource_cache,
                 )
@@ -484,7 +484,7 @@ def run_partitioned_peft_encoder_training_core(
                 else list(diagnostic_unlabeled_rows)
             ),
             labels=effective_labels,
-            lora_config=lora_config,
+            peft_config=peft_config,
             acceptance_threshold=diagnostic_threshold.threshold,
             trainer_runtime_config=trainer_runtime_config,
             unlabeled_batch_size=resolved_unlabeled_batch_size,
@@ -506,8 +506,8 @@ def run_partitioned_peft_encoder_training_core(
             update_id=update_id,
             training_task=training_task,
             client_id=client_id,
-            delta_format=lora_config.delta_format,
-            artifact_ref_prefix=lora_config.artifact_ref_prefix,
+            delta_format=peft_config.delta_format,
+            artifact_ref_prefix=peft_config.artifact_ref_prefix,
             peft_parameter_deltas=peft_parameter_deltas,
             classifier_head_weight_deltas=head_weight_deltas,
             classifier_head_bias_deltas=head_bias_deltas,
@@ -518,7 +518,7 @@ def run_partitioned_peft_encoder_training_core(
         update_build_result = build_query_ssl_peft_encoder_update_payload(
             training_task=training_task,
             model_manifest=model_manifest,
-            lora_config=lora_config,
+            peft_config=peft_config,
             labels=effective_labels,
             labeled_rows=effective_labeled_rows,
             unlabeled_rows=effective_unlabeled_rows,
@@ -620,7 +620,7 @@ def run_partitioned_peft_encoder_training_core(
             tokenizer=tokenizer,
             peer_probe_rows=peer_probe_rows,
             labels=effective_labels,
-            lora_config=lora_config,
+            peft_config=peft_config,
             trainer_runtime_config=trainer_runtime_config,
             probe_batch_size=resolved_unlabeled_batch_size,
         ),
@@ -710,7 +710,7 @@ def _build_timed_peer_client_snapshot(
     tokenizer: Any,
     peer_probe_rows: Sequence[LabeledQueryRow] | None,
     labels: Sequence[str],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     probe_batch_size: int,
 ) -> FederatedSslPeerClientSnapshot:
@@ -721,7 +721,7 @@ def _build_timed_peer_client_snapshot(
             tokenizer=tokenizer,
             probe_rows=() if peer_probe_rows is None else peer_probe_rows,
             labels=labels,
-            lora_config=lora_config,
+            peft_config=peft_config,
             trainer_runtime_config=trainer_runtime_config,
             probe_batch_size=probe_batch_size,
         )

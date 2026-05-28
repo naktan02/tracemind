@@ -45,7 +45,7 @@ def build_query_ssl_peft_encoder_update_payload(
     *,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     labels: Sequence[str],
     labeled_rows: Sequence[LabeledQueryRow],
     unlabeled_rows: Sequence[LabeledQueryRow],
@@ -89,7 +89,7 @@ def build_query_ssl_peft_encoder_update_payload(
     update_payload = build_peft_encoder_delta_payload_from_artifacts(
         training_task=training_task,
         model_manifest=model_manifest,
-        config=lora_config,
+        config=peft_config,
         label_schema=labels,
         example_count=len(labeled_rows) + len(unlabeled_rows),
         label_counts=_build_labeled_row_label_counts(labeled_rows),

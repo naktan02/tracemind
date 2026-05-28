@@ -155,7 +155,7 @@ def run_query_ssl_peft_encoder_training_core(
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig,
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
@@ -189,7 +189,7 @@ def run_query_ssl_peft_encoder_training_core(
         labels=effective_labels,
     )
     tokenization_cache = resolve_text_tokenization_cache(runtime_resource_cache)
-    tokenization_cache_namespace_value = tokenization_cache_namespace(lora_config)
+    tokenization_cache_namespace_value = tokenization_cache_namespace(peft_config)
 
     with _measure(timing_recorder, "core_model_prepare_seconds"):
         with _measure(timing_recorder, "core_seed_seconds"):
@@ -197,7 +197,7 @@ def run_query_ssl_peft_encoder_training_core(
         with _measure(timing_recorder, "core_model_build_seconds"):
             model, tokenizer = _build_peft_encoder_model(
                 labels=effective_labels,
-                lora_config=lora_config,
+                peft_config=peft_config,
                 trainer_runtime_config=trainer_runtime_config,
                 runtime_resource_cache=runtime_resource_cache,
             )
@@ -216,8 +216,8 @@ def run_query_ssl_peft_encoder_training_core(
             label_to_index=label_to_index,
             tokenizer=tokenizer,
             batch_size=int(training_task.batch_size),
-            max_length=lora_config.max_length,
-            task_prefix=lora_config.task_prefix,
+            max_length=peft_config.max_length,
+            task_prefix=peft_config.task_prefix,
             shuffle=True,
             tokenization_cache=tokenization_cache,
             tokenization_cache_namespace=tokenization_cache_namespace_value,
@@ -227,8 +227,8 @@ def run_query_ssl_peft_encoder_training_core(
             label_to_index=label_to_index,
             tokenizer=tokenizer,
             batch_size=int(training_task.batch_size),
-            max_length=lora_config.max_length,
-            task_prefix=lora_config.task_prefix,
+            max_length=peft_config.max_length,
+            task_prefix=peft_config.task_prefix,
             shuffle=False,
             tokenization_cache=tokenization_cache,
             tokenization_cache_namespace=tokenization_cache_namespace_value,
@@ -238,8 +238,8 @@ def run_query_ssl_peft_encoder_training_core(
             tokenizer=tokenizer,
             batch_size=query_ssl_config.unlabeled_batch_size
             or int(training_task.batch_size),
-            max_length=lora_config.max_length,
-            task_prefix=lora_config.task_prefix,
+            max_length=peft_config.max_length,
+            task_prefix=peft_config.task_prefix,
             strong_view_policy=query_ssl_config.strong_view_policy,
             view_builder_name=descriptor.required_views.view_builder_name,
             tokenization_cache=tokenization_cache,
@@ -266,7 +266,7 @@ def run_query_ssl_peft_encoder_training_core(
             learning_rate=float(training_task.learning_rate),
             classifier_learning_rate=float(training_task.learning_rate),
             weight_decay=0.0,
-            proximal_mu=float(lora_config.proximal_mu),
+            proximal_mu=float(peft_config.proximal_mu),
             max_grad_norm=(
                 0.0
                 if training_task.gradient_clip_norm is None
@@ -289,7 +289,7 @@ def run_query_ssl_peft_encoder_training_core(
                 else list(diagnostic_unlabeled_rows)
             ),
             labels=effective_labels,
-            lora_config=lora_config,
+            peft_config=peft_config,
             acceptance_threshold=diagnostic_threshold.threshold,
             trainer_runtime_config=trainer_runtime_config,
             unlabeled_batch_size=query_ssl_config.unlabeled_batch_size or 1,
@@ -311,8 +311,8 @@ def run_query_ssl_peft_encoder_training_core(
             update_id=update_id,
             training_task=training_task,
             client_id=client_id,
-            delta_format=lora_config.delta_format,
-            artifact_ref_prefix=lora_config.artifact_ref_prefix,
+            delta_format=peft_config.delta_format,
+            artifact_ref_prefix=peft_config.artifact_ref_prefix,
             peft_parameter_deltas=peft_parameter_deltas,
             classifier_head_weight_deltas=head_weight_deltas,
             classifier_head_bias_deltas=head_bias_deltas,
@@ -321,7 +321,7 @@ def run_query_ssl_peft_encoder_training_core(
         update_build_result = build_query_ssl_peft_encoder_update_payload(
             training_task=training_task,
             model_manifest=model_manifest,
-            lora_config=lora_config,
+            peft_config=peft_config,
             labels=effective_labels,
             labeled_rows=effective_labeled_rows,
             unlabeled_rows=effective_unlabeled_rows,
@@ -372,13 +372,13 @@ def run_query_ssl_peft_encoder_training_core(
 def _build_peft_encoder_model(
     *,
     labels: Sequence[str],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> tuple[PeftEncoderTextClassifier, Any]:
     return build_peft_encoder_text_classifier_from_config(
         labels=[str(label) for label in labels],
-        lora_config=lora_config,
+        peft_config=peft_config,
         runtime_config=trainer_runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )

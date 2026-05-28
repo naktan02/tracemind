@@ -47,7 +47,7 @@ def evaluate_peft_encoder_state(
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     runtime_config: PeftEncoderModelRuntimeConfig,
     batch_size: int,
     seed: int,
@@ -64,7 +64,7 @@ def evaluate_peft_encoder_state(
     set_seed(int(seed))
     model, tokenizer = build_peft_encoder_text_classifier_from_config(
         labels=effective_labels,
-        lora_config=lora_config,
+        peft_config=peft_config,
         runtime_config=runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
@@ -80,8 +80,8 @@ def evaluate_peft_encoder_state(
         label_to_index=label_to_index,
         tokenizer=tokenizer,
         batch_size=int(batch_size),
-        max_length=int(lora_config.max_length),
-        task_prefix=lora_config.task_prefix,
+        max_length=int(peft_config.max_length),
+        task_prefix=peft_config.task_prefix,
         shuffle=False,
     )
     return evaluate_classifier(
@@ -97,7 +97,7 @@ def evaluate_peft_encoder_state_payload(
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     runtime_config: PeftEncoderModelRuntimeConfig,
     batch_size: int,
     seed: int,
@@ -112,7 +112,7 @@ def evaluate_peft_encoder_state_payload(
         rows=rows,
         labels=labels,
         base_parameters=base_parameters,
-        lora_config=lora_config,
+        peft_config=peft_config,
         runtime_config=runtime_config,
         batch_size=batch_size,
         seed=seed,
@@ -153,7 +153,7 @@ def evaluate_peft_encoder_validation_payload(
         rows=rows,
         labels=adapter_state.label_schema,
         base_parameters=base_parameters,
-        lora_config=_build_evaluation_training_backend_config(
+        peft_config=_build_evaluation_training_backend_config(
             adapter_state=adapter_state,
             objective_config=objective_config,
         ),

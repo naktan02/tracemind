@@ -70,7 +70,7 @@ def run_peft_encoder_supervised_seed_step(
     if request.ssl_method_config is None:
         raise ValueError("supervised_seed_step requires ssl_method_config.")
 
-    lora_config = runtime_payload.training_backend_config
+    peft_config = runtime_payload.training_backend_config
     labels = tuple(str(label) for label in active.adapter_state.label_schema)
     seed_parameters = resolve_method_supervised_seed_step_parameters(
         method_name=request.ssl_method_config.name,
@@ -92,7 +92,7 @@ def run_peft_encoder_supervised_seed_step(
         labels=labels,
         base_parameters=base_parameters,
         bootstrap_rows=bootstrapped.dataset_split.bootstrap_rows,
-        lora_config=lora_config,
+        peft_config=peft_config,
         trainer_runtime_config=request.local_trainer_runtime_config,
         runtime_resource_cache=bootstrapped.runtime_resource_cache,
         seed=int(request.seed) + 7919 + int(round_index),

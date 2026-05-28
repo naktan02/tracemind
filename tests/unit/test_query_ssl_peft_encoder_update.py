@@ -79,7 +79,7 @@ def test_query_ssl_peft_encoder_update_payload_uses_server_refs_without_inline()
             auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
             artifact_ref="shared_adapter_state::sim_rev_0000",
         ),
-        lora_config=PeftEncoderTrainingBackendConfig(
+        peft_config=PeftEncoderTrainingBackendConfig(
             delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED
         ),
         labels=("anxiety", "normal"),
@@ -141,7 +141,7 @@ def test_query_ssl_peft_encoder_update_payload_requires_refs_for_artifact_mode()
                 auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
                 artifact_ref="shared_adapter_state::sim_rev_0000",
             ),
-            lora_config=PeftEncoderTrainingBackendConfig(),
+            peft_config=PeftEncoderTrainingBackendConfig(),
             labels=("anxiety", "normal"),
             labeled_rows=[_row("l1", "anxiety")],
             unlabeled_rows=[_row("u1", "normal")],

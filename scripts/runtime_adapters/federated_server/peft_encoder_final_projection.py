@@ -45,14 +45,14 @@ def build_peft_encoder_final_projection_artifacts(
 
     adapter_state = require_peft_encoder_state(active.adapter_state)
     labels = [str(label) for label in adapter_state.label_schema]
-    lora_config = build_training_backend_config_for_peft_encoder_state(
+    peft_config = build_training_backend_config_for_peft_encoder_state(
         active_adapter_state=adapter_state,
         objective_config=request.training_task_config.objective_config,
     )
     set_seed(request.seed)
     model, tokenizer = build_peft_encoder_text_classifier_from_config(
         labels=labels,
-        lora_config=lora_config,
+        peft_config=peft_config,
         runtime_config=request.local_trainer_runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
@@ -73,8 +73,8 @@ def build_peft_encoder_final_projection_artifacts(
         request=request,
         tokenizer=tokenizer,
         labels=labels,
-        max_length=int(lora_config.max_length),
-        task_prefix=lora_config.task_prefix,
+        max_length=int(peft_config.max_length),
+        task_prefix=peft_config.task_prefix,
     )
     if not eval_loaders:
         return {"enabled": False, "reason": "no_projection_datasets"}

@@ -106,7 +106,7 @@ def count_parameters(model: nn.Module) -> dict[str, int]:
 def build_peft_encoder_text_classifier_from_config(
     *,
     labels: list[str],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     runtime_config: PeftEncoderModelRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> tuple[PeftEncoderTextClassifier, Any]:
@@ -117,22 +117,22 @@ def build_peft_encoder_text_classifier_from_config(
     )
     tokenizer = _load_tokenizer(
         tokenizer_cls=AutoTokenizer,
-        lora_config=lora_config,
+        peft_config=peft_config,
         runtime_config=runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
 
     backbone_base = _load_backbone_base(
         model_cls=AutoModel,
-        lora_config=lora_config,
+        peft_config=peft_config,
         runtime_config=runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
-    peft_adapter_builder = build_peft_adapter_builder(lora_config.peft_adapter_name)
+    peft_adapter_builder = build_peft_adapter_builder(peft_config.peft_adapter_name)
     backbone = peft_adapter_builder.build_backbone(
         backbone_base=backbone_base,
         context=PeftAdapterBuildContext(
-            cfg=_peft_adapter_cfg_from_training_config(lora_config),
+            cfg=_peft_adapter_cfg_from_training_config(peft_config),
             lora_config_cls=LoraConfig,
             task_type=TaskType,
             get_peft_model=get_peft_model,
@@ -150,15 +150,15 @@ def build_peft_encoder_text_classifier_from_config(
 def _load_tokenizer(
     *,
     tokenizer_cls: Any,
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     runtime_config: PeftEncoderModelRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> Any:
     key = _runtime_resource_key(
         kind="tokenizer",
         values={
-            "model_id": lora_config.tokenizer_model_id,
-            "revision": lora_config.tokenizer_revision,
+            "model_id": peft_config.tokenizer_model_id,
+            "revision": peft_config.tokenizer_revision,
             "cache_dir": runtime_config.cache_dir,
             "local_files_only": runtime_config.local_files_only,
             "trust_remote_code": runtime_config.trust_remote_code,
@@ -169,8 +169,8 @@ def _load_tokenizer(
         if cached is not None:
             return cached
     tokenizer = tokenizer_cls.from_pretrained(
-        lora_config.tokenizer_model_id,
-        revision=lora_config.tokenizer_revision,
+        peft_config.tokenizer_model_id,
+        revision=peft_config.tokenizer_revision,
         cache_dir=runtime_config.cache_dir,
         local_files_only=runtime_config.local_files_only,
         trust_remote_code=runtime_config.trust_remote_code,
@@ -185,15 +185,15 @@ def _load_tokenizer(
 def _load_backbone_base(
     *,
     model_cls: Any,
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     runtime_config: PeftEncoderModelRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> nn.Module:
     key = _runtime_resource_key(
         kind="backbone_base",
         values={
-            "model_id": lora_config.backbone_model_id,
-            "revision": lora_config.backbone_revision,
+            "model_id": peft_config.backbone_model_id,
+            "revision": peft_config.backbone_revision,
             "cache_dir": runtime_config.cache_dir,
             "local_files_only": runtime_config.local_files_only,
             "trust_remote_code": runtime_config.trust_remote_code,
@@ -208,8 +208,8 @@ def _load_backbone_base(
                 )
             return copy.deepcopy(cached)
     backbone_base = model_cls.from_pretrained(
-        lora_config.backbone_model_id,
-        revision=lora_config.backbone_revision,
+        peft_config.backbone_model_id,
+        revision=peft_config.backbone_revision,
         cache_dir=runtime_config.cache_dir,
         local_files_only=runtime_config.local_files_only,
         trust_remote_code=runtime_config.trust_remote_code,
@@ -229,19 +229,19 @@ def _runtime_resource_key(
 
 
 def _peft_adapter_cfg_from_training_config(
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
 ) -> SimpleNamespace:
     """PEFT adapter builder가 기대하는 config surface로 trainer config를 맞춘다."""
 
     return SimpleNamespace(
         lora=SimpleNamespace(
-            peft_adapter_name=lora_config.peft_adapter_name,
-            rank=lora_config.rank,
-            alpha=lora_config.alpha,
-            dropout=lora_config.dropout,
-            target_modules=lora_config.target_modules,
-            bias=lora_config.bias,
-            use_rslora=lora_config.use_rslora,
+            peft_adapter_name=peft_config.peft_adapter_name,
+            rank=peft_config.rank,
+            alpha=peft_config.alpha,
+            dropout=peft_config.dropout,
+            target_modules=peft_config.target_modules,
+            bias=peft_config.bias,
+            use_rslora=peft_config.use_rslora,
         )
     )
 

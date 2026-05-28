@@ -497,9 +497,11 @@ def test_fl_simulation_runtime_model_does_not_embed_lora_classifier_scope() -> N
         / "fl_ssl"
         / "federated_simulation"
         / "config_request.py",
-        SCRIPTS_RUNTIME_ADAPTER_SRC
-        / "federated_server"
-        / "peft_encoder_round_runtime.py",
+        METHODS_SRC
+        / "adaptation"
+        / "peft_text_encoder"
+        / "simulation_runtime"
+        / "round_runtime.py",
         METHODS_SRC / "adaptation" / "peft_text_encoder" / "runtime_family.py",
         METHODS_SRC / "adaptation" / "peft_text_encoder" / "resource_cache.py",
     )
@@ -558,9 +560,11 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
         METHODS_SRC / "adaptation" / "peft_text_encoder" / "runtime_family.py",
-        SCRIPTS_RUNTIME_ADAPTER_SRC
-        / "federated_server"
-        / "peft_encoder_round_runtime.py",
+        METHODS_SRC
+        / "adaptation"
+        / "peft_text_encoder"
+        / "simulation_runtime"
+        / "round_runtime.py",
     )
     forbidden_snippets = (
         "peft_classifier: FederatedPeftEncoderRuntimeConfig",
@@ -886,9 +890,11 @@ def test_scripts_runtime_bridges_use_peft_config_type_names() -> None:
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_agent"
         / "peft_encoder_local_training.py",
-        SCRIPTS_RUNTIME_ADAPTER_SRC
-        / "federated_server"
-        / "peft_encoder_round_runtime.py",
+        METHODS_SRC
+        / "adaptation"
+        / "peft_text_encoder"
+        / "simulation_runtime"
+        / "round_runtime.py",
     )
     violations = [
         _relative_repo_path(path)

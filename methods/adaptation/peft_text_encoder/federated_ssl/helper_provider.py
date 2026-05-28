@@ -36,7 +36,7 @@ def build_peft_encoder_helper_provider_for_local_ssl_policy(
     peer_context: FederatedSslPeerContext | None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None,
     labels: tuple[str, ...],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
     timing_recorder: TimingRecorder | None,
@@ -53,7 +53,7 @@ def build_peft_encoder_helper_provider_for_local_ssl_policy(
             peer_context=peer_context,
             peer_snapshots=peer_snapshots,
             labels=labels,
-            lora_config=lora_config,
+            peft_config=peft_config,
             trainer_runtime_config=trainer_runtime_config,
             runtime_resource_cache=runtime_resource_cache,
         )
@@ -63,7 +63,7 @@ def build_peft_encoder_helper_provider_for_local_ssl_policy(
             peer_context=peer_context,
             peer_snapshots=peer_snapshots,
             labels=labels,
-            lora_config=lora_config,
+            peft_config=peft_config,
             trainer_runtime_config=trainer_runtime_config,
             runtime_resource_cache=runtime_resource_cache,
         )

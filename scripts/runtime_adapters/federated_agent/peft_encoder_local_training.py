@@ -93,7 +93,7 @@ def run_method_owned_peft_encoder_local_training(
     peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
-    lora_config: PeftEncoderTrainingBackendConfig | None = None,
+    peft_config: PeftEncoderTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
     base_parameters: PeftEncoderMaterializedState | None = None,
     base_partition_parameters: (
@@ -130,8 +130,8 @@ def run_method_owned_peft_encoder_local_training(
             round_base_snapshot_cache=round_base_snapshot_cache,
             timing_recorder=timing_recorder,
         )
-    effective_lora_config = (
-        lora_config
+    effective_peft_config = (
+        peft_config
         or build_training_backend_config_for_peft_encoder_state(
             active_adapter_state=active_adapter_state,
             objective_config=training_task.objective_config,
@@ -145,7 +145,7 @@ def run_method_owned_peft_encoder_local_training(
             peer_context=peer_context,
             peer_snapshots=peer_snapshots,
             labels=labels,
-            lora_config=effective_lora_config,
+            peft_config=effective_peft_config,
             trainer_runtime_config=trainer_runtime_config,
             runtime_resource_cache=runtime_resource_cache,
             timing_recorder=timing_recorder,
@@ -169,7 +169,7 @@ def run_method_owned_peft_encoder_local_training(
         peer_context=peer_context,
         strong_view_policy=strong_view_policy,
         unlabeled_batch_size=unlabeled_batch_size,
-        lora_config=effective_lora_config,
+        peft_config=effective_peft_config,
         trainer_runtime_config=trainer_runtime_config,
         created_at=effective_created_at,
         delta_materializer=PeftEncoderDeltaMaterializer(
@@ -204,7 +204,7 @@ def run_query_ssl_peft_encoder_local_training(
     model_manifest: ModelManifest,
     query_ssl_config: FederatedQuerySslObjectiveConfig,
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
-    lora_config: PeftEncoderTrainingBackendConfig | None = None,
+    peft_config: PeftEncoderTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
     base_parameters: PeftEncoderMaterializedState | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
@@ -233,9 +233,9 @@ def run_query_ssl_peft_encoder_local_training(
             state_root=output_dir / "agents" / client_id
         ),
         backend=PeftEncoderTrainingBackend(
-            config=lora_config,
+            config=peft_config,
         )
-        if lora_config is not None
+        if peft_config is not None
         else build_training_backend_for_peft_encoder_state(
             active_adapter_state=active_adapter_state,
             objective_config=training_task.objective_config,

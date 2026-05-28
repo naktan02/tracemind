@@ -80,7 +80,7 @@ def build_final_snapshot_pseudo_label_quality(
     tokenizer: Any,
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
     acceptance_threshold: float | None,
     trainer_runtime_config: PeftEncoderDiagnosticsRuntimeConfig,
     unlabeled_batch_size: int,
@@ -97,8 +97,8 @@ def build_final_snapshot_pseudo_label_quality(
         rows=effective_rows,
         tokenizer=tokenizer,
         batch_size=int(unlabeled_batch_size),
-        max_length=lora_config.max_length,
-        task_prefix=lora_config.task_prefix,
+        max_length=peft_config.max_length,
+        task_prefix=peft_config.task_prefix,
         shuffle=False,
         tokenization_cache=tokenization_cache,
         tokenization_cache_namespace=tokenization_cache_namespace,
@@ -149,11 +149,11 @@ def build_final_snapshot_pseudo_label_quality(
 
 
 def tokenization_cache_namespace(
-    lora_config: PeftEncoderTrainingBackendConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
 ) -> str:
     """LoRA classifier tokenizer 설정을 cache namespace로 정규화한다."""
 
     return (
-        f"tokenizer={lora_config.tokenizer_model_id}"
-        f"|revision={lora_config.tokenizer_revision}"
+        f"tokenizer={peft_config.tokenizer_model_id}"
+        f"|revision={peft_config.tokenizer_revision}"
     )

@@ -65,9 +65,9 @@ def test_lora_builder_delegates_to_peft_stack() -> None:
         def __init__(self, **kwargs) -> None:
             captured["lora_config"] = kwargs
 
-    def _get_peft_model(backbone, lora_config):
+    def _get_peft_model(backbone, peft_config):
         captured["backbone"] = backbone
-        captured["peft_config"] = lora_config
+        captured["peft_config"] = peft_config
         return "peft-backbone"
 
     cfg = _cfg(target_modules=["query", "value"])

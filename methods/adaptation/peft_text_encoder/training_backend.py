@@ -162,7 +162,7 @@ class PeftEncoderTrainingBackend:
             training_task=training_task,
             model_manifest=model_manifest,
             query_ssl_config=query_ssl_config,
-            lora_config=self.config,
+            peft_config=self.config,
             trainer_runtime_config=trainer_runtime_config,
             created_at=created_at,
             delta_materializer=delta_materializer,
