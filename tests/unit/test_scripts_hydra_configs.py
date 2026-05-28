@@ -532,7 +532,6 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     )
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
-    assert cfg.round_runtime.classifier_head_bootstrap_logit_scale == 8.0
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.lora.name == "default"
     assert cfg.training_task.objective.algorithm_profile_name == (

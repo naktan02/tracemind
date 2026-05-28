@@ -105,9 +105,6 @@ def build_protocol_payload(
                 round_runtime_config.transient_resource_cleaner
             ),
             "aggregation_backend_name": (round_runtime_config.aggregation_backend_name),
-            "classifier_head_bootstrap_logit_scale": (
-                round_runtime_config.classifier_head_bootstrap_logit_scale
-            ),
         },
         "fl_capabilities": _capability_plan_to_payload(capability_plan),
         "server_step_runtime": {

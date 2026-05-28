@@ -472,7 +472,6 @@ def _default_round_runtime_config(
         "run_peft_encoder_query_ssl_client_round_if_supported",
     ),
     aggregation_backend_name: str = "fedavg",
-    classifier_head_bootstrap_logit_scale: float = 8.0,
     peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
 ) -> FederatedRoundRuntimeConfig:
     runtime_payload = (
@@ -497,7 +496,6 @@ def _default_round_runtime_config(
         final_projection_builder=final_projection_builder,
         transient_resource_cleaner=transient_resource_cleaner,
         local_objective_executors=local_objective_executors,
-        classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
     )
 
 
@@ -2368,7 +2366,6 @@ def test_run_simulation_request_rejects_missing_peft_runtime_config(
                 "methods.adaptation.peft_text_classifier.evaluation."
                 "evaluate_peft_encoder_simulation_validation_payload"
             ),
-            classifier_head_bootstrap_logit_scale=8.0,
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,

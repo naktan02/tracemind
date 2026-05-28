@@ -177,7 +177,6 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 - `client_pool_split.unlabeled_ratio`
 - `round_runtime.adapter_family_name`
 - `round_runtime.aggregation_backend_name`
-- `round_runtime.classifier_head_bootstrap_logit_scale`
 - `training_task.objective.confidence_threshold`
 - `training_task.objective.margin_threshold`
 - `training_task.objective.training_backend_name`

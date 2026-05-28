@@ -532,6 +532,14 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         / "federated_simulation"
         / "adapters"
         / "runtime_compatibility.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "io"
+        / "protocol_payload.py",
+        CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml",
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
         METHODS_SRC / "adaptation" / "peft_text_classifier" / "runtime_family.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_server"
@@ -545,6 +553,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         "round_runtime.peft_classifier",
         "round_runtime.lora_classifier",
         "runtime_payload_for_adapter_family",
+        "classifier_head_bootstrap_logit_scale",
     )
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:

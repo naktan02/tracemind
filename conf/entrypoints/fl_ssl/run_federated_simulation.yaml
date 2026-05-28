@@ -134,9 +134,8 @@ query_ssl_strong_view_policy: first_aug
 round_runtime:
   adapter_family_name: peft_classifier
   aggregation_backend_name: fedavg
-  # canonical PEFT-classifier family bootstrap leaf다. LoRA/DoRA 등 mechanism은
+  # canonical PEFT-classifier runtime payload leaf다. LoRA/DoRA 등 mechanism은
   # peft_adapter_name과 adapter parameters로 구분한다.
-  classifier_head_bootstrap_logit_scale: 8.0
   runtime_payloads:
     peft_text_classifier:
       backbone_model_id: ${paper_backbone.model_id}
