@@ -224,6 +224,9 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
     mapper_source = (package_root / "training_example_mapper.py").read_text(
         encoding="utf-8"
     )
+    training_runtime_source = (package_root / "training_runtime.py").read_text(
+        encoding="utf-8"
+    )
     mapper_forbidden_snippets = (
         "WEAK_STRONG_PAIR_BACKEND_NAME",
         "RUNTIME_FALLBACK_TRAINING_PROFILE",
@@ -232,6 +235,18 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
     )
     mapper_violations = [
         snippet for snippet in mapper_forbidden_snippets if snippet in mapper_source
+    ]
+    training_runtime_forbidden_snippets = (
+        "methods.adaptation.peft_text_classifier",
+        "LORA_CLASSIFIER_TRAINING_BACKEND_NAME",
+        "PEFT_CLASSIFIER_TRAINING_BACKEND_NAME",
+        "PeftEncoderTrainingBackend",
+        "simulation_inline_delta",
+    )
+    training_runtime_violations = [
+        snippet
+        for snippet in training_runtime_forbidden_snippets
+        if snippet in training_runtime_source
     ]
     missing_files = [
         _relative_repo_path(path) for path in expected_files if not path.exists()
@@ -253,4 +268,10 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         "backend fallback, weak/strong row 검증, local training request 생성은 "
         "각 전용 module로 분리한다.\n"
         f"violations={mapper_violations}"
+    )
+    assert not training_runtime_violations, (
+        "training_runtime은 objective가 고른 backend를 registry로 resolve하고, "
+        "backend가 제공하는 simulation capability만 호출한다. PEFT/Lora concrete "
+        "이름과 inline executor wiring은 methods/adaptation/<family>/가 소유한다.\n"
+        f"violations={training_runtime_violations}"
     )

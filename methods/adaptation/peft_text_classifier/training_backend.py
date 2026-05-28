@@ -147,6 +147,28 @@ class PeftEncoderTrainingBackend:
             train_executor=self.train_executor,
         )
 
+    def with_simulation_inline_train_executor(self) -> "PeftEncoderTrainingBackend":
+        """simulation inline delta 실행기가 필요한 경우 executor를 붙인다."""
+
+        from methods.adaptation.peft_text_classifier.config import (
+            PEFT_ENCODER_DELTA_FORMAT_INLINE,
+        )
+        from methods.adaptation.peft_text_classifier.update import (
+            simulation_inline_delta,
+        )
+
+        if self.config.delta_format != PEFT_ENCODER_DELTA_FORMAT_INLINE:
+            return self
+        return PeftEncoderTrainingBackend(
+            backend_name=self.backend_name,
+            payload_format=self.payload_format,
+            adapter_kind=self.adapter_kind,
+            config=self.config,
+            train_executor=(
+                simulation_inline_delta.SimulationInlinePeftEncoderTrainExecutor()
+            ),
+        )
+
     def build_query_ssl_update(
         self,
         *,

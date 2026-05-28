@@ -329,7 +329,9 @@ runtime payload를 읽어야 할 때 이 폴더를 통해서만 연결한다.
     methods-owned LoRA-classifier local core에 연결.
   - `method_owned_client_round.py`, `query_ssl_client_round.py`: method-owned/manual
     client round 실행과 update submission orchestration.
-  - `training_runtime.py`: local training service/request bridge.
+  - `training_runtime.py`: local training service/request bridge. Concrete family
+    inline-executor wiring은 backend가 제공하는 optional simulation capability로
+    둔다.
   - `selection_runtime.py`: pseudo-label selection service bridge.
 - `federated_server/`: FL simulation에서 main_server round/aggregation 호출을 책임별로
   나눈 실제 runtime adapter package.

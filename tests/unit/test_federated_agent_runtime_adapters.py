@@ -24,6 +24,9 @@ from methods.adaptation.peft_text_classifier.federated_ssl import (
 from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qcore,
 )
+from methods.adaptation.peft_text_classifier.training_backend import (
+    PeftEncoderTrainingBackend,
+)
 from methods.adaptation.peft_text_classifier.update import (
     merged_tensor_artifact as merged_artifacts,
 )
@@ -89,6 +92,31 @@ from shared.src.contracts.training_contracts import (
 build_peft_encoder_helper_provider_for_local_ssl_policy = (
     helper_provider.build_peft_encoder_helper_provider_for_local_ssl_policy
 )
+
+
+def test_peft_training_backend_owns_simulation_inline_executor_wiring() -> None:
+    backend = PeftEncoderTrainingBackend(
+        config=PeftEncoderTrainingBackendConfig(
+            delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE
+        )
+    )
+
+    runtime_backend = backend.with_simulation_inline_train_executor()
+
+    assert runtime_backend.train_executor is not None
+    assert runtime_backend.backend_name == backend.backend_name
+    assert runtime_backend.payload_format == backend.payload_format
+    assert runtime_backend.adapter_kind == backend.adapter_kind
+
+
+def test_peft_training_backend_leaves_non_inline_simulation_backend_unchanged() -> None:
+    backend = PeftEncoderTrainingBackend(
+        config=PeftEncoderTrainingBackendConfig(
+            delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
+        )
+    )
+
+    assert backend.with_simulation_inline_train_executor() is backend
 
 
 def prepare_delta_materialization(*, output_dir, **kwargs):

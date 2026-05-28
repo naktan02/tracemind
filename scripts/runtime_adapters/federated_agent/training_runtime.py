@@ -22,42 +22,21 @@ def build_federated_local_training_service(
     from methods.adaptation.local_update_registry import (
         build_shared_adapter_training_backend,
     )
-    from methods.adaptation.peft_text_classifier.config import (
-        LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
-        PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
-        PEFT_ENCODER_DELTA_FORMAT_INLINE,
-    )
-    from methods.adaptation.peft_text_classifier.training_backend import (
-        PeftEncoderTrainingBackend,
-    )
-    from methods.adaptation.peft_text_classifier.update import (
-        simulation_inline_delta,
-    )
 
     backend = None
     objective_config = None if training_task is None else training_task.objective_config
-    if objective_config is not None and objective_config.training_backend_name in {
-        LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
-        PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
-    }:
-        candidate_backend = build_shared_adapter_training_backend(
+    if objective_config is not None:
+        backend = build_shared_adapter_training_backend(
             objective_config.training_backend_name,
             objective_config=objective_config,
         )
-        if (
-            isinstance(candidate_backend, PeftEncoderTrainingBackend)
-            and candidate_backend.config.delta_format
-            == PEFT_ENCODER_DELTA_FORMAT_INLINE
-        ):
-            backend = PeftEncoderTrainingBackend(
-                backend_name=candidate_backend.backend_name,
-                payload_format=candidate_backend.payload_format,
-                adapter_kind=candidate_backend.adapter_kind,
-                config=candidate_backend.config,
-                train_executor=(
-                    simulation_inline_delta.SimulationInlinePeftEncoderTrainExecutor()
-                ),
-            )
+        inline_executor_builder = getattr(
+            backend,
+            "with_simulation_inline_train_executor",
+            None,
+        )
+        if callable(inline_executor_builder):
+            backend = inline_executor_builder()
 
     return LocalTrainingService(
         repository=TrainingArtifactRepository(state_root=client_state_root),
