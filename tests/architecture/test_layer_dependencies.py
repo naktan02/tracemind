@@ -205,6 +205,7 @@ def test_shared_training_contracts_do_not_own_adapter_payload_format_catalog() -
         "DIAGONAL_SCALE_UPDATE",
         "CLASSIFIER_HEAD_UPDATE",
         "LORA_CLASSIFIER_UPDATE",
+        "diagonal_scale_update",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
@@ -212,6 +213,20 @@ def test_shared_training_contracts_do_not_own_adapter_payload_format_catalog() -
         "shared training envelope는 payload_format 문자열 필드만 소유한다. "
         "adapter-family별 canonical/accepted format은 "
         "shared/src/contracts/adapter_contract_families/<family>.py가 소유한다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_shared_contract_readme_uses_active_adapter_kind_examples() -> None:
+    path = SHARED_SRC / "contracts" / "README.md"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = ("예: `diagonal_scale`, `classifier_head`, `lora_classifier`",)
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "shared contract README의 일반 adapter_kind 예시는 active family 이름을 "
+        "사용한다. diagonal_scale/lora_classifier는 legacy compatibility 설명에만 "
+        "남긴다.\n"
         f"violations={violations}"
     )
 

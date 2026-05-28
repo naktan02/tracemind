@@ -210,7 +210,7 @@ class TrainingUpdateEnvelopePayload(BaseModel):
         )
     )
     payload_format: str = Field(
-        description="예: diagonal_scale_update 같은 update payload 포맷 식별자."
+        description="예: peft_classifier_update 같은 update payload 포맷 식별자."
     )
     example_count: int = Field(
         ge=0,
@@ -484,7 +484,7 @@ def make_training_update_envelope(
     ...     model_id="bg-m3",
     ...     base_model_revision="rev_001",
     ...     payload_ref="client-submission::delta_001",
-    ...     payload_format="diagonal_scale_update",
+    ...     payload_format="peft_classifier_update",
     ...     example_count=10,
     ...     client_metrics={"mean_confidence": 0.85},
     ... )

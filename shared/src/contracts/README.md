@@ -271,7 +271,7 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 
 - `adapter_kind`
   - adapter family discriminator
-  - 예: `diagonal_scale`, `classifier_head`, `lora_classifier`
+  - 예: `peft_classifier`, `classifier_head`
   - base shared adapter payload는 특정 family를 기본값으로 추정하지 않는다
   - 구형 `vector_adapter_*` schema만 registry compatibility에서 `diagonal_scale`로
     명시 변환한다
