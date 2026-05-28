@@ -93,7 +93,7 @@ def test_training_payloads_capture_round_and_revision(
         base_model_revision="rev_001",
         training_scope=TrainingScope.ADAPTER_ONLY,
         payload_ref="updates/update_001",
-        payload_format="diagonal_scale_update",
+        payload_format="classifier_head_update",
         example_count=12,
         client_metrics={"mean_loss": 0.5},
         secure_aggregation=SecureAggregationSubmissionPayload(
@@ -173,7 +173,7 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
         score_top_k=3,
         pseudo_label_algorithm_name="top1_margin_threshold",
         acceptance_policy_name="top1_margin_threshold",
-        privacy_guard_name="diagonal_scale_clip_only",
+        privacy_guard_name="clip_only",
     )
 
     assert payload.training_backend_name == "contrastive"
@@ -186,13 +186,13 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
     assert payload.score_top_k == 3
     assert payload.pseudo_label_algorithm_name == "top1_margin_threshold"
     assert payload.acceptance_policy_name == "top1_margin_threshold"
-    assert payload.privacy_guard_name == "diagonal_scale_clip_only"
+    assert payload.privacy_guard_name == "clip_only"
 
 
 def test_training_objective_config_round_trips_policy_fields() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {
-            "training_backend_name": "diagonal_scale_heuristic",
+            "training_backend_name": "peft_classifier_trainer",
             "algorithm_profile_name": "prototype_pseudo_label_v1",
             "loss_name": "cross_entropy",
             "confidence_threshold": 0.65,
@@ -209,7 +209,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         }
     )
 
-    assert config.training_backend_name == "diagonal_scale_heuristic"
+    assert config.training_backend_name == "peft_classifier_trainer"
     assert config.algorithm_profile_name == "prototype_pseudo_label_v1"
     assert config.loss_name == "cross_entropy"
     assert config.example_generation_backend_name == "prototype_rescore"
@@ -222,7 +222,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     assert config.privacy_guard_name == "noop"
     assert config.extras == {"temperature": 0.8}
     assert config.to_mapping() == {
-        "training_backend_name": "diagonal_scale_heuristic",
+        "training_backend_name": "peft_classifier_trainer",
         "algorithm_profile_name": "prototype_pseudo_label_v1",
         "loss_name": "cross_entropy",
         "confidence_threshold": 0.65,
@@ -277,13 +277,13 @@ def test_training_objective_config_preserves_algorithm_profile_without_expansion
 ):
     config = TrainingObjectiveConfig.from_mapping(
         {
-            "training_backend_name": "diagonal_scale_heuristic",
+            "training_backend_name": "peft_classifier_trainer",
             "algorithm_profile_name": "prototype_top1_confidence_v1",
         }
     )
 
     assert config.algorithm_profile_name == "prototype_top1_confidence_v1"
-    assert config.training_backend_name == "diagonal_scale_heuristic"
+    assert config.training_backend_name == "peft_classifier_trainer"
     assert config.example_generation_backend_name is None
     assert config.evidence_backend_name is None
     assert config.pseudo_label_algorithm_name is None
@@ -319,7 +319,7 @@ def test_training_objective_config_from_mapping_keeps_legacy_algorithm_fallback(
 ):
     config = TrainingObjectiveConfig.from_mapping(
         {
-            "training_backend_name": "diagonal_scale_heuristic",
+            "training_backend_name": "peft_classifier_trainer",
             "acceptance_policy_name": "top1_margin_threshold",
         }
     )

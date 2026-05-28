@@ -231,8 +231,8 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     `final_projection_builder`, `transient_resource_cleaner`는 scripts가 family별
     구현을 직접 import하지 않도록 하는 runtime adapter 표면이다.
   - 현재 target leaf는 `peft_text_classifier`, `linear_head`, `prototype_pack`이다.
-    `diagonal_scale`는 target update-family 축이 아니며, shared v1 contract
-    compatibility 표면에만 남긴다. 이 config group에 leaf를 다시 만들지 않는다.
+    `diagonal_scale`는 target update-family 축이 아니며 shared contract에서도
+    제거됐다. 이 config group에 leaf를 다시 만들지 않는다.
 - `fl_data.source_mode`
   - 기본 `runtime_split_from_train`은 기존 smoke/debug용으로 `train_jsonl`을 즉석
     sharding한다.

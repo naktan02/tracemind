@@ -7,9 +7,11 @@ import pytest
 from methods.adaptation.server_update_compatibility import (
     require_server_compatible_update_payload,
 )
+from shared.src.contracts.adapter_contract_families.base import (
+    SharedAdapterStatePayload,
+    SharedAdapterUpdatePayload,
+)
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_diagonal_delta_payload,
-    make_identity_state_payload,
     make_peft_classifier_delta_payload,
     make_peft_classifier_state_payload,
 )
@@ -39,17 +41,21 @@ _PEFT_CONFIG = {
 
 
 def test_unknown_adapter_kind_compatibility_defaults_to_noop() -> None:
-    state = make_identity_state_payload(
+    state = SharedAdapterStatePayload(
+        schema_version="test_state.v1",
+        adapter_kind="test_family",
         model_id="tracemind-embed",
         model_revision="rev_000",
-        embedding_dim=2,
+        training_scope="adapter_only",
+        updated_at="2026-04-01T00:00:00Z",
     )
-    update = make_diagonal_delta_payload(
+    update = SharedAdapterUpdatePayload(
+        schema_version="test_update.v1",
+        adapter_kind="test_family",
         model_id="tracemind-embed",
         base_model_revision="rev_000",
-        dimension_deltas=[0.1, -0.1],
+        training_scope="adapter_only",
         example_count=2,
-        mean_confidence=0.8,
     )
 
     require_server_compatible_update_payload(

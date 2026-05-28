@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import pytest
 
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_diagonal_delta_payload,
+    make_classifier_head_delta_payload,
     make_lora_classifier_delta_payload,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
 )
+from shared.src.contracts.common_types import TrainingScope
 from shared.src.contracts.training_contracts import (
     TrainingUpdateSubmissionPayload,
     make_training_update_envelope,
@@ -22,10 +23,12 @@ from shared.src.contracts.training_contracts import (
 
 
 def _update_payload():
-    return make_diagonal_delta_payload(
+    return make_classifier_head_delta_payload(
         model_id="model",
         base_model_revision="rev_1",
-        dimension_deltas=[0.1, 0.2],
+        training_scope=TrainingScope.HEAD_ONLY,
+        label_weight_deltas={"anxiety": [0.1, 0.2], "normal": [-0.1, -0.2]},
+        label_bias_deltas={"anxiety": 0.01, "normal": -0.01},
         example_count=2,
         mean_confidence=0.8,
     )
@@ -34,13 +37,15 @@ def _update_payload():
 def _envelope(
     *,
     example_count: int = 2,
-    payload_format: str = DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+    payload_format: str = CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
+    training_scope: TrainingScope = TrainingScope.HEAD_ONLY,
 ):
     return make_training_update_envelope(
         round_id="round_1",
         task_id="task_1",
         model_id="model",
         base_model_revision="rev_1",
+        training_scope=training_scope,
         payload_ref="client-submission::update_1",
         payload_format=payload_format,
         example_count=example_count,
@@ -106,7 +111,10 @@ def test_training_update_submission_parses_lora_classifier_update_payload() -> N
         lora_delta_artifact_ref="client-submission::lora_delta",
     )
     submission = make_training_update_submission(
-        envelope=_envelope(payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT),
+        envelope=_envelope(
+            payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+            training_scope=TrainingScope.ADAPTER_ONLY,
+        ),
         update_payload=update_payload,
     )
 

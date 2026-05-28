@@ -53,7 +53,6 @@
 Shared adapter 상태와 update payload를 정의한다.
 
 Family별 구현은 `adapter_contract_families/base.py`,
-`adapter_contract_families/diagonal_scale.py`,
 `adapter_contract_families/classifier_head.py`,
 `adapter_contract_families/lora_classifier.py`,
 `adapter_contract_families/peft_classifier.py`,
@@ -70,9 +69,6 @@ runtime과 test는 family별 direct import를 사용한다.
 
 - `SharedAdapterStatePayload`
   - 서버가 현재 배포하는 전역 shared adapter 상태 공통 필드
-- `DiagonalScaleAdapterStatePayload`
-  - 현재 concrete 구현
-  - `dimension_scales`는 임베딩 차원별 전역 scale 벡터
 - `ClassifierHeadAdapterStatePayload`
   - classifier-head concrete 구현
   - `label_weights`, `label_biases`는 category별 linear head 파라미터다
@@ -101,10 +97,6 @@ runtime과 test는 family별 direct import를 사용한다.
     inline `state`를 로컬 캐시에 저장해 사용한다
 - `SharedAdapterUpdatePayload`
   - agent가 서버로 올리는 shared adapter update 공통 필드
-- `DiagonalScaleAdapterUpdatePayload`
-  - 현재 concrete 구현
-  - `dimension_deltas`는 차원별 scale 변화량
-  - `label_counts`는 drift 관찰용 메타데이터이며, 직접 gradient 자체는 아니다
 - `ClassifierHeadAdapterUpdatePayload`
   - classifier-head concrete 구현
   - `label_weight_deltas`, `label_bias_deltas`는 category별 head 변화량이다
@@ -273,8 +265,8 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
   - adapter family discriminator
   - 예: `peft_classifier`, `classifier_head`
   - base shared adapter payload는 특정 family를 기본값으로 추정하지 않는다
-  - 구형 `vector_adapter_*` schema만 registry compatibility에서 `diagonal_scale`로
-    명시 변환한다
+  - 구형 `vector_adapter_*` / `diagonal_scale` schema fallback은 제거됐고,
+    adapter kind가 없는 payload는 거부한다
 - `payload_format`
   - 동일 family 안에서도 state/update envelope 해석에 쓰는 포맷 식별자
   - `TrainingUpdateSubmissionPayload`에서는 update payload type이 허용하는

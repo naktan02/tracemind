@@ -7,10 +7,6 @@ from .classifier_head import (
     ClassifierHeadAdapterStatePayload,
     ClassifierHeadAdapterUpdatePayload,
 )
-from .diagonal_scale import (
-    DiagonalScaleAdapterStatePayload,
-    DiagonalScaleAdapterUpdatePayload,
-)
 from .lora_classifier import (
     LoraClassifierAdapterStatePayload,
     LoraClassifierAdapterUpdatePayload,
@@ -30,11 +26,6 @@ def load_builtin_shared_adapter_payload_families() -> None:
     global _BUILTINS_LOADED
     if _BUILTINS_LOADED:
         return
-    register_shared_adapter_payload_family(
-        AdapterKind.DIAGONAL_SCALE.value,
-        state_payload_type=DiagonalScaleAdapterStatePayload,
-        update_payload_type=DiagonalScaleAdapterUpdatePayload,
-    )
     register_shared_adapter_payload_family(
         AdapterKind.CLASSIFIER_HEAD.value,
         state_payload_type=ClassifierHeadAdapterStatePayload,

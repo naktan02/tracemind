@@ -213,8 +213,8 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
   `local_update_profile=peft_pseudo_label_v1`,
   `strategy_axes/trainable_state/update_family=peft_text_classifier`,
-  `round_runtime.aggregation_backend_name=fedavg`다. 기존 `diagonal_scale` /
-  prototype scorer fallback은 FL SSL simulation에서 제거했으며, 실제 method로
+  `round_runtime.aggregation_backend_name=fedavg`다. 기존 `diagonal_scale` shared
+  payload family와 prototype scorer fallback은 FL SSL simulation에서 제거했으며, 실제 method로
   다시 필요해질 때 method-owned capability로 추가한다. 이 조합은
   `strategy_axes/fl/method_descriptor`를 compose하지 않는다.
 - 기본 manual PEFT-classifier simulation 경로는 `query_ssl_method.algorithm_name`으로

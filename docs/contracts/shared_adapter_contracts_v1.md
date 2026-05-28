@@ -4,7 +4,8 @@
 
 이 문서는 TraceMind의 전역 shared state/update payload 계약을 설명한다.
 이름은 historical하게 `shared adapter`를 유지하지만, 현재 concrete family에는
-`diagonal_scale`, `classifier_head`, `lora_classifier`가 포함된다.
+`classifier_head`, `lora_classifier`, `peft_classifier`가 포함된다.
+`diagonal_scale`/`vector_adapter_*` parser와 factory는 target 구조에서 제거됐다.
 
 이 문서가 다루는 범위는 두 가지다.
 

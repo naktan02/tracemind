@@ -11,32 +11,30 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.infrastructure.repositories import (
     shared_adapter_update_repository as update_repository_module,
 )
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DiagonalScaleAdapterStatePayload,
-    DiagonalScaleAdapterUpdatePayload,
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    ClassifierHeadAdapterStatePayload,
+    ClassifierHeadAdapterUpdatePayload,
 )
 
 
-def _state_payload() -> DiagonalScaleAdapterStatePayload:
-    return DiagonalScaleAdapterStatePayload(
-        schema_version="vector_adapter_state.v1",
-        adapter_kind="diagonal_scale",
+def _state_payload() -> ClassifierHeadAdapterStatePayload:
+    return ClassifierHeadAdapterStatePayload(
         model_id="tracemind-embed",
         model_revision="rev_001",
-        training_scope="adapter_only",
-        dimension_scales=[1.0, 1.0],
+        training_scope="head_only",
+        label_weights={"anxiety": [0.1, 0.2], "normal": [-0.1, -0.2]},
+        label_biases={"anxiety": 0.01, "normal": -0.01},
         updated_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
     )
 
 
-def _update_payload() -> DiagonalScaleAdapterUpdatePayload:
-    return DiagonalScaleAdapterUpdatePayload(
-        schema_version="vector_adapter_delta.v1",
-        adapter_kind="diagonal_scale",
+def _update_payload() -> ClassifierHeadAdapterUpdatePayload:
+    return ClassifierHeadAdapterUpdatePayload(
         model_id="tracemind-embed",
         base_model_revision="rev_001",
-        training_scope="adapter_only",
-        dimension_deltas=[0.05, -0.02],
+        training_scope="head_only",
+        label_weight_deltas={"anxiety": [0.05, -0.02]},
+        label_bias_deltas={"anxiety": 0.01},
         example_count=3,
         mean_confidence=0.8,
         mean_margin=0.15,

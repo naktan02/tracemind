@@ -4,11 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from .base import (
-    AdapterKind,
-    SharedAdapterStatePayload,
-    SharedAdapterUpdatePayload,
-)
+from .base import SharedAdapterStatePayload, SharedAdapterUpdatePayload
 
 _STATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterStatePayload]] = {}
 _UPDATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterUpdatePayload]] = {}
@@ -150,11 +146,6 @@ def _adapter_kind_from_payload(
     raw_adapter_kind = data.get("adapter_kind")
     if raw_adapter_kind is not None:
         return _normalize_adapter_kind(raw_adapter_kind)
-    schema_version = str(data.get("schema_version", "")).strip()
-    if payload_role == "state" and schema_version == "vector_adapter_state.v1":
-        return AdapterKind.DIAGONAL_SCALE.value
-    if payload_role == "update" and schema_version == "vector_adapter_delta.v1":
-        return AdapterKind.DIAGONAL_SCALE.value
     raise ValueError("Shared adapter payload requires adapter_kind.")
 
 

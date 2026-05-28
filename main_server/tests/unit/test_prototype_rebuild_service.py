@@ -44,8 +44,8 @@ from methods.prototype.building.kmeans import (
 from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    VectorAdapterState,
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    ClassifierHeadAdapterStatePayload,
 )
 from shared.src.domain.services.clock import FixedClock
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
@@ -242,10 +242,11 @@ def test_rebuild_service_rebuilds_from_reference_rows_with_builder_strategy() ->
             "normal_2": [0.0, 1.1],
         }
     )
-    adapter_state = VectorAdapterState.identity(
+    adapter_state = ClassifierHeadAdapterStatePayload.zero_initialized(
         model_id="tracemind-embed-sim",
         model_revision="sim_rev_0000",
         training_scope="adapter_only",
+        labels=("anxiety", "normal"),
         embedding_dim=2,
         updated_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
     )
@@ -307,10 +308,11 @@ def test_rebuild_service_applies_reference_row_metadata_override() -> None:
             "cluster_a_2": [1.0, 0.1],
         }
     )
-    adapter_state = VectorAdapterState.identity(
+    adapter_state = ClassifierHeadAdapterStatePayload.zero_initialized(
         model_id="tracemind-embed-sim",
         model_revision="sim_rev_0000",
         training_scope="adapter_only",
+        labels=("anxiety", "normal"),
         embedding_dim=2,
         updated_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
     )
@@ -456,10 +458,11 @@ def test_stored_reference_rebuild_service_rebuilds_from_active_input(
         ),
         adapter_factory=_StaticEmbeddingAdapterFactory,
     )
-    adapter_state = VectorAdapterState.identity(
+    adapter_state = ClassifierHeadAdapterStatePayload.zero_initialized(
         model_id="tracemind-embed-sim",
         model_revision="sim_rev_0001",
         training_scope="adapter_only",
+        labels=("anxiety", "normal"),
         embedding_dim=2,
         updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
     )

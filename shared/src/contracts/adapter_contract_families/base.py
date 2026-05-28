@@ -12,8 +12,6 @@ from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validat
 from shared.src.contracts.common_types import TrainingScope
 from shared.src.contracts.model_contracts import ModelManifestPayload
 
-VECTOR_ADAPTER_STATE_V1 = "vector_adapter_state.v1"
-VECTOR_ADAPTER_DELTA_V1 = "vector_adapter_delta.v1"
 CLASSIFIER_HEAD_STATE_V1 = "classifier_head_state.v1"
 CLASSIFIER_HEAD_DELTA_V1 = "classifier_head_delta.v1"
 LORA_CLASSIFIER_STATE_V1 = "lora_classifier_state.v1"
@@ -21,8 +19,6 @@ LORA_CLASSIFIER_DELTA_V1 = "lora_classifier_delta.v1"
 PEFT_CLASSIFIER_STATE_V2 = "peft_classifier_state.v2"
 PEFT_CLASSIFIER_DELTA_V2 = "peft_classifier_delta.v2"
 CURRENT_SHARED_ADAPTER_STATE_V1 = "current_shared_adapter_state.v1"
-VectorAdapterStateSchemaVersion: TypeAlias = Literal["vector_adapter_state.v1"]
-VectorAdapterDeltaSchemaVersion: TypeAlias = Literal["vector_adapter_delta.v1"]
 ClassifierHeadStateSchemaVersion: TypeAlias = Literal["classifier_head_state.v1"]
 ClassifierHeadDeltaSchemaVersion: TypeAlias = Literal["classifier_head_delta.v1"]
 LoraClassifierStateSchemaVersion: TypeAlias = Literal["lora_classifier_state.v1"]
@@ -37,7 +33,6 @@ CurrentSharedAdapterStateSchemaVersion: TypeAlias = Literal[
 class AdapterKind(StrEnum):
     """Shared adapter family discriminator."""
 
-    DIAGONAL_SCALE = "diagonal_scale"
     CLASSIFIER_HEAD = "classifier_head"
     LORA_CLASSIFIER = "lora_classifier"
     PEFT_CLASSIFIER = "peft_classifier"

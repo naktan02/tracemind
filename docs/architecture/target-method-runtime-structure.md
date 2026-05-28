@@ -174,11 +174,13 @@ Adapter 뒤로 옮긴다.
 
 - `lora_classifier`는 v1 shared contract와 old artifact compatibility 이름이다.
   새 canonical update family 이름은 `peft_text_classifier`다.
-- `diagonal_scale`은 v1 shared contract compatibility 이름이다. methods-level 구현
-  core, 전용 unit test, runtime fallback 기본값, privacy guard 실행 등록은 제거됐다.
-  `diagonal_scale`는 target update-family 축이 아니므로
-  `conf/strategy_axes/trainable_state/update_family/diagonal_scale.yaml`과
-  `methods/adaptation/diagonal_scale/**`는 제거된 상태를 유지한다.
+- `diagonal_scale`은 제거된 v1 payload family 이름이다. methods-level 구현 core,
+  shared contract parser/factory, 전용 unit test, runtime fallback 기본값,
+  privacy guard 실행 등록은 제거됐다. `diagonal_scale`는 target update-family 축이
+  아니므로 `conf/strategy_axes/trainable_state/update_family/diagonal_scale.yaml`,
+  `methods/adaptation/diagonal_scale/**`,
+  `shared/src/contracts/adapter_contract_families/diagonal_scale.py`는 제거된 상태를
+  유지한다.
 - `round_runtime.adapter_family_name`은 v1 report/result 입력 이름이다. 새 config
   leaf와 runtime model은 이 값을 생산하거나 받지 않는다. old reader가 필요하면
   읽는 즉시 `round_runtime.payload_adapter_kind`로 정규화한다. 새 실행 표면은

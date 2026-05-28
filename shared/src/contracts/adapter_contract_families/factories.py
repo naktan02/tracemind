@@ -15,7 +15,6 @@ from .base import (
     LORA_CLASSIFIER_STATE_V1,
     PEFT_CLASSIFIER_DELTA_V2,
     PEFT_CLASSIFIER_STATE_V2,
-    VECTOR_ADAPTER_DELTA_V1,
     AdapterKind,
     CurrentSharedAdapterStatePayload,
     SharedAdapterStatePayload,
@@ -23,10 +22,6 @@ from .base import (
 from .classifier_head import (
     ClassifierHeadAdapterStatePayload,
     ClassifierHeadAdapterUpdatePayload,
-)
-from .diagonal_scale import (
-    DiagonalScaleAdapterStatePayload,
-    DiagonalScaleAdapterUpdatePayload,
 )
 from .lora_classifier import (
     LoraClassifierAdapterStatePayload,
@@ -42,52 +37,6 @@ from .peft_classifier import (
     PeftClassifierBackbonePayload,
     PeftClassifierPartitionDeltaPayload,
 )
-
-
-def make_identity_state_payload(
-    *,
-    model_id: str,
-    model_revision: str,
-    embedding_dim: int,
-    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
-    updated_at: datetime | None = None,
-) -> DiagonalScaleAdapterStatePayload:
-    """모든 차원 scale=1.0 인 identity adapter state payload를 만든다."""
-    return DiagonalScaleAdapterStatePayload.identity(
-        model_id=model_id,
-        model_revision=model_revision,
-        training_scope=TrainingScope(training_scope),
-        embedding_dim=embedding_dim,
-        updated_at=updated_at or datetime.now(tz=timezone.utc),
-    )
-
-
-def make_diagonal_delta_payload(
-    *,
-    model_id: str,
-    base_model_revision: str,
-    dimension_deltas: list[float],
-    example_count: int,
-    mean_confidence: float,
-    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
-    mean_margin: float | None = None,
-    label_counts: dict[str, int] | None = None,
-    created_at: datetime | None = None,
-) -> DiagonalScaleAdapterUpdatePayload:
-    """diagonal scale adapter update payload를 만드는 표준 factory."""
-    return DiagonalScaleAdapterUpdatePayload(
-        schema_version=VECTOR_ADAPTER_DELTA_V1,
-        adapter_kind=AdapterKind.DIAGONAL_SCALE.value,
-        model_id=model_id,
-        base_model_revision=base_model_revision,
-        training_scope=training_scope,
-        example_count=example_count,
-        created_at=created_at or datetime.now(tz=timezone.utc),
-        dimension_deltas=dimension_deltas,
-        mean_confidence=mean_confidence,
-        mean_margin=mean_margin,
-        label_counts=label_counts or {},
-    )
 
 
 def make_zero_classifier_head_state_payload(
