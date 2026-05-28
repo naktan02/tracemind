@@ -1238,6 +1238,9 @@ def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
         "evaluate_lora_run_context",
         "run_fixed_classifier_teacher_lora_student_bootstrap",
         "_run_student_lora_bootstrap",
+        "fixed_classifier_lora_bootstrap.v1",
+        "query_adapt_lora",
+        "lora_bootstrap",
         "lora_clf",
     )
     violations = [
@@ -1251,6 +1254,45 @@ def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
         "query_peft_ssl harness 내부 helper/type 이름은 PEFT 기준을 사용한다. "
         "LoRA는 adapter mechanism이나 old-run artifact/entrypoint compatibility "
         "표면에만 남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
+def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
+    checked_paths = (
+        SCRIPTS_SRC / "experiments" / "result_index" / "schema.py",
+        SCRIPTS_SRC / "experiments" / "result_index" / "models.py",
+        SCRIPTS_SRC / "experiments" / "result_index" / "fl_ssl_report_loader.py",
+        SCRIPTS_SRC / "experiments" / "result_index" / "dashboard_export.py",
+        REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "app.js",
+    )
+    forbidden_snippets = (
+        "central_lora_ssl",
+        "central_lora_initial_eval",
+        "lora_rank",
+        "lora_alpha",
+        "lora_dropout",
+        "lora_bias",
+        "lora_target_modules",
+        "lora_use_rslora",
+        "lora_use_dora",
+        "lora_ranks",
+        "lora_alphas",
+        "loraConfigLabel",
+        "loraVariantLabel",
+        "sameLoraConfig",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "result index와 dashboard 계약은 PEFT adapter field를 사용한다. LoRA는 "
+        "adapter mechanism 값이나 old report reader fallback에만 남기고, DB/UI "
+        "상위 field 이름으로 고정하지 않는다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
@@ -1778,6 +1820,8 @@ def test_peft_text_encoder_does_not_keep_legacy_lora_pass_through_aliases() -> N
         "LoraClassifierFedAvgResult",
         "LoraClassifierStateProjection",
         "LoraClassifierPartitionedDeltaAverageUpdate",
+        "run_lora =",
+        "_resolve_lora_backend",
     )
     checked_roots = (
         AGENT_SRC / "services" / "training" / "execution",

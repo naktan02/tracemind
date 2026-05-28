@@ -197,4 +197,4 @@ def _resolve_query_adaptation_run_id(
     trainer_version = str(getattr(cfg, "trainer_version", "") or "").strip()
     if trainer_version:
         return trainer_version
-    return generated_at.strftime("query_adapt_lora_%Y_%m_%d_%H%M%S")
+    return generated_at.strftime("query_adapt_peft_%Y_%m_%d_%H%M%S")

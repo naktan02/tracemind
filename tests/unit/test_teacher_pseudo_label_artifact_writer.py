@@ -23,7 +23,7 @@ def test_teacher_pseudo_label_artifact_writer_writes_trace_and_summaries(
         "accepted_count": 1,
     }
     bootstrap_summary = {
-        "schema_version": "fixed_classifier_lora_bootstrap.v1",
+        "schema_version": "fixed_classifier_peft_bootstrap.v1",
         "bootstrap_version": "bootstrap_v1",
     }
 

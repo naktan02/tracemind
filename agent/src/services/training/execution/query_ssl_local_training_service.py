@@ -183,9 +183,6 @@ class QuerySslLocalTrainingService:
             )
         return cast(QuerySslPeftEncoderTrainingBackend, backend)
 
-    run_lora = run_peft_encoder
-    _resolve_lora_backend = _resolve_peft_encoder_backend
-
     def _resolve_backend(
         self,
         *,

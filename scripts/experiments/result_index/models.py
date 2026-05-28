@@ -37,13 +37,13 @@ class ExperimentRunRecord:
     examples_per_second: float | None
     trainable_param_ratio: float | None
     peft_adapter_name: str | None
-    lora_rank: int | None
-    lora_alpha: int | None
-    lora_dropout: float | None
-    lora_bias: str | None
-    lora_target_modules: str | None
-    lora_use_rslora: bool | None
-    lora_use_dora: bool | None
+    peft_adapter_rank: int | None
+    peft_adapter_alpha: int | None
+    peft_adapter_dropout: float | None
+    peft_adapter_bias: str | None
+    peft_adapter_target_modules: str | None
+    peft_adapter_use_rslora: bool | None
+    peft_adapter_use_dora: bool | None
     run_control_budget_name: str | None
     run_control_output_dir: str | None
     client_count: int | None

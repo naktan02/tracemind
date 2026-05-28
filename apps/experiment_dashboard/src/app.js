@@ -11,8 +11,8 @@ import {
 } from "./dashboard_preferences.js";
 
 const DATA_URL = "./data/experiment_dashboard.json";
-const CENTRAL_SSL_TRACK = "central_lora_ssl";
-const CENTRAL_INITIAL_EVAL_TRACK = "central_lora_initial_eval";
+const CENTRAL_SSL_TRACK = "central_peft_ssl";
+const CENTRAL_INITIAL_EVAL_TRACK = "central_peft_initial_eval";
 const CENTRAL_EPOCH_METRICS = [
   "selection_macro_f1",
   "selection_accuracy_top_1",
@@ -126,7 +126,7 @@ const FL_FILTER_AXIS_IDS = [
   "method",
   "local_regularizer",
   "peft_adapter",
-  "lora_rank",
+  "peft_adapter_rank",
   "data_pair",
   "label_budget",
   "round_count",
@@ -927,7 +927,7 @@ function renderFlRunTable(rows) {
           <td title="${escapeHtml(flRunDescriptor(row))}">${escapeHtml(flRunDisplayLabel(row))}</td>
           <td>${escapeHtml(flMethodName(row))}</td>
           <td>${escapeHtml(flLocalRegularizerLabel(row))}</td>
-          <td>${formatCount(row.lora_rank)}</td>
+          <td>${formatCount(row.peft_adapter_rank)}</td>
           <td title="${escapeHtml(shortSplit(row.selection_slug))}">${escapeHtml(flDataSourceLabel(row))} · ${escapeHtml(flLabelBudgetLabel(row))}</td>
           <td>${formatCount(row.client_count)}</td>
           <td>${formatCount(row.completed_rounds)} / ${formatCount(row.round_budget)}</td>
@@ -1698,7 +1698,7 @@ function flFilterAxis(axisId) {
     method: "Method",
     local_regularizer: "Regularizer",
     peft_adapter: "PEFT Adapter",
-    lora_rank: "LoRA Rank",
+    peft_adapter_rank: "Adapter Rank",
     data_pair: "Labeled / Unlabeled",
     label_budget: "Label Budget",
     round_count: "Round Count",
@@ -1730,8 +1730,8 @@ function flFilterOptions(rows, axisId) {
 function flFilterValue(row, axisId) {
   if (axisId === "method") return flMethodName(row);
   if (axisId === "local_regularizer") return flLocalRegularizerLabel(row);
-  if (axisId === "peft_adapter") return loraVariantLabel(row);
-  if (axisId === "lora_rank") return String(row.lora_rank ?? "-");
+  if (axisId === "peft_adapter") return peftAdapterVariantLabel(row);
+  if (axisId === "peft_adapter_rank") return String(row.peft_adapter_rank ?? "-");
   if (axisId === "data_pair") return flDataSourceLabel(row);
   if (axisId === "label_budget") return flLabelBudgetLabel(row);
   if (axisId === "round_count") return String(flRoundCountForRun(row) ?? "-");
@@ -1750,7 +1750,7 @@ function flFilterLabel(row, axisId) {
   if (axisId === "client_count") return `${row.client_count ?? "-"} clients`;
   if (axisId === "seed") return `seed ${row.seed ?? "-"}`;
   if (axisId === "shard_alpha") return `alpha ${formatMetric(row.shard_alpha)}`;
-  if (axisId === "lora_rank") return `rank ${row.lora_rank ?? "-"}`;
+  if (axisId === "peft_adapter_rank") return `rank ${row.peft_adapter_rank ?? "-"}`;
   return flFilterValue(row, axisId);
 }
 
@@ -1918,7 +1918,7 @@ function flRunDescriptor(row) {
     flDataSourceLabel(row),
     flLabelBudgetLabel(row),
     `adapter=${flPayloadAdapterKind(row, roundRuntime) ?? "-"}`,
-    loraConfigLabel(row),
+    peftAdapterConfigLabel(row),
     `agg=${row.aggregation_backend_name ?? roundRuntime.aggregation_backend_name ?? "-"}`,
     `regularizer=${flLocalRegularizerLabel(row)}`,
     `clients=${row.client_count ?? protocol.client_count ?? "-"}`,
@@ -2051,7 +2051,7 @@ function compactFlRunSubLabel(row) {
   return [
     flLabelBudgetLabel(row),
     `clients=${row.client_count ?? "-"}`,
-    `rank=${row.lora_rank ?? "-"}`,
+    `rank=${row.peft_adapter_rank ?? "-"}`,
     flRunSuffix(row),
   ].join(" · ");
 }
@@ -2686,32 +2686,32 @@ function rowsWithProjection(rows) {
 
 function runDescriptor(row) {
   return [
-    loraConfigLabel(row),
+    peftAdapterConfigLabel(row),
     `lr=${formatMetric(row.learning_rate)}`,
     `clf=${formatMetric(row.classifier_learning_rate)}`,
     shortSplit(row.selection_slug),
   ].join(" · ");
 }
 
-function loraConfigLabel(row) {
-  const rank = row.lora_rank ?? "-";
-  const alpha = row.lora_alpha ?? "-";
-  const dropout = row.lora_dropout ?? "-";
+function peftAdapterConfigLabel(row) {
+  const rank = row.peft_adapter_rank ?? "-";
+  const alpha = row.peft_adapter_alpha ?? "-";
+  const dropout = row.peft_adapter_dropout ?? "-";
   return [
-    `peft=${loraVariantLabel(row)}`,
+    `peft=${peftAdapterVariantLabel(row)}`,
     `r=${rank}`,
     `alpha=${alpha}`,
     `dropout=${dropout}`,
   ].join(" · ");
 }
 
-function loraVariantLabel(row) {
+function peftAdapterVariantLabel(row) {
   const adapterName = row.peft_adapter_name ?? "-";
   const modifiers = [];
-  if (row.lora_use_rslora) {
+  if (row.peft_adapter_use_rslora) {
     modifiers.push("rs");
   }
-  if (row.lora_use_dora) {
+  if (row.peft_adapter_use_dora) {
     modifiers.push("dora");
   }
   return modifiers.length > 0 ? `${adapterName}+${modifiers.join("+")}` : adapterName;
@@ -2775,11 +2775,11 @@ function isDisplayMetricKey(metric) {
     "max_train_steps",
     "train_batch_size",
     "eval_batch_size",
-    "lora_rank",
-    "lora_alpha",
-    "lora_dropout",
-    "lora_use_dora",
-    "lora_use_rslora",
+    "peft_adapter_rank",
+    "peft_adapter_alpha",
+    "peft_adapter_dropout",
+    "peft_adapter_use_dora",
+    "peft_adapter_use_rslora",
     "created_at",
   ].includes(metric);
 }
@@ -3185,20 +3185,20 @@ function centralInitialRunFor(row) {
       candidate.seed === row.seed &&
       candidate.validation_dataset_name === row.validation_dataset_name &&
       candidate.test_dataset_name === row.test_dataset_name &&
-      sameLoraConfig(candidate, row),
+      samePeftAdapterConfig(candidate, row),
   );
 }
 
-function sameLoraConfig(left, right) {
+function samePeftAdapterConfig(left, right) {
   const keys = [
     "peft_adapter_name",
-    "lora_rank",
-    "lora_alpha",
-    "lora_dropout",
-    "lora_bias",
-    "lora_target_modules",
-    "lora_use_rslora",
-    "lora_use_dora",
+    "peft_adapter_rank",
+    "peft_adapter_alpha",
+    "peft_adapter_dropout",
+    "peft_adapter_bias",
+    "peft_adapter_target_modules",
+    "peft_adapter_use_rslora",
+    "peft_adapter_use_dora",
   ];
   return keys.every((key) => String(left[key] ?? "") === String(right[key] ?? ""));
 }
@@ -3219,7 +3219,7 @@ function centralRunAxisLabel(row) {
 function centralOverviewRunLabel(row) {
   return [
     row.method_name ?? "-",
-    `rank${row.lora_rank ?? "?"}`,
+    `rank${row.peft_adapter_rank ?? "?"}`,
     centralRunSuffix(row.run_id),
   ].join(" · ");
 }
@@ -3438,7 +3438,7 @@ function renderRunTable(rows) {
         <td>${escapeHtml(row.eval_set ?? state.overviewEvalSet)}</td>
         <td title="${escapeHtml(centralRunDetail(row))}"><button type="button" data-run-id="${row.run_id}">${escapeHtml(centralOverviewDisplayLabel(row))}</button></td>
         <td>${escapeHtml(row.method_name)}</td>
-        <td>${formatCount(row.lora_rank)}</td>
+        <td>${formatCount(row.peft_adapter_rank)}</td>
         <td title="${escapeHtml(shortSplit(row.selection_slug))}">${escapeHtml(centralDataLabel(row))}</td>
         <td>best_acc</td>
         ${metricIds

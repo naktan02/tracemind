@@ -44,7 +44,7 @@ def build_partitioned_delta_tensor_artifact(
         _add_vector_mapping_tensors(
             tensors=tensors,
             target=partition_payload["peft_parameter_deltas"],
-            prefix=f"p{partition_index:03d}.lora",
+            prefix=f"p{partition_index:03d}.peft_adapter",
             values=delta.peft_parameter_deltas,
         )
         _add_vector_mapping_tensors(

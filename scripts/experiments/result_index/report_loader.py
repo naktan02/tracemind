@@ -149,7 +149,9 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
     runtime_metrics = as_mapping(manifest.get("runtime_metrics"))
     initial_checkpoint = as_mapping(manifest.get("query_adaptation_initial_checkpoint"))
     run_control = as_mapping(manifest.get("run_control"))
-    lora_config = as_mapping(as_mapping(manifest.get("backbone")).get("lora"))
+    peft_adapter_config = _peft_adapter_config_from_backbone(
+        as_mapping(manifest.get("backbone"))
+    )
 
     run = ExperimentRunRecord(
         run_id=trainer_version,
@@ -195,15 +197,18 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
             runtime_metrics.get("trainable_param_ratio")
         ),
         peft_adapter_name=optional_str(
-            lora_config.get("adapter_name") or lora_config.get("peft_adapter_name")
+            peft_adapter_config.get("adapter_name")
+            or peft_adapter_config.get("peft_adapter_name")
         ),
-        lora_rank=optional_int(lora_config.get("rank")),
-        lora_alpha=optional_int(lora_config.get("alpha")),
-        lora_dropout=optional_float(lora_config.get("dropout")),
-        lora_bias=optional_str(lora_config.get("bias")),
-        lora_target_modules=optional_str(lora_config.get("target_modules")),
-        lora_use_rslora=_optional_bool(lora_config.get("use_rslora")),
-        lora_use_dora=_optional_bool(lora_config.get("use_dora")),
+        peft_adapter_rank=optional_int(peft_adapter_config.get("rank")),
+        peft_adapter_alpha=optional_int(peft_adapter_config.get("alpha")),
+        peft_adapter_dropout=optional_float(peft_adapter_config.get("dropout")),
+        peft_adapter_bias=optional_str(peft_adapter_config.get("bias")),
+        peft_adapter_target_modules=optional_str(
+            peft_adapter_config.get("target_modules")
+        ),
+        peft_adapter_use_rslora=_optional_bool(peft_adapter_config.get("use_rslora")),
+        peft_adapter_use_dora=_optional_bool(peft_adapter_config.get("use_dora")),
         run_control_budget_name=optional_str(run_control.get("budget_name")),
         run_control_output_dir=optional_str(run_control.get("output_root")),
         client_count=None,
@@ -344,6 +349,14 @@ def _parse_selection_slug(selection_slug: str | None) -> dict[str, str | None]:
         }
     )
     return names
+
+
+def _peft_adapter_config_from_backbone(backbone: dict[str, Any]) -> dict[str, Any]:
+    current = as_mapping(backbone.get("peft_adapter_config"))
+    if current:
+        parameters = as_mapping(current.get("parameters"))
+        return {**parameters, **current}
+    return as_mapping(backbone.get("lora"))
 
 
 def _optional_bool(value: object) -> bool | None:

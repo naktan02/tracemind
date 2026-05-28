@@ -176,7 +176,7 @@ uv run pytest tests/unit/test_methods_<method_name>.py tests/unit/test_scripts_h
 기존 weak/strong runner와 manifest까지 확인하려면 관련 runner test를 함께 실행한다.
 
 ```bash
-uv run pytest tests/unit/test_lora_fixmatch_runner.py tests/unit/test_scripts_hydra_configs.py
+uv run pytest tests/unit/test_peft_fixmatch_runner.py tests/unit/test_scripts_hydra_configs.py
 ```
 
 구조 규칙을 확인한다.

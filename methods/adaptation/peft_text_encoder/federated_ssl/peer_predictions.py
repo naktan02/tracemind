@@ -321,7 +321,7 @@ def _helper_model_cache_key(
         "payload_hash": _materialized_state_hash(snapshot.payload),
         "labels": labels,
         "backbone": peft_config.to_backbone_payload(),
-        "lora": peft_config.to_lora_config_payload(),
+        "peft_adapter_config": peft_config.to_peft_adapter_config_payload(),
         "device": trainer_runtime_config.device,
         "classifier_dropout": trainer_runtime_config.classifier_dropout,
     }

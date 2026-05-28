@@ -35,7 +35,7 @@ def build_peft_adapter_delta_tensor_artifact(
     _add_vector_mapping_tensors(
         tensors=tensors,
         target=index["peft_parameter_deltas"],
-        prefix="lora",
+        prefix="peft_adapter",
         values=peft_parameter_deltas,
     )
     return tensors, {

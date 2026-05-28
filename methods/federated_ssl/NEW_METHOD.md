@@ -33,7 +33,7 @@ recipe가 소유하는 trainable-state 선택 축은 `update_family_name`이다.
 
 custom client runtime core가 필요한 method는 `descriptor.py`의
 `FederatedSslLocalStepSpec.runtime_entrypoint`에 `module:function`을 명시한다.
-generic runtime resolver가 `<method>/lora_classifier_training.py` 같은 파일명을
+generic runtime resolver가 `<method>/<update-family>_training.py` 같은 파일명을
 추측하게 두지 않는다. method 폴더를 읽는 사람이 descriptor에서 호출 위치를 바로
 확인할 수 있어야 한다. 특정 update family에서 method를 실행하는 구현은
 `methods/adaptation/<family>/federated_ssl/`에 둔다. method 폴더에는 원본 의미,

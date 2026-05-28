@@ -329,7 +329,7 @@ def build_model(
         "pooling": str(cfg.paper_backbone.pooling),
         "max_length": int(cfg.paper_backbone.max_length),
         "task_prefix": str(cfg.paper_backbone.task_prefix),
-        "lora": {
+        "peft_adapter_config": {
             **(
                 peft_adapter_builder.build_summary(cfg=cfg)
                 if peft_adapter_builder is not None

@@ -31,7 +31,7 @@ from scripts.experiments.query_peft_ssl.runners.teacher_split import (
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
-BOOTSTRAP_SUMMARY_SCHEMA_VERSION = "fixed_classifier_lora_bootstrap.v1"
+BOOTSTRAP_SUMMARY_SCHEMA_VERSION = "fixed_classifier_peft_bootstrap.v1"
 
 
 def run_fixed_classifier_teacher_peft_student_bootstrap(
@@ -164,7 +164,7 @@ def _resolve_run_id(
     bootstrap_version = str(getattr(cfg, "bootstrap_version", "") or "").strip()
     if bootstrap_version:
         return bootstrap_version
-    return generated_at.strftime("lora_bootstrap_%Y_%m_%d_%H%M%S")
+    return generated_at.strftime("peft_bootstrap_%Y_%m_%d_%H%M%S")
 
 
 def _run_student_peft_bootstrap(

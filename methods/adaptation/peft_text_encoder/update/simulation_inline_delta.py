@@ -79,13 +79,13 @@ def _build_peft_parameter_deltas(
     vector_dim = max(1, rank)
     adapter_name = str(getattr(config, "peft_adapter_name", "lora")).strip() or "lora"
     return {
-        f"{adapter_name}.simulation_lora_A": _average_text_signature(
+        f"{adapter_name}.simulation_adapter_a": _average_text_signature(
             rows=rows,
             vector_dim=vector_dim,
             salt="A",
             scale=scale,
         ),
-        f"{adapter_name}.simulation_lora_B": _average_text_signature(
+        f"{adapter_name}.simulation_adapter_b": _average_text_signature(
             rows=rows,
             vector_dim=vector_dim,
             salt="B",

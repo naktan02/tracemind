@@ -118,19 +118,25 @@ def load_fl_ssl_result_index_records(
         peft_adapter_name=optional_str(
             _trainable_state_objective_value(objective, "peft_adapter_name")
         ),
-        lora_rank=optional_int(_trainable_state_objective_value(objective, "rank")),
-        lora_alpha=optional_int(_trainable_state_objective_value(objective, "alpha")),
-        lora_dropout=optional_float(
+        peft_adapter_rank=optional_int(
+            _trainable_state_objective_value(objective, "rank")
+        ),
+        peft_adapter_alpha=optional_int(
+            _trainable_state_objective_value(objective, "alpha")
+        ),
+        peft_adapter_dropout=optional_float(
             _trainable_state_objective_value(objective, "dropout")
         ),
-        lora_bias=optional_str(_trainable_state_objective_value(objective, "bias")),
-        lora_target_modules=optional_str(
+        peft_adapter_bias=optional_str(
+            _trainable_state_objective_value(objective, "bias")
+        ),
+        peft_adapter_target_modules=optional_str(
             _trainable_state_objective_value(objective, "target_modules")
         ),
-        lora_use_rslora=_optional_bool(
+        peft_adapter_use_rslora=_optional_bool(
             _trainable_state_objective_value(objective, "use_rslora")
         ),
-        lora_use_dora=_optional_bool(
+        peft_adapter_use_dora=_optional_bool(
             _trainable_state_objective_value(objective, "use_dora")
         ),
         run_control_budget_name=optional_str(run_control.get("budget_name")),

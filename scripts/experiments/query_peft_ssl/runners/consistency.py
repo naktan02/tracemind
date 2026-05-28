@@ -273,4 +273,4 @@ def _build_query_ssl_resume_manifest(cfg: Any) -> dict[str, object]:
 
 
 def _build_trainer_version_prefix(descriptor: QuerySslAlgorithmDescriptor) -> str:
-    return f"lora_{descriptor.algorithm_name.strip().lower()}"
+    return f"peft_{descriptor.algorithm_name.strip().lower()}"
