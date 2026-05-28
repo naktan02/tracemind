@@ -143,7 +143,7 @@
 - local update backend registry는 `methods/adaptation/local_update_registry.py`가 소유한다
   - `training/backends/training/` old path는 재도입하지 않는다
   - 새 local update backend는 `methods/adaptation/<family>/training_backend.py`에 둔다
-- `methods/adaptation/peft_text_classifier/`
+- `methods/adaptation/peft_text_encoder/`
   - PEFT + text classifier scaffold와 local update backend core
   - raw text를 agent-local 입력으로 요구하고 shared payload에는 artifact ref만 남긴다.
 

@@ -8,11 +8,11 @@ from pathlib import Path
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
     AggregationArtifactStore,
 )
-from methods.adaptation.peft_text_classifier.update.base_state_snapshot import (
+from methods.adaptation.peft_text_encoder.update.base_state_snapshot import (
     PEFT_ENCODER_BASE_STATE_MATERIALIZER_NAME,
     peft_encoder_base_state_artifact_refs,
 )
-from methods.adaptation.peft_text_classifier.update.materialization import (
+from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
     materialize_base_peft_encoder_partitioned_state,
     materialize_base_peft_encoder_state,

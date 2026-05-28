@@ -13,21 +13,21 @@ from scripts.experiments.fl_ssl.run_layout import (
     resolve_fl_ssl_split_slug,
 )
 
-PEFT_TEXT_CLASSIFIER_SLUG_BUILDER = (
-    "methods.adaptation.peft_text_classifier.runtime_family."
-    "build_peft_text_classifier_composition_slug"
+PEFT_TEXT_ENCODER_SLUG_BUILDER = (
+    "methods.adaptation.peft_text_encoder.runtime_family."
+    "build_peft_text_encoder_composition_slug"
 )
 
 
-def _peft_text_classifier_round_runtime() -> dict[str, object]:
+def _peft_text_encoder_round_runtime() -> dict[str, object]:
     return {
         "payload_adapter_kind": "peft_classifier",
-        "update_family_name": "peft_text_classifier",
-        "runtime_payload_key": "peft_text_classifier",
-        "composition_slug_builder": PEFT_TEXT_CLASSIFIER_SLUG_BUILDER,
+        "update_family_name": "peft_text_encoder",
+        "runtime_payload_key": "peft_text_encoder",
+        "composition_slug_builder": PEFT_TEXT_ENCODER_SLUG_BUILDER,
         "aggregation_backend_name": "fedavg",
         "runtime_payloads": {
-            "peft_text_classifier": {"peft_adapter_name": "lora"},
+            "peft_text_encoder": {"peft_adapter_name": "lora"},
         },
     }
 
@@ -45,7 +45,7 @@ def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
             "labeled_exposure_policy": {"name": "client_local_split"},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "query_ssl_method": {"name": "fixmatch_usb_v1"},
-            "round_runtime": _peft_text_classifier_round_runtime(),
+            "round_runtime": _peft_text_encoder_round_runtime(),
             "fl_method": {"composition_mode": "manual"},
         }
     )
@@ -61,12 +61,12 @@ def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_client_local_seed42"
     )
     assert resolve_fl_ssl_method_composition_slug(cfg) == (
-        "fixmatch_usb_v1__peft_text_classifier_lora__fedavg"
+        "fixmatch_usb_v1__peft_text_encoder_lora__fedavg"
     )
     assert resolve_fl_ssl_run_condition_slug(cfg) == "clients10_rounds50"
     assert str(output_dir) == (
         "runs/fl_ssl/manual_baselines/"
-        "fixmatch_usb_v1__peft_text_classifier_lora__fedavg/"
+        "fixmatch_usb_v1__peft_text_encoder_lora__fedavg/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_client_local_seed42/"
         "clients10_rounds50/"
         "20260518T010203Z"
@@ -84,7 +84,7 @@ def test_fl_ssl_run_condition_slug_records_fedprox_mu() -> None:
             },
             "labeled_exposure_policy": {"name": "shared_client_seed"},
             "query_ssl_method": {"name": "flexmatch_usb_v1"},
-            "round_runtime": _peft_text_classifier_round_runtime(),
+            "round_runtime": _peft_text_encoder_round_runtime(),
             "training_task": {
                 "objective": {
                     "peft_classifier": {
@@ -107,7 +107,7 @@ def test_fl_ssl_run_condition_slug_records_fedprox_mu() -> None:
     )
     assert str(output_dir) == (
         "runs/fl_ssl/manual_baselines/"
-        "flexmatch_usb_v1__peft_text_classifier_lora__fedavg/"
+        "flexmatch_usb_v1__peft_text_encoder_lora__fedavg/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
         "shared_client_seed42/"
         "clients10_rounds30_fedprox_mu0.01/"
@@ -153,7 +153,7 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "ssl_method": {"name": "fedmatch"},
             "server_update_policy": {"name": "fedmatch_partitioned"},
-            "round_runtime": _peft_text_classifier_round_runtime(),
+            "round_runtime": _peft_text_encoder_round_runtime(),
             "fl_method": {"composition_mode": "method_owned"},
         }
     )
@@ -166,7 +166,7 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
 
     assert str(output_dir) == (
         "runs/fl_ssl/fedmatch/"
-        "fedmatch__peft_text_classifier_lora__fedmatch_partitioned/"
+        "fedmatch__peft_text_encoder_lora__fedmatch_partitioned/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_client_local_seed42/"
         "clients10_rounds1/"
         "20260518T010203Z"
@@ -192,7 +192,7 @@ def test_fl_ssl_split_slug_includes_non_default_labeled_exposure_policy() -> Non
             "federated_run_budget": {"client_count": 10, "rounds": 1},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "query_ssl_method": {"name": "flexmatch_usb_v1"},
-            "round_runtime": _peft_text_classifier_round_runtime(),
+            "round_runtime": _peft_text_encoder_round_runtime(),
             "fl_method": {"composition_mode": "manual"},
         }
     )
@@ -209,7 +209,7 @@ def test_fl_ssl_split_slug_includes_non_default_labeled_exposure_policy() -> Non
     )
     assert str(output_dir) == (
         "runs/fl_ssl/manual_baselines/"
-        "flexmatch_usb_v1__peft_text_classifier_lora__fedavg/"
+        "flexmatch_usb_v1__peft_text_encoder_lora__fedavg/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
         "labels_pc100_shared_client_seed42/"
         "clients10_rounds1/"
@@ -280,7 +280,7 @@ def test_fl_ssl_client_count_sweep_groups_under_method_split_and_rounds() -> Non
             "labeled_exposure_policy": {"name": "shared_client_seed"},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "query_ssl_method": {"name": "fixmatch_usb_v1"},
-            "round_runtime": _peft_text_classifier_round_runtime(),
+            "round_runtime": _peft_text_encoder_round_runtime(),
             "fl_method": {"composition_mode": "manual"},
         }
     )
@@ -294,7 +294,7 @@ def test_fl_ssl_client_count_sweep_groups_under_method_split_and_rounds() -> Non
 
     assert str(sweep_dir) == (
         "runs/fl_ssl/manual_baselines/"
-        "fixmatch_usb_v1__peft_text_classifier_lora__fedavg/"
+        "fixmatch_usb_v1__peft_text_encoder_lora__fedavg/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_shared_client_seed42/"
         "sweeps/client_count_rounds1/"
         "20260518T010203Z"
@@ -303,7 +303,7 @@ def test_fl_ssl_client_count_sweep_groups_under_method_split_and_rounds() -> Non
         build_fl_ssl_client_count_sweep_member_dir(sweep_dir, client_count=10)
     ) == (
         "runs/fl_ssl/manual_baselines/"
-        "fixmatch_usb_v1__peft_text_classifier_lora__fedavg/"
+        "fixmatch_usb_v1__peft_text_encoder_lora__fedavg/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_shared_client_seed42/"
         "sweeps/client_count_rounds1/"
         "20260518T010203Z/clients_10"

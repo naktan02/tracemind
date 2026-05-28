@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from methods.adaptation.peft_text_classifier.config import (
+from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
 )
 

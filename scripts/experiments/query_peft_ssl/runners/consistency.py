@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from methods.adaptation.peft_text_classifier.training.loops import (
+from methods.adaptation.peft_text_encoder.training.loops import (
     train_query_ssl_classifier as train_query_ssl_peft_classifier,
 )
 from methods.adaptation.query_text_views.query_ssl_views import (

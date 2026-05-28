@@ -18,7 +18,7 @@ central fixed embedding + classifier seed
   실행 표면과 legacy compatibility 이름을 함께 보여준다.
 - 현재 표의 historical `adapter_family_name`, `lora_classifier`, `fedmatch_agreement`는
   migration 기록에서만 보일 수 있다. target 구조에서는 각각
-  `payload_adapter_kind`/`update_family_name`, `peft_text_classifier`,
+  `payload_adapter_kind`/`update_family_name`, `peft_text_encoder`,
   method-local FedMatch objective로 정리한다. `lora_classifier` shared parser/factory와
   report/result reader fallback은 제거됐으므로 새 실험 산출물은 `peft_classifier`
   payload format을 쓴다.
@@ -56,7 +56,7 @@ central fixed embedding + classifier seed
 | Consistency method | `pseudolabel_usb_v1`, `fixmatch_usb_v1`, `flexmatch_usb_v1`, `freematch_usb_v1`, `adamatch_usb_v1` | `strategy_axes/ssl/consistency_method` | `methods/ssl/algorithms/*` | 중앙 control / FL manual baseline |
 | SSL augmentation source | `precomputed_usb_candidates_v1` | `strategy_axes/ssl/augmentation_source` | scripts runner | 중앙 control |
 | SSL strong view policy | `first_aug`, `second_aug`, `row_parity_aug`, `query_id_hash_aug` | `query_ssl_strong_view_policy` scalar | `methods/adaptation/query_text_views/data.py` | 중앙 control |
-| Query text view glue | supervised, bootstrap, pseudo-label, prototype SSL, FixMatch entrypoints | `conf/entrypoints/central_ssl_control/*` | `methods/adaptation/peft_text_classifier/*` + `methods/adaptation/query_text_views/*` | 중앙 control |
+| Query text view glue | supervised, bootstrap, pseudo-label, prototype SSL, FixMatch entrypoints | `conf/entrypoints/central_ssl_control/*` | `methods/adaptation/peft_text_encoder/*` + `methods/adaptation/query_text_views/*` | 중앙 control |
 | PEFT adapter | `lora`, `rslora` | `strategy_axes/adaptation/peft_adapter` | `methods/adaptation/peft_adapters/*` | 중앙 control seam |
 | Central SSL run budget | `smoke`, `main` | `run_controls/central_ssl/budget` | smoke는 `runs/_smoke`, main은 `runs`; batch/epoch/step budget과 output root를 함께 고른다 | 중앙 control |
 
@@ -79,7 +79,7 @@ central fixed embedding + classifier seed
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
 | Client labeled/unlabeled split | materialized manifest or runtime split fallback | `materialize_fl_client_split.py`, `fl_client_split_materialization.labeled_policy`, `fl_data.*`, `client_pool_split.*` | manifest preserves source selection, labeled pool selection policy, `weak=text`, `strong=[aug_0, aug_1]` | simulation |
 | Labeled exposure policy | `shared_client_seed` 기본, `client_local_split` legacy/ablation, `server_only_seed` artifact/request metadata | `strategy_axes/fl/labeled_exposure_policy` + materialized manifest metadata | separates how many labeled rows are selected from where selected labeled rows are visible | simulation capability |
-| Validation evaluator | `peft_classifier_eval` | `local_update_profile.validation_*` -> `validation.*` | `methods/adaptation/peft_text_classifier/evaluation.py` | FL SSL simulation |
+| Validation evaluator | `peft_classifier_eval` | `local_update_profile.validation_*` -> `validation.*` | `methods/adaptation/peft_text_encoder/evaluation.py` | FL SSL simulation |
 | Client participation policy | `all_clients`, `fraction_random`, `fixed_count_random` | `strategy_axes/fl/client_participation_policy` | `methods/federated/participation.py`, round loop selection | simulation capability |
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, config-declared runtime adapter executor | simulation active; `supervised_seed_step` implementation is a PEFT encoder runtime adapter, not script-owned policy logic |
@@ -94,8 +94,8 @@ central fixed embedding + classifier seed
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `peft_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | PEFT-classifier Query SSL training/evidence/scoring/privacy runtime | FL SSL simulation profile |
 | Aggregation backend | `fedavg`, effective `partitioned_delta_average` for partitioned server update | `round_runtime.aggregation_backend_name` + update-family/server policy resolver | reusable backend는 `methods/federated/aggregation/*` + update family aggregation projection, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
-| Update family | `linear_head`, `peft_text_classifier`, future `prototype_pack`; v1 adapter family는 compatibility field | `strategy_axes/trainable_state/update_family`, `round_runtime.update_family_name`, model/update manifest | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*`, shared payload contract | 활성 runtime / server aggregation scaffold |
-| FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/peft_encoder_local_training.py`, `scripts/runtime_adapters/federated_agent/artifact_store.py` + `methods/adaptation/peft_text_classifier/training/` | simulation |
+| Update family | `linear_head`, `peft_text_encoder`, future `prototype_pack`; v1 adapter family는 compatibility field | `strategy_axes/trainable_state/update_family`, `round_runtime.update_family_name`, model/update manifest | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*`, shared payload contract | 활성 runtime / server aggregation scaffold |
+| FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/peft_encoder_local_training.py`, `scripts/runtime_adapters/federated_agent/artifact_store.py` + `methods/adaptation/peft_text_encoder/training/` | simulation |
 | Runtime resource cache | run-scoped in-memory cache | simulation bootstrap context | `methods.common` cache protocol + simulation implementation; adapter family consumes optional cache | simulation optimization, not method identity |
 | FL run budget | `smoke`, `reduced`, `main` | `run_controls/fl_ssl/budget` | smoke는 `runs/_smoke/fl_ssl`, reduced/main은 `runs/fl_ssl`; reduced는 5 rounds, main은 30 rounds | simulation |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
@@ -150,7 +150,7 @@ central fixed embedding + classifier seed
   agreement pseudo-label vote, helper selection, sigma/psi partition 의미,
   supervised/unsupervised tensor local objective를 method package에 고정했다.
   PEFT text-classifier logical partition 실행 loop와 method-owned local simulation bridge는
-  `methods/adaptation/peft_text_classifier/federated_ssl/`의 method-neutral
+  `methods/adaptation/peft_text_encoder/federated_ssl/`의 method-neutral
   update-family runtime primitive가 소유한다. FedMatch의 `sigma/psi` 의미는
   `methods/federated_ssl/fedmatch/`에서 읽는다.
   현재 server path는 원본 sparse sigma/psi sync가 아니라 PEFT-classifier merged
@@ -193,13 +193,13 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
 - Prototype translation provenance는 pack/build state metadata이며 번역 실행 knob가 아니다.
 - Central SSL control의 `acceptance_policy_name`은 일부 runtime compatibility field로 남아 있다.
 - Multi-prototype runtime은 실험 분석에는 가능하지만 v1 active runtime 기본값은 아니다.
-- `peft_text_classifier` update family는 FL simulation research path를 1차 범위로
+- `peft_text_encoder` update family는 FL simulation research path를 1차 범위로
   열고, live `agent`/`main_server` runtime translation은 capability adapter가 준비된
   뒤 연다.
 - `lora_classifier`는 historical v1 family 이름이고, active 실행 config와
-  report/result reader의 source-of-truth는 `peft_text_classifier` update family와
+  report/result reader의 source-of-truth는 `peft_text_encoder` update family와
   `peft_classifier` payload kind다.
-- `peft_text_classifier` 기본 scaffold는 `mxbai_encoder`, LoRA
+- `peft_text_encoder` 기본 scaffold는 `mxbai_encoder`, LoRA
   `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
   checkpoint, label schema, split, seed, metric을 고정한다.
 - Agent `peft_classifier_trainer`는 fixed embedding-only example을 받지 않는다.
@@ -215,7 +215,7 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
 - FL simulation 기본 조합은 `composition_mode=manual`,
   `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
   `local_update_profile=peft_pseudo_label_v1`,
-  `strategy_axes/trainable_state/update_family=peft_text_classifier`,
+  `strategy_axes/trainable_state/update_family=peft_text_encoder`,
   `round_runtime.aggregation_backend_name=fedavg`다. 기존 `diagonal_scale` shared
   payload family와 prototype scorer fallback은 FL SSL simulation에서 제거했으며, 실제 method로
   다시 필요해질 때 method-owned capability로 추가한다. 이 조합은

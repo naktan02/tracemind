@@ -49,7 +49,7 @@
 
 ### Phase 5. 시스템 FL runtime translation
 
-- FL SSL winner를 우선 `peft_text_classifier` update family 후보로
+- FL SSL winner를 우선 `peft_text_encoder` update family 후보로
   runtime/privacy 제약에 맞게 옮긴다. v1 `lora_classifier` 이름은 compatibility
   표면으로만 해석한다.
 
@@ -79,7 +79,7 @@
 - `QueryBuffer` 단계에서는 저장만 하고 실제 학습은 하지 않는다.
 - raw query text는 로컬에만 남기고 서버로 보내지 않는다.
 - `ScoredEventRepository`와 `QueryBuffer` 역할을 섞지 않는다.
-- `peft_text_classifier` update family는 FL simulation/runtime translation 후보로 이미
+- `peft_text_encoder` update family는 FL simulation/runtime translation 후보로 이미
   열려 있다. v1 `lora_classifier` shared payload 이름은 compatibility 표면이다.
   `projection_head`, full encoder, 추가 PEFT family payload는 실제 필요성이 확인되기
   전까지 열지 않는다.

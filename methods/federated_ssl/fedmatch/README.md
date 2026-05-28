@@ -19,12 +19,12 @@
 - `partitioned_runtime_plan.py`: scenario, local supervision, sigma/psi routing,
   upload partition, objective, `psi_factor`를 update-family runtime plan으로 정규화
 - `partitioned_local_training.py`: FedMatch descriptor가 호출하는 partitioned local
-  training entrypoint. 현재는 PEFT text classifier runtime bridge로 위임한다.
+  training entrypoint. 현재는 PEFT text encoder runtime bridge로 위임한다.
 - `server_step_parameters.py`: labels-at-server supervised seed step budget 해석
 
 PEFT text-classifier에서 FedMatch를 실행하는 family-specific bridge와 partitioned
 optimizer loop의 source of truth는
-`methods/adaptation/peft_text_classifier/federated_ssl/`다. 기존
+`methods/adaptation/peft_text_encoder/federated_ssl/`다. 기존
 `methods/adaptation/lora_classifier/federated_ssl/` direct import path는 삭제됐다.
 FedMatch 원본 의미와 policy는 이 폴더가 계속 소유한다.
 
@@ -47,7 +47,7 @@ capability다. 원본 FedMatch snapshot은
   strong/backtranslated view forward와 helper weak-view probability를 계산한다.
 - PEFT encoder trainable tensor에 supervised step과 unsupervised step을 순차
   적용하고, sub-step delta를 각각 logical `sigma`/`psi` partition으로 기록
-- PEFT text classifier family slice에서 FedMatch local objective를 호출하고, 기존
+- PEFT text encoder family slice에서 FedMatch local objective를 호출하고, 기존
   merged PEFT encoder delta와 logical `sigma`/`psi` partition delta를 함께 제출
 - main fair comparison의 local budget은 `local_budget_policy=iteration_capped`를
   기본으로 하며 `training_task.max_steps`를 따른다. 원본 labels-at-client budget은

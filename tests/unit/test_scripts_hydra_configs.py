@@ -494,13 +494,13 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
     assert "fl_profile" not in cfg
     assert "round_runtime_profile" not in cfg
-    assert cfg.round_runtime.update_family_name == "peft_text_classifier"
-    assert cfg.round_runtime.runtime_payload_key == "peft_text_classifier"
+    assert cfg.round_runtime.update_family_name == "peft_text_encoder"
+    assert cfg.round_runtime.runtime_payload_key == "peft_text_encoder"
     assert "peft_classifier" not in cfg.round_runtime
-    assert "peft_text_classifier" in cfg.round_runtime.runtime_payloads
+    assert "peft_text_encoder" in cfg.round_runtime.runtime_payloads
     assert cfg.round_runtime.composition_slug_builder == (
-        "methods.adaptation.peft_text_classifier.runtime_family."
-        "build_peft_text_classifier_composition_slug"
+        "methods.adaptation.peft_text_encoder.runtime_family."
+        "build_peft_text_encoder_composition_slug"
     )
     assert cfg.round_runtime.round_runtime_payload_builder == (
         "scripts.runtime_adapters.federated_server.peft_encoder_round_runtime."
@@ -515,11 +515,11 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "run_peft_encoder_query_ssl_client_round_if_supported",
     ]
     assert cfg.round_runtime.initial_state_builder == (
-        "methods.adaptation.peft_text_classifier.runtime_family."
+        "methods.adaptation.peft_text_encoder.runtime_family."
         "build_initial_peft_encoder_state"
     )
     assert cfg.round_runtime.validation_evaluator == (
-        "methods.adaptation.peft_text_classifier.evaluation."
+        "methods.adaptation.peft_text_encoder.evaluation."
         "evaluate_peft_encoder_simulation_validation_payload"
     )
     assert cfg.round_runtime.final_projection_builder == (
@@ -527,7 +527,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "build_peft_encoder_final_projection_artifacts"
     )
     assert cfg.round_runtime.transient_resource_cleaner == (
-        "methods.adaptation.peft_text_classifier.resource_cache."
+        "methods.adaptation.peft_text_encoder.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     )
     assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
@@ -732,13 +732,13 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         cfg.training_task.objective.algorithm_profile_name
         == cfg.local_update_profile.algorithm_profile_name
     )
-    assert cfg.round_runtime.update_family_name == "peft_text_classifier"
-    assert cfg.round_runtime.runtime_payload_key == "peft_text_classifier"
+    assert cfg.round_runtime.update_family_name == "peft_text_encoder"
+    assert cfg.round_runtime.runtime_payload_key == "peft_text_encoder"
     assert "peft_classifier" not in cfg.round_runtime
-    assert "peft_text_classifier" in cfg.round_runtime.runtime_payloads
+    assert "peft_text_encoder" in cfg.round_runtime.runtime_payloads
     assert cfg.round_runtime.composition_slug_builder == (
-        "methods.adaptation.peft_text_classifier.runtime_family."
-        "build_peft_text_classifier_composition_slug"
+        "methods.adaptation.peft_text_encoder.runtime_family."
+        "build_peft_text_encoder_composition_slug"
     )
     assert cfg.round_runtime.round_runtime_payload_builder == (
         "scripts.runtime_adapters.federated_server.peft_encoder_round_runtime."
@@ -753,11 +753,11 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "run_peft_encoder_query_ssl_client_round_if_supported",
     ]
     assert cfg.round_runtime.initial_state_builder == (
-        "methods.adaptation.peft_text_classifier.runtime_family."
+        "methods.adaptation.peft_text_encoder.runtime_family."
         "build_initial_peft_encoder_state"
     )
     assert cfg.round_runtime.validation_evaluator == (
-        "methods.adaptation.peft_text_classifier.evaluation."
+        "methods.adaptation.peft_text_encoder.evaluation."
         "evaluate_peft_encoder_simulation_validation_payload"
     )
     assert cfg.round_runtime.final_projection_builder == (
@@ -765,7 +765,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "build_peft_encoder_final_projection_artifacts"
     )
     assert cfg.round_runtime.transient_resource_cleaner == (
-        "methods.adaptation.peft_text_classifier.resource_cache."
+        "methods.adaptation.peft_text_encoder.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     )
     assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
@@ -1322,7 +1322,7 @@ def test_federated_simulation_supports_manual_fl_method_plan() -> None:
     assert plan.execution_role == "manual_baseline"
     assert plan.manual_axes.client_ssl_objective == "fixmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
-    assert plan.manual_axes.update_family == "peft_text_classifier"
+    assert plan.manual_axes.update_family == "peft_text_encoder"
 
 
 def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides() -> (
@@ -1353,7 +1353,7 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
     assert plan.execution_role == "manual_baseline"
     assert plan.manual_axes.client_ssl_objective == "fixmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
-    assert plan.manual_axes.update_family == "peft_text_classifier"
+    assert plan.manual_axes.update_family == "peft_text_encoder"
 
 
 def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name() -> (
@@ -1389,7 +1389,7 @@ def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name()
     assert cfg.training_task.objective.query_ssl.algorithm_name == "flexmatch"
     assert plan.manual_axes.client_ssl_objective == "flexmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
-    assert plan.manual_axes.update_family == "peft_text_classifier"
+    assert plan.manual_axes.update_family == "peft_text_encoder"
 
 
 def test_train_peft_supervised_classifier_defaults_to_gpu_online_scaffold() -> None:

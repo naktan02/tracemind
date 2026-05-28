@@ -12,18 +12,18 @@ from methods.adaptation.local_objective_regularizers.fedprox import (
     compute_fedprox_proximal_loss,
     snapshot_trainable_parameters,
 )
-from methods.adaptation.peft_text_classifier.config import (
+from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
 )
-from methods.adaptation.peft_text_classifier.training import (
+from methods.adaptation.peft_text_encoder.training import (
     pseudo_label_diagnostics as pld,
 )
-from methods.adaptation.peft_text_classifier.training.loops import (
+from methods.adaptation.peft_text_encoder.training.loops import (
     evaluate_classifier,
     train_classifier,
     train_query_ssl_classifier,
 )
-from methods.adaptation.peft_text_classifier.training.modeling import (
+from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftEncoderTextClassifier,
 )
 

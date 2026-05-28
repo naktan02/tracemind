@@ -150,7 +150,7 @@ def test_fedmatch_descriptor_prefers_peft_classifier_recipe_surface() -> None:
     assert [
         pair.normalized_key for pair in descriptor.recipe.supported_runtime_pairs
     ] == [
-        ("peft_text_classifier", "fedavg"),
+        ("peft_text_encoder", "fedavg"),
     ]
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from methods.adaptation.peft_text_classifier.report_artifacts import (
+from methods.adaptation.peft_text_encoder.report_artifacts import (
     classifier_aggregate_snapshot_candidates,
     classifier_objective_value,
     classifier_primary_update_ref_fields,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from methods.adaptation.peft_text_classifier.projection_artifacts import (
+from methods.adaptation.peft_text_encoder.projection_artifacts import (
     write_peft_encoder_projection_artifacts,
 )
 from scripts.experiments.query_peft_ssl.io.artifact_paths import (

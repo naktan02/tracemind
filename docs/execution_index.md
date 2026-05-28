@@ -64,7 +64,7 @@ Seed / central SSL:
 5. `scripts/experiments/central_ssl_control/train_peft_supervised_classifier.py`
 6. `scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py`
 7. `scripts/experiments/query_peft_ssl/*`
-8. `methods/adaptation/peft_text_classifier/*`
+8. `methods/adaptation/peft_text_encoder/*`
 9. `methods/evaluation/*`
 10. `methods/adaptation/query_text_views/*`
 11. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)

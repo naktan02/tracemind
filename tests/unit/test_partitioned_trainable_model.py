@@ -6,7 +6,7 @@ import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from methods.adaptation.peft_text_classifier.federated_ssl.partitioned import (
+from methods.adaptation.peft_text_encoder.federated_ssl.partitioned import (
     trainable_model as ptm,
 )
 

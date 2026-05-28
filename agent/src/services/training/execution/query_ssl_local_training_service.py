@@ -14,10 +14,10 @@ from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
 )
-from methods.adaptation.peft_text_classifier.training import (
+from methods.adaptation.peft_text_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
-from methods.adaptation.peft_text_classifier.update.materialization import (
+from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache

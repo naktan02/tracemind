@@ -9,28 +9,28 @@ from pathlib import Path
 
 import pytest
 
-from methods.adaptation.peft_text_classifier import (
+from methods.adaptation.peft_text_encoder import (
     evaluation as peft_encoder_evaluation,
 )
-from methods.adaptation.peft_text_classifier.config import (
+from methods.adaptation.peft_text_encoder.config import (
     PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
     PEFT_ENCODER_DELTA_FORMAT_INLINE,
     PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
     PeftEncoderTrainingBackendConfig,
 )
-from methods.adaptation.peft_text_classifier.evaluation import (
+from methods.adaptation.peft_text_encoder.evaluation import (
     PEFT_CLASSIFIER_EVALUATOR_NAME,
 )
-from methods.adaptation.peft_text_classifier.federated_ssl import (
+from methods.adaptation.peft_text_encoder.federated_ssl import (
     supervised_seed_step,
 )
-from methods.adaptation.peft_text_classifier.federated_ssl.peer_predictions import (
+from methods.adaptation.peft_text_encoder.federated_ssl.peer_predictions import (
     PEFT_ENCODER_PEER_SNAPSHOT_KIND,
 )
-from methods.adaptation.peft_text_classifier.update.delta_artifacts import (
+from methods.adaptation.peft_text_encoder.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
 )
-from methods.adaptation.peft_text_classifier.update.materialization import (
+from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.adaptation.query_text_views.local_training_budget import (
@@ -448,13 +448,13 @@ def _legacy_manual_ssl_method_config() -> FederatedSslMethodConfig:
 def _default_round_runtime_config(
     *,
     payload_adapter_kind: str = "peft_classifier",
-    update_family_name: str = "peft_text_classifier",
+    update_family_name: str = "peft_text_encoder",
     initial_state_builder: str | None = (
-        "methods.adaptation.peft_text_classifier.runtime_family."
+        "methods.adaptation.peft_text_encoder.runtime_family."
         "build_initial_peft_encoder_state"
     ),
     validation_evaluator: str | None = (
-        "methods.adaptation.peft_text_classifier.evaluation."
+        "methods.adaptation.peft_text_encoder.evaluation."
         "evaluate_peft_encoder_simulation_validation_payload"
     ),
     final_projection_builder: str | None = (
@@ -462,7 +462,7 @@ def _default_round_runtime_config(
         "build_peft_encoder_final_projection_artifacts"
     ),
     transient_resource_cleaner: str | None = (
-        "methods.adaptation.peft_text_classifier.resource_cache."
+        "methods.adaptation.peft_text_encoder.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     ),
     local_objective_executors: tuple[str, ...] = (
@@ -479,7 +479,7 @@ def _default_round_runtime_config(
         if peft_classifier is not None
         else (
             _peft_runtime_config()
-            if update_family_name == "peft_text_classifier"
+            if update_family_name == "peft_text_encoder"
             else None
         )
     )
@@ -553,9 +553,9 @@ def _peft_runtime_config() -> FederatedPeftEncoderRuntimeConfig:
 def test_peft_encoder_round_runtime_payload_uses_update_family_key() -> None:
     payloads = build_peft_encoder_round_runtime_payloads(
         {
-            "runtime_payload_key": "peft_text_classifier",
+            "runtime_payload_key": "peft_text_encoder",
             "runtime_payloads": {
-                "peft_text_classifier": {
+                "peft_text_encoder": {
                     "backbone_model_id": "mxbai",
                     "backbone_revision": "main",
                     "tokenizer_model_id": "mxbai",
@@ -577,7 +577,7 @@ def test_peft_encoder_round_runtime_payload_uses_update_family_key() -> None:
 
     assert "peft_classifier" not in payloads
     assert isinstance(
-        payloads["peft_text_classifier"],
+        payloads["peft_text_encoder"],
         FederatedPeftEncoderRuntimeConfig,
     )
 
@@ -586,7 +586,7 @@ def test_peft_encoder_round_runtime_payload_requires_configured_payload_key() ->
     with pytest.raises(ValueError, match="must include payload key"):
         build_peft_encoder_round_runtime_payloads(
             {
-                "runtime_payload_key": "peft_text_classifier",
+                "runtime_payload_key": "peft_text_encoder",
                 "runtime_payloads": {},
             }
         )
@@ -2190,7 +2190,7 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
             "manual_axes": {
                 "client_ssl_objective": "fixmatch",
                 "server_aggregation": "fedavg",
-                "update_family": "peft_text_classifier",
+                "update_family": "peft_text_encoder",
             },
         },
         security_policy=None,
@@ -2357,13 +2357,13 @@ def test_run_simulation_request_rejects_missing_peft_runtime_config(
         round_runtime_config=FederatedRoundRuntimeConfig(
             payload_adapter_kind="peft_classifier",
             aggregation_backend_name="fedavg",
-            update_family_name="peft_text_classifier",
+            update_family_name="peft_text_encoder",
             initial_state_builder=(
-                "methods.adaptation.peft_text_classifier.runtime_family."
+                "methods.adaptation.peft_text_encoder.runtime_family."
                 "build_initial_peft_encoder_state"
             ),
             validation_evaluator=(
-                "methods.adaptation.peft_text_classifier.evaluation."
+                "methods.adaptation.peft_text_encoder.evaluation."
                 "evaluate_peft_encoder_simulation_validation_payload"
             ),
         ),
@@ -2542,7 +2542,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_text_classifier"
+        / "peft_text_encoder"
         / "sim_rev_0001"
         / "peft_adapter.json"
     )
@@ -2551,7 +2551,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_text_classifier"
+        / "peft_text_encoder"
         / "sim_rev_0001"
         / "classifier_head.json"
     )
@@ -2568,7 +2568,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_text_classifier"
+        / "peft_text_encoder"
         / "sim_rev_0002"
         / "peft_adapter.json"
     )
@@ -2577,7 +2577,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_text_classifier"
+        / "peft_text_encoder"
         / "sim_rev_0002"
         / "classifier_head.json"
     )
@@ -2676,7 +2676,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_text_classifier"
+        / "peft_text_encoder"
         / "sim_rev_0001"
         / "peft_adapter.json"
     )
@@ -2685,7 +2685,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_text_classifier"
+        / "peft_text_encoder"
         / "sim_rev_0001"
         / "classifier_head.json"
     )

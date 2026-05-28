@@ -19,7 +19,7 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
 - `privacy_guards/`: shared adapter update clipping/DP policy core와 registry
 - `peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와 registry.
   classifier/task payload 의미는 소유하지 않는다.
-- `peft_text_classifier/`: PEFT text classifier update family. text model composition,
+- `peft_text_encoder/`: PEFT text encoder update family. text model composition,
   training, update materialization, aggregation projection을 소유한다.
 - `query_text_views/`: query-domain text row/view의 token-batch 입력 glue와
   weak/strong view row 해석 helper

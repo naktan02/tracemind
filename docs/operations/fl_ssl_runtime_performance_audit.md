@@ -388,17 +388,17 @@ Client timing:
 
 적용된 변경:
 
-- manual Query SSL/FedAvg 계열의 server-owned merged LoRA/head client delta artifact를
+- manual Query SSL/FedAvg 계열의 server-owned merged PEFT/head client delta artifact를
   JSON 대신 `safetensors`로 저장한다.
-- `lora_delta_artifact_ref`와 `classifier_head_delta_artifact_ref`의 opaque ref 의미는
+- `peft_adapter_delta_artifact_ref`와 `classifier_head_delta_artifact_ref`의 opaque ref 의미는
   유지했다. 같은 ref에서 `.safetensors`를 우선 읽고, 파일이 없으면 기존 JSON artifact를
   읽는다.
 - FedMatch partitioned 경로는 이미 `partitioned_deltas_artifact_ref`를 `safetensors`로
   저장하고 있었으므로 이 변경의 직접 대상은 FixMatch/FlexMatch/FreeMatch/PseudoLabel
   + FedAvg 같은 merged delta 경로다.
-- run-scoped `RuntimeResourceCache`를 manual Query SSL LoRA local training에도 연결했다.
+- run-scoped `RuntimeResourceCache`를 manual Query SSL PEFT local training에도 연결했다.
   method-owned 경로와 동일하게 tokenizer와 backbone base를 cache하고, client별 학습
-  모델은 cached base를 `deepcopy`한 뒤 새 LoRA/head를 붙인다.
+  모델은 cached base를 `deepcopy`한 뒤 새 PEFT/head를 붙인다.
 - `core_model_prepare_seconds` 내부를 `core_seed_seconds`,
   `core_model_build_seconds`, `core_base_parameter_load_seconds`로 추가 계측한다.
 

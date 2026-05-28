@@ -10,13 +10,13 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from methods.adaptation.peft_text_classifier.training.loops import (
+from methods.adaptation.peft_text_encoder.training.loops import (
     evaluate_classifier as evaluate_query_peft_classifier,
 )
-from methods.adaptation.peft_text_classifier.training.loops import (
+from methods.adaptation.peft_text_encoder.training.loops import (
     set_seed as set_query_peft_seed,
 )
-from methods.adaptation.peft_text_classifier.training.modeling import (
+from methods.adaptation.peft_text_encoder.training.modeling import (
     build_model as build_query_peft_model,
 )
 from methods.adaptation.query_text_views.data import (

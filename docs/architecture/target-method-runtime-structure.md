@@ -24,7 +24,7 @@ trainable state identity를 직접 분기하면 Seam이 얕은 구조로 본다.
 | 용어 | 의미 | 예 |
 |---|---|---|
 | PEFT adapter mechanism | encoder에 붙는 PEFT mechanism | `lora`, `dora` |
-| trainable state / update family | client가 학습하고 server가 해석하는 공유 가능 상태 family | `linear_head`, `peft_text_classifier`, `prototype_pack` |
+| trainable state / update family | client가 학습하고 server가 해석하는 공유 가능 상태 family | `linear_head`, `peft_text_encoder`, `prototype_pack` |
 | scorer family | local inference/training에서 score를 만드는 방식 | `classifier_logits`, `prototype_similarity` |
 | method descriptor | FedMatch/FedLGMatch/(FL)^2 같은 논문 method identity와 local/server policy 요구사항 | `fedmatch` |
 | runtime capability | 여러 method가 공유할 수 있는 실행 능력 | `peer_context`, `server_step`, `artifact_ref_materializer`, `security_policy` |
@@ -34,7 +34,7 @@ report/result reader는 `payload_adapter_kind`와 `update_family_name`만 받는
 prototype까지 포함하는 실행 축은 `update_family_name` 또는
 `trainable_state_family_name`으로 표현한다.
 
-`text`가 붙은 이름은 의도적으로 modality-specific이다. `peft_text_classifier`는
+`text`가 붙은 이름은 의도적으로 modality-specific이다. `peft_text_encoder`는
 text encoder, tokenizer, text view 생성, PEFT adapter, linear head가 함께 움직이는
 update family다. 반대로 `linear_head`, `prototype_pack`, `classifier_logits`,
 `prototype_similarity`는 embedding/vector 위에서 동작하는 modality-neutral primitive나
@@ -49,7 +49,7 @@ family로 둔다. 이미지나 오디오를 추가할 때는 text-specific famil
 ```text
 shared/
   contracts/
-    trainable_state/{linear_head,peft_text_classifier,prototype_pack}.py
+    trainable_state/{linear_head,peft_text_encoder,prototype_pack}.py
     fl_ssl/{execution_plan,update_payload,report_protocol}.py
 
 methods/
@@ -58,7 +58,7 @@ methods/
   prototype/aggregation_projection.py
   adaptation/
     peft_adapters/{lora,dora}/
-    peft_text_classifier/{training,update,aggregation,federated_ssl}/
+    peft_text_encoder/{training,update,aggregation,federated_ssl}/
     query_text_views/
     privacy_guards/
     local_objective_regularizers/
@@ -98,8 +98,8 @@ scripts/
 지도이며, 모든 파일을 한 번에 만들라는 구현 목록이 아니다.
 
 1. `linear_head`는 작은 classification primitive다.
-   `peft_text_classifier`와 같은 레벨의 큰 adaptation family로 키우지 않는다.
-   PEFT text classifier 안에는 classifier head가 포함될 수 있지만, 그 family는
+   `peft_text_encoder`와 같은 레벨의 큰 adaptation family로 키우지 않는다.
+   PEFT text encoder 안에는 classifier head가 포함될 수 있지만, 그 family는
    text encoder, PEFT adapter, classifier head를 함께 학습하는 더 큰 Module이다.
 
 2. `prototype_pack`은 LoRA 같은 adapter mechanism이 아니다.
@@ -125,7 +125,7 @@ scripts/
    `conf/strategy_axes/fl/server_step_policy/*`처럼 runtime capability leaf도
    필요하면 runtime adapter executor path를 선언할 수 있다.
    scripts는 이 callable을 import/execute하는 generic adapter만 소유하고,
-   `linear_head`, `peft_text_classifier`, `prototype_pack` 같은
+   `linear_head`, `peft_text_encoder`, `prototype_pack` 같은
    family별 초기화/평가 분기나 `supervised_seed_step`의 PEFT 세부 구현을 직접
    소유하지 않는다.
 
@@ -146,7 +146,7 @@ Adapter 뒤로 옮긴다.
   Module에 들어가야 하고, method identity가 scripts, agent, main_server로 새면 안 된다.
 - `methods/classification/linear_head`는 classifier 학습 runtime 전체가 아니라
   linear head의 scoring/bootstrap/projection primitive다.
-- `methods/adaptation/peft_text_classifier`는 text encoder, PEFT mechanism, linear head를
+- `methods/adaptation/peft_text_encoder`는 text encoder, PEFT mechanism, linear head를
   함께 학습하는 update family다. 여기서 LoRA는 mechanism이고 family 이름이 아니다.
 - `methods/prototype/*`는 prototype pack 생성, scoring, evidence, training input,
   projection을 소유한다. prototype은 adapter mechanism이 아니라 update family 또는
@@ -167,14 +167,14 @@ Adapter 뒤로 옮긴다.
   필요하면 먼저 execution plan Interface가 충분히 깊은지 점검한다.
 - 현행 문서나 old artifact의 `lora_classifier`, `adapter_family_name`은 historical
   이름이다. 새 구조 설계, 새 실행 config, report/result reader에서는
-  `peft_text_classifier`, `payload_adapter_kind`, `update_family_name`,
+  `peft_text_encoder`, `payload_adapter_kind`, `update_family_name`,
   `trainable_state` 용어로 해석한다.
 
 ## Legacy 격리
 
 - `lora_classifier`는 제거된 v1 이름이다. shared parser/factory와 report/result
   reader fallback은 제거됐고, 새 canonical update family 이름은
-  `peft_text_classifier`, payload kind는 `peft_classifier`다.
+  `peft_text_encoder`, payload kind는 `peft_classifier`다.
 - `diagonal_scale`은 제거된 v1 payload family 이름이다. methods-level 구현 core,
   shared contract parser/factory, 전용 unit test, runtime fallback 기본값,
   privacy guard 실행 등록은 제거됐다. `diagonal_scale`는 target update-family 축이
@@ -219,7 +219,7 @@ Adapter 뒤로 옮긴다.
 
 - `methods/classification/linear_head`가 modality-independent linear classifier head의
   canonical 구현 위치다.
-- `methods/adaptation/peft_text_classifier`가 PEFT text classifier update family의
+- `methods/adaptation/peft_text_encoder`가 PEFT text encoder update family의
   canonical 구현 위치다.
 - `methods/adaptation/query_text_views`는 text query input/view glue 역할만
   소유한다.

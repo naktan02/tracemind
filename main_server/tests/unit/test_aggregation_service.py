@@ -18,10 +18,10 @@ from main_server.src.services.federation.rounds.aggregation.registry import (
     build_shared_adapter_aggregation_backend,
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
-from methods.adaptation.peft_text_classifier.update import (
+from methods.adaptation.peft_text_encoder.update import (
     partitioned_tensor_artifact as partitioned_artifacts,
 )
-from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
+from methods.adaptation.peft_text_encoder.update.partitioned_delta import (
     PeftEncoderPartitionDelta,
 )
 from methods.federated.aggregation.registry import build_federated_aggregation_strategy
@@ -53,7 +53,7 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
     )
     assert (
         entries["peft_classifier.fedavg"].implementation_module
-        == "methods.adaptation.peft_text_classifier.aggregation."
+        == "methods.adaptation.peft_text_encoder.aggregation."
         "peft_encoder_fedavg_projection"
     )
     assert (
@@ -64,7 +64,7 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
     )
     assert (
         entries["peft_classifier.partitioned_delta_average"].implementation_module
-        == "methods.adaptation.peft_text_classifier.aggregation."
+        == "methods.adaptation.peft_text_encoder.aggregation."
         "peft_encoder_partitioned_projection"
     )
     assert (

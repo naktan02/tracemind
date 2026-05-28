@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from methods.adaptation.peft_text_classifier.config import (
+from methods.adaptation.peft_text_encoder.config import (
     PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
 )
 from methods.adaptation.server_update_materialization import (

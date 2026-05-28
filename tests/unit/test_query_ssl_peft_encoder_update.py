@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from methods.adaptation.peft_text_classifier.config import (
+from methods.adaptation.peft_text_encoder.config import (
     PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
     PeftEncoderTrainingBackendConfig,
 )
-from methods.adaptation.peft_text_classifier.update.query_ssl_update import (
+from methods.adaptation.peft_text_encoder.update.query_ssl_update import (
     build_query_ssl_peft_encoder_update_payload,
 )
 from methods.adaptation.query_text_views.local_training_budget import (

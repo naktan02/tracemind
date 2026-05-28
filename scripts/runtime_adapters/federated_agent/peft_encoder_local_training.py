@@ -14,28 +14,28 @@ from agent.src.services.training.execution.query_ssl_local_training_service impo
     QuerySslLocalTrainingService,
     QuerySslPeftEncoderLocalTrainingRequest,
 )
-from methods.adaptation.peft_text_classifier.config import (
+from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
 )
-from methods.adaptation.peft_text_classifier.federated_ssl import (
+from methods.adaptation.peft_text_encoder.federated_ssl import (
     helper_provider,
     method_owned_training,
 )
-from methods.adaptation.peft_text_classifier.runtime_family import (
+from methods.adaptation.peft_text_encoder.runtime_family import (
     PeftEncoderState,
     build_training_backend_config_for_peft_encoder_state,
     build_training_backend_for_peft_encoder_state,
 )
-from methods.adaptation.peft_text_classifier.training import (
+from methods.adaptation.peft_text_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
-from methods.adaptation.peft_text_classifier.training_backend import (
+from methods.adaptation.peft_text_encoder.training_backend import (
     PeftEncoderTrainingBackend,
 )
-from methods.adaptation.peft_text_classifier.update.delta_artifacts import (
+from methods.adaptation.peft_text_encoder.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
 )
-from methods.adaptation.peft_text_classifier.update.materialization import (
+from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache

@@ -8,17 +8,17 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
-from methods.adaptation.peft_text_classifier.config import (
+from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
 )
-from methods.adaptation.peft_text_classifier.federated_ssl import (
+from methods.adaptation.peft_text_encoder.federated_ssl import (
     peer_predictions,
 )
-from methods.adaptation.peft_text_classifier.training import modeling
-from methods.adaptation.peft_text_classifier.training.delta_extraction import (
+from methods.adaptation.peft_text_encoder.training import modeling
+from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
-from methods.adaptation.peft_text_classifier.update.materialization import (
+from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.federated_ssl.peer_context import (

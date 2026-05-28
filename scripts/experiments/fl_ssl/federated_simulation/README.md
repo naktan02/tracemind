@@ -252,7 +252,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 주의:
 
 - `aggregation_backend_name`과 `update_family_name`은 `round_runtime.*`로 노출된다.
-  기본값은 entrypoint leaf의 `peft_text_classifier` / `fedavg`다. `lora_classifier`
+  기본값은 entrypoint leaf의 `peft_text_encoder` / `fedavg`다. `lora_classifier`
   실행 leaf와 report/verifier alias는 제거됐다.
 - `local_update_profile`은 local update 조합을 고르고, server round 조합은
   `round_runtime.update_family_name`과 `round_runtime.aggregation_backend_name`을
@@ -279,7 +279,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - 현재 기본 `fl_method.composition_mode`는 `manual`이며 lower axes는
   `query_ssl_method.algorithm_name`, `round_runtime.aggregation_backend_name`,
   `round_runtime.update_family_name`에서 자동 파생된다. 기본 조합은
-  `FixMatch + FedAvg + PEFT text classifier`이고 method descriptor를 참조하지 않는다.
+  `FixMatch + FedAvg + PEFT text encoder`이고 method descriptor를 참조하지 않는다.
   일회성 ablation은
   `strategy_axes/ssl/consistency_method=...`,
   `round_runtime.update_family_name=...`,

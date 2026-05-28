@@ -178,7 +178,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.shard_policy_name == "dirichlet_label_skew"
     assert records.run.shard_alpha == 0.3
     assert records.run.payload_adapter_kind == "peft_classifier"
-    assert records.run.update_family_name == "peft_text_classifier"
+    assert records.run.update_family_name == "peft_text_encoder"
     assert records.run.aggregation_backend_name == "fedavg"
     assert records.run.fl_composition_mode == "manual"
     assert records.run.fl_execution_role == "manual_baseline"
@@ -209,7 +209,7 @@ def test_load_result_index_records_reads_peft_classifier_objective(
 
     assert records.run.method_family == "manual_baselines"
     assert records.run.payload_adapter_kind == "peft_classifier"
-    assert records.run.update_family_name == "peft_text_classifier"
+    assert records.run.update_family_name == "peft_text_encoder"
     assert records.run.peft_adapter_name == "lora"
     assert records.run.lora_rank == 8
     assert records.run.lora_alpha == 16
@@ -228,7 +228,7 @@ def test_fl_ssl_result_index_reads_payload_adapter_kind(
     protocol = payload["protocol"]
     protocol["round_runtime"] = {
         "payload_adapter_kind": "peft_classifier",
-        "update_family_name": "peft_text_classifier",
+        "update_family_name": "peft_text_encoder",
         "aggregation_backend_name": "fedavg",
     }
     protocol["objective"] = {
@@ -298,7 +298,7 @@ def test_result_index_prefers_canonical_fl_ssl_hardlink_path(
         / "runs"
         / "fl_ssl"
         / "manual_baselines"
-        / "fixmatch_usb_v1__peft_text_classifier_lora__fedavg"
+        / "fixmatch_usb_v1__peft_text_encoder_lora__fedavg"
         / "alpha03_seed42"
         / "clients10_rounds50"
         / "20260517T150549Z"
@@ -331,7 +331,7 @@ def test_load_result_index_records_keeps_new_fl_ssl_layout_parts(
     records = load_result_index_records(report_path)
 
     assert records.run.run_id == (
-        "manual_baselines__fixmatch_usb_v1__peft_text_classifier_lora__fedavg__"
+        "manual_baselines__fixmatch_usb_v1__peft_text_encoder_lora__fedavg__"
         "alpha03_seed42__clients10_rounds50__20260518T010203Z"
     )
 
@@ -425,7 +425,7 @@ def test_fl_ssl_dashboard_filters_deduplicate_peft_classifier_runs(
 
     assert bundle["filters"]["payload_adapter_kinds"] == ["peft_classifier"]
     assert bundle["filters"]["update_families"] == [
-        "peft_text_classifier",
+        "peft_text_encoder",
     ]
     assert bundle["filters"]["aggregation_backends"] == ["fedavg"]
     assert bundle["filters"]["peft_adapter_names"] == ["lora"]
@@ -520,7 +520,7 @@ def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
         / "runs"
         / "fl_ssl"
         / "manual_baselines"
-        / "fixmatch_usb_v1__peft_text_classifier_lora__fedavg"
+        / "fixmatch_usb_v1__peft_text_encoder_lora__fedavg"
         / "alpha03_seed42"
         / "clients10_rounds50"
         / "20260527T120000Z"
@@ -532,10 +532,10 @@ def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
     protocol = payload["protocol"]
     protocol["round_runtime"] = {
         "payload_adapter_kind": "peft_classifier",
-        "update_family_name": "peft_text_classifier",
+        "update_family_name": "peft_text_encoder",
         "aggregation_backend_name": "fedavg",
     }
-    protocol["fl_method"]["manual_axes"]["update_family"] = "peft_text_classifier"
+    protocol["fl_method"]["manual_axes"]["update_family"] = "peft_text_encoder"
     protocol["objective"] = {
         "query_ssl.method_name": "fixmatch_usb_v1",
         "query_ssl.algorithm_name": "fixmatch",
@@ -628,7 +628,7 @@ def _write_new_layout_fl_ssl_report(tmp_path: Path) -> Path:
         / "runs"
         / "fl_ssl"
         / "manual_baselines"
-        / "fixmatch_usb_v1__peft_text_classifier_lora__fedavg"
+        / "fixmatch_usb_v1__peft_text_encoder_lora__fedavg"
         / "alpha03_seed42"
         / "clients10_rounds50"
         / "20260518T010203Z"
@@ -916,7 +916,7 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
             },
             "round_runtime": {
                 "payload_adapter_kind": "peft_classifier",
-                "update_family_name": "peft_text_classifier",
+                "update_family_name": "peft_text_encoder",
                 "aggregation_backend_name": "fedavg",
             },
             "ssl_method": {
@@ -931,7 +931,7 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
                 "manual_axes": {
                     "client_ssl_objective": "fixmatch",
                     "server_aggregation": "fedavg",
-                    "update_family": "peft_text_classifier",
+                    "update_family": "peft_text_encoder",
                 },
             },
             "objective": {

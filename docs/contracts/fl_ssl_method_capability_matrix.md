@@ -6,7 +6,7 @@ method-owned tensor local objective core를 추가했다. 현재 PEFT encoder lo
 partition step, physical trainable partition step, PEFT-backed partitioned model
 builder, partitioned global state 보존, C2S sparse upload projection,
 method-owned local simulation bridge는
-`methods/adaptation/peft_text_classifier/federated_ssl/`의 method-neutral 실행
+`methods/adaptation/peft_text_encoder/federated_ssl/`의 method-neutral 실행
 primitive가 소유한다. 삭제된 `methods/adaptation/lora_classifier/federated_ssl/`
 direct import path는 repo 내부 compatibility 표면이 아니다. 현재 helper peer context
 simulation slice, labels-at-server supervised seed server step, client-local previous
@@ -34,7 +34,7 @@ policy가 된다.
   - custom server policy는 method-specific 분기가 아니라 capability executor 추가로
     열어야 한다.
 - `manual` composition
-  - FixMatch/FlexMatch/FreeMatch/PseudoLabel + FedAvg + PEFT text classifier 같은 lower-axis
+  - FixMatch/FlexMatch/FreeMatch/PseudoLabel + FedAvg + PEFT text encoder 같은 lower-axis
     baseline/ablation용이다.
 - `method_owned` composition
   - FedMatch/FedLGMatch/(FL)^2처럼 client objective와 server/round policy를 함께
@@ -55,7 +55,7 @@ policy가 된다.
     payload가 소유한다.
   - runner와 runtime은 FedMatch 이름을 판단하지 않고 `partitioned_update`와
     `composition_policy`를 통해 materialization/evaluation을 연결한다.
-  - 초기 구현은 `methods/adaptation/peft_text_classifier/` 아래로 이동했으며,
+  - 초기 구현은 `methods/adaptation/peft_text_encoder/` 아래로 이동했으며,
     type과 primitive 이름은 `TrainableAdapterPartitionPlan`,
     `AdapterClassifierDeltaBundle`, `PartitionedAdapterStateProjector`처럼
     adapter-neutral하게 둔다. PEFT adapter 축이 `lora`/`dora`로 재정립되면 이
@@ -68,7 +68,7 @@ policy가 된다.
     nearest-neighbor selection, supervised/unsupervised FedMatch tensor loss는 method
     package에 고정했다. 현재 LoRA PEFT mechanism slice를 넘어 DoRA 같은 PEFT adapter 교체를
     허용하는 partitioned trainable state primitive를 단계적으로 열고 있다.
-  - `methods/adaptation/peft_text_classifier/federated_ssl/`는 method-owned
+  - `methods/adaptation/peft_text_encoder/federated_ssl/`는 method-owned
     objective를 PEFT text-classifier model/loaders, logical/physical partition
     delta, shared update payload로 실행하는 update-family runtime primitive다.
     FedMatch method 의미는 `methods/federated_ssl/fedmatch/`에서 읽는다.
@@ -107,7 +107,7 @@ runtime slice다.
 
 - 현재 TraceMind main comparison은 `shared_client_seed + client별 unlabeled` split을
   기본으로 두고, `client_local_split`도 legacy/ablation으로 유지한다.
-- 현재 기본 조합인 `FixMatch + FedAvg + PEFT text classifier`에서 local objective만 더
+- 현재 기본 조합인 `FixMatch + FedAvg + PEFT text encoder`에서 local objective만 더
   깊게 method-owned로 바꾸는 경로가 가장 짧다.
 - FedMatch descriptor는 공통 `partitioned` update capability와 `uniform`
   aggregation weight를 요구하도록 capability validator에 고정했다. `sigma/psi`
@@ -123,7 +123,7 @@ runtime slice다.
 
 FedMatch 다음 구현 결정:
 
-- parameter decomposition은 현재 `peft_text_classifier` update family 위에서
+- parameter decomposition은 현재 `peft_text_encoder` update family 위에서
   generic `partitioned` update capability로 표현한다. `sigma/psi` partition scheme은
   FedMatch-local metadata로 두고, shared contract를 바꾸는 payload split은 실제 필요가
   확인될 때만 연다.

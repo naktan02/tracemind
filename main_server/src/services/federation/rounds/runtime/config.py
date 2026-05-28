@@ -33,7 +33,7 @@ class ServerRoundRuntimeProfile:
 DEFAULT_PEFT_CLASSIFIER_SERVER_ROUND_RUNTIME_PROFILE = ServerRoundRuntimeProfile(
     profile_name="default_peft_classifier.v1",
     payload_adapter_kind="peft_classifier",
-    update_family_name="peft_text_classifier",
+    update_family_name="peft_text_encoder",
     aggregation_backend_name="fedavg",
 )
 DEFAULT_SERVER_ROUND_RUNTIME_PROFILE = (

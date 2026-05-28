@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from methods.adaptation.peft_text_classifier.aggregation import (
+from methods.adaptation.peft_text_encoder.aggregation import (
     peft_encoder_fedavg_projection as peft_fedavg_projection,
 )
 from methods.classification.linear_head.aggregation import (
@@ -265,7 +265,7 @@ def test_federated_aggregation_method_registry_points_to_peft_classifier_core() 
     assert spec.method_name == "fedavg"
     assert (
         spec.implementation_module
-        == "methods.adaptation.peft_text_classifier.aggregation."
+        == "methods.adaptation.peft_text_encoder.aggregation."
         "peft_encoder_fedavg_projection"
     )
     assert spec.core_function_name == "compute_peft_encoder_fedavg"
@@ -282,7 +282,7 @@ def test_federated_aggregation_method_registry_points_to_partitioned_peft_core()
     assert spec.method_name == "partitioned_delta_average"
     assert (
         spec.implementation_module
-        == "methods.adaptation.peft_text_classifier.aggregation."
+        == "methods.adaptation.peft_text_encoder.aggregation."
         "peft_encoder_partitioned_projection"
     )
     assert spec.core_function_name == "compute_peft_encoder_partitioned_delta_average"

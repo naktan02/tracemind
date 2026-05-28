@@ -53,8 +53,8 @@ LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
 PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
 PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
-PEFT_TEXT_CLASSIFIER_SRC = METHODS_SRC / "adaptation" / "peft_text_classifier"
-PEFT_TEXT_CLASSIFIER_AGGREGATION_SRC = PEFT_TEXT_CLASSIFIER_SRC / "aggregation"
+PEFT_TEXT_ENCODER_SRC = METHODS_SRC / "adaptation" / "peft_text_encoder"
+PEFT_TEXT_ENCODER_AGGREGATION_SRC = PEFT_TEXT_ENCODER_SRC / "aggregation"
 LINEAR_HEAD_CLASSIFICATION_SRC = METHODS_SRC / "classification" / "linear_head"
 PEFT_ADAPTERS_SRC = METHODS_SRC / "adaptation" / "peft_adapters"
 LEGACY_AGENT_QUERY_TEXT_VIEWS_SRC = (
@@ -380,7 +380,7 @@ def test_query_text_views_stays_input_glue_only() -> None:
         root=METHODS_SRC / "adaptation" / "query_text_views",
         forbidden_prefixes=(
             "methods.adaptation.lora_classifier",
-            "methods.adaptation.peft_text_classifier",
+            "methods.adaptation.peft_text_encoder",
             "methods.adaptation.peft_adapters",
             "shared.src.contracts.adapter_contract_families",
             "shared.src.domain.entities.training.shared_adapter_state",
@@ -500,8 +500,8 @@ def test_fl_simulation_runtime_model_does_not_embed_lora_classifier_scope() -> N
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_server"
         / "peft_encoder_round_runtime.py",
-        METHODS_SRC / "adaptation" / "peft_text_classifier" / "runtime_family.py",
-        METHODS_SRC / "adaptation" / "peft_text_classifier" / "resource_cache.py",
+        METHODS_SRC / "adaptation" / "peft_text_encoder" / "runtime_family.py",
+        METHODS_SRC / "adaptation" / "peft_text_encoder" / "resource_cache.py",
     )
     forbidden_snippets = (
         'round_runtime_payloads.get("lora_classifier")',
@@ -557,7 +557,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         / "protocol_payload.py",
         CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
-        METHODS_SRC / "adaptation" / "peft_text_classifier" / "runtime_family.py",
+        METHODS_SRC / "adaptation" / "peft_text_encoder" / "runtime_family.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_server"
         / "peft_encoder_round_runtime.py",
@@ -592,7 +592,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
 
 def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
     checked_paths = (
-        METHODS_SRC / "adaptation" / "peft_text_classifier" / "runtime_family.py",
+        METHODS_SRC / "adaptation" / "peft_text_encoder" / "runtime_family.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_agent"
         / "peft_encoder_method_owned_client_round.py",
@@ -905,7 +905,7 @@ def test_scripts_runtime_bridges_use_peft_config_type_names() -> None:
 
 
 def test_peft_config_class_owns_canonical_defaults() -> None:
-    path = PEFT_TEXT_CLASSIFIER_SRC / "config.py"
+    path = PEFT_TEXT_ENCODER_SRC / "config.py"
     source = path.read_text(encoding="utf-8")
     required_snippets = (
         "class PeftEncoderTrainingBackendConfig:",
@@ -939,7 +939,7 @@ def test_peft_config_class_owns_canonical_defaults() -> None:
 
 
 def test_peft_training_backend_does_not_register_legacy_lora_factories() -> None:
-    path = PEFT_TEXT_CLASSIFIER_SRC / "training_backend.py"
+    path = PEFT_TEXT_ENCODER_SRC / "training_backend.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "def from_objective_config(",
@@ -962,7 +962,7 @@ def test_local_update_registry_does_not_embed_peft_backend_override() -> None:
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "_TRAINING_BACKEND_MODULE_OVERRIDES",
-        '"methods.adaptation.peft_text_classifier.training_backend"',
+        '"methods.adaptation.peft_text_encoder.training_backend"',
         '"peft_classifier_trainer":',
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
@@ -982,7 +982,7 @@ def test_adapter_family_module_resolver_does_not_embed_concrete_family_map() -> 
         '"classifier_head":',
         '"lora_classifier":',
         '"peft_classifier":',
-        '"methods.adaptation.peft_text_classifier"',
+        '"methods.adaptation.peft_text_encoder"',
         '"methods.classification.linear_head"',
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
@@ -996,7 +996,7 @@ def test_adapter_family_module_resolver_does_not_embed_concrete_family_map() -> 
 
 def test_peft_method_modules_use_canonical_config_type_name() -> None:
     checked_roots = (
-        PEFT_TEXT_CLASSIFIER_SRC,
+        PEFT_TEXT_ENCODER_SRC,
         METHODS_FEDERATED_SSL_SRC / "fedmatch",
     )
     violations = [
@@ -1023,7 +1023,7 @@ def test_peft_method_modules_use_canonical_model_type_name() -> None:
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
-        for root in (PEFT_TEXT_CLASSIFIER_SRC, METHODS_FEDERATED_SSL_SRC / "fedmatch")
+        for root in (PEFT_TEXT_ENCODER_SRC, METHODS_FEDERATED_SSL_SRC / "fedmatch")
         for path in _iter_python_files(root)
         for snippet in forbidden_snippets
         if snippet in path.read_text(encoding="utf-8")
@@ -1051,8 +1051,8 @@ def test_partitioned_peft_execution_primitive_uses_adapter_classifier_names() ->
         / "test_methods_fedmatch_peft_partitioned_training.py"
     )
     checked_paths = (
-        PEFT_TEXT_CLASSIFIER_SRC / "federated_ssl" / "partitioned" / "training_loop.py",
-        PEFT_TEXT_CLASSIFIER_SRC
+        PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned" / "training_loop.py",
+        PEFT_TEXT_ENCODER_SRC
         / "federated_ssl"
         / "partitioned_objective_training.py",
         active_test_path,
@@ -1240,7 +1240,7 @@ def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
 
 def test_peft_partition_delta_uses_canonical_internal_type_name() -> None:
     checked_roots = (
-        PEFT_TEXT_CLASSIFIER_SRC,
+        PEFT_TEXT_ENCODER_SRC,
         REPO_ROOT
         / "tests"
         / "unit"
@@ -1652,7 +1652,7 @@ def test_production_federated_ssl_methods_do_not_keep_dummy_extensions() -> None
 def test_peft_projection_artifacts_do_not_keep_lora_classifier_aliases() -> None:
     script_shim_path = SCRIPTS_SRC / "experiments" / "lora_classifier_projection.py"
     projection_writer_path = (
-        METHODS_SRC / "adaptation" / "peft_text_classifier" / "projection_artifacts.py"
+        METHODS_SRC / "adaptation" / "peft_text_encoder" / "projection_artifacts.py"
     )
     source = projection_writer_path.read_text(encoding="utf-8")
 
@@ -1668,7 +1668,7 @@ def test_peft_projection_artifacts_do_not_keep_lora_classifier_aliases() -> None
     )
 
 
-def test_peft_text_classifier_does_not_keep_legacy_lora_pass_through_aliases() -> None:
+def test_peft_text_encoder_does_not_keep_legacy_lora_pass_through_aliases() -> None:
     alias_names = (
         "resolve_method_owned_lora_classifier_training_core",
         "_load_method_owned_lora_classifier_training_core",
@@ -1761,7 +1761,7 @@ def test_peft_text_classifier_does_not_keep_legacy_lora_pass_through_aliases() -
     )
     checked_roots = (
         AGENT_SRC / "services" / "training" / "execution",
-        METHODS_SRC / "adaptation" / "peft_text_classifier",
+        METHODS_SRC / "adaptation" / "peft_text_encoder",
         METHODS_SRC / "federated_ssl" / "fedmatch",
         SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
         SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server",
@@ -1775,31 +1775,31 @@ def test_peft_text_classifier_does_not_keep_legacy_lora_pass_through_aliases() -
     ]
 
     assert not violations, (
-        "PEFT text classifier 내부 public surface는 canonical PEFT 이름을 사용한다. "
+        "PEFT text encoder 내부 public surface는 canonical PEFT 이름을 사용한다. "
         "v1 lora_classifier 이름은 shared payload/schema, config compatibility, "
         "artifact field 의미처럼 실제 호환 경계에만 남긴다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
 
-def test_peft_text_classifier_active_module_docs_use_peft_names() -> None:
+def test_peft_text_encoder_active_module_docs_use_peft_names() -> None:
     checked_paths = (
-        PEFT_TEXT_CLASSIFIER_SRC / "initial_state.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "update" / "base_state_snapshot.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "update" / "json_delta_artifact.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "update" / "local_update.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "update" / "materialization.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "update" / "merged_tensor_artifact.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "update" / "partitioned_payload_builder.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "update" / "partitioned_tensor_artifact.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "training" / "batching.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "training" / "optimizer_step.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "training" / "partitioned_deltas.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "training" / "pseudo_label_diagnostics.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "training" / "scalar_metrics.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "training" / "step_budget.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "federated_ssl" / "partitioned" / "budget.py",
-        PEFT_TEXT_CLASSIFIER_SRC / "federated_ssl" / "partitioned" / "training_loop.py",
+        PEFT_TEXT_ENCODER_SRC / "initial_state.py",
+        PEFT_TEXT_ENCODER_SRC / "update" / "base_state_snapshot.py",
+        PEFT_TEXT_ENCODER_SRC / "update" / "json_delta_artifact.py",
+        PEFT_TEXT_ENCODER_SRC / "update" / "local_update.py",
+        PEFT_TEXT_ENCODER_SRC / "update" / "materialization.py",
+        PEFT_TEXT_ENCODER_SRC / "update" / "merged_tensor_artifact.py",
+        PEFT_TEXT_ENCODER_SRC / "update" / "partitioned_payload_builder.py",
+        PEFT_TEXT_ENCODER_SRC / "update" / "partitioned_tensor_artifact.py",
+        PEFT_TEXT_ENCODER_SRC / "training" / "batching.py",
+        PEFT_TEXT_ENCODER_SRC / "training" / "optimizer_step.py",
+        PEFT_TEXT_ENCODER_SRC / "training" / "partitioned_deltas.py",
+        PEFT_TEXT_ENCODER_SRC / "training" / "pseudo_label_diagnostics.py",
+        PEFT_TEXT_ENCODER_SRC / "training" / "scalar_metrics.py",
+        PEFT_TEXT_ENCODER_SRC / "training" / "step_budget.py",
+        PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned" / "budget.py",
+        PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned" / "training_loop.py",
     )
     forbidden_snippets = (
         "LoRA-classifier",
@@ -1813,7 +1813,7 @@ def test_peft_text_classifier_active_module_docs_use_peft_names() -> None:
     ]
 
     assert not violations, (
-        "PEFT text classifier active module docstrings/error text는 PEFT 이름을 "
+        "PEFT text encoder active module docstrings/error text는 PEFT 이름을 "
         "사용한다. v1 lora_classifier 이름은 schema constant, legacy factory, "
         "compatibility validator처럼 실제 v1 경계에만 남긴다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
@@ -2072,7 +2072,7 @@ def test_lora_classifier_partitioned_training_loop_is_method_neutral() -> None:
     path = (
         METHODS_SRC
         / "adaptation"
-        / "peft_text_classifier"
+        / "peft_text_encoder"
         / "federated_ssl"
         / "partitioned"
         / "training_loop.py"
@@ -2099,7 +2099,7 @@ def test_methods_lora_classifier_compatibility_package_is_removed() -> None:
     assert not existing_paths, (
         "methods/adaptation/lora_classifier는 더 이상 internal compatibility "
         "package로 유지하지 않는다. 구현 source of truth는 "
-        "methods/adaptation/peft_text_classifier/**이고, lora_classifier 이름은 "
+        "methods/adaptation/peft_text_encoder/**이고, lora_classifier 이름은 "
         "old artifact/report reader compatibility 표면에만 남긴다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_paths)}"
     )
@@ -2136,19 +2136,19 @@ def test_internal_code_does_not_import_legacy_lora_classifier_methods_package() 
 
     assert not violations, (
         "methods.adaptation.lora_classifier import 경로는 삭제된 compatibility "
-        "package다. 새 internal code는 peft_text_classifier 경로를 직접 import한다.\n"
+        "package다. 새 internal code는 peft_text_encoder 경로를 직접 import한다.\n"
         f"{_format_violations(violations)}"
     )
 
 
-def test_peft_text_classifier_does_not_import_fedmatch_method() -> None:
+def test_peft_text_encoder_does_not_import_fedmatch_method() -> None:
     violations = _find_forbidden_imports(
-        root=PEFT_TEXT_CLASSIFIER_SRC,
+        root=PEFT_TEXT_ENCODER_SRC,
         forbidden_prefixes=("methods.federated_ssl.fedmatch",),
     )
 
     assert not violations, (
-        "methods/adaptation/peft_text_classifier/**는 PEFT text classifier 실행 "
+        "methods/adaptation/peft_text_encoder/**는 PEFT text encoder 실행 "
         "primitive를 "
         "소유한다. FedMatch 의미, partition routing, original parameter는 "
         "methods/federated_ssl/fedmatch/에서 callable/config로 주입한다.\n"
@@ -2156,9 +2156,9 @@ def test_peft_text_classifier_does_not_import_fedmatch_method() -> None:
     )
 
 
-def test_peft_text_classifier_does_not_depend_on_legacy_lora_classifier() -> None:
+def test_peft_text_encoder_does_not_depend_on_legacy_lora_classifier() -> None:
     violations = _find_forbidden_imports(
-        root=PEFT_TEXT_CLASSIFIER_SRC,
+        root=PEFT_TEXT_ENCODER_SRC,
         forbidden_prefixes=(
             "methods.adaptation.classifier_head",
             "methods.adaptation.lora_classifier",
@@ -2166,9 +2166,9 @@ def test_peft_text_classifier_does_not_depend_on_legacy_lora_classifier() -> Non
     )
 
     assert not violations, (
-        "새 peft_text_classifier 내부 코드는 legacy classifier_head/lora_classifier "
+        "새 peft_text_encoder 내부 코드는 legacy classifier_head/lora_classifier "
         "경로를 import하지 않는다. 기존 경로는 migration shim으로만 남기고, 내부 "
-        "source of truth는 peft_text_classifier 아래에 둔다.\n"
+        "source of truth는 peft_text_encoder 아래에 둔다.\n"
         f"{_format_violations(violations)}"
     )
 
@@ -2179,7 +2179,7 @@ def test_classification_adaptation_is_modality_independent() -> None:
         forbidden_prefixes=(
             "methods.adaptation.classifier_head",
             "methods.adaptation.lora_classifier",
-            "methods.adaptation.peft_text_classifier",
+            "methods.adaptation.peft_text_encoder",
             "methods.adaptation.text_classifier",
         ),
     )
@@ -2192,9 +2192,9 @@ def test_classification_adaptation_is_modality_independent() -> None:
     )
 
 
-def test_peft_text_classifier_uses_peft_adapters_axis() -> None:
+def test_peft_text_encoder_uses_peft_adapters_axis() -> None:
     violations = _find_forbidden_imports(
-        root=PEFT_TEXT_CLASSIFIER_SRC,
+        root=PEFT_TEXT_ENCODER_SRC,
         forbidden_prefixes=(
             "methods.adaptation.lora.",
             "methods.adaptation.peft.",
@@ -2361,7 +2361,7 @@ def _existing_non_cache_paths(paths: Sequence[Path]) -> list[Path]:
 def test_adaptation_aggregation_files_stay_projection_only() -> None:
     violations: list[Path] = []
     aggregation_roots = (
-        PEFT_TEXT_CLASSIFIER_AGGREGATION_SRC,
+        PEFT_TEXT_ENCODER_AGGREGATION_SRC,
         LINEAR_HEAD_CLASSIFICATION_SRC / "aggregation",
     )
     for aggregation_root in aggregation_roots:
@@ -2375,7 +2375,7 @@ def test_adaptation_aggregation_files_stay_projection_only() -> None:
                 violations.append(_relative_repo_path(path))
 
     assert not violations, (
-        "classification/peft_text_classifier aggregation 계층은 family state를 generic "
+        "classification/peft_text_encoder aggregation 계층은 family state를 generic "
         "aggregation input/output으로 바꾸는 projection만 소유한다. "
         "weighted average policy와 FedAvg algorithm은 methods/federated/aggregation/에 "
         "둔다.\n"
@@ -2389,7 +2389,7 @@ def test_peft_adapters_do_not_import_classifier_task_payloads() -> None:
         forbidden_prefixes=(
             "methods.adaptation.classifier_head",
             "methods.adaptation.lora_classifier",
-            "methods.adaptation.peft_text_classifier",
+            "methods.adaptation.peft_text_encoder",
             "methods.adaptation.text_classifier",
             "shared.src.contracts.adapter_contract_families.classifier_head",
             "shared.src.contracts.adapter_contract_families.lora_classifier",
@@ -2399,7 +2399,7 @@ def test_peft_adapters_do_not_import_classifier_task_payloads() -> None:
     assert not violations, (
         "methods/adaptation/peft_adapters/**는 LoRA/DoRA 같은 PEFT mechanism만 "
         "소유한다. classifier label, task head, update payload 의미는 "
-        "peft_text_classifier adaptation 또는 shared contract가 소유한다.\n"
+        "peft_text_encoder adaptation 또는 shared contract가 소유한다.\n"
         f"{_format_violations(violations)}"
     )
 
@@ -2502,7 +2502,7 @@ def test_privacy_guards_stay_runtime_and_objective_agnostic() -> None:
             "scripts",
             "methods.ssl",
             "methods.federated_ssl.fedmatch",
-            "methods.adaptation.peft_text_classifier",
+            "methods.adaptation.peft_text_encoder",
             "methods.adaptation.text_classifier",
             "methods.adaptation.lora_classifier",
             "methods.adaptation.query_text_views",
@@ -2683,7 +2683,7 @@ def test_lora_classifier_update_package_does_not_keep_one_use_helper_files() -> 
     assert not violations, (
         "삭제된 methods/adaptation/lora_classifier/update package 아래에 단일 "
         "사용처 helper 파일을 다시 만들지 않는다. 새 구현은 "
-        "methods/adaptation/peft_text_classifier/** owner 경계에 둔다.\n"
+        "methods/adaptation/peft_text_encoder/** owner 경계에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 

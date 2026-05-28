@@ -326,7 +326,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         round_runtime_config=FederatedRoundRuntimeConfig(
             payload_adapter_kind="peft_classifier",
             aggregation_backend_name="fedavg",
-            update_family_name="peft_text_classifier",
+            update_family_name="peft_text_encoder",
         ),
         embedding_spec=EmbeddingAdapterSpec(
             backend="mxbai",
@@ -395,7 +395,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     )
     assert "adapter_family_name" not in payload["protocol"]["round_runtime"]
     assert payload["protocol"]["round_runtime"]["update_family_name"] == (
-        "peft_text_classifier"
+        "peft_text_encoder"
     )
     assert payload["rounds"][0]["round_index"] == 1
     assert payload["rounds"][0]["global_validation"]["macro_f1"] == pytest.approx(0.4)
@@ -672,6 +672,6 @@ def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
             round_runtime_config=FederatedRoundRuntimeConfig(
                 payload_adapter_kind="peft_classifier",
                 aggregation_backend_name="fedavg",
-                update_family_name="peft_text_classifier",
+                update_family_name="peft_text_encoder",
             ),
         )

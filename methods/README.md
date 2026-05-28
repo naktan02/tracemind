@@ -45,7 +45,7 @@ Prototype 기반 classifier 대체가 추가되어도 `scripts`, `agent`, `main_
 `docs/architecture/target-method-runtime-structure.md`를 우선한다. 현재 코드의
 `adapter_family`, `lora_classifier`, `classification/linear_head` 이름은 legacy
 compatibility 표면을 설명할 수 있지만, 새 설계 판단에서는 `update_family`,
-`trainable_state`, `linear_head`, `peft_text_classifier`, `prototype_pack` 용어를
+`trainable_state`, `linear_head`, `peft_text_encoder`, `prototype_pack` 용어를
 기준으로 삼는다.
 
 새 알고리즘이나 논문 method를 추가할 때는 먼저 `methods/`에 method-local module을
@@ -85,7 +85,7 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   분리된 client-local objective regularizer
 - `methods/classification/linear_head/`: modality-independent linear classifier head
   primitive와 classifier-head projection
-- `methods/adaptation/peft_text_classifier/`: PEFT text encoder + classifier head
+- `methods/adaptation/peft_text_encoder/`: PEFT text encoder + classifier head
   update family와 text-specific training/update core
 - `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP
   policy core와 registry

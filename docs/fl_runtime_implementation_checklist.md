@@ -95,7 +95,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   supervised/unsupervised tensor loss는
   FedMatch method core에 고정했다. PEFT text-classifier trainer 한 step의 logical
   partition delta split과 method-owned local simulation wiring은
-  `methods/adaptation/peft_text_classifier/federated_ssl/`의 method-neutral
+  `methods/adaptation/peft_text_encoder/federated_ssl/`의 method-neutral
   update-family runtime primitive가 소유한다. 삭제된 `lora_classifier/federated_ssl`
   direct import path는 repo 내부 compatibility 표면이 아니다.
   `fixed_probe_output_knn` helper client context 주입 seam과 KDTree 우선
@@ -196,7 +196,7 @@ methods/evaluation/                            # stable metric helper만
   FedAvg core를 smoke로 검증했다. v1 `lora_classifier` shape는 old artifact reader
   compatibility로만 유지한다.
 - [x] FL simulation에서 `peft_pseudo_label_v1` local profile과
-  `strategy_axes/trainable_state/update_family=peft_text_classifier`,
+  `strategy_axes/trainable_state/update_family=peft_text_encoder`,
   `round_runtime.payload_adapter_kind=peft_classifier`,
   `round_runtime.aggregation_backend_name=fedavg` leaf 조합을 compose할 수 있다.
 - [x] PEFT-classifier FedAvg는 두 라운드에서

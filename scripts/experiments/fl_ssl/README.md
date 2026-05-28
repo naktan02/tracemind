@@ -3,7 +3,7 @@
 이 폴더는 FL SSL 실험 entrypoint만 둔다. FL method identity와 method-only
 정책은 `methods/federated_ssl/`, SSL objective core는 `methods/ssl`,
 PEFT-classifier 계산 core는
-`methods/adaptation/peft_text_classifier`, 실행 조합과 파라미터는
+`methods/adaptation/peft_text_encoder`, 실행 조합과 파라미터는
 `conf/` Hydra config가 소유한다.
 
 현재 기본 실행은 논문 method가 아니라 manual baseline이다.
@@ -39,7 +39,7 @@ client_participation_policy=all_clients
 composition_mode=manual
 query_ssl_method=fixmatch_usb_v1
 local_update_profile=peft_pseudo_label_v1
-update_family=peft_text_classifier
+update_family=peft_text_encoder
 aggregation_backend=fedavg
 output_dir=runs/_smoke/fl_ssl
 ```
@@ -172,7 +172,7 @@ FL SSL 실행 명령은 보통 다섯 축을 동시에 고른다.
 query_ssl_method + round_runtime.update_family_name + round_runtime.aggregation_backend_name
 ```
 
-기본 조합은 `fixmatch_usb_v1 + peft_text_classifier + fedavg`다.
+기본 조합은 `fixmatch_usb_v1 + peft_text_encoder + fedavg`다.
 
 ## 단일 Simulation 실행
 
@@ -209,19 +209,19 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 ```text
 runs/fl_ssl/
   manual_baselines/
-    fixmatch_usb_v1__peft_text_classifier_lora__fedavg/
+    fixmatch_usb_v1__peft_text_encoder_lora__fedavg/
       labeled-ourafla_reddit_unlabeled-ourafla_reddit_shared_client_seed42/
         clients10_rounds1/
         clients10_rounds5/
   fedmatch/
-    fedmatch__peft_text_classifier_lora__fedmatch_partitioned/
+    fedmatch__peft_text_encoder_lora__fedmatch_partitioned/
       labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/
         clients10_rounds5/
 ```
 
 manual baseline의 composition 폴더는 `query_ssl_method + update family +
-aggregation_backend`를 쓴다. `peft_text_classifier`처럼 PEFT mechanism이 별도 축인
-family는 `peft_text_classifier_lora`처럼 실제 `peft_adapter_name`을 붙인다. FedMatch 같은
+aggregation_backend`를 쓴다. `peft_text_encoder`처럼 PEFT mechanism이 별도 축인
+family는 `peft_text_encoder_lora`처럼 실제 `peft_adapter_name`을 붙인다. FedMatch 같은
 `method_owned` run은 Query SSL lower axis가 아니라
 `method_descriptor + update family + server_update_policy`를 쓴다.
 
@@ -310,7 +310,7 @@ manual baseline에서는 lower axes를 직접 고른다. `composition_mode=manua
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   fl_method.composition_mode=manual \
   strategy_axes/ssl/consistency_method=flexmatch_usb_v1 \
-  strategy_axes/trainable_state/update_family=peft_text_classifier \
+  strategy_axes/trainable_state/update_family=peft_text_encoder \
   round_runtime.aggregation_backend_name=fedavg \
   fl_data.source_mode=materialized_client_split \
   fl_data.split_manifest=data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json \
@@ -451,7 +451,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   fl_method.composition_mode=manual \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   strategy_axes/ssl/consistency_method=flexmatch_usb_v1 \
-  strategy_axes/trainable_state/update_family=peft_text_classifier \
+  strategy_axes/trainable_state/update_family=peft_text_encoder \
   round_runtime.aggregation_backend_name=fedavg \
   fl_data.source_mode=materialized_client_split \
   fl_data.split_manifest=data/datasets/fl_client_splits/shared_client_labeled/labeled-ourafla_reddit_unlabeled-ourafla_reddit_validation-ourafla_reddit_test-ourafla_reddit_shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42/manifest.json \

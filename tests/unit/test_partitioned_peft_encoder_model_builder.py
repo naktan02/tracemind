@@ -9,13 +9,13 @@ import pytest
 import torch
 from torch import Tensor, nn
 
-from methods.adaptation.peft_text_classifier.config import (
+from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
 )
-from methods.adaptation.peft_text_classifier.federated_ssl.partitioned import (
+from methods.adaptation.peft_text_encoder.federated_ssl.partitioned import (
     model_builder,
 )
-from methods.adaptation.peft_text_classifier.update.materialization import (
+from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
 )
 

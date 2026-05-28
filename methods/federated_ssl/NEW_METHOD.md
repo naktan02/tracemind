@@ -68,9 +68,8 @@ threshold, LoRA rank, round 수 같은 일반 실행값의 source of truth는 Hy
 `round_runtime.aggregation_backend_name`을 직접 override하거나
 `strategy_axes/trainable_state/update_family` group을 고른다. v1 shared payload
 compatibility가 필요하면 새 config는 `round_runtime.payload_adapter_kind`를 생산한다.
-`round_runtime.adapter_family_name`은 old report/result reader가 canonical payload
-adapter kind로 정규화하는 입력 이름일 뿐, 새 method recipe나 runtime config의 조합
-키로 삼지 않는다.
+`round_runtime.adapter_family_name`은 제거된 v1 입력 이름이다. 새 method recipe,
+runtime config, report/result reader의 조합 키로 다시 만들지 않는다.
 
 FL simulation entrypoint의 `fl_method` section은 `FederatedSslExecutionPlan`으로
 해석된다. 새 논문 method는 기본적으로 `composition_mode=method_owned`로 실행하고,

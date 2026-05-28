@@ -160,7 +160,7 @@ Query Buffer (raw text)
 중요:
 
 - PEFT adapter와 classifier head는 분리된 artifact로 남기는 편이 좋다.
-- 그래야 나중에 시스템 FL translation에서 `peft_text_classifier` update family가
+- 그래야 나중에 시스템 FL translation에서 `peft_text_encoder` update family가
   adapter mechanism과 classifier head 결합 방식을 다시 선택하기 쉽다.
 
 ## future FL SSL translation 경계
@@ -168,7 +168,7 @@ Query Buffer (raw text)
 중앙 control 결과와 FL SSL winner를 시스템/FL로 옮길 때는 아래 원칙을 지킨다.
 
 1. paper/adaptation checkpoint를 현재 `ModelManifest`나 `TrainingUpdateEnvelope`에 바로 우겨넣지 않는다.
-2. translation 후보는 `peft_text_classifier` 같은 trainable state/update family로 연다.
+2. translation 후보는 `peft_text_encoder` 같은 trainable state/update family로 연다.
    v1 `lora_classifier` payload 이름은 old artifact reader compatibility 표면으로만 해석한다.
 3. PEFT adapter state와 classifier head state는 같은 update family 안에서 함께
    배포/집계하되, adapter mechanism(`lora`, `dora` 등)은 별도 PEFT adapter 축으로 둔다.
@@ -176,7 +176,7 @@ Query Buffer (raw text)
 5. `diagonal_scale`은 active translation baseline이 아니라 legacy shared payload
    compatibility contract로만 유지한다.
 6. `linear_head`는 embedding/vector 위 classification primitive이며,
-   `peft_text_classifier`의 fallback 하위 폴더가 아니다.
+   `peft_text_encoder`의 fallback 하위 폴더가 아니다.
 
 기본 scaffold 고정값:
 

@@ -4,23 +4,23 @@ from __future__ import annotations
 
 from typing import Any
 
-from methods.adaptation.peft_text_classifier.evaluation import (
+from methods.adaptation.peft_text_encoder.evaluation import (
     require_peft_encoder_state,
 )
-from methods.adaptation.peft_text_classifier.projection_artifacts import (
+from methods.adaptation.peft_text_encoder.projection_artifacts import (
     write_peft_encoder_projection_artifacts,
 )
-from methods.adaptation.peft_text_classifier.runtime_family import (
+from methods.adaptation.peft_text_encoder.runtime_family import (
     build_training_backend_config_for_peft_encoder_state,
 )
-from methods.adaptation.peft_text_classifier.training.delta_extraction import (
+from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
-from methods.adaptation.peft_text_classifier.training.loops import set_seed
-from methods.adaptation.peft_text_classifier.training.modeling import (
+from methods.adaptation.peft_text_encoder.training.loops import set_seed
+from methods.adaptation.peft_text_encoder.training.modeling import (
     build_peft_encoder_text_classifier_from_config,
 )
-from methods.adaptation.peft_text_classifier.update.materialization import (
+from methods.adaptation.peft_text_encoder.update.materialization import (
     materialize_base_peft_encoder_state,
 )
 from methods.adaptation.query_text_views.data import build_dataloader

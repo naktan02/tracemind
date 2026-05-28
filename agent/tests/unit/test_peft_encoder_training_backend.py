@@ -25,14 +25,14 @@ from methods.adaptation.local_update_registry import (
     list_registered_shared_adapter_training_backend_names,
     list_shared_adapter_training_backend_catalog_entries,
 )
-from methods.adaptation.peft_text_classifier import config as peft_config
-from methods.adaptation.peft_text_classifier.training import (
+from methods.adaptation.peft_text_encoder import config as peft_config
+from methods.adaptation.peft_text_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
-from methods.adaptation.peft_text_classifier.training_backend import (
+from methods.adaptation.peft_text_encoder.training_backend import (
     PeftEncoderTrainingBackend,
 )
-from methods.adaptation.peft_text_classifier.update.local_update import (
+from methods.adaptation.peft_text_encoder.update.local_update import (
     PeftEncoderTrainArtifacts,
     PeftEncoderTrainingRow,
 )

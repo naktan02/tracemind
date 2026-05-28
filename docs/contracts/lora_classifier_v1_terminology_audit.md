@@ -7,8 +7,8 @@
 ## 결론
 
 `lora_classifier`는 더 이상 구현 폴더의 source-of-truth 이름이 아니다. 구현 core는
-`methods/adaptation/peft_text_classifier/`,
-`methods/adaptation/peft_text_classifier/aggregation/`,
+`methods/adaptation/peft_text_encoder/`,
+`methods/adaptation/peft_text_encoder/aggregation/`,
 `methods/adaptation/peft_adapters/`가 소유한다.
 
 `lora_classifier` shared parser/factory와 report/result reader fallback은 제거됐다.
@@ -36,15 +36,15 @@ fallback 같은 좁은 legacy tensor 경계에서만 읽을 수 있는 historica
 
 | 구현 의미 | 현재 source of truth |
 |---|---|
-| PEFT text classifier config/training/evaluation | `methods/adaptation/peft_text_classifier/` |
-| PEFT encoder aggregation/state projection | `methods/adaptation/peft_text_classifier/aggregation/` |
+| PEFT text encoder config/training/evaluation | `methods/adaptation/peft_text_encoder/` |
+| PEFT encoder aggregation/state projection | `methods/adaptation/peft_text_encoder/aggregation/` |
 | LoRA/RSLoRA adapter mechanism | `methods/adaptation/peft_adapters/` |
 | FedMatch method semantics | `methods/federated_ssl/fedmatch/` |
 | Query row/view/token-batch glue | `methods/adaptation/query_text_views/` |
 
 삭제된 `methods/adaptation/lora_classifier/**` direct import path는 repo 내부
 compatibility surface가 아니다. 구현 source of truth는
-`methods/adaptation/peft_text_classifier/**`이고, `lora_classifier` 이름은
+`methods/adaptation/peft_text_encoder/**`이고, `lora_classifier` 이름은
 materialization/checkpoint fallback 같은 좁은 legacy tensor 경계에만 남긴다.
 새 business logic, source-of-truth constant, method/runtime policy를 추가하지 않는다.
 

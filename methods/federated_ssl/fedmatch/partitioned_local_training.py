@@ -6,19 +6,19 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
-from methods.adaptation.peft_text_classifier.config import (
+from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
 )
-from methods.adaptation.peft_text_classifier.federated_ssl import (
+from methods.adaptation.peft_text_encoder.federated_ssl import (
     partitioned_objective_training,
 )
-from methods.adaptation.peft_text_classifier.federated_ssl.partitioned import (
+from methods.adaptation.peft_text_encoder.federated_ssl.partitioned import (
     training_loop,
 )
-from methods.adaptation.peft_text_classifier.training import (
+from methods.adaptation.peft_text_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
-from methods.adaptation.peft_text_classifier.update.materialization import (
+from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
@@ -78,7 +78,7 @@ def run_method_owned_peft_classifier_training_core(
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslPeftEncoderClientTrainingResult:
-    """FedMatch descriptor가 호출하는 PEFT text classifier partitioned runtime."""
+    """FedMatch descriptor가 호출하는 PEFT text encoder partitioned runtime."""
 
     partitioned_runtime_plan = build_fedmatch_partitioned_runtime_plan(
         scenario_name=ssl_method_config.scenario,

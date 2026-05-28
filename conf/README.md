@@ -111,12 +111,12 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     `payload_adapter_kind`만 새 config 표면에 선언한다.
     scripts는 family 이름으로 분기하지 않고 이 callable들을 실행한다.
   - high-level compose preset은 중복 source-of-truth를 피하기 위해 두지 않는다.
-  - PEFT text classifier backbone/adapter 세부 값은
+  - PEFT text encoder backbone/adapter 세부 값은
     `strategy_axes/adaptation/transformer_backbone`과
     `strategy_axes/adaptation/peft_adapter`에서 온다.
   - `adapter_family_name` 입력 alias는 report/result reader에서도 제거됐다. 새 config와
     runtime model은 `payload_adapter_kind`와
-    `update_family_name=peft_text_classifier`만 기준으로 해석한다.
+    `update_family_name=peft_text_encoder`만 기준으로 해석한다.
     prototype은 adapter가 아니라 `prototype_pack` update family로 표현한다.
 - `strategy_axes/fl/shard_policy`
   - `cfg.shard_policy`로 compose된다.
@@ -226,7 +226,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - `local_objective_executors`, `initial_state_builder`, `validation_evaluator`,
     `final_projection_builder`, `transient_resource_cleaner`는 scripts가 family별
     구현을 직접 import하지 않도록 하는 runtime adapter 표면이다.
-  - 현재 target leaf는 `peft_text_classifier`, `linear_head`, `prototype_pack`이다.
+  - 현재 target leaf는 `peft_text_encoder`, `linear_head`, `prototype_pack`이다.
     `diagonal_scale`는 target update-family 축이 아니며 shared contract에서도
     제거됐다. 이 config group에 leaf를 다시 만들지 않는다.
 - `fl_data.source_mode`

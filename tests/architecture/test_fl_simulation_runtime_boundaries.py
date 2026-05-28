@@ -238,7 +238,7 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         snippet for snippet in mapper_forbidden_snippets if snippet in mapper_source
     ]
     training_runtime_forbidden_snippets = (
-        "methods.adaptation.peft_text_classifier",
+        "methods.adaptation.peft_text_encoder",
         "LORA_CLASSIFIER_TRAINING_BACKEND_NAME",
         "PEFT_CLASSIFIER_TRAINING_BACKEND_NAME",
         "PeftEncoderTrainingBackend",
