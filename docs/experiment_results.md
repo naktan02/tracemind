@@ -76,7 +76,7 @@ Purpose:
 
 FL SSL 현재 감사 기준:
 
-- 감사표: `docs/operations/fl_ssl_execution_audit.md`
+- 감사표: `docs/notes/sessions/2026-05-28-archived-fl-ssl-execution-audit.md`
 - 검증 manifest: `docs/operations/fl_ssl_artifact_verification_manifest.current.json`
 - 검증 명령:
   `uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py --manifest docs/operations/fl_ssl_artifact_verification_manifest.current.json`

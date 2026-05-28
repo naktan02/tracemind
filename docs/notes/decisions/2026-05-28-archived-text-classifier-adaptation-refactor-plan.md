@@ -295,7 +295,7 @@ objective 생성, `psi_factor` 해석은
 architecture guard는 해당 경로가 다시 생기지 않게 막는다.
 삭제된 `methods/adaptation/lora_classifier` package는 다시 만들지 않는다.
 남은 `lora_classifier` runtime/config/report 용어는
-`docs/contracts/lora_classifier_v1_terminology_audit.md` 기준으로 v1 contract 표면과
+`docs/notes/decisions/2026-05-28-archived-lora-classifier-v1-terminology-audit.md` 기준으로 v1 contract 표면과
 구현 owner 표면을 구분한다.
 기본 FL simulation profile, report verifier, result index/dashboard, FedMatch
 descriptor recipe는 `peft_classifier`를 canonical surface로 사용한다. 기존

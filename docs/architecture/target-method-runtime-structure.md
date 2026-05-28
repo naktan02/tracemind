@@ -196,8 +196,8 @@ Adapter 뒤로 옮긴다.
 ### 0단계: target 문서 고정
 
 - 이 문서를 active 구조 판단 기준으로 등록한다.
-- 기존 `text-classifier-adaptation-refactor-plan.md`와 `strategy_surface_map.md`는
-  현행 상태와 migration history로 읽고, 최종 구조 판단은 이 문서를 따른다.
+- 기존 text-classifier migration plan archive와 `strategy_surface_map.md`는 현행
+  상태와 migration history로 읽고, 최종 구조 판단은 이 문서를 따른다.
 
 ### 1단계: execution plan Interface 깊게 만들기
 
