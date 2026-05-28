@@ -11,10 +11,8 @@ from typing import Any
 from omegaconf import DictConfig, OmegaConf
 
 from methods.federated.client_split import (
-    LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
     LABELED_EXPOSURE_POLICY_NAMES,
-    LABELED_EXPOSURE_SERVER_ONLY_SEED,
-    LABELED_EXPOSURE_SHARED_CLIENT_SEED,
+    compact_labeled_exposure_policy_slug,
 )
 from methods.federated_ssl.method_config_surface import (
     default_method_server_update_policy_name,
@@ -242,11 +240,11 @@ def _resolve_labeled_exposure_slug(cfg: DictConfig) -> str | None:
     if configured is not None:
         normalized = str(configured).strip()
         if normalized:
-            return _compact_labeled_exposure_slug(normalized)
+            return compact_labeled_exposure_policy_slug(normalized)
     manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
     for policy_name in sorted(LABELED_EXPOSURE_POLICY_NAMES):
         if policy_name in manifest:
-            return _compact_labeled_exposure_slug(policy_name)
+            return compact_labeled_exposure_policy_slug(policy_name)
     return None
 
 
@@ -356,16 +354,6 @@ def _extract_manifest_component(manifest: str, *, prefix: str) -> str | None:
     if match:
         return match.group(1).split("_", 1)[0]
     return None
-
-
-def _compact_labeled_exposure_slug(policy_name: str) -> str:
-    if policy_name == LABELED_EXPOSURE_SHARED_CLIENT_SEED:
-        return "shared_client"
-    if policy_name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
-        return "server_only"
-    if policy_name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT:
-        return "client_local"
-    return policy_name
 
 
 def _slugify(value: object) -> str:

@@ -335,11 +335,33 @@ def test_prototype_projection_and_evaluation_core_stays_in_methods_layer() -> No
     existing_paths = [
         _relative_repo_path(path) for path in forbidden_paths if path.exists()
     ]
+    distance_report_script = (
+        SCRIPTS_SRC / "prototypes" / "report_prototype_distances.py"
+    )
+    distance_report_source = distance_report_script.read_text(encoding="utf-8")
+    forbidden_script_snippets = (
+        "def cosine_similarity(",
+        "def l2_distance(",
+        'args.centroid_view == "strict_single"',
+        "project_category_centroids_by_largest_cluster(",
+        "require_single_category_centroids(",
+    )
+    script_violations = [
+        snippet
+        for snippet in forbidden_script_snippets
+        if snippet in distance_report_source
+    ]
     assert (PROTOTYPE_SRC / "projections.py").exists()
+    assert (PROTOTYPE_SRC / "distance_report.py").exists()
     assert not existing_paths, (
         "prototype projection/evaluation 계산 core는 methods/prototype에 둔다. "
         "shared는 contract/serialization을, scripts는 artifact workflow만 소유한다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_paths)}"
+    )
+    assert not script_violations, (
+        "prototype distance report script는 CLI와 출력만 맡고 centroid view 선택과 "
+        "거리 계산은 methods/prototype/distance_report.py에 둔다.\n"
+        f"violations={script_violations}"
     )
 
 
@@ -688,6 +710,25 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         "새 update family 추가 때 scripts model/config_request에 family-specific "
         "field를 추가하지 않는다.\n"
         f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
+def test_fl_run_layout_does_not_own_labeled_exposure_policy_slug_map() -> None:
+    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "def _compact_labeled_exposure_slug(",
+        'policy_name == LABELED_EXPOSURE_SHARED_CLIENT_SEED',
+        'policy_name == LABELED_EXPOSURE_SERVER_ONLY_SEED',
+        'policy_name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "labeled exposure policy의 path/report용 compact slug는 "
+        "methods/federated/client_split.py가 소유한다. run_layout은 artifact path "
+        "조립만 맡는다.\n"
+        f"violations={violations}"
     )
 
 

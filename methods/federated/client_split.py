@@ -16,6 +16,9 @@ LABELED_EXPOSURE_SERVER_ONLY_SEED = "server_only_seed"
 LABELED_EXPOSURE_CLIENT_LOCAL_STORAGE_GROUP = "client_local_labeled"
 LABELED_EXPOSURE_SHARED_CLIENT_STORAGE_GROUP = "shared_client_labeled"
 LABELED_EXPOSURE_SERVER_ONLY_STORAGE_GROUP = "server_only_labeled"
+LABELED_EXPOSURE_CLIENT_LOCAL_SLUG = "client_local"
+LABELED_EXPOSURE_SHARED_CLIENT_SLUG = "shared_client"
+LABELED_EXPOSURE_SERVER_ONLY_SLUG = "server_only"
 LABELED_EXPOSURE_POLICY_NAMES = frozenset(
     {
         LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
@@ -61,8 +64,23 @@ class FederatedLabeledExposurePolicy:
             return LABELED_EXPOSURE_SERVER_ONLY_STORAGE_GROUP
         return LABELED_EXPOSURE_CLIENT_LOCAL_STORAGE_GROUP
 
+    @property
+    def compact_slug(self) -> str:
+        return compact_labeled_exposure_policy_slug(self.name)
+
     def to_payload(self) -> dict[str, object]:
         return {"name": self.name}
+
+
+def compact_labeled_exposure_policy_slug(policy_name: str) -> str:
+    """labeled exposure policy의 path/report용 compact slug를 반환한다."""
+
+    policy = FederatedLabeledExposurePolicy(name=policy_name)
+    if policy.name == LABELED_EXPOSURE_SHARED_CLIENT_SEED:
+        return LABELED_EXPOSURE_SHARED_CLIENT_SLUG
+    if policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+        return LABELED_EXPOSURE_SERVER_ONLY_SLUG
+    return LABELED_EXPOSURE_CLIENT_LOCAL_SLUG
 
 
 @dataclass(frozen=True, slots=True)

@@ -26,12 +26,15 @@ def test_labeled_exposure_policy_normalizes_known_modes() -> None:
     assert client_local.exposes_client_labeled_rows is True
     assert client_local.shares_same_labeled_rows_across_clients is False
     assert client_local.storage_group_name == "client_local_labeled"
+    assert client_local.compact_slug == "client_local"
     assert shared_client.exposes_client_labeled_rows is True
     assert shared_client.shares_same_labeled_rows_across_clients is True
     assert shared_client.storage_group_name == "shared_client_labeled"
+    assert shared_client.compact_slug == "shared_client"
     assert server_only.exposes_client_labeled_rows is False
     assert server_only.shares_same_labeled_rows_across_clients is False
     assert server_only.storage_group_name == "server_only_labeled"
+    assert server_only.compact_slug == "server_only"
     assert server_only.to_payload() == {"name": "server_only_seed"}
 
 

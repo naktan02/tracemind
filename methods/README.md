@@ -100,6 +100,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   생성 전략
 - `methods/prototype/projections.py`: prototype pack을 평가/리포트용 centroid view로
   투영하는 helper
+- `methods/prototype/distance_report.py`: prototype centroid pairwise similarity/
+  distance report 계산
 - `methods/prototype/scoring/`: prototype similarity와 category score policy 계산
 - `methods/prototype/evidence/`: prototype score를 pseudo-label evidence로 정규화
 - `methods/prototype/training_inputs/`: prototype single/multiview input view 계산
