@@ -2,7 +2,7 @@
   "defaults": {
     "expected_seed": 42,
     "expected_shard_policy_name": "dirichlet_label_skew",
-    "expected_adapter_family": "lora_classifier",
+    "expected_payload_adapter_kind": "lora_classifier",
     "expected_aggregation": "fedavg",
     "expected_delta_format": "server_uploaded_artifact_ref",
     "expected_labeled_exposure_policy": "client_local_split",

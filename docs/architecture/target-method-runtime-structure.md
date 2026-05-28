@@ -29,9 +29,10 @@ trainable state identity를 직접 분기하면 Seam이 얕은 구조로 본다.
 | method descriptor | FedMatch/FedLGMatch/(FL)^2 같은 논문 method identity와 local/server policy 요구사항 | `fedmatch` |
 | runtime capability | 여러 method가 공유할 수 있는 실행 능력 | `peer_context`, `server_step`, `artifact_ref_materializer`, `security_policy` |
 
-`adapter_family_name`은 현재 v1 코드와 contract에 남은 이름이다. 최종 구조에서는
-prototype까지 포함하기 어렵기 때문에 `update_family_name` 또는
-`trainable_state_family_name`으로 교체한다.
+`adapter_family_name`은 v1 report/artifact reader에만 남길 legacy 입력 이름이다.
+새 실행 config와 runtime model은 `payload_adapter_kind`와 `update_family_name`만
+받는다. prototype까지 포함하는 실행 축은 `update_family_name` 또는
+`trainable_state_family_name`으로 표현한다.
 
 `text`가 붙은 이름은 의도적으로 modality-specific이다. `peft_text_classifier`는
 text encoder, tokenizer, text view 생성, PEFT adapter, linear head가 함께 움직이는
@@ -156,8 +157,8 @@ Adapter 뒤로 옮긴다.
   initial state builder, validation evaluator, final projection builder, transient
   resource cleaner는 scripts가 family 구현을 직접 import하지 않기 위한 설정 표면이다.
   migration window 동안 v1 shared payload가 필요한 family도 새 config leaf에서는
-  `payload_adapter_kind`만 선언하고, `adapter_family_name`은 old config/report reader
-  fallback에만 남긴다.
+  `payload_adapter_kind`만 선언한다. `adapter_family_name`은 old report/result
+  reader 입력을 canonical payload adapter kind로 정규화하는 fallback에만 남긴다.
 - `conf/strategy_axes/fl/method_descriptor/<method>.yaml`은 method identity 선택
   표면이다. method-local objective 이름을 별도 generic leaf로 다시 노출하지 않는다.
 - `fedmatch_agreement`, `sigma/psi`, FedMatch helper 기본값은
@@ -165,9 +166,9 @@ Adapter 뒤로 옮긴다.
   mechanism만 runtime capability axis로 승격한다.
 - `scripts`는 새 method나 update family를 알기 위해 수정하지 않는다. runner 수정이
   필요하면 먼저 execution plan Interface가 충분히 깊은지 점검한다.
-- 현행 문서나 코드의 `lora_classifier`, `adapter_family_name`은 compatibility 이름일 수
-  있다. 새 구조 설계에서는 `peft_text_classifier`, `update_family_name`,
-  `trainable_state` 용어로 해석한다.
+- 현행 문서나 old artifact의 `lora_classifier`, `adapter_family_name`은 compatibility
+  이름일 수 있다. 새 구조 설계와 새 실행 config에서는 `peft_text_classifier`,
+  `payload_adapter_kind`, `update_family_name`, `trainable_state` 용어로 해석한다.
 
 ## Legacy 격리
 
@@ -178,10 +179,11 @@ Adapter 뒤로 옮긴다.
   `diagonal_scale`는 target update-family 축이 아니므로
   `conf/strategy_axes/trainable_state/update_family/diagonal_scale.yaml`과
   `methods/adaptation/diagonal_scale/**`는 제거된 상태를 유지한다.
-- `round_runtime.adapter_family_name`은 v1 payload/aggregation compatibility
-  alias다. 새 config leaf는 이 값을 생산하지 않고, old config/report reader만
-  fallback으로 읽는다. 새 실행 표면은 `round_runtime.update_family_name`과
-  `round_runtime.payload_adapter_kind`를 기준으로 한다.
+- `round_runtime.adapter_family_name`은 v1 report/result 입력 이름이다. 새 config
+  leaf와 runtime model은 이 값을 생산하거나 받지 않는다. old reader가 필요하면
+  읽는 즉시 `round_runtime.payload_adapter_kind`로 정규화한다. 새 실행 표면은
+  `round_runtime.update_family_name`과 `round_runtime.payload_adapter_kind`를
+  기준으로 한다.
 - legacy field는 제거 조건이 있는 compatibility layer로만 유지한다. 삭제된
   methods-level direct import shim은 다시 만들지 않는다.
 
@@ -204,9 +206,9 @@ Adapter 뒤로 옮긴다.
 ### 2단계: config vocabulary 전환
 
 - `conf/strategy_axes/trainable_state/update_family/`를 추가한다.
-- 기존 `round_runtime.adapter_family_name`은 compatibility alias로 읽되, 새 config는
-  `update_family_name`과 `payload_adapter_kind`만 생산한다. report에는 old reader
-  compatibility window 동안 alias를 함께 기록할 수 있다.
+- 기존 `round_runtime.adapter_family_name` 입력은 old report/result reader에서만
+  canonical `payload_adapter_kind`로 정규화한다. 새 config와 새 report producer는
+  `update_family_name`과 `payload_adapter_kind`만 생산한다.
 - `fedmatch_agreement` 같은 method-local objective는 generic
   `strategy_axes/fl/local_ssl_policy/*.yaml` leaf가 아니라 method descriptor 내부
   요구사항에서 파생한다.

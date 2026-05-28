@@ -298,35 +298,6 @@ def _normalize_round_runtime_name(value: str, *, field_name: str) -> str:
     return normalized
 
 
-def _resolve_payload_adapter_kind(
-    *,
-    payload_adapter_kind: str | None,
-    adapter_family_name: str | None,
-) -> str:
-    resolved_payload_adapter_kind = _optional_str(payload_adapter_kind)
-    legacy_adapter_family_name = _optional_str(adapter_family_name)
-    if resolved_payload_adapter_kind is None:
-        if legacy_adapter_family_name is None:
-            raise ValueError("round_runtime.payload_adapter_kind must not be empty.")
-        return legacy_adapter_family_name
-    if legacy_adapter_family_name is None:
-        return resolved_payload_adapter_kind
-    normalized_payload_adapter_kind = _normalize_round_runtime_name(
-        resolved_payload_adapter_kind,
-        field_name="payload_adapter_kind",
-    )
-    normalized_legacy_adapter_family = _normalize_round_runtime_name(
-        legacy_adapter_family_name,
-        field_name="adapter_family_name",
-    )
-    if normalized_payload_adapter_kind != normalized_legacy_adapter_family:
-        raise ValueError(
-            "round_runtime.payload_adapter_kind and legacy "
-            "round_runtime.adapter_family_name must match when both are provided."
-        )
-    return normalized_payload_adapter_kind
-
-
 @dataclass(slots=True, init=False)
 class FederatedRoundRuntimeConfig:
     """simulation이 사용할 update family와 v1 payload compatibility 설정."""
@@ -348,8 +319,7 @@ class FederatedRoundRuntimeConfig:
         *,
         aggregation_backend_name: str,
         update_family_name: str,
-        payload_adapter_kind: str | None = None,
-        adapter_family_name: str | None = None,
+        payload_adapter_kind: str,
         runtime_payload_key: str | None = None,
         runtime_payloads: Mapping[str, object] | None = None,
         round_runtime_payload_builder: str | None = None,
@@ -359,11 +329,7 @@ class FederatedRoundRuntimeConfig:
         final_projection_builder: str | None = None,
         transient_resource_cleaner: str | None = None,
     ) -> None:
-        resolved_payload_adapter_kind = _resolve_payload_adapter_kind(
-            payload_adapter_kind=payload_adapter_kind,
-            adapter_family_name=adapter_family_name,
-        )
-        self.payload_adapter_kind = resolved_payload_adapter_kind
+        self.payload_adapter_kind = payload_adapter_kind
         self.aggregation_backend_name = aggregation_backend_name
         self.update_family_name = update_family_name
         self.runtime_payload_key = runtime_payload_key
@@ -393,12 +359,6 @@ class FederatedRoundRuntimeConfig:
                 normalized_runtime_payload_key.lower().replace("-", "_")
             )
         self.runtime_payload_key = normalized_runtime_payload_key
-
-    @property
-    def adapter_family_name(self) -> str:
-        """legacy config/report 호환 alias."""
-
-        return self.payload_adapter_kind
 
     def runtime_payload_for_update_family(self) -> object | None:
         """update-family config가 지정한 runtime payload를 반환한다."""

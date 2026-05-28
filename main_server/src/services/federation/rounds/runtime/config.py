@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from ..aggregation.models import AggregationConfigScalar
 
 ROUND_PAYLOAD_ADAPTER_KIND_ENV = "TRACEMIND_ROUND_PAYLOAD_ADAPTER_KIND"
-LEGACY_ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
 ROUND_UPDATE_FAMILY_ENV = "TRACEMIND_ROUND_UPDATE_FAMILY"
 ROUND_AGGREGATION_BACKEND_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND"
 ROUND_AGGREGATION_BACKEND_CONFIG_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND_CONFIG"
@@ -62,7 +61,6 @@ class ServerRoundRuntimeConfig:
         self,
         *,
         payload_adapter_kind: str | None = None,
-        adapter_family_name: str | None = None,
         update_family_name: str = (
             DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.update_family_name
         ),
@@ -76,20 +74,14 @@ class ServerRoundRuntimeConfig:
             Mapping[str, AggregationConfigScalar] | None
         ) = None,
     ) -> None:
-        self.payload_adapter_kind = _resolve_payload_adapter_kind(
-            payload_adapter_kind=payload_adapter_kind,
-            adapter_family_name=adapter_family_name,
+        self.payload_adapter_kind = (
+            _optional_str(payload_adapter_kind)
+            or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.payload_adapter_kind
         )
         self.update_family_name = update_family_name
         self.aggregation_backend_name = aggregation_backend_name
         self.method_descriptor_name = method_descriptor_name
         self.aggregation_backend_overrides = dict(aggregation_backend_overrides or {})
-
-    @property
-    def adapter_family_name(self) -> str:
-        """legacy server runtime alias."""
-
-        return self.payload_adapter_kind
 
 
 def load_server_round_runtime_config_from_env(
@@ -102,7 +94,6 @@ def load_server_round_runtime_config_from_env(
     return ServerRoundRuntimeConfig(
         payload_adapter_kind=(
             source.get(ROUND_PAYLOAD_ADAPTER_KIND_ENV)
-            or source.get(LEGACY_ROUND_ADAPTER_FAMILY_ENV)
             or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.payload_adapter_kind
         ),
         update_family_name=source.get(
@@ -157,23 +148,6 @@ def _optional_env_value(source: Mapping[str, str], key: str) -> str | None:
         return None
     normalized = value.strip()
     return normalized or None
-
-
-def _resolve_payload_adapter_kind(
-    *,
-    payload_adapter_kind: str | None,
-    adapter_family_name: str | None,
-) -> str:
-    resolved = _optional_str(payload_adapter_kind)
-    legacy = _optional_str(adapter_family_name)
-    if resolved is None:
-        return legacy or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.payload_adapter_kind
-    if legacy is not None and resolved != legacy:
-        raise ValueError(
-            "payload_adapter_kind and legacy adapter_family_name must match "
-            "when both are provided."
-        )
-    return resolved
 
 
 def _optional_str(value: str | None) -> str | None:

@@ -16,10 +16,10 @@ central fixed embedding + classifier seed
 - 최종 method/runtime 구조 판단은
   `docs/architecture/target-method-runtime-structure.md`를 우선한다. 이 문서는 현재
   실행 표면과 legacy compatibility 이름을 함께 보여준다.
-- 현재 표의 `adapter_family_name`, `lora_classifier`, `fedmatch_agreement`는 현행 코드와
+- 현재 표의 `adapter_family_name`, `lora_classifier`, `fedmatch_agreement`는 old artifact와
   report compatibility 용어일 수 있다. target 구조에서는 각각
-  `update_family_name`, `peft_text_classifier`, method-local FedMatch objective로
-  정리한다.
+  `payload_adapter_kind`/`update_family_name`, `peft_text_classifier`,
+  method-local FedMatch objective로 정리한다.
 - 중앙 SSL은 pooled/offline control이다.
 - 논문 메인 비교는 `FL SSL under non-IID`에서 수행한다.
 - runtime v1은 `embedding -> global classifier -> local interpretation` baseline을 우선한다.
@@ -149,7 +149,7 @@ central fixed embedding + classifier seed
   supervised/unsupervised tensor local objective를 method package에 고정했다.
   PEFT text-classifier logical partition 실행 loop와 method-owned local simulation bridge는
   `methods/adaptation/peft_text_classifier/federated_ssl/`의 method-neutral
-  adapter-family slice가 소유한다. FedMatch의 `sigma/psi` 의미는
+  update-family runtime primitive가 소유한다. FedMatch의 `sigma/psi` 의미는
   `methods/federated_ssl/fedmatch/`에서 읽는다.
   현재 server path는 원본 sparse sigma/psi sync가 아니라 PEFT-classifier merged
   delta/FedAvg 또는 `server_update_policy=fedmatch_partitioned`에서

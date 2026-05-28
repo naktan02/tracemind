@@ -32,7 +32,7 @@ from methods.federated_ssl.local_supervision import (
 
 @dataclass(frozen=True, slots=True)
 class FedMatchPartitionedRuntimePlan:
-    """FedMatch sigma/psi 의미를 adapter-family runtime 입력으로 고정한다."""
+    """FedMatch sigma/psi 의미를 update-family runtime 입력으로 고정한다."""
 
     scenario_name: str
     local_supervision_regime: FederatedSslLocalSupervisionRegime

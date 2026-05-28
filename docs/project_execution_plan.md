@@ -23,10 +23,10 @@ central fixed embedding + classifier seed
 
 최종 method/runtime 구조 판단은
 `docs/architecture/target-method-runtime-structure.md`를 우선한다. 기존 문서의
-`lora_classifier`, `adapter_family_name`, `fedmatch_agreement` 같은 이름은 현재
-코드와 legacy compatibility 표면일 수 있으며, 새 설계 판단에서는 target 문서의
-`update_family`, `trainable_state`, `method descriptor`, `runtime capability` 용어를
-기준으로 삼는다.
+`lora_classifier`, `adapter_family_name`, `fedmatch_agreement` 같은 이름은 old artifact나
+legacy compatibility 표면일 수 있으며, 새 실행 config 판단에서는 target 문서의
+`payload_adapter_kind`, `update_family`, `trainable_state`, `method descriptor`,
+`runtime capability` 용어를 기준으로 삼는다.
 
 ## Fixed Decisions
 

@@ -572,6 +572,8 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         "runtime_payload_for_adapter_family",
         "classifier_head_bootstrap_logit_scale",
         "adapter_family_name=str(cfg.round_runtime.adapter_family_name)",
+        "adapter_family_name: str | None",
+        "def adapter_family_name(",
     )
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:
@@ -617,6 +619,47 @@ def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
         "PEFT runtime bridge의 지원 여부와 payload 선택은 update_family_name 기준이다. "
         "adapter_family_name은 shared contract/aggregation compatibility 표면에만 "
         "남긴다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
+def test_active_round_runtime_configs_do_not_accept_adapter_family_alias() -> None:
+    checked_paths = (
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "models.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "config_request.py",
+        REPO_ROOT
+        / "main_server"
+        / "src"
+        / "services"
+        / "federation"
+        / "rounds"
+        / "runtime"
+        / "config.py",
+    )
+    forbidden_snippets = (
+        "adapter_family_name: str | None",
+        "def adapter_family_name(",
+        "LEGACY_ROUND_ADAPTER_FAMILY_ENV",
+        "TRACEMIND_ROUND_ADAPTER_FAMILY",
+        'round_runtime, "adapter_family_name"',
+        "provide legacy round_runtime.adapter_family_name",
+        "payload_adapter_kind and legacy adapter_family_name",
+    )
+    violations: list[tuple[Path, str]] = []
+    for path in checked_paths:
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
+
+    assert not violations, (
+        "active FL runtime config는 payload_adapter_kind만 받는다. "
+        "adapter_family_name은 old report/result reader에서 payload_adapter_kind로 "
+        "정규화하는 입력 이름일 뿐, 새 실행 config alias로 되살리지 않는다.\n"
         f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
 
@@ -2221,7 +2264,7 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
     )
     forbidden_snippets = (
         "legacy fallback",
-        "--expected-adapter-family lora_classifier",
+        "--expected-payload-adapter-kind lora_classifier",
         "--expect-lora-classifier-aggregate-snapshot",
         "FedAvg + FixMatch + LoRA-classifier",
         "LoRA-classifier simulation 병목",

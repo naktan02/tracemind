@@ -29,7 +29,6 @@ from main_server.src.services.federation.rounds.runtime import (
     factory as runtime_factory_module,
 )
 from main_server.src.services.federation.rounds.runtime.config import (
-    LEGACY_ROUND_ADAPTER_FAMILY_ENV,
     ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,
     ROUND_METHOD_DESCRIPTOR_ENV,
@@ -325,18 +324,6 @@ def test_runtime_config_loader_reads_environment_mapping() -> None:
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
     assert config.method_descriptor_name == TEST_METHOD_NAME
     assert config.aggregation_backend_overrides == {"min_scale": 0.8}
-
-
-def test_runtime_config_loader_keeps_legacy_adapter_family_env() -> None:
-    config = load_server_round_runtime_config_from_env(
-        environ={
-            LEGACY_ROUND_ADAPTER_FAMILY_ENV: TEST_FAMILY_NAME,
-            ROUND_AGGREGATION_BACKEND_ENV: TEST_BACKEND_NAME,
-        }
-    )
-
-    assert config.payload_adapter_kind == TEST_FAMILY_NAME
-    assert config.adapter_family_name == TEST_FAMILY_NAME
 
 
 def test_main_server_app_uses_environment_runtime_config(

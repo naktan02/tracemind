@@ -53,7 +53,7 @@ class TensorLocalObjectiveResult:
 
 
 class PartitionedTensorLocalObjective(Protocol):
-    """partitioned adapter-family runtime이 호출하는 method-owned objective."""
+    """partitioned update-family runtime이 호출하는 method-owned objective."""
 
     def compute_supervised_loss(
         self,

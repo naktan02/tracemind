@@ -30,7 +30,7 @@ class FederatedReportExpectation:
     expected_ssl_method_parameter_override_status: str | None = None
     expected_ssl_algorithm: str | None = None
     expected_ssl_method: str | None = None
-    expected_adapter_family: str | None = None
+    expected_payload_adapter_kind: str | None = None
     expected_update_family: str | None = None
     expected_aggregation: str | None = None
     expected_server_update_policy: str | None = None

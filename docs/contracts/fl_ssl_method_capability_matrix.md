@@ -51,7 +51,8 @@ policy가 된다.
 - `partitioned_trainable_state` planned capability
   - frozen backbone은 공유하고 trainable adapter/head state만 partition별로 보존한다.
   - FedMatch의 `sigma/psi`는 이 capability 위에 올라가는 method-owned partition
-    scheme이며, LoRA/DoRA 같은 concrete PEFT composition은 adapter-family가 소유한다.
+    scheme이며, LoRA/DoRA 같은 concrete PEFT composition은 update-family runtime
+    payload가 소유한다.
   - runner와 runtime은 FedMatch 이름을 판단하지 않고 `partitioned_update`와
     `composition_policy`를 통해 materialization/evaluation을 연결한다.
   - 초기 구현은 `methods/adaptation/peft_text_classifier/` 아래로 이동했으며,
@@ -69,8 +70,8 @@ policy가 된다.
     허용하는 partitioned trainable state primitive를 단계적으로 열고 있다.
   - `methods/adaptation/peft_text_classifier/federated_ssl/`는 method-owned
     objective를 PEFT text-classifier model/loaders, logical/physical partition
-    delta, shared update payload로 실행하는 adapter-family slice다. FedMatch method
-    의미는 `methods/federated_ssl/fedmatch/`에서 읽는다.
+    delta, shared update payload로 실행하는 update-family runtime primitive다.
+    FedMatch method 의미는 `methods/federated_ssl/fedmatch/`에서 읽는다.
   - helper prediction exchange는 이전 round client-local PEFT encoder snapshot과 validation
     probe vector 기반 simulation slice로 실행된다. labels-at-server는
     `server_only_seed + supervised_seed_step` server runtime과 client-local `psi`

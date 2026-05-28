@@ -35,8 +35,8 @@ method-only aggregation 변형을 묶을 수 있다. 두 개 이상 방법론에
 - 일반 runtime/strategy registry는 lookup, duplicate guard, lazy import trigger만 맡는다.
 - concrete builtin 목록을 중앙 `registry.py`나 `builtin_loader.py`에 누적하지 않는다.
 - shared canonical payload family의 explicit loader만 contract source-of-truth 예외로 둔다.
-- local update backend, scoring, privacy guard, adapter-family aggregation core는
-  `methods/adaptation/<family>/`가 소유한다.
+- local update backend, scoring, privacy guard, update-family aggregation core는
+  `methods/adaptation/<family>/` 또는 `methods/classification/<family>/`가 소유한다.
 - runtime/API fallback은 `methods/federated_ssl/runtime_fallbacks.py` 하나로 제한한다.
 - runtime/objective compatibility는 `methods/adaptation/runtime_objective_compatibility.py`
   dispatcher와 family-local 구현이 맡는다.

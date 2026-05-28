@@ -284,14 +284,9 @@ def _resolve_round_payload_adapter_kind(round_runtime: DictConfig) -> str:
     if payload_adapter_kind is not None:
         return payload_adapter_kind
 
-    legacy_adapter_family = _optional_config_str(round_runtime, "adapter_family_name")
-    if legacy_adapter_family is not None:
-        return legacy_adapter_family
-
     raise ValueError(
-        "round_runtime payload adapter kind compatibility alias is required. "
         "Set strategy_axes/trainable_state/update_family so it declares "
-        "payload_adapter_kind, or provide legacy round_runtime.adapter_family_name."
+        "round_runtime.payload_adapter_kind."
     )
 
 

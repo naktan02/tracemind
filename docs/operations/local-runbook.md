@@ -266,7 +266,7 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expected-run-control-output-dir runs/_smoke/fl_ssl \
   --expected-ssl-algorithm fixmatch \
   --expected-ssl-method fixmatch_usb_v1 \
-  --expected-adapter-family peft_classifier \
+  --expected-payload-adapter-kind peft_classifier \
   --expected-aggregation fedavg \
   --expected-delta-format server_uploaded_artifact_ref \
   --expect-shared-update-count-matches-round-updates \

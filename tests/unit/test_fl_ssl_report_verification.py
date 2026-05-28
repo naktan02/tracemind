@@ -164,7 +164,7 @@ def _expectation(
         expected_run_control_output_dir="runs/fl_ssl",
         expected_ssl_algorithm="fixmatch",
         expected_ssl_method="fixmatch_usb_v1",
-        expected_adapter_family="lora_classifier",
+        expected_payload_adapter_kind="lora_classifier",
         expected_update_family="peft_text_classifier",
         expected_aggregation="fedavg",
         expected_server_update_policy="fedavg_merged_delta",
@@ -354,7 +354,7 @@ def test_verify_federated_report_prefers_payload_adapter_kind() -> None:
             payload_adapter_kind="peft_classifier",
         ),
         expectation=FederatedReportExpectation(
-            expected_adapter_family="peft_classifier",
+            expected_payload_adapter_kind="peft_classifier",
         ),
     )
 
@@ -575,7 +575,7 @@ def test_verify_federated_report_accepts_peft_classifier_v2_update_artifacts(
     result = verify_federated_simulation_report_path(
         report_path,
         FederatedReportExpectation(
-            expected_adapter_family="peft_classifier",
+            expected_payload_adapter_kind="peft_classifier",
             expected_delta_format="server_uploaded_artifact_ref",
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
@@ -937,7 +937,7 @@ def test_verify_federated_report_flags_peft_classifier_v2_artifact_ref_drift(
     result = verify_federated_simulation_report_path(
         report_path,
         FederatedReportExpectation(
-            expected_adapter_family="peft_classifier",
+            expected_payload_adapter_kind="peft_classifier",
             expected_delta_format="server_uploaded_artifact_ref",
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
@@ -1003,7 +1003,7 @@ def test_verify_client_count_sweep_summary_checks_each_report(
             expected_round_update_count_matches_client_count=True,
             expected_ssl_algorithm="fixmatch",
             expected_ssl_method="fixmatch_usb_v1",
-            expected_adapter_family="lora_classifier",
+            expected_payload_adapter_kind="lora_classifier",
             expected_aggregation="fedavg",
             expected_delta_format="server_uploaded_artifact_ref",
         ),
@@ -1112,7 +1112,7 @@ def test_verify_artifact_manifest_checks_multiple_artifacts(
                     "expected_run_control_output_dir": "runs/fl_ssl",
                     "expected_ssl_algorithm": "fixmatch",
                     "expected_ssl_method": "fixmatch_usb_v1",
-                    "expected_adapter_family": "lora_classifier",
+                    "expected_payload_adapter_kind": "lora_classifier",
                     "expected_aggregation": "fedavg",
                     "expected_delta_format": "server_uploaded_artifact_ref",
                 },
@@ -1169,7 +1169,7 @@ def test_verify_artifact_manifest_applies_peft_snapshot_default(
         json.dumps(
             {
                 "defaults": {
-                    "expected_adapter_family": "peft_classifier",
+                    "expected_payload_adapter_kind": "peft_classifier",
                     "expected_delta_format": "server_uploaded_artifact_ref",
                     "expected_shared_update_count_matches_round_updates": True,
                     "expect_server_owned_update_artifacts": True,
