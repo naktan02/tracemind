@@ -155,8 +155,9 @@ Adapter 뒤로 옮긴다.
   runtime payload key와 runtime adapter callable을 선언한다. local objective executor,
   initial state builder, validation evaluator, final projection builder, transient
   resource cleaner는 scripts가 family 구현을 직접 import하지 않기 위한 설정 표면이다.
-  migration window 동안 v1 shared payload가 필요한 family는 `payload_adapter_kind`와
-  `adapter_family_name` compatibility alias도 이 leaf에서만 선언한다.
+  migration window 동안 v1 shared payload가 필요한 family도 새 config leaf에서는
+  `payload_adapter_kind`만 선언하고, `adapter_family_name`은 old config/report reader
+  fallback에만 남긴다.
 - `conf/strategy_axes/fl/method_descriptor/<method>.yaml`은 method identity 선택
   표면이다. method-local objective 이름을 별도 generic leaf로 다시 노출하지 않는다.
 - `fedmatch_agreement`, `sigma/psi`, FedMatch helper 기본값은

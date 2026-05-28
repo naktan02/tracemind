@@ -91,7 +91,7 @@
   재사용 backend/projection은 `methods/federated/aggregation/` 또는
   `methods/adaptation/<family>/`에 두고, server wiring은 기존 generic
   `aggregation/executor.py`와 registry를 재사용한다
-- adapter family 추가: `shared/src/contracts/adapter_contract_families/` +
+- payload adapter kind 추가: `shared/src/contracts/adapter_contract_families/` +
   aggregation backend. `families/`에 family-specific 파일을 추가하지 않는다.
 - server runtime 기본 축 변경: `runtime/config.py`
 

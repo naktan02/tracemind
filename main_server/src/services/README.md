@@ -35,9 +35,9 @@
 - prototype rebuild input row는 `ServerReferencePrototypeSourceRow`로 표현되는
   server-owned reference만 허용한다. agent raw/query text는 이 경로로 승격하지 않는다.
 - 공용 계약은 `shared/src/contracts/`를 기준으로 읽는다.
-- 새 adapter family나 FL SSL method 때문에 `federation/rounds/families/`에
+- 새 payload adapter kind나 FL SSL method 때문에 `federation/rounds/families/`에
   family/method-specific 파일을 추가하지 않는다. 이 폴더는 shared payload registry와
   methods-owned aggregation backend를 조합하는 generic runtime seam만 둔다.
-- `RoundManagerService`는 기본 adapter family를 직접 고르지 않는다. no-config live
+- `RoundManagerService`는 기본 payload adapter를 직접 고르지 않는다. no-config live
   server fallback은 `federation/rounds/runtime/config.py`의 named legacy profile이
   소유하고, service는 caller가 조립한 `adapter_family`를 받는다.
