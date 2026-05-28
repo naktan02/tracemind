@@ -15,6 +15,9 @@ from methods.adaptation.peft_text_encoder.aggregation import (
 )
 from methods.federated.aggregation_weighting import (
     AggregationWeightPolicy,
+    aggregation_example_count_for_diagnostics,
+    aggregation_weight_basis_label,
+    aggregation_weight_for_diagnostics,
     normalized_aggregation_weights,
 )
 from methods.federated.participation import (
@@ -70,6 +73,17 @@ class _Update:
     ) -> None:
         self.example_count = example_count
         self.accepted_count = accepted_count
+
+
+class _DiagnosticClient:
+    def __init__(
+        self,
+        *,
+        accepted_count: int,
+        aggregation_example_count: int | None = None,
+    ) -> None:
+        self.accepted_count = accepted_count
+        self.aggregation_example_count = aggregation_example_count
 
 
 def test_participation_policy_defaults_to_all_clients() -> None:
@@ -167,6 +181,34 @@ def test_aggregation_weight_policy_normalizes_example_and_uniform_weights() -> N
         updates,
         policy=AggregationWeightPolicy(name="uniform"),
     ) == [pytest.approx(0.5), pytest.approx(0.5)]
+
+
+def test_aggregation_diagnostics_weight_helpers_follow_policy_meaning() -> None:
+    client = _DiagnosticClient(accepted_count=3, aggregation_example_count=5)
+    fallback_client = _DiagnosticClient(accepted_count=3)
+
+    assert aggregation_example_count_for_diagnostics(client) == 5
+    assert aggregation_example_count_for_diagnostics(fallback_client) == 3
+    assert aggregation_weight_for_diagnostics(
+        client,
+        policy=AggregationWeightPolicy(name="example_count"),
+    ) == 5.0
+    assert aggregation_weight_for_diagnostics(
+        client,
+        policy=AggregationWeightPolicy(name="accepted_count"),
+    ) == 3.0
+    assert aggregation_weight_for_diagnostics(
+        client,
+        policy=AggregationWeightPolicy(name="uniform"),
+    ) == 1.0
+    assert (
+        aggregation_weight_basis_label(AggregationWeightPolicy(name="example_count"))
+        == "update_envelope.example_count"
+    )
+    assert (
+        aggregation_weight_basis_label(AggregationWeightPolicy(name="uniform"))
+        == "uniform"
+    )
 
 
 def test_capability_plan_defaults_to_shared_client_seed() -> None:

@@ -8,6 +8,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
+METHODS_FEDERATED_SRC = REPO_ROOT / "methods" / "federated"
 METHODS_FEDERATED_SSL_SRC = REPO_ROOT / "methods" / "federated_ssl"
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
@@ -142,6 +143,33 @@ def test_fl_simulation_config_callable_loading_is_centralized() -> None:
         "fully-qualified path 파싱과 import 규칙은 scripts/configured_callable.py에 "
         "모은다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_fl_aggregation_weight_policy_meaning_stays_in_methods() -> None:
+    script_path = FL_SIMULATION_IO_SRC / "aggregation_diagnostics.py"
+    methods_path = METHODS_FEDERATED_SRC / "aggregation_weighting.py"
+    script_source = script_path.read_text(encoding="utf-8")
+    methods_source = methods_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "AGGREGATION_WEIGHT_UNIFORM",
+        "AGGREGATION_WEIGHT_ACCEPTED_COUNT",
+        "AGGREGATION_WEIGHT_EXAMPLE_COUNT",
+        'policy.name == "uniform"',
+        'policy.name == "accepted_count"',
+        'policy.name == "example_count"',
+    )
+    violations = [
+        snippet for snippet in forbidden_snippets if snippet in script_source
+    ]
+
+    assert "def aggregation_weight_for_diagnostics(" in methods_source
+    assert "def aggregation_weight_basis_label(" in methods_source
+    assert not violations, (
+        "FL simulation report IO는 aggregation weight policy 의미를 직접 분기하지 "
+        "않는다. policy별 weight/basis 해석은 methods/federated가 소유하고, "
+        "scripts는 diagnostics payload 조립만 맡는다.\n"
+        f"violations={violations}"
     )
 
 

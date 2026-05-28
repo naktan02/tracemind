@@ -8,6 +8,8 @@ from collections.abc import Callable, Sequence
 from typing import TypeVar
 
 from methods.federated.shard_policy.base import (
+    SHARD_POLICY_DIRICHLET_LABEL_SKEW,
+    SHARD_POLICY_LABEL_DOMINANT,
     FederatedClientShardAssignment,
     FederatedShardPolicyConfig,
     FederatedShardSplit,
@@ -84,13 +86,13 @@ def assign_items_to_client_shards(
         raise ValueError("client_count must be positive.")
 
     client_items: list[list[ItemT]] = [[] for _ in range(client_count)]
-    if shard_policy.name == "label_dominant":
+    if shard_policy.name == SHARD_POLICY_LABEL_DOMINANT:
         _assign_label_dominant_shards(
             client_items=client_items,
             remaining_by_label=remaining_by_label,
             shard_policy=shard_policy,
         )
-    elif shard_policy.name == "dirichlet_label_skew":
+    elif shard_policy.name == SHARD_POLICY_DIRICHLET_LABEL_SKEW:
         _assign_dirichlet_label_skew_shards(
             client_items=client_items,
             remaining_by_label=remaining_by_label,

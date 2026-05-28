@@ -6,7 +6,11 @@ import random
 
 import pytest
 
-from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated.shard_policy.base import (
+    SHARD_POLICY_DIRICHLET_LABEL_SKEW,
+    SHARD_POLICY_LABEL_DOMINANT,
+    FederatedShardPolicyConfig,
+)
 from methods.federated.shard_policy.split import (
     sample_dirichlet_counts,
     split_items_for_federation,
@@ -32,7 +36,7 @@ def test_label_dominant_policy_assigns_items_without_script_row_shape() -> None:
         client_count=2,
         seed=42,
         shard_policy=FederatedShardPolicyConfig(
-            name="label_dominant",
+            name=SHARD_POLICY_LABEL_DOMINANT,
             dominant_ratio=0.5,
             client_id_prefix="agent",
         ),
@@ -51,7 +55,7 @@ def test_dirichlet_policy_is_deterministic_for_seed() -> None:
         (f"n{index}", "normal") for index in range(20)
     ]
     policy = FederatedShardPolicyConfig(
-        name="dirichlet_label_skew",
+        name=SHARD_POLICY_DIRICHLET_LABEL_SKEW,
         alpha=0.3,
         client_id_prefix="agent",
     )
@@ -102,7 +106,7 @@ def test_shard_policy_rejects_invalid_parameters() -> None:
             client_count=2,
             seed=42,
             shard_policy=FederatedShardPolicyConfig(
-                name="label_dominant",
+                name=SHARD_POLICY_LABEL_DOMINANT,
                 dominant_ratio=None,
                 client_id_prefix="agent",
             ),

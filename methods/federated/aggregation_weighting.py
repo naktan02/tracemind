@@ -24,6 +24,13 @@ class AggregationWeightUpdate(Protocol):
     example_count: int
 
 
+class AggregationWeightDiagnosticClient(Protocol):
+    """round diagnostics에서 aggregation weight 계산에 필요한 client 최소 surface."""
+
+    accepted_count: int
+    aggregation_example_count: int | None
+
+
 @dataclass(frozen=True, slots=True)
 class AggregationWeightPolicy:
     """client update를 aggregate할 때 사용할 weight 기준."""
@@ -68,6 +75,38 @@ def aggregation_weight_for_update(
             )
         return float(accepted_count)
     return float(update.example_count)
+
+
+def aggregation_example_count_for_diagnostics(
+    client: AggregationWeightDiagnosticClient,
+) -> int:
+    """diagnostics용 aggregation example count를 canonical fallback으로 계산한다."""
+
+    if client.aggregation_example_count is not None:
+        return client.aggregation_example_count
+    return client.accepted_count
+
+
+def aggregation_weight_for_diagnostics(
+    client: AggregationWeightDiagnosticClient,
+    *,
+    policy: AggregationWeightPolicy,
+) -> float:
+    """round diagnostics에서 단일 client의 raw aggregation weight를 계산한다."""
+
+    if policy.name == AGGREGATION_WEIGHT_UNIFORM:
+        return 1.0
+    if policy.name == AGGREGATION_WEIGHT_ACCEPTED_COUNT:
+        return float(client.accepted_count)
+    return float(aggregation_example_count_for_diagnostics(client))
+
+
+def aggregation_weight_basis_label(policy: AggregationWeightPolicy) -> str:
+    """report에서 사용할 aggregation weight basis label을 반환한다."""
+
+    if policy.name == AGGREGATION_WEIGHT_EXAMPLE_COUNT:
+        return "update_envelope.example_count"
+    return policy.name
 
 
 def normalized_aggregation_weights(

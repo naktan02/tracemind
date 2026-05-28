@@ -53,9 +53,11 @@
   runtime/privacy 제약에 맞게 옮긴다. v1 `lora_classifier` 이름은 compatibility
   표면으로만 해석한다.
 
-### Phase 6. richer shared adapter
+### Phase 6. richer trainable state / capability
 
-- diagonal scale보다 표현력 있는 shared adapter를 검토한다.
+- `peft_text_encoder`, `prototype_pack`, future multimodal state처럼 실제 필요성이
+  확인된 trainable state와 runtime capability를 추가한다. 제거된 `diagonal_scale`을
+  기준 baseline으로 되살리지 않는다.
 
 ### Phase 7. privacy hardening
 

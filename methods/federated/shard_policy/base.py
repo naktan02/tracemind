@@ -7,6 +7,15 @@ from typing import Generic, TypeVar
 
 ItemT = TypeVar("ItemT")
 
+SHARD_POLICY_LABEL_DOMINANT = "label_dominant"
+SHARD_POLICY_DIRICHLET_LABEL_SKEW = "dirichlet_label_skew"
+SHARD_POLICY_NAMES = frozenset(
+    {
+        SHARD_POLICY_LABEL_DOMINANT,
+        SHARD_POLICY_DIRICHLET_LABEL_SKEW,
+    }
+)
+
 
 @dataclass(frozen=True, slots=True)
 class FederatedShardPolicyConfig:
@@ -16,6 +25,13 @@ class FederatedShardPolicyConfig:
     client_id_prefix: str
     dominant_ratio: float | None = None
     alpha: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.name not in SHARD_POLICY_NAMES:
+            raise ValueError(
+                "shard_policy.name must be one of "
+                f"{sorted(SHARD_POLICY_NAMES)}."
+            )
 
 
 @dataclass(frozen=True, slots=True)

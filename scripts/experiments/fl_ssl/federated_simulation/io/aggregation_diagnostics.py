@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from methods.federated.aggregation_weighting import (
-    AGGREGATION_WEIGHT_ACCEPTED_COUNT,
-    AGGREGATION_WEIGHT_EXAMPLE_COUNT,
-    AGGREGATION_WEIGHT_UNIFORM,
     AggregationWeightPolicy,
+    aggregation_example_count_for_diagnostics,
+    aggregation_weight_basis_label,
+    aggregation_weight_for_diagnostics,
 )
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.client_diagnostics import (
@@ -33,7 +33,7 @@ def build_aggregation_diagnostics(
         else capability_plan.aggregation_weight_policy
     )
     return {
-        "weight_basis": _aggregation_weight_basis_label(weight_policy),
+        "weight_basis": aggregation_weight_basis_label(weight_policy),
         "weight_policy_name": weight_policy.name,
         "client_weight_details_excluded": True,
         "rounds": [
@@ -47,9 +47,7 @@ def build_aggregation_diagnostics(
 
 
 def aggregation_example_count(client: ClientRoundSummary) -> int:
-    if client.aggregation_example_count is not None:
-        return client.aggregation_example_count
-    return client.accepted_count
+    return aggregation_example_count_for_diagnostics(client)
 
 
 def _round_aggregation_diagnostics(
@@ -68,7 +66,7 @@ def _round_aggregation_diagnostics(
         if client.update_generated
     ]
     aggregation_weights = [
-        _client_aggregation_weight(client, policy=weight_policy)
+        aggregation_weight_for_diagnostics(client, policy=weight_policy)
         for client in round_summary.clients
         if client.update_generated
     ]
@@ -125,23 +123,3 @@ def _round_aggregation_diagnostics(
         )
     )
     return payload
-
-
-def _client_aggregation_weight(
-    client: ClientRoundSummary,
-    *,
-    policy: AggregationWeightPolicy,
-) -> float:
-    if policy.name == AGGREGATION_WEIGHT_UNIFORM:
-        return 1.0
-    if policy.name == AGGREGATION_WEIGHT_ACCEPTED_COUNT:
-        return float(client.accepted_count)
-    if policy.name == AGGREGATION_WEIGHT_EXAMPLE_COUNT:
-        return float(aggregation_example_count(client))
-    raise ValueError(f"Unsupported aggregation weight policy: {policy.name}")
-
-
-def _aggregation_weight_basis_label(policy: AggregationWeightPolicy) -> str:
-    if policy.name == AGGREGATION_WEIGHT_EXAMPLE_COUNT:
-        return "update_envelope.example_count"
-    return policy.name
