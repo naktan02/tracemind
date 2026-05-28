@@ -866,32 +866,27 @@ def test_federated_simulation_method_recipe_axes_are_composable(
                 _plain_dict(local_cfg.training_task.objective)
             )
         )
-        runtime_pair = next(
-            (
-                pair
-                for pair in descriptor.recipe.supported_runtime_pairs
-                if pair.adapter_family_name == local_adapter_kind
-            ),
-            None,
-        )
-        assert runtime_pair is not None
+        for runtime_pair in descriptor.recipe.supported_runtime_pairs:
+            with initialize_config_module(version_base=None, config_module="conf"):
+                cfg = compose(
+                    config_name="entrypoints/fl_ssl/run_federated_simulation",
+                    overrides=[
+                        f"strategy_axes/fl/method_descriptor={descriptor.name}",
+                        (f"strategy_axes/fl/local_update_profile={local_profile_name}"),
+                        f"round_runtime.adapter_family_name={local_adapter_kind}",
+                        (
+                            "round_runtime.update_family_name="
+                            f"{runtime_pair.update_family_name}"
+                        ),
+                        "round_runtime.aggregation_backend_name="
+                        f"{runtime_pair.aggregation_backend_name}",
+                    ],
+                )
 
-        with initialize_config_module(version_base=None, config_module="conf"):
-            cfg = compose(
-                config_name="entrypoints/fl_ssl/run_federated_simulation",
-                overrides=[
-                    f"strategy_axes/fl/method_descriptor={descriptor.name}",
-                    (f"strategy_axes/fl/local_update_profile={local_profile_name}"),
-                    (
-                        "round_runtime.adapter_family_name="
-                        f"{runtime_pair.adapter_family_name}"
-                    ),
-                    "round_runtime.aggregation_backend_name="
-                    f"{runtime_pair.aggregation_backend_name}",
-                ],
+            _assert_manual_fl_runtime_is_compatible(cfg)
+            assert cfg.round_runtime.update_family_name == (
+                runtime_pair.update_family_name
             )
-
-        _assert_manual_fl_runtime_is_compatible(cfg)
 
 
 def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
