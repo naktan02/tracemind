@@ -12,15 +12,10 @@ def resolve_example_generation_backend_name(
     """objective config에서 training example backend 이름을 정한다."""
 
     from methods.federated_ssl.runtime_fallbacks import (
-        RUNTIME_FALLBACK_TRAINING_PROFILE,
+        resolve_runtime_example_generation_backend_name,
     )
 
-    if objective_config is None:
-        return RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    return (
-        objective_config.example_generation_backend_name
-        or RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    )
+    return resolve_runtime_example_generation_backend_name(objective_config)
 
 
 def resolve_federated_training_backend_adapter_kind(

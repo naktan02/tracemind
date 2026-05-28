@@ -325,7 +325,7 @@ runtime payload를 읽어야 할 때 이 폴더를 통해서만 연결한다.
 - `federated_agent/`: FL simulation에서 agent local runtime을 역할별로 호출.
   - `scoring_runtime.py`: agent scoring service 조립.
   - `training_example_mapper.py`: simulation row -> agent training example request 변환.
-  - `row_validator.py`: selected example backend가 요구하는 row shape 검증.
+    backend별 row shape 요구사항은 `methods/adaptation/query_text_views`가 검증한다.
   - `backend_resolver.py`: objective config -> runtime backend 이름/adapter kind resolve.
   - `artifact_store.py`: simulation client artifact ref 생성, 저장, upload bridge.
   - `base_state_materialization.py`: active shared state ref를 client-local base

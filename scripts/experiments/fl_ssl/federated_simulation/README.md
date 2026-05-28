@@ -43,7 +43,8 @@ update-family leaf와 method-owned capability로 붙인다.
    - `peft_encoder_local_training.py`: PEFT encoder local training request/service bridge
    - `artifact_store.py`: agent-local/server-owned artifact ref bridge
    - `training_example_mapper.py`: simulation row를 agent training example request로 변환
-   - `row_validator.py`: `weak_strong_pair` 같은 row-source 요구사항 검증
+     `weak_strong_pair` 같은 row-source 요구사항 검증은
+     `methods/adaptation/query_text_views`가 맡는다.
    - `training_runtime.py`: local training backend registry resolve와 optional
      simulation capability 호출
    - `backend_resolver.py`: profile compatibility 검증용 backend resolve

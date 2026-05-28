@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from methods.federated_ssl.runtime_fallbacks import (
-    LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS,
     PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK,
     RUNTIME_FALLBACK_TRAINING_PROFILE,
     RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS,
     build_runtime_fallback_secure_aggregation_config,
     build_runtime_fallback_training_objective_config,
     build_runtime_fallback_training_selection_policy,
+    resolve_runtime_example_generation_backend_name,
+)
+from shared.src.contracts.training_example_backends import (
+    WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
 )
 
 
@@ -62,7 +65,8 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
         config.acceptance_policy_name
         == RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
     )
-    assert config.extras == dict(LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS)
+    assert config.extras == {}
+    assert config.example_generation_backend_name == WEAK_STRONG_PAIR_EXAMPLE_BACKEND
 
 
 def test_runtime_fallback_objective_builder_accepts_overrides() -> None:
@@ -99,4 +103,27 @@ def test_runtime_fallback_profile_exposes_round_task_runtime_defaults() -> None:
     assert (
         RUNTIME_FALLBACK_TRAINING_PROFILE.task_runtime_defaults
         is RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS
+    )
+
+
+def test_runtime_fallback_resolves_example_generation_backend_name() -> None:
+    assert (
+        resolve_runtime_example_generation_backend_name(None)
+        == WEAK_STRONG_PAIR_EXAMPLE_BACKEND
+    )
+    assert (
+        resolve_runtime_example_generation_backend_name(
+            type("Objective", (), {"example_generation_backend_name": ""})()
+        )
+        == WEAK_STRONG_PAIR_EXAMPLE_BACKEND
+    )
+    assert (
+        resolve_runtime_example_generation_backend_name(
+            type(
+                "Objective",
+                (),
+                {"example_generation_backend_name": "prototype_rescore"},
+            )()
+        )
+        == "prototype_rescore"
     )

@@ -17,6 +17,9 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
+from shared.src.contracts.training_example_backends import (
+    WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
+)
 
 
 def _merged_mapping(
@@ -209,7 +212,7 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
         "training_backend_name": "peft_classifier_trainer",
         "confidence_threshold": 0.6,
         "margin_threshold": 0.02,
-        "example_generation_backend_name": "weak_strong_pair",
+        "example_generation_backend_name": WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
         "evidence_backend_name": "prototype_similarity_evidence",
         "scorer_backend_name": "prototype_similarity",
         "score_policy_name": "max_cosine",
@@ -250,6 +253,23 @@ def build_runtime_fallback_training_objective_config(
     """명시 objective가 없는 runtime 요청용 fallback config를 조립한다."""
 
     return RUNTIME_FALLBACK_TRAINING_PROFILE.build_objective_config(overrides=overrides)
+
+
+def resolve_runtime_example_generation_backend_name(
+    objective_config: object | None,
+) -> str:
+    """명시 objective 값이 없으면 runtime fallback backend 이름을 반환한다."""
+
+    if objective_config is None:
+        return RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
+    raw_value = getattr(objective_config, "example_generation_backend_name", None)
+    if raw_value is None:
+        return RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
+    normalized = str(raw_value).strip()
+    return (
+        normalized
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
+    )
 
 
 def build_runtime_fallback_training_selection_policy(

@@ -104,7 +104,7 @@ def _to_embedded_example(
         scored_event=input_item.weak_scored_event,
         embedding=list(input_item.strong_embedding),
         base_embedding=list(input_item.weak_base_embedding),
-        view_kind="weak_strong_pair",
+        view_kind=WEAK_STRONG_PAIR_BACKEND_NAME,
         weak_scored_event=input_item.weak_scored_event,
         weak_embedding=list(input_item.weak_embedding),
         strong_scored_event=input_item.strong_scored_event,

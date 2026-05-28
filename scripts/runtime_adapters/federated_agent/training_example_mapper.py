@@ -7,14 +7,12 @@ from datetime import datetime
 from typing import Any
 
 from methods.adaptation.query_text_views.view_rows import (
+    require_rows_supported_by_example_backend,
     resolve_query_strong_text,
     resolve_query_weak_text,
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_example_generation_backend_name,
-)
-from scripts.runtime_adapters.federated_agent.row_validator import (
-    require_rows_supported_by_example_backend,
 )
 
 

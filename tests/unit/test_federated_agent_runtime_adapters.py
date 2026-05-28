@@ -42,6 +42,9 @@ from methods.adaptation.peft_text_encoder.update.materialization import (
 from methods.adaptation.peft_text_encoder.update.partitioned_delta import (
     PeftEncoderPartitionDelta,
 )
+from methods.adaptation.query_text_views.view_rows import (
+    require_rows_supported_by_example_backend,
+)
 from methods.common.timing import TimingRecorder
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated_ssl.capability_axes import (
@@ -73,9 +76,6 @@ from scripts.runtime_adapters.federated_agent.base_state_materialization import 
 )
 from scripts.runtime_adapters.federated_agent.peft_encoder_local_training import (
     run_query_ssl_peft_encoder_local_training,
-)
-from scripts.runtime_adapters.federated_agent.row_validator import (
-    require_rows_supported_by_example_backend,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_delta_payload,
@@ -147,7 +147,7 @@ def test_resolve_example_generation_backend_name_prefers_objective_config() -> N
     )
 
 
-def test_row_validator_rejects_missing_weak_strong_views() -> None:
+def test_query_text_view_requirement_rejects_missing_weak_strong_views() -> None:
     with pytest.raises(
         ValueError,
         match="requires each row to include both weak_text/strong_text",
@@ -158,7 +158,7 @@ def test_row_validator_rejects_missing_weak_strong_views() -> None:
         )
 
 
-def test_row_validator_accepts_usb_text_and_augmentation_fields() -> None:
+def test_query_text_view_requirement_accepts_usb_text_and_augmentation_fields() -> None:
     require_rows_supported_by_example_backend(
         rows=[
             {
@@ -172,7 +172,7 @@ def test_row_validator_accepts_usb_text_and_augmentation_fields() -> None:
     )
 
 
-def test_row_validator_rejects_partial_usb_augmentation_fields() -> None:
+def test_query_text_view_requirement_rejects_partial_usb_augmentation_fields() -> None:
     with pytest.raises(
         ValueError,
         match="requires each row to include both weak_text/strong_text",
@@ -183,7 +183,7 @@ def test_row_validator_rejects_partial_usb_augmentation_fields() -> None:
         )
 
 
-def test_row_validator_accepts_non_multiview_backend_without_view_fields() -> None:
+def test_query_text_view_requirement_accepts_single_view_backend() -> None:
     require_rows_supported_by_example_backend(
         rows=[{"query_id": "q1", "text": "panic"}],
         backend_name="prototype_rescore",

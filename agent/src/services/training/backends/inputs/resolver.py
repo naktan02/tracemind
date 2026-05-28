@@ -8,7 +8,9 @@ from methods.adaptation.local_update_backend import (
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
 )
-from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
+from methods.federated_ssl.runtime_fallbacks import (
+    resolve_runtime_example_generation_backend_name,
+)
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import TrainingExampleBackend
@@ -23,10 +25,7 @@ def resolve_training_example_backend(
 ) -> TrainingExampleBackend:
     """objective config 기준으로 example backend를 검증해 조립한다."""
 
-    backend_name = (
-        objective_config.example_generation_backend_name
-        or RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    )
+    backend_name = resolve_runtime_example_generation_backend_name(objective_config)
     backend = build_training_example_backend(
         backend_name,
         objective_config=objective_config,

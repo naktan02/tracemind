@@ -6,6 +6,9 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+from shared.src.contracts.training_example_backends import (
+    example_backend_requires_weak_strong_source_rows,
+)
 
 USB_MULTIVIEW_BUILDER_NAME = "usb_multiview"
 USB_WEAK_BUILDER_NAME = "usb_weak"
@@ -145,6 +148,24 @@ def row_supports_weak_strong_pair(row: Mapping[str, Any]) -> bool:
     """agent weak_strong_pair backend가 소비할 수 있는 source row인지 확인한다."""
 
     return _has_legacy_pair_fields(row) or _has_strict_usb_multiview_fields(row)
+
+
+def require_rows_supported_by_example_backend(
+    *,
+    rows: list[Mapping[str, Any]],
+    backend_name: str,
+) -> None:
+    """선택된 training example backend가 요구하는 query row shape를 검증한다."""
+
+    if not example_backend_requires_weak_strong_source_rows(backend_name):
+        return
+    for row in rows:
+        if row_supports_weak_strong_pair(row):
+            continue
+        raise ValueError(
+            "weak_strong_pair simulation requires each row to include both "
+            "weak_text/strong_text or text plus aug_0/aug_1."
+        )
 
 
 def _has_legacy_pair_fields(row: Mapping[str, Any]) -> bool:

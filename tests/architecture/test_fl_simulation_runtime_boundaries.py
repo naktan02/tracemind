@@ -340,12 +340,12 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         package_root / "base_state_materialization.py",
         package_root / "client_update_flow.py",
         package_root / "peft_encoder_local_training.py",
-        package_root / "row_validator.py",
         package_root / "scoring_runtime.py",
         package_root / "selection_runtime.py",
         package_root / "training_example_mapper.py",
         package_root / "training_runtime.py",
     )
+    forbidden_paths = (package_root / "row_validator.py",)
     mapper_source = (package_root / "training_example_mapper.py").read_text(
         encoding="utf-8"
     )
@@ -386,6 +386,10 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
     assert not generic_local_training_path.exists(), (
         "PEFT encoder 전용 local training bridge는 peft_encoder_local_training.py에 "
         "둔다. generic local_training.py에 update-family별 분기를 누적하지 않는다."
+    )
+    assert not any(path.exists() for path in forbidden_paths), (
+        "training example backend별 row shape 요구사항은 methods/query_text_views가 "
+        "소유하고, scripts runtime adapter는 별도 row_validator module을 두지 않는다."
     )
     assert not missing_files, (
         "federated_agent runtime adapter package는 artifact store, base-state "

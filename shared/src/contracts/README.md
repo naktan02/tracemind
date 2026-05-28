@@ -112,6 +112,16 @@ runtime과 test는 family별 direct import를 사용한다.
 - `TrainingSelectionPolicyPayload`
   - 한 라운드에서 사용할 로컬 예시 선택 제한과 selection policy별 확장값을 담는다
 
+### `training_example_backends.py`
+
+agent training example backend 이름 중 여러 계층이 함께 읽는 canonical 값을 정의한다.
+
+- `WEAK_STRONG_PAIR_EXAMPLE_BACKEND`
+  - source row가 weak/strong view pair를 제공해야 하는 backend 이름
+  - 실제 row shape 검증은 text view owner인 `methods/adaptation/query_text_views`가 맡는다
+- `PROTOTYPE_RESCORE_EXAMPLE_BACKEND`
+  - prototype 기반 single-view rescore backend 이름
+
 ### `secure_aggregation_contracts.py`
 
 학습 task와 update submission이 요구하거나 제출하는 secure aggregation/encryption
