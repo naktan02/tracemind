@@ -19,7 +19,8 @@ central fixed embedding + classifier seed
 - 현재 표의 `adapter_family_name`, `lora_classifier`, `fedmatch_agreement`는 old artifact와
   report compatibility 용어일 수 있다. target 구조에서는 각각
   `payload_adapter_kind`/`update_family_name`, `peft_text_classifier`,
-  method-local FedMatch objective로 정리한다.
+  method-local FedMatch objective로 정리한다. `lora_classifier` shared parser/factory는
+  제거됐으므로 새 실험 산출물은 `peft_classifier` payload format을 쓴다.
 - 중앙 SSL은 pooled/offline control이다.
 - 논문 메인 비교는 `FL SSL under non-IID`에서 수행한다.
 - runtime v1은 `embedding -> global classifier -> local interpretation` baseline을 우선한다.

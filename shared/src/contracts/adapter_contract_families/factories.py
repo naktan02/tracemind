@@ -11,8 +11,6 @@ from shared.src.contracts.model_contracts import ModelManifestPayload
 from .base import (
     CLASSIFIER_HEAD_DELTA_V1,
     CURRENT_SHARED_ADAPTER_STATE_V1,
-    LORA_CLASSIFIER_DELTA_V1,
-    LORA_CLASSIFIER_STATE_V1,
     PEFT_CLASSIFIER_DELTA_V2,
     PEFT_CLASSIFIER_STATE_V2,
     AdapterKind,
@@ -22,13 +20,6 @@ from .base import (
 from .classifier_head import (
     ClassifierHeadAdapterStatePayload,
     ClassifierHeadAdapterUpdatePayload,
-)
-from .lora_classifier import (
-    LoraClassifierAdapterStatePayload,
-    LoraClassifierAdapterUpdatePayload,
-    LoraClassifierBackbonePayload,
-    LoraClassifierConfigPayload,
-    LoraClassifierPartitionDeltaPayload,
 )
 from .peft_classifier import (
     PeftAdapterConfigPayload,
@@ -86,88 +77,6 @@ def make_classifier_head_delta_payload(
         mean_confidence=mean_confidence,
         mean_margin=mean_margin,
         label_counts=label_counts or {},
-    )
-
-
-def make_lora_classifier_state_payload(
-    *,
-    model_id: str,
-    model_revision: str,
-    backbone: LoraClassifierBackbonePayload | Mapping[str, object],
-    lora_config: LoraClassifierConfigPayload | Mapping[str, object],
-    label_schema: Sequence[str],
-    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
-    lora_adapter_artifact_ref: str | None = None,
-    classifier_head_artifact_ref: str | None = None,
-    artifact_format: str = "artifact_ref",
-    updated_at: datetime | None = None,
-) -> LoraClassifierAdapterStatePayload:
-    """LoRA-classifier state payload를 만드는 표준 factory."""
-    return LoraClassifierAdapterStatePayload(
-        schema_version=LORA_CLASSIFIER_STATE_V1,
-        adapter_kind=AdapterKind.LORA_CLASSIFIER.value,
-        model_id=model_id,
-        model_revision=model_revision,
-        training_scope=training_scope,
-        updated_at=updated_at or datetime.now(tz=timezone.utc),
-        backbone=backbone,
-        lora_config=lora_config,
-        label_schema=list(label_schema),
-        lora_adapter_artifact_ref=lora_adapter_artifact_ref,
-        classifier_head_artifact_ref=classifier_head_artifact_ref,
-        artifact_format=artifact_format,
-    )
-
-
-def make_lora_classifier_delta_payload(
-    *,
-    model_id: str,
-    base_model_revision: str,
-    backbone: LoraClassifierBackbonePayload | Mapping[str, object],
-    lora_config: LoraClassifierConfigPayload | Mapping[str, object],
-    label_schema: Sequence[str],
-    example_count: int,
-    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
-    lora_delta_artifact_ref: str | None = None,
-    classifier_head_delta_artifact_ref: str | None = None,
-    lora_parameter_deltas: dict[str, list[float]] | None = None,
-    classifier_head_weight_deltas: dict[str, list[float]] | None = None,
-    classifier_head_bias_deltas: dict[str, float] | None = None,
-    partitioned_deltas: (
-        dict[str, LoraClassifierPartitionDeltaPayload | Mapping[str, object]] | None
-    ) = None,
-    partitioned_deltas_artifact_ref: str | None = None,
-    delta_format: str = "artifact_ref",
-    mean_confidence: float | None = None,
-    mean_margin: float | None = None,
-    label_counts: dict[str, int] | None = None,
-    delta_l2_norm: float | None = None,
-    created_at: datetime | None = None,
-) -> LoraClassifierAdapterUpdatePayload:
-    """LoRA-classifier update payload를 만드는 표준 factory."""
-    return LoraClassifierAdapterUpdatePayload(
-        schema_version=LORA_CLASSIFIER_DELTA_V1,
-        adapter_kind=AdapterKind.LORA_CLASSIFIER.value,
-        model_id=model_id,
-        base_model_revision=base_model_revision,
-        training_scope=training_scope,
-        example_count=example_count,
-        created_at=created_at or datetime.now(tz=timezone.utc),
-        backbone=backbone,
-        lora_config=lora_config,
-        label_schema=list(label_schema),
-        lora_delta_artifact_ref=lora_delta_artifact_ref,
-        classifier_head_delta_artifact_ref=classifier_head_delta_artifact_ref,
-        lora_parameter_deltas=lora_parameter_deltas,
-        classifier_head_weight_deltas=classifier_head_weight_deltas,
-        classifier_head_bias_deltas=classifier_head_bias_deltas or {},
-        partitioned_deltas=partitioned_deltas,
-        partitioned_deltas_artifact_ref=partitioned_deltas_artifact_ref,
-        delta_format=delta_format,
-        mean_confidence=mean_confidence,
-        mean_margin=mean_margin,
-        label_counts=label_counts or {},
-        delta_l2_norm=delta_l2_norm,
     )
 
 

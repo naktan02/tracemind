@@ -7,10 +7,6 @@ from .classifier_head import (
     ClassifierHeadAdapterStatePayload,
     ClassifierHeadAdapterUpdatePayload,
 )
-from .lora_classifier import (
-    LoraClassifierAdapterStatePayload,
-    LoraClassifierAdapterUpdatePayload,
-)
 from .peft_classifier import (
     PeftClassifierAdapterStatePayload,
     PeftClassifierAdapterUpdatePayload,
@@ -30,11 +26,6 @@ def load_builtin_shared_adapter_payload_families() -> None:
         AdapterKind.CLASSIFIER_HEAD.value,
         state_payload_type=ClassifierHeadAdapterStatePayload,
         update_payload_type=ClassifierHeadAdapterUpdatePayload,
-    )
-    register_shared_adapter_payload_family(
-        AdapterKind.LORA_CLASSIFIER.value,
-        state_payload_type=LoraClassifierAdapterStatePayload,
-        update_payload_type=LoraClassifierAdapterUpdatePayload,
     )
     register_shared_adapter_payload_family(
         AdapterKind.PEFT_CLASSIFIER.value,

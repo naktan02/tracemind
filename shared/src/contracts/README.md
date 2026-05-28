@@ -54,7 +54,6 @@ Shared adapter 상태와 update payload를 정의한다.
 
 Family별 구현은 `adapter_contract_families/base.py`,
 `adapter_contract_families/classifier_head.py`,
-`adapter_contract_families/lora_classifier.py`,
 `adapter_contract_families/peft_classifier.py`,
 `adapter_contract_families/registry.py`,
 `adapter_contract_families/builtin_loader.py`, `adapter_contract_families/io.py`,
@@ -72,16 +71,6 @@ runtime과 test는 family별 direct import를 사용한다.
 - `ClassifierHeadAdapterStatePayload`
   - classifier-head concrete 구현
   - `label_weights`, `label_biases`는 category별 linear head 파라미터다
-- `LoraClassifierAdapterStatePayload`
-  - LoRA-classifier concrete 구현
-  - v1 compatibility contract다. 신규 runtime 전환 목표는
-    `PeftClassifierAdapterStatePayload`다
-  - frozen backbone/tokenizer, LoRA config, label schema, LoRA adapter artifact ref,
-    classifier head artifact ref를 함께 설명한다
-  - FL delta mode에서 state artifact ref는 누적된 전역 LoRA parameter와 classifier
-    head weight/bias snapshot을 가리킨다. client update delta artifact와 같은 의미가
-    아니다
-  - raw text나 agent-local query state는 포함하지 않는다
 - `PeftClassifierAdapterStatePayload`
   - PEFT-classifier v2 concrete 구현
   - LoRA/DoRA 같은 adapter mechanism은 `peft_adapter_config.peft_adapter_name`과
@@ -89,7 +78,9 @@ runtime과 test는 family별 direct import를 사용한다.
     유지한다
   - `adapter_kind=peft_classifier`, `schema_version=peft_classifier_state.v2`를
     사용한다
-  - v1 `lora_classifier` producer/consumer가 남아 있는 동안 병행 파싱을 지원한다
+  - v1 `lora_classifier` shared parser/factory는 제거됐다. 과거 run/report artifact
+    해석이 필요하면 해당 old-reader가 자기 경계에서 legacy 문자열을 읽고 즉시
+    canonical PEFT 표면으로 정규화한다
 - `CurrentSharedAdapterStatePayload`
   - 서버 current `ModelManifest`와 실제 `SharedAdapterStatePayload`를 함께
     내려주는 agent sync payload
@@ -100,26 +91,6 @@ runtime과 test는 family별 direct import를 사용한다.
 - `ClassifierHeadAdapterUpdatePayload`
   - classifier-head concrete 구현
   - `label_weight_deltas`, `label_bias_deltas`는 category별 head 변화량이다
-- `LoraClassifierAdapterUpdatePayload`
-  - LoRA-classifier update concrete 구현
-  - v1 compatibility contract다. 신규 runtime 전환 목표는
-    `PeftClassifierAdapterUpdatePayload`다
-  - `base_model_revision`, `example_count`, backbone/tokenizer, LoRA config,
-    label schema를 포함한다
-  - LoRA/classifier update weight는 큰 artifact가 될 수 있으므로
-    `lora_delta_artifact_ref`, `classifier_head_delta_artifact_ref`를 기본 경로로
-    열어 둔다
-  - 작은 smoke나 deterministic 단위 검증에는 선택적 inline delta 필드를 쓸 수
-    있지만, runtime은 artifact-ref와 inline delta를 명시적으로 구분해야 한다
-  - `partitioned_deltas`는 server update policy가 logical partition을 소비해야 할 때
-    쓰는 선택적 canonical shape다. partition 이름과 sigma/psi 같은 method 의미는
-    `shared`가 아니라 `methods/`의 method package가 소유한다
-  - `partitioned_deltas_artifact_ref`는 같은 partitioned delta material을 server-owned
-    artifact로 옮긴 경로다. 큰 FL SSL update runtime은 payload에는 ref/metadata만
-    남기고, aggregation consumer가 artifact loader로 materialize한다. ref는 opaque
-    값이며 실제 저장 포맷은 runtime artifact store가 소유한다. 현재 partitioned
-    runtime은 binary tensor artifact를 우선 사용하고 JSON은 legacy/debug fallback으로
-    유지한다
 - `PeftClassifierAdapterUpdatePayload`
   - PEFT-classifier v2 update concrete 구현
   - canonical payload format은 `peft_classifier_update`다
@@ -275,7 +246,7 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 - `training_scope`
   - 어느 수준까지 학습하는지 나타내는 범위 식별자
   - 현재 시스템 runtime에서는 주로 `adapter_only`, `head_only`
-  - `lora_classifier` family는 `adapter_only` 또는 `selected_encoder_block` 해석과 함께 열 가능성이 크다
+  - PEFT classifier family는 `adapter_only` 또는 `selected_encoder_block` 해석과 함께 열 가능성이 크다
   - `full_encoder`는 upper-bound 또는 미래 확장 값으로 남아 있지만, 현재 시스템 FL 기본 경로는 아니다
 - `model_revision` / `base_model_revision`
   - `model_revision`: 서버가 현재 배포 중인 revision
@@ -284,20 +255,6 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 추가 원칙:
 
 - `classifier_head` family는 전역 class evidence를 제공하는 shared head로 해석한다.
-- `lora_classifier` family는 기존 `classifier_head`의 옵션이 아니라, LoRA
+- `peft_classifier` family는 기존 `classifier_head`의 옵션이 아니라, PEFT
   adapter state와 classifier head state를 함께 배포/집계하는 별도 family다.
 - 로컬 개인화와 최종 판단은 이 계약 파일이 아니라 agent 로컬 runtime 계층이 소유한다.
-
-## 현재 diagonal scale adapter 의미
-
-현재 runtime 적용식은 아래와 같다.
-
-```text
-x' = normalize(x ⊙ s)
-```
-
-- `x`: backbone embedding
-- `s`: `dimension_scales`
-- `dimension_deltas`: `s`에 더해질 변화량
-
-즉 현재 update는 특정 prototype 좌표로 직접 끌어당기는 값이 아니라, 전체 임베딩 공간의 차원별 비율을 전역적으로 재조정하는 값이다.

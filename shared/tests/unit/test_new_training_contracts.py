@@ -242,13 +242,13 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
 def test_training_objective_config_normalizes_nested_component_extras() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {
-            "training_backend_name": "lora_classifier_trainer",
+            "training_backend_name": "peft_classifier_trainer",
             "evidence_backend": {"temperature": 0.7},
             "query_ssl": {
                 "method_name": "fixmatch_usb_v1",
                 "algorithm_name": "fixmatch",
             },
-            "lora_classifier": {
+            "peft_classifier": {
                 "delta_format": "server_uploaded_artifact_ref",
                 "rank": 8,
             },
@@ -259,14 +259,14 @@ def test_training_objective_config_normalizes_nested_component_extras() -> None:
         "evidence_backend.temperature": 0.7,
         "query_ssl.method_name": "fixmatch_usb_v1",
         "query_ssl.algorithm_name": "fixmatch",
-        "lora_classifier.delta_format": "server_uploaded_artifact_ref",
-        "lora_classifier.rank": 8,
+        "peft_classifier.delta_format": "server_uploaded_artifact_ref",
+        "peft_classifier.rank": 8,
     }
     assert config.get_component_extras("query_ssl") == {
         "method_name": "fixmatch_usb_v1",
         "algorithm_name": "fixmatch",
     }
-    assert config.get_component_extras("lora_classifier") == {
+    assert config.get_component_extras("peft_classifier") == {
         "delta_format": "server_uploaded_artifact_ref",
         "rank": 8,
     }
@@ -291,16 +291,16 @@ def test_training_objective_config_preserves_algorithm_profile_without_expansion
     assert config.margin_threshold is None
 
 
-def test_training_objective_config_does_not_expand_lora_algorithm_profile() -> None:
+def test_training_objective_config_does_not_expand_unknown_algorithm_profile() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {
-            "training_backend_name": "lora_classifier_trainer",
-            "algorithm_profile_name": "lora_pseudo_label_v1",
+            "training_backend_name": "peft_classifier_trainer",
+            "algorithm_profile_name": "custom_pseudo_label_v1",
         }
     )
 
-    assert config.algorithm_profile_name == "lora_pseudo_label_v1"
-    assert config.training_backend_name == "lora_classifier_trainer"
+    assert config.algorithm_profile_name == "custom_pseudo_label_v1"
+    assert config.training_backend_name == "peft_classifier_trainer"
     assert config.example_generation_backend_name is None
     assert config.scorer_backend_name is None
     assert config.pseudo_label_algorithm_name is None

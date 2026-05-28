@@ -10,7 +10,6 @@ from pydantic import ValidationError
 
 from shared.src.contracts.adapter_contract_families.base import (
     CLASSIFIER_HEAD_STATE_V1,
-    LORA_CLASSIFIER_DELTA_V1,
     PEFT_CLASSIFIER_DELTA_V2,
 )
 from shared.src.contracts.adapter_contract_families.registry import (
@@ -23,16 +22,6 @@ from shared.src.contracts.training_contracts import (
 )
 
 FIXTURE_DIR = Path("tests/contracts/fixtures")
-
-
-def test_lora_classifier_delta_golden_fixture_round_trips_shape() -> None:
-    fixture = _load_fixture("lora_classifier_delta.v1.json")
-
-    parsed = parse_shared_adapter_update_payload(fixture)
-    dumped = parsed.model_dump(mode="json")
-
-    assert parsed.schema_version == LORA_CLASSIFIER_DELTA_V1
-    assert dumped == fixture
 
 
 def test_peft_classifier_delta_golden_fixture_round_trips_shape() -> None:
@@ -66,7 +55,7 @@ def test_training_update_submission_golden_fixture_round_trips_shape() -> None:
 
 
 def test_shared_adapter_golden_fixtures_reject_unknown_fields() -> None:
-    fixture = _load_fixture("lora_classifier_delta.v1.json")
+    fixture = _load_fixture("peft_classifier_delta.v2.json")
     fixture["unexpected_field"] = "must_fail"
 
     with pytest.raises(ValidationError):

@@ -43,8 +43,9 @@ v1 원칙:
    - 실제 update tensor/blob 위치 또는 조회 키
 
 9. `payload_format`
-   - 예: `classifier_head_update`, `diagonal_scale_update`,
-     `lora_classifier_update`
+   - 예: `classifier_head_update`, `peft_classifier_update`
+   - `diagonal_scale_update`, `lora_classifier_update`는 active producer에서 제거된
+     legacy format이며, 필요하면 old-run reader fallback에서만 해석한다
 
 10. `example_count`
 

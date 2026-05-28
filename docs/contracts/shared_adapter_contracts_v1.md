@@ -4,8 +4,9 @@
 
 이 문서는 TraceMind의 전역 shared state/update payload 계약을 설명한다.
 이름은 historical하게 `shared adapter`를 유지하지만, 현재 concrete family에는
-`classifier_head`, `lora_classifier`, `peft_classifier`가 포함된다.
-`diagonal_scale`/`vector_adapter_*` parser와 factory는 target 구조에서 제거됐다.
+`classifier_head`, `peft_classifier`가 포함된다. `diagonal_scale`/`vector_adapter_*`
+parser와 factory, v1 `lora_classifier` shared parser/factory는 target 구조에서
+제거됐다.
 
 이 문서가 다루는 범위는 두 가지다.
 
@@ -49,8 +50,7 @@ shared adapter 계약은 두 레이어로 나뉜다.
    - 로컬 agent가 생성한 update
    - 서버가 round 단위로 집계
 
-현재 concrete family는 `adapter_kind = diagonal_scale`, `classifier_head`,
-`lora_classifier` 세 개다.
+현재 concrete family는 `adapter_kind = classifier_head`, `peft_classifier` 두 개다.
 
 ---
 
@@ -66,7 +66,7 @@ shared adapter 계약은 두 레이어로 나뉜다.
 
 2. `adapter_kind`
    - 어떤 family인지 나타낸다.
-   - 현재 값 예: `diagonal_scale`, `classifier_head`, `lora_classifier`
+   - 현재 값 예: `classifier_head`, `peft_classifier`
 
 3. `model_id`
    - 이 adapter 상태가 속한 전역 모델 식별자
@@ -91,7 +91,7 @@ shared adapter 계약은 두 레이어로 나뉜다.
 
 2. `adapter_kind`
    - 어떤 family용 update인지
-   - 현재 값 예: `diagonal_scale`, `classifier_head`, `lora_classifier`
+   - 현재 값 예: `classifier_head`, `peft_classifier`
 
 3. `model_id`
    - 어떤 전역 모델에 대한 update인지
@@ -108,14 +108,17 @@ shared adapter 계약은 두 레이어로 나뉜다.
 7. `created_at`
    - 로컬 update 생성 시각
 
-현재 시스템/FL v1 권장 baseline은 `classifier_head + head_only`이고,
-`diagonal_scale`은 과거 payload 해석을 위한 shared adapter contract로 유지한다.
-`lora_classifier`는 FL simulation research path와 이후 runtime translation 후보를
-위해 열린 family다.
+현재 시스템/FL v1 권장 baseline은 `classifier_head + head_only`이고, PEFT text
+classifier 경로는 `peft_classifier` v2 payload를 사용한다. 과거 `diagonal_scale`와
+`lora_classifier` payload는 shared parser/factory가 아니라 old artifact/report
+reader compatibility에서만 다룬다.
 
 ---
 
-## 5. v1 compatibility payload 1: `diagonal_scale`
+## 5. 제거된 v1 compatibility payload: `diagonal_scale`
+
+이 절은 historical reference다. `diagonal_scale` shared parser/factory와 methods/runtime
+구현은 제거됐고, 새 canonical 표면은 없다.
 
 이 v1 adapter payload는 임베딩 차원마다 scale 하나씩 갖는 가장 단순한 형태다.
 
@@ -242,12 +245,12 @@ update payload:
 
 ---
 
-## 7. 현재 concrete 구현 3: `lora_classifier`
+## 7. 제거된 v1 compatibility payload: `lora_classifier`
 
-`lora_classifier`는 frozen backbone 위의 LoRA adapter state와 classifier head
-state를 함께 배포/집계하는 family다. 기존 `classifier_head`에 LoRA 옵션을 붙인
-것이 아니라, LoRA adapter artifact와 classifier head artifact를 함께 가진 별도
-payload family로 본다.
+이 절은 historical reference다. `lora_classifier` shared parser/factory와 golden
+fixture는 제거됐고, 현재 active payload는 `peft_classifier` v2다. 과거 artifact를
+읽어야 하는 흐름은 old artifact/report/materialization reader가 자기 경계에서
+legacy 값을 읽고 canonical PEFT 표면으로 정규화한다.
 
 state payload의 핵심 의미:
 
@@ -274,13 +277,13 @@ update payload의 핵심 의미:
 4. raw text exclusion
    - shared update payload에는 raw text나 agent-local query state를 넣지 않는다.
 
-LoRA-classifier payload shape의 최종 source of truth는
-`shared/src/contracts/adapter_contract_families/lora_classifier.py`와
+현재 PEFT classifier payload shape의 source of truth는
+`shared/src/contracts/adapter_contract_families/peft_classifier.py`와
 `shared/src/contracts/README.md`다.
 
 ---
 
-## 8. 현재 concrete update: `DiagonalScaleAdapterUpdatePayload`
+## 8. Historical update: `DiagonalScaleAdapterUpdatePayload`
 
 update payload:
 

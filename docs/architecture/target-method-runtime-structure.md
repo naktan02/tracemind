@@ -50,7 +50,6 @@ family로 둔다. 이미지나 오디오를 추가할 때는 text-specific famil
 shared/
   contracts/
     trainable_state/{linear_head,peft_text_classifier,prototype_pack}.py
-    trainable_state/legacy_lora_classifier_v1.py
     fl_ssl/{execution_plan,update_payload,report_protocol}.py
 
 methods/
@@ -172,8 +171,9 @@ Adapter 뒤로 옮긴다.
 
 ## Legacy 격리
 
-- `lora_classifier`는 v1 shared contract와 old artifact compatibility 이름이다.
-  새 canonical update family 이름은 `peft_text_classifier`다.
+- `lora_classifier`는 old artifact/report reader compatibility 이름이다. shared
+  parser/factory의 v1 family는 제거됐고, 새 canonical update family 이름은
+  `peft_text_classifier`다.
 - `diagonal_scale`은 제거된 v1 payload family 이름이다. methods-level 구현 core,
   shared contract parser/factory, 전용 unit test, runtime fallback 기본값,
   privacy guard 실행 등록은 제거됐다. `diagonal_scale`는 target update-family 축이
@@ -224,8 +224,8 @@ Adapter 뒤로 옮긴다.
 - `methods/adaptation/query_text_views`는 text query input/view glue 역할만
   소유한다.
 - 삭제된 `methods/adaptation/lora_classifier` direct import path는 다시 만들지
-  않는다. v1 `lora_classifier` 이름은 shared contract, old artifact reader, report
-  compatibility처럼 실제 경계가 있는 표면에만 남긴다.
+  않는다. v1 `lora_classifier` 이름은 old artifact reader, report compatibility,
+  materialization fallback처럼 실제 경계가 있는 표면에만 남긴다.
 
 ### 4단계: scripts 분기 제거
 
@@ -237,8 +237,9 @@ Adapter 뒤로 옮긴다.
 ### 5단계: shared contract v2
 
 - `shared/contracts/trainable_state/*`에 canonical payload family를 둔다.
-- v1 `lora_classifier` contract는 `legacy_lora_classifier_v1`로 격리하고 제거 조건을
-  `legacy_contract_ledger`에 연결한다.
+- v1 `lora_classifier` shared contract는 제거된 상태를 유지한다. 과거 payload를
+  반드시 읽어야 하는 흐름은 report/materialization old-reader가 자기 경계에서
+  legacy key를 읽고 canonical PEFT representation으로 정규화한다.
 - report protocol은 current legacy name과 target canonical name을 migration window
   동안 함께 기록한다.
 

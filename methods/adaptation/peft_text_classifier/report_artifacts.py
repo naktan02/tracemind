@@ -5,28 +5,26 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
 )
 
+LEGACY_LORA_CLASSIFIER_ADAPTER_KIND = "lora_classifier"
 CLASSIFIER_OBJECTIVE_NAMES = (
     PEFT_CLASSIFIER_ADAPTER_KIND,
-    LORA_CLASSIFIER_ADAPTER_KIND,
+    LEGACY_LORA_CLASSIFIER_ADAPTER_KIND,
 )
 PEFT_CLASSIFIER_PRIMARY_REF_FIELDS = (
     "peft_adapter_delta_artifact_ref",
     "classifier_head_delta_artifact_ref",
 )
-LORA_CLASSIFIER_PRIMARY_REF_FIELDS = (
+LEGACY_LORA_CLASSIFIER_PRIMARY_REF_FIELDS = (
     "peft_adapter_delta_artifact_ref",
     "classifier_head_delta_artifact_ref",
 )
 CLASSIFIER_SNAPSHOT_SPECS = (
     (PEFT_CLASSIFIER_ADAPTER_KIND, "peft_adapter.json"),
-    (LORA_CLASSIFIER_ADAPTER_KIND, "lora_adapter.json"),
+    (LEGACY_LORA_CLASSIFIER_ADAPTER_KIND, "lora_adapter.json"),
 )
 
 
@@ -50,7 +48,7 @@ def classifier_primary_update_ref_fields(
 
     if update_payload.get("peft_adapter_delta_artifact_ref") is not None:
         return PEFT_CLASSIFIER_PRIMARY_REF_FIELDS
-    return LORA_CLASSIFIER_PRIMARY_REF_FIELDS
+    return LEGACY_LORA_CLASSIFIER_PRIMARY_REF_FIELDS
 
 
 def classifier_aggregate_snapshot_candidates(

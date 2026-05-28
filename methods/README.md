@@ -37,11 +37,16 @@ agent / main_server / scripts
 `methods`는 `shared`와 외부 ML 라이브러리만 import한다. `agent`,
 `main_server`, `scripts`를 import하지 않는다.
 
+Prototype 기반 classifier 대체가 추가되어도 `scripts`, `agent`, `main_server` 전반을
+고치는 구조가 아니어야 한다. 새 scoring/building/update family는 `methods/`와
+`conf/`에 추가하고, runtime 계층은 이미 합의된 capability contract만 호출한다.
+
 최종 method/runtime 구조와 migration plan은
 `docs/architecture/target-method-runtime-structure.md`를 우선한다. 현재 코드의
-`adapter_family`, `lora_classifier`, `classification/linear_head` 이름은 현행 구현과
+`adapter_family`, `lora_classifier`, `classification/linear_head` 이름은 legacy
 compatibility 표면을 설명할 수 있지만, 새 설계 판단에서는 `update_family`,
-`trainable_state`, `linear_head`, `peft_text_classifier` 용어를 기준으로 삼는다.
+`trainable_state`, `linear_head`, `peft_text_classifier`, `prototype_pack` 용어를
+기준으로 삼는다.
 
 새 알고리즘이나 논문 method를 추가할 때는 먼저 `methods/`에 method-local module을
 만든다. `agent`와 `main_server`에 method 이름을 가진 runtime 파일을 늘리는 방식은

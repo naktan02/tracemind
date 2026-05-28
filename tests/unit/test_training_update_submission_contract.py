@@ -9,10 +9,9 @@ from shared.src.contracts.adapter_contract_families.classifier_head import (
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_classifier_head_delta_payload,
-    make_lora_classifier_delta_payload,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
 )
 from shared.src.contracts.common_types import TrainingScope
 from shared.src.contracts.training_contracts import (
@@ -79,13 +78,17 @@ def test_training_update_submission_rejects_misaligned_payload() -> None:
 def test_training_update_submission_rejects_payload_format_mismatch() -> None:
     with pytest.raises(ValueError, match="payload_format"):
         make_training_update_submission(
-            envelope=_envelope(payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT),
+            envelope=_envelope(payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT),
             update_payload=_update_payload(),
         )
 
 
-def test_training_update_submission_parses_lora_classifier_update_payload() -> None:
-    update_payload = make_lora_classifier_delta_payload(
+def test_training_update_submission_parses_peft_classifier_update_payload() -> None:
+    from shared.src.contracts.adapter_contract_families.factories import (
+        make_peft_classifier_delta_payload,
+    )
+
+    update_payload = make_peft_classifier_delta_payload(
         model_id="model",
         base_model_revision="rev_1",
         backbone={
@@ -97,22 +100,24 @@ def test_training_update_submission_parses_lora_classifier_update_payload() -> N
             "max_length": 256,
             "task_prefix": "",
         },
-        lora_config={
+        peft_adapter_config={
             "peft_adapter_name": "lora",
-            "rank": 8,
-            "alpha": 16,
-            "dropout": 0.1,
-            "bias": "none",
-            "target_modules": "all-linear",
-            "use_rslora": False,
+            "parameters": {
+                "rank": 8,
+                "alpha": 16,
+                "dropout": 0.1,
+                "bias": "none",
+                "target_modules": "all-linear",
+                "use_rslora": False,
+            },
         },
         label_schema=["anxiety", "normal"],
         example_count=2,
-        lora_delta_artifact_ref="client-submission::lora_delta",
+        peft_adapter_delta_artifact_ref="client-submission::peft_delta",
     )
     submission = make_training_update_submission(
         envelope=_envelope(
-            payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+            payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
             training_scope=TrainingScope.ADAPTER_ONLY,
         ),
         update_payload=update_payload,
@@ -122,5 +127,5 @@ def test_training_update_submission_parses_lora_classifier_update_payload() -> N
         submission.model_dump_json()
     )
 
-    assert parsed.update_payload.adapter_kind == "lora_classifier"
-    assert parsed.envelope.payload_format == "lora_classifier_update"
+    assert parsed.update_payload.adapter_kind == "peft_classifier"
+    assert parsed.envelope.payload_format == "peft_classifier_update"

@@ -5,11 +5,11 @@
     "update_id": "update_round_1_agent_1",
     "round_id": "round_1",
     "task_id": "task_1",
-    "model_id": "mxbai-lora-classifier",
-    "base_model_revision": "rev_lora_001",
+    "model_id": "mxbai-peft-classifier",
+    "base_model_revision": "rev_peft_001",
     "training_scope": "adapter_only",
     "payload_ref": "client-submission::update_round_1_agent_1",
-    "payload_format": "lora_classifier_update",
+    "payload_format": "peft_classifier_update",
     "example_count": 3,
     "client_metrics": {
       "accepted_ratio": 0.75
@@ -23,10 +23,10 @@
     "notes": null
   },
   "update_payload": {
-    "schema_version": "lora_classifier_delta.v1",
-    "adapter_kind": "lora_classifier",
-    "model_id": "mxbai-lora-classifier",
-    "base_model_revision": "rev_lora_001",
+    "schema_version": "peft_classifier_delta.v2",
+    "adapter_kind": "peft_classifier",
+    "model_id": "mxbai-peft-classifier",
+    "base_model_revision": "rev_peft_001",
     "training_scope": "adapter_only",
     "example_count": 3,
     "created_at": "2026-04-08T00:00:00Z",
@@ -39,22 +39,24 @@
       "max_length": 256,
       "task_prefix": ""
     },
-    "lora_config": {
+    "peft_adapter_config": {
       "peft_adapter_name": "lora",
-      "rank": 8,
-      "alpha": 16,
-      "dropout": 0.1,
-      "bias": "none",
-      "target_modules": "all-linear",
-      "use_rslora": false
+      "parameters": {
+        "rank": 8,
+        "alpha": 16,
+        "dropout": 0.1,
+        "bias": "none",
+        "target_modules": "all-linear",
+        "use_rslora": false
+      }
     },
     "label_schema": [
       "anxiety",
       "normal"
     ],
-    "lora_delta_artifact_ref": "client-submission::lora_delta",
+    "peft_adapter_delta_artifact_ref": "client-submission::peft_adapter_delta",
     "classifier_head_delta_artifact_ref": "client-submission::classifier_head_delta",
-    "lora_parameter_deltas": null,
+    "peft_parameter_deltas": null,
     "classifier_head_weight_deltas": null,
     "classifier_head_bias_deltas": {},
     "partitioned_deltas": null,

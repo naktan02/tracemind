@@ -2102,9 +2102,28 @@ def test_methods_lora_classifier_compatibility_package_is_removed() -> None:
     assert not existing_paths, (
         "methods/adaptation/lora_classifier는 더 이상 internal compatibility "
         "package로 유지하지 않는다. 구현 source of truth는 "
-        "methods/adaptation/peft_text_classifier/**이고, v1 lora_classifier 이름은 "
-        "shared contract/artifact reader compatibility 표면에만 남긴다.\n"
+        "methods/adaptation/peft_text_classifier/**이고, lora_classifier 이름은 "
+        "old artifact/report reader compatibility 표면에만 남긴다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_paths)}"
+    )
+
+
+def test_shared_lora_classifier_v1_contract_is_removed() -> None:
+    legacy_contract = (
+        SHARED_SRC / "contracts" / "adapter_contract_families" / "lora_classifier.py"
+    )
+    legacy_fixture = (
+        REPO_ROOT / "tests" / "contracts" / "fixtures" / "lora_classifier_delta.v1.json"
+    )
+
+    assert not legacy_contract.exists(), (
+        "v1 lora_classifier shared parser/factory는 active shared contract 표면에서 "
+        "제거된 상태를 유지한다. 과거 artifact는 report/materialization old-reader "
+        "경계에서만 canonical PEFT 표면으로 정규화한다."
+    )
+    assert not legacy_fixture.exists(), (
+        "golden fixture는 active shared payload shape만 보존한다. v1 lora payload "
+        "fixture를 재도입하면 shared contract가 다시 legacy producer를 소유하게 된다."
     )
 
 
