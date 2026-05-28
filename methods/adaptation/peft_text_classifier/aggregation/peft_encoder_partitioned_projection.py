@@ -87,7 +87,7 @@ def compute_peft_encoder_partitioned_delta_average(
         partition_counts.append(len(update.partitions))
         merged_updates.append(
             PeftEncoderFedAvgUpdate(
-                lora_parameter_deltas=merged.lora_parameter_deltas,
+                peft_parameter_deltas=merged.peft_parameter_deltas,
                 classifier_head_weight_deltas=merged.classifier_head_weight_deltas,
                 classifier_head_bias_deltas=merged.classifier_head_bias_deltas,
                 example_count=update.example_count,
@@ -103,7 +103,7 @@ def compute_peft_encoder_partitioned_delta_average(
         weight_policy_name=weight_policy_name,
     )
     return PeftEncoderFedAvgResult(
-        lora_parameter_deltas=result.lora_parameter_deltas,
+        peft_parameter_deltas=result.peft_parameter_deltas,
         classifier_head_weight_deltas=result.classifier_head_weight_deltas,
         classifier_head_bias_deltas=result.classifier_head_bias_deltas,
         aggregated_metrics={
@@ -167,7 +167,7 @@ def aggregate_peft_encoder_partitioned_delta_average(
     artifact_ref_resolver = context.require_artifact_ref_resolver(
         context="PEFT-classifier partitioned delta average"
     )
-    lora_adapter_artifact_ref = artifact_ref_resolver.build_ref(
+    peft_adapter_artifact_ref = artifact_ref_resolver.build_ref(
         next_model_revision=context.next_model_revision,
         artifact_name=_adapter_artifact_slot(base_state),
     )
@@ -180,10 +180,10 @@ def aggregate_peft_encoder_partitioned_delta_average(
         base_parameters=base_parameters,
         next_model_revision=context.next_model_revision,
         updated_at=context.aggregated_at,
-        lora_adapter_artifact_ref=lora_adapter_artifact_ref,
+        peft_adapter_artifact_ref=peft_adapter_artifact_ref,
         classifier_head_artifact_ref=classifier_head_artifact_ref,
         artifact_format=artifact_ref_resolver.artifact_format,
-        lora_parameter_deltas=method_result.lora_parameter_deltas,
+        peft_parameter_deltas=method_result.peft_parameter_deltas,
         classifier_head_weight_deltas=method_result.classifier_head_weight_deltas,
         classifier_head_bias_deltas=method_result.classifier_head_bias_deltas,
         partitioned_parameters=next_partition_parameters,
@@ -243,7 +243,7 @@ def _compute_average_partition_deltas(
     for partition_name in partition_names:
         partition_updates = [
             PeftEncoderFedAvgUpdate(
-                lora_parameter_deltas=partition.lora_parameter_deltas,
+                peft_parameter_deltas=partition.peft_parameter_deltas,
                 classifier_head_weight_deltas=partition.classifier_head_weight_deltas,
                 classifier_head_bias_deltas=partition.classifier_head_bias_deltas,
                 example_count=update.example_count,
@@ -265,7 +265,7 @@ def _compute_average_partition_deltas(
         )
         averaged[partition_name] = PeftEncoderPartitionDelta(
             partition_name=partition_name,
-            lora_parameter_deltas=partition_result.lora_parameter_deltas,
+            peft_parameter_deltas=partition_result.peft_parameter_deltas,
             classifier_head_weight_deltas=(
                 partition_result.classifier_head_weight_deltas
             ),

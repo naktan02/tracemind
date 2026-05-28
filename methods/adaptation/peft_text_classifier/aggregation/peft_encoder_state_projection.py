@@ -37,19 +37,19 @@ def build_peft_encoder_state_projection(
     base_parameters: PeftEncoderMaterializedState,
     next_model_revision: str,
     updated_at: datetime,
-    lora_adapter_artifact_ref: str,
+    peft_adapter_artifact_ref: str,
     classifier_head_artifact_ref: str,
     artifact_format: str,
-    lora_parameter_deltas: Mapping[str, Sequence[float]],
+    peft_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
     partitioned_parameters: (Mapping[str, PeftEncoderMaterializedState] | None) = None,
 ) -> PeftEncoderStateProjection:
     """base global snapshot에 aggregated delta를 적용해 next state를 만든다."""
 
-    next_lora_parameters = _apply_vector_deltas(
-        base_parameters.lora_parameters,
-        lora_parameter_deltas,
+    next_peft_parameters = _apply_vector_deltas(
+        base_parameters.peft_parameters,
+        peft_parameter_deltas,
         field_name=PEFT_STATE_PARAMETERS_KEY,
     )
     next_classifier_head_weights = _apply_vector_deltas(
@@ -64,10 +64,10 @@ def build_peft_encoder_state_projection(
     adapter_parameters_key = _adapter_parameters_key(base_state)
     applied_adapter_deltas_key = _applied_adapter_deltas_key(base_state)
     lora_artifact: dict[str, object] = {
-        adapter_parameters_key: next_lora_parameters,
+        adapter_parameters_key: next_peft_parameters,
         applied_adapter_deltas_key: {
             key: [float(value) for value in values]
-            for key, values in lora_parameter_deltas.items()
+            for key, values in peft_parameter_deltas.items()
         },
     }
     classifier_head_artifact: dict[str, object] = {
@@ -83,7 +83,7 @@ def build_peft_encoder_state_projection(
     }
     if partitioned_parameters:
         lora_artifact[_partitioned_adapter_parameters_key(base_state)] = {
-            partition_name: _json_vector_mapping(partition.lora_parameters)
+            partition_name: _json_vector_mapping(partition.peft_parameters)
             for partition_name, partition in sorted(partitioned_parameters.items())
         }
         classifier_head_artifact[PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY] = {
@@ -100,12 +100,12 @@ def build_peft_encoder_state_projection(
             base_state=base_state,
             next_model_revision=next_model_revision,
             updated_at=updated_at,
-            lora_adapter_artifact_ref=lora_adapter_artifact_ref,
+            peft_adapter_artifact_ref=peft_adapter_artifact_ref,
             classifier_head_artifact_ref=classifier_head_artifact_ref,
             artifact_format=artifact_format,
         ),
         artifacts={
-            lora_adapter_artifact_ref: {
+            peft_adapter_artifact_ref: {
                 **lora_artifact,
             },
             classifier_head_artifact_ref: {
@@ -120,7 +120,7 @@ def _build_next_state(
     base_state: PeftEncoderStatePayload,
     next_model_revision: str,
     updated_at: datetime,
-    lora_adapter_artifact_ref: str,
+    peft_adapter_artifact_ref: str,
     classifier_head_artifact_ref: str,
     artifact_format: str,
 ) -> PeftEncoderStatePayload:
@@ -134,7 +134,7 @@ def _build_next_state(
         backbone=base_state.backbone,
         peft_adapter_config=base_state.peft_adapter_config,
         label_schema=base_state.label_schema,
-        peft_adapter_artifact_ref=lora_adapter_artifact_ref,
+        peft_adapter_artifact_ref=peft_adapter_artifact_ref,
         classifier_head_artifact_ref=classifier_head_artifact_ref,
         artifact_format=artifact_format,
     )

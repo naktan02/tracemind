@@ -115,14 +115,14 @@ def run_peft_encoder_supervised_seed_step(
         base_parameters=base_parameters,
         next_model_revision=next_model_revision,
         updated_at=now,
-        lora_adapter_artifact_ref=artifact_refs.refs_by_name[
+        peft_adapter_artifact_ref=artifact_refs.refs_by_name[
             _adapter_artifact_slot(active.adapter_state)
         ],
         classifier_head_artifact_ref=artifact_refs.refs_by_name[
             peft_fedavg_projection.CLASSIFIER_HEAD_ARTIFACT_SLOT
         ],
         artifact_format=artifact_refs.artifact_format,
-        lora_parameter_deltas=seed_result.lora_parameter_deltas,
+        peft_parameter_deltas=seed_result.peft_parameter_deltas,
         classifier_head_weight_deltas=seed_result.classifier_head_weight_deltas,
         classifier_head_bias_deltas=seed_result.classifier_head_bias_deltas,
     )

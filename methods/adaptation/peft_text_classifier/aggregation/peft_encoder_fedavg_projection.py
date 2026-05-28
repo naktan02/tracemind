@@ -56,7 +56,7 @@ PeftEncoderDeltaPayload = PeftClassifierDelta
 class PeftEncoderFedAvgUpdate:
     """main_server boundary와 분리된 PEFT encoder classifier FedAvg 입력."""
 
-    lora_parameter_deltas: Mapping[str, Sequence[float]]
+    peft_parameter_deltas: Mapping[str, Sequence[float]]
     classifier_head_weight_deltas: Mapping[str, Sequence[float]]
     classifier_head_bias_deltas: Mapping[str, float]
     example_count: int
@@ -69,7 +69,7 @@ class PeftEncoderFedAvgUpdate:
 class PeftEncoderFedAvgResult:
     """PEFT encoder classifier FedAvg 계산 결과."""
 
-    lora_parameter_deltas: dict[str, list[float]]
+    peft_parameter_deltas: dict[str, list[float]]
     classifier_head_weight_deltas: dict[str, list[float]]
     classifier_head_bias_deltas: dict[str, float]
     aggregated_metrics: dict[str, float]
@@ -90,10 +90,10 @@ def compute_peft_encoder_fedavg(
     if not valid_updates:
         raise ValueError("At least one non-empty PEFT-classifier update is required.")
 
-    lora_parameter_deltas = weighted_average_vector_mappings(
+    peft_parameter_deltas = weighted_average_vector_mappings(
         [
             WeightedVectorMappingUpdate(
-                values=update.lora_parameter_deltas,
+                values=update.peft_parameter_deltas,
                 weight=aggregation_weight_for_update(update, policy=weight_policy),
             )
             for update in valid_updates
@@ -125,7 +125,7 @@ def compute_peft_encoder_fedavg(
     )
 
     return PeftEncoderFedAvgResult(
-        lora_parameter_deltas=lora_parameter_deltas,
+        peft_parameter_deltas=peft_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
         aggregated_metrics={
@@ -133,8 +133,8 @@ def compute_peft_encoder_fedavg(
             "aggregation_weight_policy_example_count": float(
                 weight_policy.name == AGGREGATION_WEIGHT_EXAMPLE_COUNT
             ),
-            "lora_parameter_count": float(len(lora_parameter_deltas)),
-            "peft_parameter_count": float(len(lora_parameter_deltas)),
+            "lora_parameter_count": float(len(peft_parameter_deltas)),
+            "peft_parameter_count": float(len(peft_parameter_deltas)),
             "classifier_head_label_count": float(len(classifier_head_weight_deltas)),
         },
         update_count=len(valid_updates),
@@ -227,7 +227,7 @@ def aggregate_peft_encoder_fedavg(
     artifact_ref_resolver = context.require_artifact_ref_resolver(
         context="PEFT-classifier FedAvg"
     )
-    lora_adapter_artifact_ref = artifact_ref_resolver.build_ref(
+    peft_adapter_artifact_ref = artifact_ref_resolver.build_ref(
         next_model_revision=context.next_model_revision,
         artifact_name=_adapter_artifact_slot(base_state),
     )
@@ -243,10 +243,10 @@ def aggregate_peft_encoder_fedavg(
         ),
         next_model_revision=context.next_model_revision,
         updated_at=context.aggregated_at,
-        lora_adapter_artifact_ref=lora_adapter_artifact_ref,
+        peft_adapter_artifact_ref=peft_adapter_artifact_ref,
         classifier_head_artifact_ref=classifier_head_artifact_ref,
         artifact_format=artifact_ref_resolver.artifact_format,
-        lora_parameter_deltas=method_result.lora_parameter_deltas,
+        peft_parameter_deltas=method_result.peft_parameter_deltas,
         classifier_head_weight_deltas=method_result.classifier_head_weight_deltas,
         classifier_head_bias_deltas=method_result.classifier_head_bias_deltas,
     )
@@ -273,7 +273,7 @@ def _to_peft_encoder_method_update(
         context=context,
     )
     return PeftEncoderFedAvgUpdate(
-        lora_parameter_deltas=materialized.lora_parameter_deltas,
+        peft_parameter_deltas=materialized.peft_parameter_deltas,
         classifier_head_weight_deltas=materialized.classifier_head_weight_deltas,
         classifier_head_bias_deltas=materialized.classifier_head_bias_deltas,
         example_count=payload.example_count,

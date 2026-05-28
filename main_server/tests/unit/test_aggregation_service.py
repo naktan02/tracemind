@@ -491,7 +491,7 @@ def test_peft_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
         {
             "sigma": PeftEncoderPartitionDelta(
                 partition_name="sigma",
-                lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.0]},
+                peft_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.0]},
                 classifier_head_weight_deltas={
                     "anxiety": [0.1, 0.0],
                     "normal": [-0.1, 0.0],
@@ -500,7 +500,7 @@ def test_peft_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
             ),
             "psi": PeftEncoderPartitionDelta(
                 partition_name="psi",
-                lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, 0.3]},
+                peft_parameter_deltas={"encoder.q_proj.lora_A": [0.1, 0.3]},
                 classifier_head_weight_deltas={
                     "anxiety": [0.2, 0.2],
                     "normal": [-0.2, -0.2],

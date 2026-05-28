@@ -51,13 +51,13 @@ def build_query_ssl_peft_encoder_update_payload(
     unlabeled_rows: Sequence[LabeledQueryRow],
     step_plan: QuerySslLocalStepPlan,
     history_record: Mapping[str, object],
-    lora_parameter_deltas: Mapping[str, Sequence[float]],
+    peft_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
     partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None = None,
     created_at: datetime,
     delta_format: str = PEFT_ENCODER_DELTA_FORMAT_INLINE,
-    lora_delta_artifact_ref: str | None = None,
+    peft_adapter_delta_artifact_ref: str | None = None,
     classifier_head_delta_artifact_ref: str | None = None,
     partitioned_deltas_artifact_ref: str | None = None,
     include_inline_deltas: bool = True,
@@ -68,7 +68,7 @@ def build_query_ssl_peft_encoder_update_payload(
     if not normalized_delta_format:
         raise ValueError("delta_format must not be empty.")
     has_primary_artifact_refs = (
-        lora_delta_artifact_ref is not None
+        peft_adapter_delta_artifact_ref is not None
         and classifier_head_delta_artifact_ref is not None
     )
     has_partitioned_artifact_ref = partitioned_deltas_artifact_ref is not None
@@ -82,7 +82,7 @@ def build_query_ssl_peft_encoder_update_payload(
     util_ratio = finite_float_or_none(history_record.get("train_util_ratio"))
     accepted_unlabeled_count = int(round((util_ratio or 0.0) * len(unlabeled_rows)))
     delta_l2_norm = peft_encoder_delta_l2_norm(
-        lora_parameter_deltas=lora_parameter_deltas,
+        peft_parameter_deltas=peft_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
     )
@@ -94,10 +94,10 @@ def build_query_ssl_peft_encoder_update_payload(
         example_count=len(labeled_rows) + len(unlabeled_rows),
         label_counts=_build_labeled_row_label_counts(labeled_rows),
         artifacts=PeftEncoderTrainArtifacts(
-            lora_delta_artifact_ref=lora_delta_artifact_ref,
+            peft_adapter_delta_artifact_ref=peft_adapter_delta_artifact_ref,
             classifier_head_delta_artifact_ref=classifier_head_delta_artifact_ref,
-            lora_parameter_deltas=(
-                lora_parameter_deltas if include_inline_deltas else None
+            peft_parameter_deltas=(
+                peft_parameter_deltas if include_inline_deltas else None
             ),
             classifier_head_weight_deltas=(
                 classifier_head_weight_deltas if include_inline_deltas else None

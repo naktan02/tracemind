@@ -40,7 +40,7 @@ class SimulationInlinePeftEncoderTrainExecutor:
         if not rows:
             raise ValueError("PEFT encoder simulation inline delta requires rows.")
 
-        lora_parameter_deltas = _build_lora_parameter_deltas(
+        peft_parameter_deltas = _build_peft_parameter_deltas(
             rows=rows,
             config=config,
             scale=self.lora_delta_scale,
@@ -58,18 +58,18 @@ class SimulationInlinePeftEncoderTrainExecutor:
             scale=self.classifier_delta_scale,
         )
         return PeftEncoderTrainArtifacts(
-            lora_parameter_deltas=lora_parameter_deltas,
+            peft_parameter_deltas=peft_parameter_deltas,
             classifier_head_weight_deltas=classifier_head_weight_deltas,
             classifier_head_bias_deltas=classifier_head_bias_deltas,
             delta_l2_norm=peft_encoder_delta_l2_norm(
-                lora_parameter_deltas=lora_parameter_deltas,
+                peft_parameter_deltas=peft_parameter_deltas,
                 classifier_head_weight_deltas=classifier_head_weight_deltas,
                 classifier_head_bias_deltas=classifier_head_bias_deltas,
             ),
         )
 
 
-def _build_lora_parameter_deltas(
+def _build_peft_parameter_deltas(
     *,
     rows: Sequence[PeftEncoderTrainingRow],
     config: PeftEncoderUpdateConfig,

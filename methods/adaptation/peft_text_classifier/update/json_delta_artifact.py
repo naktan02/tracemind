@@ -9,28 +9,28 @@ from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
 )
 from shared.src.contracts.training_contracts import TrainingTask
 
-LORA_DELTA_ARTIFACT_SCHEMA_VERSION = "peft_encoder_client_delta_artifact.v1"
+PEFT_ADAPTER_DELTA_ARTIFACT_SCHEMA_VERSION = "peft_encoder_client_delta_artifact.v1"
 HEAD_DELTA_ARTIFACT_SCHEMA_VERSION = "peft_encoder_client_head_delta_artifact.v1"
 PARTITIONED_DELTA_ARTIFACT_SCHEMA_VERSION = (
     "peft_encoder_client_partitioned_delta_artifact.v1"
 )
 
 
-def build_lora_delta_json_artifact_payload(
+def build_peft_adapter_delta_json_artifact_payload(
     *,
     update_id: str,
     training_task: TrainingTask,
     client_id: str,
-    lora_parameter_deltas: Mapping[str, Sequence[float]],
+    peft_parameter_deltas: Mapping[str, Sequence[float]],
 ) -> dict[str, object]:
     return {
-        "schema_version": LORA_DELTA_ARTIFACT_SCHEMA_VERSION,
+        "schema_version": PEFT_ADAPTER_DELTA_ARTIFACT_SCHEMA_VERSION,
         "update_id": update_id,
         "round_id": training_task.round_id,
         "client_id": client_id,
-        "lora_parameter_deltas": {
+        "peft_parameter_deltas": {
             str(key): [float(value) for value in values]
-            for key, values in lora_parameter_deltas.items()
+            for key, values in peft_parameter_deltas.items()
         },
     }
 
@@ -72,9 +72,9 @@ def build_partitioned_delta_json_artifact_payload(
         "client_id": client_id,
         "partitions": {
             str(name): {
-                "lora_parameter_deltas": {
+                "peft_parameter_deltas": {
                     str(key): [float(value) for value in values]
-                    for key, values in delta.lora_parameter_deltas.items()
+                    for key, values in delta.peft_parameter_deltas.items()
                 },
                 "classifier_head_weight_deltas": {
                     str(key): [float(value) for value in values]

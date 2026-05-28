@@ -35,9 +35,9 @@ class PeftEncoderTrainingRow:
 class PeftEncoderTrainArtifacts:
     """PEFT train executor가 payload core에 돌려주는 artifact snapshot."""
 
-    lora_delta_artifact_ref: str | None = None
+    peft_adapter_delta_artifact_ref: str | None = None
     classifier_head_delta_artifact_ref: str | None = None
-    lora_parameter_deltas: Mapping[str, Sequence[float]] | None = None
+    peft_parameter_deltas: Mapping[str, Sequence[float]] | None = None
     classifier_head_weight_deltas: Mapping[str, Sequence[float]] | None = None
     classifier_head_bias_deltas: Mapping[str, float] | None = None
     partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None = None
@@ -162,12 +162,12 @@ def build_peft_encoder_delta_payload_from_artifacts(
         peft_adapter_config=dict(config.to_peft_adapter_config_payload()),
         label_schema=tuple(str(label) for label in label_schema),
         example_count=example_count,
-        peft_adapter_delta_artifact_ref=artifacts.lora_delta_artifact_ref,
+        peft_adapter_delta_artifact_ref=artifacts.peft_adapter_delta_artifact_ref,
         classifier_head_delta_artifact_ref=(
             artifacts.classifier_head_delta_artifact_ref
         ),
         peft_parameter_deltas=_normalize_vector_mapping(
-            artifacts.lora_parameter_deltas
+            artifacts.peft_parameter_deltas
         ),
         classifier_head_weight_deltas=_normalize_vector_mapping(
             artifacts.classifier_head_weight_deltas
@@ -202,7 +202,7 @@ def _build_partitioned_delta_payload(
         str(name): {
             peft_parameter_field_name: {
                 key: [float(value) for value in values]
-                for key, values in delta.lora_parameter_deltas.items()
+                for key, values in delta.peft_parameter_deltas.items()
             },
             "classifier_head_weight_deltas": {
                 key: [float(value) for value in values]

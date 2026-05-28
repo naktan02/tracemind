@@ -97,7 +97,7 @@ def test_query_ssl_peft_encoder_update_payload_uses_server_refs_without_inline()
             "train_unsup_loss": 0.25,
             "ignored_text": "not numeric",
         },
-        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
+        peft_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
         classifier_head_weight_deltas={
             "anxiety": [0.3, -0.1],
             "normal": [-0.3, 0.1],
@@ -105,7 +105,7 @@ def test_query_ssl_peft_encoder_update_payload_uses_server_refs_without_inline()
         classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
         created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
-        lora_delta_artifact_ref="aggregation_artifact::round_0001/agent_01/peft",
+        peft_adapter_delta_artifact_ref="aggregation_artifact::round_0001/agent_01/peft",
         classifier_head_delta_artifact_ref=(
             "aggregation_artifact::round_0001/agent_01/head"
         ),
@@ -153,7 +153,7 @@ def test_query_ssl_peft_encoder_update_payload_requires_refs_for_artifact_mode()
                 max_steps=1,
             ),
             history_record={},
-            lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
+            peft_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
             classifier_head_weight_deltas={
                 "anxiety": [0.3, -0.1],
                 "normal": [-0.3, 0.1],

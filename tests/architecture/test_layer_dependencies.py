@@ -1369,13 +1369,13 @@ def test_federated_agent_runtime_adapter_unit_tests_name_active_peft_surface() -
         "test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm",
         "make_peft_classifier_state_payload",
         "make_peft_classifier_delta_payload",
-        "test_upload_agent_local_lora_v1_update_materializes_server_owned_refs",
+        "test_upload_agent_local_peft_update_materializes_server_owned_refs",
     )
     missing = [snippet for snippet in required_snippets if snippet not in source]
 
     assert not violations and not missing, (
         "federated agent runtime adapter unit test는 active 경로를 PEFT encoder로 "
-        "부르고, v1 LoRA payload compatibility는 이름에 v1을 드러낸다.\n"
+        "부르고, 새 payload producer는 PEFT classifier 계약을 사용한다.\n"
         f"violations={violations}\nmissing={missing}"
     )
 

@@ -200,14 +200,14 @@ def extract_peft_encoder_materialized_state(
 ) -> PeftEncoderMaterializedState:
     """현재 PEFT encoder classifier trainable state를 materialize한다."""
 
-    lora_parameters: dict[str, list[float]] = {}
+    peft_parameters: dict[str, list[float]] = {}
     for name, parameter in model.named_parameters():
         if not parameter.requires_grad or name.startswith("classifier."):
             continue
-        lora_parameters[name] = [
+        peft_parameters[name] = [
             float(value) for value in parameter.detach().cpu().reshape(-1).tolist()
         ]
-    if not lora_parameters:
+    if not peft_parameters:
         raise ValueError("PEFT peer snapshot requires trainable adapter parameters.")
 
     weight = model.classifier.weight.detach().cpu()
@@ -223,7 +223,7 @@ def extract_peft_encoder_materialized_state(
 
     return compact_peft_encoder_materialized_state(
         PeftEncoderMaterializedState(
-            lora_parameters=lora_parameters,
+            peft_parameters=peft_parameters,
             classifier_head_weights=classifier_head_weights,
             classifier_head_biases=classifier_head_biases,
         )
@@ -336,7 +336,7 @@ def _materialized_state_hash(
     state: PeftEncoderMaterializedState,
 ) -> str:
     payload = {
-        "lora_parameters": _sorted_numeric_mapping(state.lora_parameters),
+        "peft_parameters": _sorted_numeric_mapping(state.peft_parameters),
         "classifier_head_weights": _sorted_numeric_mapping(
             state.classifier_head_weights
         ),

@@ -142,7 +142,7 @@ def apply_partitioned_s2c_sparse_download(
             client_parameters=client_partition_parameters.get(
                 partition_name,
                 PeftEncoderMaterializedState(
-                    lora_parameters={},
+                    peft_parameters={},
                     classifier_head_weights={},
                     classifier_head_biases={},
                 ),
@@ -172,7 +172,7 @@ def project_partitioned_s2c_sparse_download(
             client_parameters=client_partition_parameters.get(
                 partition_name,
                 PeftEncoderMaterializedState(
-                    lora_parameters={},
+                    peft_parameters={},
                     classifier_head_weights={},
                     classifier_head_biases={},
                 ),
@@ -195,9 +195,9 @@ def _apply_sparse_upload_to_partition(
 ) -> PeftEncoderPartitionDelta:
     return PeftEncoderPartitionDelta(
         partition_name=delta.partition_name,
-        lora_parameter_deltas=_sparse_vector_mapping(
-            base_values=base_parameters.lora_parameters,
-            deltas=delta.lora_parameter_deltas,
+        peft_parameter_deltas=_sparse_vector_mapping(
+            base_values=base_parameters.peft_parameters,
+            deltas=delta.peft_parameter_deltas,
             l1_sparse=l1_sparse,
             parameters=parameters,
         ),
@@ -218,7 +218,7 @@ def _apply_sparse_upload_to_partition(
 
 def _partition_delta_nonzero_count(delta: PeftEncoderPartitionDelta) -> int:
     return (
-        _nested_nonzero_float_count(delta.lora_parameter_deltas)
+        _nested_nonzero_float_count(delta.peft_parameter_deltas)
         + _nested_nonzero_float_count(delta.classifier_head_weight_deltas)
         + _nested_nonzero_float_count(delta.classifier_head_bias_deltas)
     )
@@ -245,9 +245,9 @@ def _build_sparse_upload_partition_delta_from_states(
 ) -> PeftEncoderPartitionDelta:
     return PeftEncoderPartitionDelta(
         partition_name=partition_name,
-        lora_parameter_deltas=_sparse_upload_vector_mapping_from_states(
-            server_values=server_parameters.lora_parameters,
-            client_values=client_parameters.lora_parameters,
+        peft_parameter_deltas=_sparse_upload_vector_mapping_from_states(
+            server_values=server_parameters.peft_parameters,
+            client_values=client_parameters.peft_parameters,
             l1_sparse=l1_sparse,
             parameters=parameters,
         ),
@@ -272,9 +272,9 @@ def _apply_upload_delta_to_state(
     upload_delta: PeftEncoderPartitionDelta,
 ) -> PeftEncoderMaterializedState:
     return PeftEncoderMaterializedState(
-        lora_parameters=_apply_vector_delta_mapping(
-            base_values=server_parameters.lora_parameters,
-            deltas=upload_delta.lora_parameter_deltas,
+        peft_parameters=_apply_vector_delta_mapping(
+            base_values=server_parameters.peft_parameters,
+            deltas=upload_delta.peft_parameter_deltas,
         ),
         classifier_head_weights=_apply_vector_delta_mapping(
             base_values=server_parameters.classifier_head_weights,
@@ -301,9 +301,9 @@ def _build_sparse_download_partition_delta(
 ) -> PeftEncoderPartitionDelta:
     return PeftEncoderPartitionDelta(
         partition_name=partition_name,
-        lora_parameter_deltas=_sparse_download_vector_mapping(
-            server_values=server_parameters.lora_parameters,
-            client_values=client_parameters.lora_parameters,
+        peft_parameter_deltas=_sparse_download_vector_mapping(
+            server_values=server_parameters.peft_parameters,
+            client_values=client_parameters.peft_parameters,
             l1_sparse=l1_sparse,
             parameters=parameters,
         ),
@@ -331,9 +331,9 @@ def _project_sparse_download_partition_state(
     parameters: PartitionSparseSyncParameters,
 ) -> PeftEncoderMaterializedState:
     return PeftEncoderMaterializedState(
-        lora_parameters=_sparse_download_projected_vector_mapping(
-            server_values=server_parameters.lora_parameters,
-            client_values=client_parameters.lora_parameters,
+        peft_parameters=_sparse_download_projected_vector_mapping(
+            server_values=server_parameters.peft_parameters,
+            client_values=client_parameters.peft_parameters,
             l1_sparse=l1_sparse,
             parameters=parameters,
             context=partition_name,

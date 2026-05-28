@@ -8,38 +8,39 @@ from collections.abc import Mapping, Sequence
 import torch
 from torch import Tensor
 
-MERGED_LORA_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
+MERGED_PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
     "peft_encoder_client_merged_adapter_delta_tensor_artifact.v1"
 )
 MERGED_HEAD_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
     "peft_encoder_client_merged_head_delta_tensor_artifact.v1"
 )
 MERGED_DELTA_TENSOR_ARTIFACT_FORMAT = "safetensors"
-LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "lora_delta_index_json"
+PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "peft_adapter_delta_index_json"
+LEGACY_LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "lora_delta_index_json"
 HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "head_delta_index_json"
 
 
-def build_lora_delta_tensor_artifact(
-    lora_parameter_deltas: Mapping[str, Sequence[float]],
+def build_peft_adapter_delta_tensor_artifact(
+    peft_parameter_deltas: Mapping[str, Sequence[float]],
 ) -> tuple[dict[str, Tensor], dict[str, str]]:
-    """merged LoRA delta를 safetensors payload와 metadata index로 변환한다."""
+    """merged PEFT adapter delta를 safetensors payload와 metadata index로 변환한다."""
 
-    if not lora_parameter_deltas:
-        raise ValueError("LoRA delta tensor artifact requires parameter deltas.")
+    if not peft_parameter_deltas:
+        raise ValueError("PEFT adapter delta tensor artifact requires deltas.")
     tensors: dict[str, Tensor] = {}
     index: dict[str, object] = {
-        "schema_version": MERGED_LORA_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION,
+        "schema_version": MERGED_PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION,
         "artifact_format": MERGED_DELTA_TENSOR_ARTIFACT_FORMAT,
-        "lora_parameter_deltas": {},
+        "peft_parameter_deltas": {},
     }
     _add_vector_mapping_tensors(
         tensors=tensors,
-        target=index["lora_parameter_deltas"],
+        target=index["peft_parameter_deltas"],
         prefix="lora",
-        values=lora_parameter_deltas,
+        values=peft_parameter_deltas,
     )
     return tensors, {
-        LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY: json.dumps(
+        PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY: json.dumps(
             index,
             ensure_ascii=True,
             sort_keys=True,
@@ -47,23 +48,23 @@ def build_lora_delta_tensor_artifact(
     }
 
 
-def parse_lora_delta_tensor_artifact(
+def parse_peft_adapter_delta_tensor_artifact(
     *,
     tensors: Mapping[str, Tensor],
     metadata: Mapping[str, str],
 ) -> dict[str, list[float]]:
-    """safetensors payload와 metadata index를 merged LoRA delta로 복원한다."""
+    """safetensors payload와 metadata index를 merged PEFT adapter delta로 복원한다."""
 
     index = _load_index(
         metadata=metadata,
-        metadata_key=LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
-        schema_version=MERGED_LORA_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION,
-        artifact_name="LoRA delta",
+        metadata_key=_peft_adapter_delta_metadata_key(metadata),
+        schema_version=MERGED_PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION,
+        artifact_name="PEFT adapter delta",
     )
     return _read_vector_mapping(
         tensors=tensors,
-        source=index.get("lora_parameter_deltas", {}),
-        artifact_name="LoRA delta",
+        source=index.get("peft_parameter_deltas", {}),
+        artifact_name="PEFT adapter delta",
     )
 
 
@@ -171,6 +172,12 @@ def _load_index(
             f"{index.get('schema_version')!r}."
         )
     return index
+
+
+def _peft_adapter_delta_metadata_key(metadata: Mapping[str, str]) -> str:
+    if PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY in metadata:
+        return PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY
+    return LEGACY_LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY
 
 
 def _read_vector_mapping(

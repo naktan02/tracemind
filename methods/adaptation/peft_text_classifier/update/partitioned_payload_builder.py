@@ -26,9 +26,9 @@ def build_partitioned_delta_payload(
 
 def _partition_to_payload(delta: PeftEncoderPartitionDelta) -> Mapping[str, object]:
     return {
-        "lora_parameter_deltas": {
+        "peft_parameter_deltas": {
             key: list(values)
-            for key, values in sorted(delta.lora_parameter_deltas.items())
+            for key, values in sorted(delta.peft_parameter_deltas.items())
         },
         "classifier_head_weight_deltas": {
             key: list(values)

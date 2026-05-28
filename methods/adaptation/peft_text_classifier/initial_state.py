@@ -15,7 +15,7 @@ class PeftEncoderInitialStateConfig(Protocol):
     """Initial shared state 생성에 필요한 PEFT encoder classifier config surface."""
 
     artifact_format: str
-    lora_adapter_artifact_ref: str | None
+    peft_adapter_artifact_ref: str | None
     classifier_head_artifact_ref: str | None
 
     def backbone_payload(self) -> Mapping[str, str | int]:
@@ -39,9 +39,6 @@ def build_initial_peft_classifier_state(
 ) -> PeftClassifierState:
     """simulation/runtime bootstrap용 PEFT-classifier initial state를 만든다."""
 
-    peft_adapter_artifact_ref = getattr(config, "peft_adapter_artifact_ref", None)
-    if peft_adapter_artifact_ref is None:
-        peft_adapter_artifact_ref = config.lora_adapter_artifact_ref
     return PeftClassifierState(
         model_id=model_id,
         model_revision=model_revision,
@@ -50,7 +47,7 @@ def build_initial_peft_classifier_state(
         backbone=dict(config.backbone_payload()),
         peft_adapter_config=dict(config.peft_adapter_config_payload()),
         label_schema=[str(label) for label in labels],
-        peft_adapter_artifact_ref=peft_adapter_artifact_ref,
+        peft_adapter_artifact_ref=config.peft_adapter_artifact_ref,
         classifier_head_artifact_ref=config.classifier_head_artifact_ref,
         artifact_format=config.artifact_format,
     )

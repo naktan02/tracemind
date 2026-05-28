@@ -23,19 +23,19 @@ def load_peft_encoder_base_parameters_into_model(
 ) -> None:
     """materialized global PEFT/head state를 local model 파라미터에 반영한다."""
 
-    if base_parameters.lora_parameters:
+    if base_parameters.peft_parameters:
         name_to_parameter = {
             name: parameter
             for name, parameter in model.named_parameters()
             if parameter.requires_grad and not name.startswith("classifier.")
         }
-        missing = sorted(set(base_parameters.lora_parameters) - set(name_to_parameter))
+        missing = sorted(set(base_parameters.peft_parameters) - set(name_to_parameter))
         if missing:
             raise ValueError(
                 "Base LoRA artifact contains parameters not present in model: "
                 f"{missing[:5]}."
             )
-        for name, values in base_parameters.lora_parameters.items():
+        for name, values in base_parameters.peft_parameters.items():
             parameter = name_to_parameter[name]
             tensor = torch.tensor(values, dtype=parameter.dtype, device=device)
             if tensor.numel() != parameter.numel():
@@ -82,9 +82,9 @@ def extract_peft_encoder_parameter_deltas(
 ) -> tuple[dict[str, list[float]], dict[str, list[float]], dict[str, float]]:
     """local model과 base global snapshot의 PEFT/head delta를 추출한다."""
 
-    lora_deltas = extract_lora_parameter_deltas(
+    lora_deltas = extract_peft_parameter_deltas(
         model=model,
-        base_parameters=base_parameters.lora_parameters,
+        base_parameters=base_parameters.peft_parameters,
     )
     head_weight_deltas, head_bias_deltas = extract_classifier_head_deltas(
         model=model,
@@ -95,7 +95,7 @@ def extract_peft_encoder_parameter_deltas(
     return lora_deltas, head_weight_deltas, head_bias_deltas
 
 
-def extract_lora_parameter_deltas(
+def extract_peft_parameter_deltas(
     *,
     model: PeftEncoderTextClassifier,
     base_parameters: Mapping[str, Sequence[float]],
@@ -156,14 +156,14 @@ def extract_classifier_head_deltas(
 
 def peft_encoder_delta_l2_norm(
     *,
-    lora_parameter_deltas: Mapping[str, Sequence[float]],
+    peft_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
 ) -> float:
     """PEFT/head delta mapping의 L2 norm을 계산한다."""
 
     squared_norm = 0.0
-    for mapping in (lora_parameter_deltas, classifier_head_weight_deltas):
+    for mapping in (peft_parameter_deltas, classifier_head_weight_deltas):
         squared_norm += sum(
             float(value) * float(value)
             for vector in mapping.values()

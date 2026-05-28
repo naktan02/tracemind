@@ -179,7 +179,7 @@ def test_peft_encoder_parameter_delta_can_be_split_into_partitions() -> None:
     )
 
     assert partition.partition_name == "custom"
-    assert partition.lora_parameter_deltas == {"backbone.lora_A.weight": [1.0, 2.0]}
+    assert partition.peft_parameter_deltas == {"backbone.lora_A.weight": [1.0, 2.0]}
     assert partition.classifier_head_weight_deltas == {
         "anxiety": [0.10000000149011612, 0.20000000298023224],
         "normal": [0.30000001192092896, 0.4000000059604645],
@@ -199,7 +199,7 @@ def test_peft_encoder_peer_snapshot_extracts_current_trainable_state() -> None:
         labels=labels,
     )
 
-    assert "encoder_lora.weight" in snapshot.lora_parameters
+    assert "encoder_lora.weight" in snapshot.peft_parameters
     assert set(snapshot.classifier_head_weights) == set(labels)
     assert set(snapshot.classifier_head_biases) == set(labels)
 
@@ -251,7 +251,7 @@ def test_fedmatch_peft_encoder_partitioned_step_records_sigma_then_psi_delta() -
         parameter_deltas=result.psi_parameter_deltas,
         labels=labels,
     )
-    assert "encoder_lora.weight" in sigma_delta.lora_parameter_deltas
+    assert "encoder_lora.weight" in sigma_delta.peft_parameter_deltas
     assert set(sigma_delta.classifier_head_weight_deltas) == set(labels)
     assert set(psi_delta.classifier_head_bias_deltas) == set(labels)
     for name, delta in total_delta.items():
@@ -291,7 +291,7 @@ def test_adapter_classifier_delta_bundle_projects_to_peft_partition_delta() -> N
     assert bundle.partition_name == FEDMATCH_SIGMA_PARTITION
     assert set(bundle.adapter_parameter_deltas) == {"encoder_lora.weight"}
     assert payload.partition_name == FEDMATCH_SIGMA_PARTITION
-    assert payload.lora_parameter_deltas["encoder_lora.weight"] == pytest.approx(
+    assert payload.peft_parameter_deltas["encoder_lora.weight"] == pytest.approx(
         [0.1, -0.2, 0.3, 0.4]
     )
     assert payload.classifier_head_weight_deltas["anxiety"] == pytest.approx([0.5, 0.6])
@@ -766,8 +766,8 @@ def test_physical_fedmatch_training_returns_cumulative_partitioned_delta() -> No
     assert result.metrics["train_total_loss"] > 0.0
     assert result.metrics["train_fedmatch_sigma_delta_l2"] > 0.0
     assert result.metrics["train_fedmatch_psi_delta_l2"] > 0.0
-    assert set(sigma.lora_parameter_deltas) == {"adapter.weight"}
-    assert set(psi.lora_parameter_deltas) == {"adapter.weight"}
+    assert set(sigma.peft_parameter_deltas) == {"adapter.weight"}
+    assert set(psi.peft_parameter_deltas) == {"adapter.weight"}
     assert set(sigma.classifier_head_weight_deltas) == set(labels)
     assert set(psi.classifier_head_bias_deltas) == set(labels)
 
@@ -853,8 +853,8 @@ def test_physical_fedmatch_training_accepts_full_text_classifier_partitions() ->
 
     sigma = result.partition_deltas[FEDMATCH_SIGMA_PARTITION]
     psi = result.partition_deltas[FEDMATCH_PSI_PARTITION]
-    assert set(sigma.lora_parameter_deltas) == {"encoder_lora.weight"}
-    assert set(psi.lora_parameter_deltas) == {"encoder_lora.weight"}
+    assert set(sigma.peft_parameter_deltas) == {"encoder_lora.weight"}
+    assert set(psi.peft_parameter_deltas) == {"encoder_lora.weight"}
     assert set(sigma.classifier_head_weight_deltas) == set(labels)
     assert set(psi.classifier_head_bias_deltas) == set(labels)
 
@@ -1046,8 +1046,8 @@ def test_fedmatch_peft_training_returns_cumulative_partitioned_delta() -> None:
     combined_lora = [
         left + right
         for left, right in zip(
-            sigma.lora_parameter_deltas["encoder_lora.weight"],
-            psi.lora_parameter_deltas["encoder_lora.weight"],
+            sigma.peft_parameter_deltas["encoder_lora.weight"],
+            psi.peft_parameter_deltas["encoder_lora.weight"],
         )
     ]
 
@@ -1057,7 +1057,7 @@ def test_fedmatch_peft_training_returns_cumulative_partitioned_delta() -> None:
         FEDMATCH_PSI_PARTITION,
     }
     assert combined_lora == pytest.approx(
-        total_partition.lora_parameter_deltas["encoder_lora.weight"]
+        total_partition.peft_parameter_deltas["encoder_lora.weight"]
     )
 
 
@@ -1124,13 +1124,13 @@ def test_fedmatch_labels_at_server_training_uploads_only_psi_partition() -> None
 
 def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
     base = PeftEncoderMaterializedState(
-        lora_parameters={"encoder_lora.weight": [0.10, 0.10, 0.10]},
+        peft_parameters={"encoder_lora.weight": [0.10, 0.10, 0.10]},
         classifier_head_weights={"anxiety": [0.10, 0.10]},
         classifier_head_biases={"anxiety": 0.10},
     )
     partition_base = {
         FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.03, 0.10, 0.10]},
+            peft_parameters={"encoder_lora.weight": [0.03, 0.10, 0.10]},
             classifier_head_weights={"anxiety": [0.03, 0.10]},
             classifier_head_biases={"anxiety": 0.03},
         )
@@ -1141,13 +1141,13 @@ def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
         partition_deltas={
             FEDMATCH_SIGMA_PARTITION: PeftEncoderPartitionDelta(
                 partition_name=FEDMATCH_SIGMA_PARTITION,
-                lora_parameter_deltas={"encoder_lora.weight": [0.01, 0.04, -0.06]},
+                peft_parameter_deltas={"encoder_lora.weight": [0.01, 0.04, -0.06]},
                 classifier_head_weight_deltas={"anxiety": [0.02, 0.07]},
                 classifier_head_bias_deltas={"anxiety": 0.03},
             ),
             FEDMATCH_PSI_PARTITION: PeftEncoderPartitionDelta(
                 partition_name=FEDMATCH_PSI_PARTITION,
-                lora_parameter_deltas={"encoder_lora.weight": [0.01, -0.01, 0.08]},
+                peft_parameter_deltas={"encoder_lora.weight": [0.01, -0.01, 0.08]},
                 classifier_head_weight_deltas={"anxiety": [0.01, -0.01]},
                 classifier_head_bias_deltas={"anxiety": 0.01},
             ),
@@ -1159,13 +1159,13 @@ def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
         ),
     )
 
-    assert sparse[FEDMATCH_SIGMA_PARTITION].lora_parameter_deltas[
+    assert sparse[FEDMATCH_SIGMA_PARTITION].peft_parameter_deltas[
         "encoder_lora.weight"
     ] == pytest.approx([0.0, 0.04, -0.06])
     assert sparse[FEDMATCH_SIGMA_PARTITION].classifier_head_weight_deltas[
         "anxiety"
     ] == pytest.approx([0.0, 0.07])
-    assert sparse[FEDMATCH_PSI_PARTITION].lora_parameter_deltas[
+    assert sparse[FEDMATCH_PSI_PARTITION].peft_parameter_deltas[
         "encoder_lora.weight"
     ] == pytest.approx([-0.03, 0.0, 0.08])
     assert sparse[FEDMATCH_PSI_PARTITION].classifier_head_weight_deltas[
@@ -1179,24 +1179,24 @@ def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
 def test_partitioned_s2c_sparse_download_diffs_server_and_client_partitions() -> None:
     server_partitions = {
         FEDMATCH_SIGMA_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.10, 0.14, 0.04]},
+            peft_parameters={"encoder_lora.weight": [0.10, 0.14, 0.04]},
             classifier_head_weights={"anxiety": [0.10, 0.17]},
             classifier_head_biases={"anxiety": 0.12},
         ),
         FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.04, 0.10, 0.21]},
+            peft_parameters={"encoder_lora.weight": [0.04, 0.10, 0.21]},
             classifier_head_weights={"anxiety": [0.04, 0.10]},
             classifier_head_biases={"anxiety": 0.04},
         ),
     }
     client_partitions = {
         FEDMATCH_SIGMA_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.09, 0.10, 0.10]},
+            peft_parameters={"encoder_lora.weight": [0.09, 0.10, 0.10]},
             classifier_head_weights={"anxiety": [0.085, 0.10]},
             classifier_head_biases={"anxiety": 0.09},
         ),
         FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.03, 0.085, 0.11]},
+            peft_parameters={"encoder_lora.weight": [0.03, 0.085, 0.11]},
             classifier_head_weights={"anxiety": [0.03, 0.085]},
             classifier_head_biases={"anxiety": 0.03},
         ),
@@ -1212,7 +1212,7 @@ def test_partitioned_s2c_sparse_download_diffs_server_and_client_partitions() ->
         ),
     )
 
-    assert sparse[FEDMATCH_SIGMA_PARTITION].lora_parameter_deltas[
+    assert sparse[FEDMATCH_SIGMA_PARTITION].peft_parameter_deltas[
         "encoder_lora.weight"
     ] == pytest.approx([0.0, 0.04, -0.06])
     assert sparse[FEDMATCH_SIGMA_PARTITION].classifier_head_weight_deltas[
@@ -1221,7 +1221,7 @@ def test_partitioned_s2c_sparse_download_diffs_server_and_client_partitions() ->
     assert sparse[FEDMATCH_SIGMA_PARTITION].classifier_head_bias_deltas[
         "anxiety"
     ] == pytest.approx(0.03)
-    assert sparse[FEDMATCH_PSI_PARTITION].lora_parameter_deltas[
+    assert sparse[FEDMATCH_PSI_PARTITION].peft_parameter_deltas[
         "encoder_lora.weight"
     ] == pytest.approx([0.0, 0.0, 0.10])
     assert sparse[FEDMATCH_PSI_PARTITION].classifier_head_weight_deltas[
@@ -1236,13 +1236,13 @@ def test_partition_delta_nonzero_count_tracks_sparse_transport_values() -> None:
     deltas = {
         FEDMATCH_SIGMA_PARTITION: PeftEncoderPartitionDelta(
             partition_name=FEDMATCH_SIGMA_PARTITION,
-            lora_parameter_deltas={"encoder_lora.weight": [0.0, 0.04, -0.06]},
+            peft_parameter_deltas={"encoder_lora.weight": [0.0, 0.04, -0.06]},
             classifier_head_weight_deltas={"anxiety": [0.0, 0.07]},
             classifier_head_bias_deltas={"anxiety": 0.03},
         ),
         FEDMATCH_PSI_PARTITION: PeftEncoderPartitionDelta(
             partition_name=FEDMATCH_PSI_PARTITION,
-            lora_parameter_deltas={"encoder_lora.weight": [0.0, 0.0, 0.10]},
+            peft_parameter_deltas={"encoder_lora.weight": [0.0, 0.0, 0.10]},
             classifier_head_weight_deltas={"anxiety": [0.0, 0.0]},
             classifier_head_bias_deltas={"anxiety": 0.0},
         ),
@@ -1254,14 +1254,14 @@ def test_partition_delta_nonzero_count_tracks_sparse_transport_values() -> None:
 def test_partitioned_s2c_projection_keeps_raw_server_values_after_sparse_mask() -> None:
     server_partitions = {
         FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.04, 0.21]},
+            peft_parameters={"encoder_lora.weight": [0.04, 0.21]},
             classifier_head_weights={"anxiety": [0.04, 0.21]},
             classifier_head_biases={"anxiety": 0.04},
         )
     }
     client_partitions = {
         FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.09, 0.11]},
+            peft_parameters={"encoder_lora.weight": [0.09, 0.11]},
             classifier_head_weights={"anxiety": [0.09, 0.11]},
             classifier_head_biases={"anxiety": 0.09},
         )
@@ -1286,7 +1286,7 @@ def test_partitioned_s2c_projection_keeps_raw_server_values_after_sparse_mask() 
         ),
     )
 
-    assert projected[FEDMATCH_PSI_PARTITION].lora_parameters[
+    assert projected[FEDMATCH_PSI_PARTITION].peft_parameters[
         "encoder_lora.weight"
     ] == pytest.approx([0.04, 0.21])
     assert projected[FEDMATCH_PSI_PARTITION].classifier_head_weights[
@@ -1295,7 +1295,7 @@ def test_partitioned_s2c_projection_keeps_raw_server_values_after_sparse_mask() 
     assert projected[FEDMATCH_PSI_PARTITION].classifier_head_biases[
         "anxiety"
     ] == pytest.approx(0.04)
-    assert sparse_delta[FEDMATCH_PSI_PARTITION].lora_parameter_deltas[
+    assert sparse_delta[FEDMATCH_PSI_PARTITION].peft_parameter_deltas[
         "encoder_lora.weight"
     ] == pytest.approx([-0.05, 0.10])
 
@@ -1303,24 +1303,24 @@ def test_partitioned_s2c_projection_keeps_raw_server_values_after_sparse_mask() 
 def test_partitioned_c2s_projection_returns_post_upload_client_snapshot() -> None:
     server_partitions = {
         FEDMATCH_SIGMA_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.10, 0.20]},
+            peft_parameters={"encoder_lora.weight": [0.10, 0.20]},
             classifier_head_weights={"anxiety": [0.10, 0.20]},
             classifier_head_biases={"anxiety": 0.10},
         ),
         FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.10, 0.20]},
+            peft_parameters={"encoder_lora.weight": [0.10, 0.20]},
             classifier_head_weights={"anxiety": [0.10, 0.20]},
             classifier_head_biases={"anxiety": 0.10},
         ),
     }
     client_partitions = {
         FEDMATCH_SIGMA_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.11, 0.25]},
+            peft_parameters={"encoder_lora.weight": [0.11, 0.25]},
             classifier_head_weights={"anxiety": [0.11, 0.25]},
             classifier_head_biases={"anxiety": 0.11},
         ),
         FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
-            lora_parameters={"encoder_lora.weight": [0.04, 0.30]},
+            peft_parameters={"encoder_lora.weight": [0.04, 0.30]},
             classifier_head_weights={"anxiety": [0.04, 0.30]},
             classifier_head_biases={"anxiety": 0.04},
         ),
@@ -1328,7 +1328,7 @@ def test_partitioned_c2s_projection_returns_post_upload_client_snapshot() -> Non
 
     projection = sparse_sync.project_partitioned_c2s_sparse_upload(
         base_parameters=PeftEncoderMaterializedState(
-            lora_parameters={},
+            peft_parameters={},
             classifier_head_weights={},
             classifier_head_biases={},
         ),
@@ -1343,16 +1343,16 @@ def test_partitioned_c2s_projection_returns_post_upload_client_snapshot() -> Non
 
     assert projection.upload_partition_deltas[
         FEDMATCH_SIGMA_PARTITION
-    ].lora_parameter_deltas["encoder_lora.weight"] == pytest.approx([0.0, 0.05])
+    ].peft_parameter_deltas["encoder_lora.weight"] == pytest.approx([0.0, 0.05])
     assert projection.client_partition_parameters[
         FEDMATCH_SIGMA_PARTITION
-    ].lora_parameters["encoder_lora.weight"] == pytest.approx([0.10, 0.25])
+    ].peft_parameters["encoder_lora.weight"] == pytest.approx([0.10, 0.25])
     assert projection.upload_partition_deltas[
         FEDMATCH_PSI_PARTITION
-    ].lora_parameter_deltas["encoder_lora.weight"] == pytest.approx([-0.10, 0.10])
+    ].peft_parameter_deltas["encoder_lora.weight"] == pytest.approx([-0.10, 0.10])
     assert projection.client_partition_parameters[
         FEDMATCH_PSI_PARTITION
-    ].lora_parameters["encoder_lora.weight"] == pytest.approx([0.0, 0.30])
+    ].peft_parameters["encoder_lora.weight"] == pytest.approx([0.0, 0.30])
 
 
 def _build_physical_partitioned_model() -> ptm.PartitionedTrainableAdapterClassifier:

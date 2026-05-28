@@ -96,7 +96,7 @@ class QuerySslPeftEncoderDeltaMaterialization:
     """PEFT encoder/head delta가 update payload에 담기는 방식."""
 
     delta_format: str
-    lora_delta_artifact_ref: str | None
+    peft_adapter_delta_artifact_ref: str | None
     classifier_head_delta_artifact_ref: str | None
     include_inline_deltas: bool
     partitioned_deltas_artifact_ref: str | None = None
@@ -113,7 +113,7 @@ class QuerySslPeftEncoderDeltaMaterializer(Protocol):
         client_id: str,
         delta_format: str,
         artifact_ref_prefix: str,
-        lora_parameter_deltas: Mapping[str, Sequence[float]],
+        peft_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
         partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None = None,
@@ -313,7 +313,7 @@ def run_query_ssl_peft_encoder_training_core(
             client_id=client_id,
             delta_format=lora_config.delta_format,
             artifact_ref_prefix=lora_config.artifact_ref_prefix,
-            lora_parameter_deltas=lora_deltas,
+            peft_parameter_deltas=lora_deltas,
             classifier_head_weight_deltas=head_weight_deltas,
             classifier_head_bias_deltas=head_bias_deltas,
         )
@@ -327,12 +327,12 @@ def run_query_ssl_peft_encoder_training_core(
             unlabeled_rows=effective_unlabeled_rows,
             step_plan=step_plan,
             history_record=history[-1] if history else {},
-            lora_parameter_deltas=lora_deltas,
+            peft_parameter_deltas=lora_deltas,
             classifier_head_weight_deltas=head_weight_deltas,
             classifier_head_bias_deltas=head_bias_deltas,
             created_at=created_at,
             delta_format=delta_materialization.delta_format,
-            lora_delta_artifact_ref=delta_materialization.lora_delta_artifact_ref,
+            peft_adapter_delta_artifact_ref=delta_materialization.peft_adapter_delta_artifact_ref,
             classifier_head_delta_artifact_ref=(
                 delta_materialization.classifier_head_delta_artifact_ref
             ),

@@ -11,7 +11,7 @@ class PeftEncoderPartitionDelta:
     """하나의 partition에 속한 PEFT adapter/head delta 묶음."""
 
     partition_name: str
-    lora_parameter_deltas: Mapping[str, Sequence[float]] = field(default_factory=dict)
+    peft_parameter_deltas: Mapping[str, Sequence[float]] = field(default_factory=dict)
     classifier_head_weight_deltas: Mapping[str, Sequence[float]] = field(
         default_factory=dict
     )

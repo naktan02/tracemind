@@ -256,7 +256,7 @@ def _write_report_run_with_server_update_artifacts(
             adapter_ref_field = (
                 "peft_adapter_delta_artifact_ref"
                 if peft_classifier_v2
-                else "lora_delta_artifact_ref"
+                else "peft_adapter_delta_artifact_ref"
             )
             adapter_ref = f"aggregation_artifact::{ref_prefix}/{adapter_delta_name}"
             head_ref = f"aggregation_artifact::{ref_prefix}/classifier_head_delta"
@@ -881,7 +881,9 @@ def test_verify_federated_report_flags_agent_local_update_artifact_drift(
         ).glob("*.json")
     )
     update_payload = json.loads(update_path.read_text(encoding="utf-8"))
-    update_payload["lora_delta_artifact_ref"] = "agent-local://agent_01/lora_delta"
+    update_payload["peft_adapter_delta_artifact_ref"] = (
+        "agent-local://agent_01/lora_delta"
+    )
     update_path.write_text(json.dumps(update_payload), encoding="utf-8")
 
     result = verify_federated_simulation_report_path(
@@ -901,7 +903,8 @@ def test_verify_federated_report_flags_agent_local_update_artifact_drift(
         for error in result.errors
     )
     assert any(
-        ".lora_delta_artifact_ref must start with 'aggregation_artifact::'" in error
+        ".peft_adapter_delta_artifact_ref must start with 'aggregation_artifact::'"
+        in error
         for error in result.errors
     )
 

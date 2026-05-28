@@ -37,15 +37,15 @@ def build_partitioned_delta_tensor_artifact(
         sorted(partitioned_deltas.items())
     ):
         partition_payload: dict[str, dict[str, str]] = {
-            "lora_parameter_deltas": {},
+            "peft_parameter_deltas": {},
             "classifier_head_weight_deltas": {},
             "classifier_head_bias_deltas": {},
         }
         _add_vector_mapping_tensors(
             tensors=tensors,
-            target=partition_payload["lora_parameter_deltas"],
+            target=partition_payload["peft_parameter_deltas"],
             prefix=f"p{partition_index:03d}.lora",
-            values=delta.lora_parameter_deltas,
+            values=delta.peft_parameter_deltas,
         )
         _add_vector_mapping_tensors(
             tensors=tensors,
@@ -97,9 +97,9 @@ def parse_partitioned_delta_tensor_artifact(
             raise ValueError("Partitioned delta partition index must be an object.")
         result[str(partition_name)] = PeftEncoderPartitionDelta(
             partition_name=str(partition_name),
-            lora_parameter_deltas=_read_vector_mapping(
+            peft_parameter_deltas=_read_vector_mapping(
                 tensors=tensors,
-                source=partition_payload.get("lora_parameter_deltas", {}),
+                source=partition_payload.get("peft_parameter_deltas", {}),
             ),
             classifier_head_weight_deltas=_read_vector_mapping(
                 tensors=tensors,

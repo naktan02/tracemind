@@ -19,12 +19,12 @@ from shared.src.contracts.training_contracts import TrainingTask
 from ..training.query_ssl_local_training import QuerySslPeftEncoderDeltaMaterialization
 from .json_delta_artifact import (
     build_classifier_head_delta_json_artifact_payload,
-    build_lora_delta_json_artifact_payload,
     build_partitioned_delta_json_artifact_payload,
+    build_peft_adapter_delta_json_artifact_payload,
 )
 from .merged_tensor_artifact import (
     build_classifier_head_delta_tensor_artifact,
-    build_lora_delta_tensor_artifact,
+    build_peft_adapter_delta_tensor_artifact,
 )
 from .partitioned_delta import PeftEncoderPartitionDelta
 from .partitioned_tensor_artifact import build_partitioned_delta_tensor_artifact
@@ -99,7 +99,7 @@ class PeftEncoderDeltaMaterializer:
         client_id: str,
         delta_format: str,
         artifact_ref_prefix: str | None = None,
-        lora_parameter_deltas: Mapping[str, Sequence[float]],
+        peft_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
         partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None = None,
@@ -111,7 +111,7 @@ class PeftEncoderDeltaMaterializer:
         if normalized_delta_format == PEFT_ENCODER_DELTA_FORMAT_INLINE:
             return QuerySslPeftEncoderDeltaMaterialization(
                 delta_format=normalized_delta_format,
-                lora_delta_artifact_ref=None,
+                peft_adapter_delta_artifact_ref=None,
                 classifier_head_delta_artifact_ref=None,
                 include_inline_deltas=True,
             )
@@ -129,7 +129,7 @@ class PeftEncoderDeltaMaterializer:
                 training_task=training_task,
                 client_id=client_id,
                 artifact_ref_prefix=artifact_ref_prefix,
-                lora_parameter_deltas=lora_parameter_deltas,
+                peft_parameter_deltas=peft_parameter_deltas,
                 classifier_head_weight_deltas=classifier_head_weight_deltas,
                 classifier_head_bias_deltas=classifier_head_bias_deltas,
                 partitioned_deltas=partitioned_deltas,
@@ -148,7 +148,7 @@ class PeftEncoderDeltaMaterializer:
             update_id=update_id,
             training_task=training_task,
             client_id=client_id,
-            lora_parameter_deltas=lora_parameter_deltas,
+            peft_parameter_deltas=peft_parameter_deltas,
             classifier_head_weight_deltas=classifier_head_weight_deltas,
             classifier_head_bias_deltas=classifier_head_bias_deltas,
             partitioned_deltas=partitioned_deltas,
@@ -162,7 +162,7 @@ class PeftEncoderDeltaMaterializer:
         training_task: TrainingTask,
         client_id: str,
         artifact_ref_prefix: str,
-        lora_parameter_deltas: Mapping[str, Sequence[float]],
+        peft_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
         partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None,
@@ -187,11 +187,11 @@ class PeftEncoderDeltaMaterializer:
             )
             self.artifact_store.save_agent_json_artifact(
                 artifact_ref=lora_delta_ref,
-                payload=build_lora_delta_json_artifact_payload(
+                payload=build_peft_adapter_delta_json_artifact_payload(
                     update_id=update_id,
                     training_task=training_task,
                     client_id=client_id,
-                    lora_parameter_deltas=lora_parameter_deltas,
+                    peft_parameter_deltas=peft_parameter_deltas,
                 ),
             )
             self.artifact_store.save_agent_json_artifact(
@@ -224,7 +224,7 @@ class PeftEncoderDeltaMaterializer:
             )
         return QuerySslPeftEncoderDeltaMaterialization(
             delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
-            lora_delta_artifact_ref=lora_delta_ref,
+            peft_adapter_delta_artifact_ref=lora_delta_ref,
             classifier_head_delta_artifact_ref=head_delta_ref,
             include_inline_deltas=False,
             partitioned_deltas_artifact_ref=partitioned_delta_ref,
@@ -236,7 +236,7 @@ class PeftEncoderDeltaMaterializer:
         update_id: str,
         training_task: TrainingTask,
         client_id: str,
-        lora_parameter_deltas: Mapping[str, Sequence[float]],
+        peft_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
         partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None,
@@ -273,7 +273,9 @@ class PeftEncoderDeltaMaterializer:
             )
         )
         if lora_delta_ref is not None:
-            tensors, metadata = build_lora_delta_tensor_artifact(lora_parameter_deltas)
+            tensors, metadata = build_peft_adapter_delta_tensor_artifact(
+                peft_parameter_deltas
+            )
             self.artifact_store.save_server_safetensors_artifact_ref(
                 artifact_ref=lora_delta_ref,
                 tensors=tensors,
@@ -302,7 +304,7 @@ class PeftEncoderDeltaMaterializer:
             )
         return QuerySslPeftEncoderDeltaMaterialization(
             delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
-            lora_delta_artifact_ref=lora_delta_ref,
+            peft_adapter_delta_artifact_ref=lora_delta_ref,
             classifier_head_delta_artifact_ref=head_delta_ref,
             include_inline_deltas=False,
             partitioned_deltas_artifact_ref=partitioned_delta_ref,

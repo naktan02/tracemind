@@ -55,9 +55,6 @@ from methods.federated_ssl.registry import resolve_federated_ssl_method_descript
 from methods.federated_ssl.server_step import (
     resolve_method_supervised_seed_step_parameters,
 )
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
 )
@@ -348,15 +345,11 @@ def test_peft_classifier_family_module_root_resolves_to_text_classifier_owner() 
     ) == ("methods.adaptation.peft_text_classifier.federated_ssl.server_update_policy")
 
 
-@pytest.mark.parametrize(
-    "adapter_kind",
-    (PEFT_CLASSIFIER_ADAPTER_KIND, LORA_CLASSIFIER_ADAPTER_KIND),
-)
-def test_fedmatch_partitioned_server_update_resolves_for_peft_classifier_family(
-    adapter_kind: str,
-) -> None:
+def test_fedmatch_partitioned_server_update_resolves_for_peft_classifier_family() -> (
+    None
+):
     resolved_backend = resolve_federated_ssl_server_update_backend_name(
-        payload_adapter_kind=adapter_kind,
+        payload_adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
         server_update_policy_name=SERVER_UPDATE_FEDMATCH_PARTITIONED,
         aggregation_backend_name="fedavg",
     )

@@ -36,7 +36,7 @@ PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
 class PeftEncoderSupervisedSeedStepResult:
     """server bootstrap rows로 학습한 PEFT encoder/classifier delta와 실행 metric."""
 
-    lora_parameter_deltas: Mapping[str, Sequence[float]]
+    peft_parameter_deltas: Mapping[str, Sequence[float]]
     classifier_head_weight_deltas: Mapping[str, Sequence[float]]
     classifier_head_bias_deltas: Mapping[str, float]
     metrics: dict[str, float]
@@ -112,7 +112,7 @@ def run_peft_encoder_supervised_seed_step_core(
         )
     )
     return PeftEncoderSupervisedSeedStepResult(
-        lora_parameter_deltas=lora_deltas,
+        peft_parameter_deltas=lora_deltas,
         classifier_head_weight_deltas=head_weight_deltas,
         classifier_head_bias_deltas=head_bias_deltas,
         metrics={

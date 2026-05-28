@@ -21,7 +21,7 @@ PEFT_CLASSIFIER_PRIMARY_REF_FIELDS = (
     "classifier_head_delta_artifact_ref",
 )
 LORA_CLASSIFIER_PRIMARY_REF_FIELDS = (
-    "lora_delta_artifact_ref",
+    "peft_adapter_delta_artifact_ref",
     "classifier_head_delta_artifact_ref",
 )
 CLASSIFIER_SNAPSHOT_SPECS = (

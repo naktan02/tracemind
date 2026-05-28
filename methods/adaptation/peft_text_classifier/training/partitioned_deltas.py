@@ -126,7 +126,7 @@ def project_adapter_classifier_delta_bundle_to_peft_partition_delta(
     """내부 adapter/head bundle을 현재 PEFT encoder shared payload로 투영한다."""
 
     normalized_labels = _normalize_labels(labels)
-    lora_parameter_deltas = {
+    peft_parameter_deltas = {
         name: [float(value) for value in delta.reshape(-1).tolist()]
         for name, delta in sorted(bundle.adapter_parameter_deltas.items())
     }
@@ -156,7 +156,7 @@ def project_adapter_classifier_delta_bundle_to_peft_partition_delta(
 
     return PeftEncoderPartitionDelta(
         partition_name=bundle.partition_name,
-        lora_parameter_deltas=lora_parameter_deltas,
+        peft_parameter_deltas=peft_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
     )

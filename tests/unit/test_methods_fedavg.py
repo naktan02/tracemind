@@ -202,7 +202,7 @@ def test_peft_encoder_fedavg_averages_adapter_and_head_deltas() -> None:
         label_schema=("anxiety", "normal"),
         updates=[
             peft_fedavg_projection.PeftEncoderFedAvgUpdate(
-                lora_parameter_deltas={
+                peft_parameter_deltas={
                     "encoder.q_proj.lora_A": [0.2, 0.4],
                     "encoder.q_proj.lora_B": [0.1, -0.1],
                 },
@@ -217,7 +217,7 @@ def test_peft_encoder_fedavg_averages_adapter_and_head_deltas() -> None:
                 delta_l2_norm=0.5,
             ),
             peft_fedavg_projection.PeftEncoderFedAvgUpdate(
-                lora_parameter_deltas={
+                peft_parameter_deltas={
                     "encoder.q_proj.lora_A": [0.0, 0.1],
                     "encoder.q_proj.lora_B": [0.2, 0.2],
                 },
@@ -234,10 +234,10 @@ def test_peft_encoder_fedavg_averages_adapter_and_head_deltas() -> None:
         ],
     )
 
-    assert result.lora_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
+    assert result.peft_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
         [0.13333333333333333, 0.3]
     )
-    assert result.lora_parameter_deltas["encoder.q_proj.lora_B"] == pytest.approx(
+    assert result.peft_parameter_deltas["encoder.q_proj.lora_B"] == pytest.approx(
         [0.13333333333333333, 0.0]
     )
     assert result.classifier_head_weight_deltas["anxiety"] == pytest.approx(
@@ -256,21 +256,6 @@ def test_peft_encoder_fedavg_averages_adapter_and_head_deltas() -> None:
     assert result.update_count == 2
 
 
-def test_federated_aggregation_method_registry_points_to_lora_core() -> None:
-    spec = get_federated_aggregation_method_spec(
-        adapter_kind="lora_classifier",
-        method_name="fedavg",
-    )
-
-    assert spec.method_name == "fedavg"
-    assert (
-        spec.implementation_module
-        == "methods.adaptation.peft_text_classifier.aggregation."
-        "peft_encoder_fedavg_projection"
-    )
-    assert spec.core_function_name == "compute_peft_encoder_fedavg"
-
-
 def test_federated_aggregation_method_registry_points_to_peft_classifier_core() -> None:
     spec = get_federated_aggregation_method_spec(
         adapter_kind="peft_classifier",
@@ -284,21 +269,6 @@ def test_federated_aggregation_method_registry_points_to_peft_classifier_core() 
         "peft_encoder_fedavg_projection"
     )
     assert spec.core_function_name == "compute_peft_encoder_fedavg"
-
-
-def test_lora_v1_registry_points_to_peft_partitioned_core() -> None:
-    spec = get_federated_aggregation_method_spec(
-        adapter_kind="lora_classifier",
-        method_name="partitioned_delta_average",
-    )
-
-    assert spec.method_name == "partitioned_delta_average"
-    assert (
-        spec.implementation_module
-        == "methods.adaptation.peft_text_classifier.aggregation."
-        "peft_encoder_partitioned_projection"
-    )
-    assert spec.core_function_name == "compute_peft_encoder_partitioned_delta_average"
 
 
 def test_federated_aggregation_method_registry_points_to_partitioned_peft_core() -> (

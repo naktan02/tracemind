@@ -23,7 +23,7 @@ def merge_partitioned_peft_encoder_deltas(
     merged_weights: dict[str, list[float]] = {}
     merged_biases: dict[str, float] = {}
     for partition in partitions.values():
-        _merge_vector_mapping(merged_lora, partition.lora_parameter_deltas)
+        _merge_vector_mapping(merged_lora, partition.peft_parameter_deltas)
         _merge_vector_mapping(
             merged_weights,
             partition.classifier_head_weight_deltas,
@@ -32,7 +32,7 @@ def merge_partitioned_peft_encoder_deltas(
             merged_biases[str(key)] = merged_biases.get(str(key), 0.0) + float(value)
     return PeftEncoderPartitionDelta(
         partition_name="merged",
-        lora_parameter_deltas=merged_lora,
+        peft_parameter_deltas=merged_lora,
         classifier_head_weight_deltas=merged_weights,
         classifier_head_bias_deltas=merged_biases,
     )
@@ -46,9 +46,9 @@ def apply_peft_encoder_partition_delta_to_state(
     """base state에 merged partition delta를 적용한 materialized state를 만든다."""
 
     return PeftEncoderMaterializedState(
-        lora_parameters=_apply_vector_mapping(
-            base_parameters.lora_parameters,
-            delta.lora_parameter_deltas,
+        peft_parameters=_apply_vector_mapping(
+            base_parameters.peft_parameters,
+            delta.peft_parameter_deltas,
         ),
         classifier_head_weights=_apply_vector_mapping(
             base_parameters.classifier_head_weights,
@@ -151,9 +151,9 @@ def _scale_peft_encoder_state(
     scale: float,
 ) -> PeftEncoderMaterializedState:
     return PeftEncoderMaterializedState(
-        lora_parameters={
+        peft_parameters={
             key: [float(value) * scale for value in values]
-            for key, values in state.lora_parameters.items()
+            for key, values in state.peft_parameters.items()
         },
         classifier_head_weights={
             key: [float(value) * scale for value in values]

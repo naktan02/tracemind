@@ -218,7 +218,7 @@ def test_load_lora_classifier_base_parameters_does_not_mutate_snapshot() -> None
         classifier_dropout=0.0,
     )
     base_parameters = PeftEncoderMaterializedState(
-        lora_parameters={},
+        peft_parameters={},
         classifier_head_weights={
             "anxiety": [0.1, 0.2],
             "normal": [-0.1, -0.2],
@@ -288,7 +288,7 @@ def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
         selection_vector=(0.2, 0.8),
         payload_kind=peer_predictions.LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
         payload=PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.1]},
+            peft_parameters={"lora.test": [0.1]},
             classifier_head_weights={
                 "anxiety": [0.1, 0.0],
                 "normal": [0.0, -0.1],
@@ -347,7 +347,7 @@ def test_peft_encoder_helper_provider_counts_only_materializable_snapshots() -> 
         selection_vector=(0.2, 0.8),
         payload_kind=peer_predictions.LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
         payload=PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.1]},
+            peft_parameters={"lora.test": [0.1]},
             classifier_head_weights={
                 "anxiety": [0.1, 0.0],
                 "normal": [0.0, -0.1],

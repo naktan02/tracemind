@@ -64,7 +64,7 @@ def test_partitioned_peft_encoder_builder_loads_base_state_into_each_partition()
 
     cache = object()
     base_parameters = PeftEncoderMaterializedState(
-        lora_parameters={
+        peft_parameters={
             "encoder_lora.weight": [
                 0.2,
                 0.0,
@@ -120,7 +120,7 @@ def test_partitioned_peft_encoder_builder_loads_base_state_into_each_partition()
 
 def test_partitioned_peft_encoder_builder_rejects_invalid_inputs() -> None:
     base_parameters = PeftEncoderMaterializedState(
-        lora_parameters={},
+        peft_parameters={},
         classifier_head_weights={},
         classifier_head_biases={},
     )
@@ -148,7 +148,7 @@ def test_partitioned_peft_encoder_builder_rejects_invalid_inputs() -> None:
 
 def test_partitioned_peft_encoder_builder_prefers_partition_base_state() -> None:
     base_parameters = PeftEncoderMaterializedState(
-        lora_parameters={
+        peft_parameters={
             "encoder_lora.weight": [
                 0.1,
                 0.2,
@@ -169,7 +169,7 @@ def test_partitioned_peft_encoder_builder_prefers_partition_base_state() -> None
     )
     partition_base_parameters = {
         "sigma": PeftEncoderMaterializedState(
-            lora_parameters={
+            peft_parameters={
                 "encoder_lora.weight": [
                     2.1,
                     2.2,

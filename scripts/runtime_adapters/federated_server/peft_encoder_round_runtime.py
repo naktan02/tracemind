@@ -16,7 +16,6 @@ class FederatedPeftEncoderRuntimeConfig:
 
     training_backend_config: PeftEncoderTrainingBackendConfig
     artifact_format: str = "simulation_peft_classifier_state_ref"
-    lora_adapter_artifact_ref: str | None = None
     peft_adapter_artifact_ref: str | None = None
     classifier_head_artifact_ref: str | None = None
 
@@ -43,9 +42,6 @@ class FederatedPeftEncoderRuntimeConfig:
                 }
             ),
             artifact_format=artifact_format,
-            lora_adapter_artifact_ref=_optional_str(
-                source.get("lora_adapter_artifact_ref")
-            ),
             peft_adapter_artifact_ref=(
                 _optional_str(source.get("peft_adapter_artifact_ref"))
                 or _optional_str(source.get("lora_adapter_artifact_ref"))

@@ -905,7 +905,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
 
     def _fake_materialize(**_: object) -> PeftEncoderMaterializedState:
         return PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.0]},
+            peft_parameters={"lora.test": [0.0]},
             classifier_head_weights={
                 "anxiety": [0.0, 0.0],
                 "normal": [0.0, 0.0],
@@ -1057,7 +1057,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         client_id="agent_01",
         delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
         artifact_ref_prefix="agent-local://peft_classifier",
-        lora_parameter_deltas={"lora.test": [0.1]},
+        peft_parameter_deltas={"lora.test": [0.1]},
         classifier_head_weight_deltas={
             "anxiety": [0.1, 0.0],
             "normal": [0.0, -0.1],
@@ -1072,7 +1072,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         peft_adapter_config=_peft_runtime_config().peft_adapter_config_payload(),
         label_schema=["anxiety", "normal"],
         example_count=2,
-        peft_adapter_delta_artifact_ref=delta_plan.lora_delta_artifact_ref,
+        peft_adapter_delta_artifact_ref=delta_plan.peft_adapter_delta_artifact_ref,
         classifier_head_delta_artifact_ref=(
             delta_plan.classifier_head_delta_artifact_ref
         ),
@@ -1382,7 +1382,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         selection_vector=(0.2, 0.8),
         payload_kind=PEFT_ENCODER_PEER_SNAPSHOT_KIND,
         payload=PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.2]},
+            peft_parameters={"lora.test": [0.2]},
             classifier_head_weights={
                 "anxiety": [0.2, 0.0],
                 "normal": [0.0, -0.2],
@@ -1395,7 +1395,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         selection_vector=(0.7, 0.3),
         payload_kind=PEFT_ENCODER_PEER_SNAPSHOT_KIND,
         payload=PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.3]},
+            peft_parameters={"lora.test": [0.3]},
             classifier_head_weights={
                 "anxiety": [0.3, 0.0],
                 "normal": [0.0, -0.3],
@@ -1405,7 +1405,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     )
     previous_client_partition_parameters = {
         "sigma": PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.05]},
+            peft_parameters={"lora.test": [0.05]},
             classifier_head_weights={
                 "anxiety": [0.05, 0.0],
                 "normal": [0.0, -0.05],
@@ -1415,7 +1415,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     }
     returned_client_partition_parameters = {
         "sigma": PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.15]},
+            peft_parameters={"lora.test": [0.15]},
             classifier_head_weights={
                 "anxiety": [0.15, 0.0],
                 "normal": [0.0, -0.15],
@@ -1653,21 +1653,21 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
 def test_build_next_client_partition_sync_state_keeps_previous_snapshots() -> None:
     old_agent_01_partition = {
         "sigma": PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.1]},
+            peft_parameters={"lora.test": [0.1]},
             classifier_head_weights={"anxiety": [0.1]},
             classifier_head_biases={"anxiety": 0.01},
         )
     }
     old_agent_02_partition = {
         "sigma": PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.2]},
+            peft_parameters={"lora.test": [0.2]},
             classifier_head_weights={"anxiety": [0.2]},
             classifier_head_biases={"anxiety": 0.02},
         )
     }
     new_agent_01_partition = {
         "sigma": PeftEncoderMaterializedState(
-            lora_parameters={"lora.test": [0.3]},
+            peft_parameters={"lora.test": [0.3]},
             classifier_head_weights={"anxiety": [0.3]},
             classifier_head_biases={"anxiety": 0.03},
         )
