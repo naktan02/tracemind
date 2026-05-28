@@ -205,7 +205,7 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   checkpoint, label schema, split, seed, metric을 고정한다.
 - Agent `peft_classifier_trainer`는 fixed embedding-only example을 받지 않는다.
   source row metadata 또는 translated text에서 agent-local raw text를 읽고,
-  shared update payload에는 raw text 없이 LoRA/classifier artifact ref와 통계만 남긴다.
+  shared update payload에는 raw text 없이 PEFT adapter/head artifact ref와 통계만 남긴다.
   live stored-event runtime translation은 raw text 저장 경계가 정리될 때까지 2차 범위다.
 - PEFT-classifier FedAvg 경로는 inline PEFT adapter delta와 classifier-head
   delta의 FedAvg shape/version을 methods-owned core로 검증한다. Server-owned

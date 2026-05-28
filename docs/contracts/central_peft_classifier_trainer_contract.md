@@ -67,7 +67,7 @@ Query Buffer (raw text)
 4. 같은 비교표 안에서는 backbone, tokenizer, label schema, PEFT adapter spec, initial checkpoint를 고정한다.
 5. 방법론 비교에서는 adaptation objective만 바꾼다.
 6. full seed replay는 canonical 경로가 아니라 optional ablation로만 다룬다.
-7. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 LoRA 재학습과 future query adaptation을 닫을 수 없다.
+7. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 PEFT adapter 재학습과 future query adaptation을 닫을 수 없다.
 8. scripts 실험 표면에서는 `strategy_axes/adaptation/initial_checkpoint` selector를 source of truth로 두고, 같은 비교표 안의 run은 같은 초기 checkpoint provenance를 공유해야 한다.
 
 ## 중앙 SSL control 비교축

@@ -40,7 +40,7 @@ index는 report의 `run_control.budget_name`과 output root도 보존하므로, 
 export는 `projection_artifacts`의 UMAP/PCA PNG를
 `apps/experiment_dashboard/data/artifacts/` 아래로 복사한다. 이 디렉터리와
 `experiment_dashboard.json`은 재생성 가능한 cache라서 git에 올리지 않는다.
-중앙 LoRA projection writer는 eval set별로 UMAP을 먼저 시도하고 실패하면 PCA로
+중앙 PEFT projection writer는 eval set별로 UMAP을 먼저 시도하고 실패하면 PCA로
 fallback하는 단일 2D projection 이미지를 만든다. UMAP과 PCA 이미지를 동시에
 만드는 구조가 아니며, 실제 reducer는 manifest와 dashboard 이미지 label의
 `reducer` 값으로 확인한다.
@@ -67,9 +67,10 @@ FL report를 dashboard 전용 view-model로 평탄화한다.
   macro-F1/loss/ECE.
 - `fl_ssl_client_splits`: client별 non-IID labeled/unlabeled label distribution.
 
-기존 historical LoRA-classifier FL run 중 validation scorer가 `prototype_similarity`인 결과는
-round별 global validation curve가 평평할 수 있다. 이 scorer는 shared
-LoRA/classifier state를 직접 읽지 않기 때문에, client update/aggregation artifact가
+기존 historical v1 LoRA-classifier FL run 중 validation scorer가
+`prototype_similarity`인 결과는 round별 global validation curve가 평평할 수 있다.
+이 scorer는 shared PEFT/head state를 직접 읽지 않기 때문에, client
+update/aggregation artifact가
 생성돼도 `macro_f1`, `accuracy_top_1`, `loss`가 전 라운드 동일하게 기록될 수 있다.
 새 PEFT text encoder FL run은 `peft_classifier_eval` validation을 사용해야 global
 PEFT/head artifact가 실제 성능 곡선에 반영된다.

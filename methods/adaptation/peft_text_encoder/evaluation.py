@@ -221,7 +221,7 @@ def require_peft_encoder_validation_backend(
         "PEFT encoder head validation must use one of "
         f"{PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES!r}. "
         f"{prototype_scorer_backend_name!r} is prototype/selection-only "
-        "and does not read LoRA/classifier global state."
+        "and does not read PEFT encoder/head global state."
     )
 
 

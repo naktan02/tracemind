@@ -333,11 +333,11 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - validation은 `peft_classifier_eval`을 기본으로 사용한다. 모든 validation row를 classifier
   forward로 평가하므로 accepted ratio는 성능 판단 metric이 아니다.
 - 기본 manual `FixMatch + FedAvg + PEFT-classifier` 경로는
-  `methods/ssl/algorithms/*` Query SSL algorithm과 실제 PEFT LoRA/classifier
+  `methods/ssl/algorithms/*` Query SSL algorithm과 실제 PEFT text encoder/head
   trainer를 호출해 artifact-ref delta update를 만든다. `agent-local://` ref는
   simulation round loop에서 server-owned `aggregation_artifact::` ref로
   upload/materialize한 뒤 서버에 제출한다. simulation output에는 다음 state가
-  참조하는 누적 global LoRA/head parameter snapshot JSON도 저장된다.
+  참조하는 누적 global PEFT adapter/head parameter snapshot JSON도 저장된다.
   legacy pseudo-label selection 기반 inline executor는 `query_ssl_method`가 없는
   compatibility/debug 경로로만 유지한다. direct production API submission은 아직
   server-owned ref 또는 inline debug payload만 수락한다.
