@@ -30,9 +30,6 @@ from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )
-from scripts.experiments.fl_ssl.federated_simulation.adapters import (
-    client_update_submission,
-)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.diagnostic_view import (
     build_client_diagnostic_unlabeled_view,
 )
@@ -42,17 +39,16 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ClientRoundExecution,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
-    ClientRoundSummary,
     FederatedClientShard,
     SimulationRunRequest,
 )
 from scripts.runtime_adapters.federated_agent import (
     peft_encoder_local_training as method_trainer,
 )
-from scripts.runtime_adapters.federated_agent.artifact_store import (
-    SimulationClientArtifactStore,
+from scripts.runtime_adapters.federated_agent.client_update_flow import (
+    round_index_from_id,
+    submit_local_training_result,
 )
-from shared.src.contracts.training_contracts import ClientMetricKeys
 
 
 def run_peft_encoder_method_owned_client_round_if_supported(
@@ -131,7 +127,7 @@ def _run_method_owned_peft_encoder_client_round(
             rows=shard.unlabeled_rows,
             config=request.diagnostic_view_config,
             run_seed=request.seed,
-            round_index=_round_index_from_id(round_id),
+            round_index=round_index_from_id(round_id),
             client_id=shard.client_id,
         )
     with timing.measure("local_training_total_seconds"):
@@ -178,86 +174,27 @@ def _run_method_owned_peft_encoder_client_round(
     with timing.measure("helper_model_cache_release_seconds"):
         _release_transient_model_cache(bootstrapped.runtime_resource_cache)
     client_train_time_seconds = time.perf_counter() - training_started_at
-    artifact_store = SimulationClientArtifactStore(output_dir=request.output_dir)
-    with timing.measure("update_upload_materialize_seconds"):
-        server_update_payload = upload_agent_local_peft_encoder_update(
-            artifact_store=artifact_store,
-            update_payload=local_result.update_payload,
-        )
-    with timing.measure("server_update_submit_seconds"):
-        update_submitted = client_update_submission.accept_client_update(
-            server_runtime=bootstrapped.server_runtime,
-            round_id=round_id,
-            update_envelope=local_result.update_envelope,
-            update_payload=server_update_payload,
-        )
-    pseudo_label_quality = local_result.pseudo_label_quality
-    return ClientRoundExecution(
-        summary=ClientRoundSummary(
-            client_id=shard.client_id,
-            candidate_count=local_result.candidate_count,
-            diagnostic_candidate_count=len(diagnostic_unlabeled_rows),
-            accepted_count=local_result.accepted_count,
-            update_generated=update_submitted,
-            delta_l2_norm=client_update_submission.extract_delta_l2_norm(
-                local_result.update_envelope
-            ),
-            aggregation_example_count=(
-                client_update_submission.extract_aggregation_example_count(
-                    local_result.update_envelope
-                )
-            ),
-            client_train_time_seconds=client_train_time_seconds,
-            client_payload_bytes=(
-                client_update_submission.payload_byte_count(server_update_payload)
-                if update_submitted
-                else None
-            ),
-            client_artifact_bytes=(
-                server_owned_peft_encoder_update_artifact_byte_count(
-                    artifact_store=artifact_store,
-                    update_payload=server_update_payload,
-                )
-                if update_submitted
-                else None
-            ),
-            pseudo_label_confidence_mean=(
-                pseudo_label_quality.pseudo_label_confidence_mean
-                if pseudo_label_quality.pseudo_label_confidence_mean is not None
-                else local_result.client_metrics.get(ClientMetricKeys.MEAN_CONFIDENCE)
-            ),
-            pseudo_label_margin_mean=(
-                pseudo_label_quality.pseudo_label_margin_mean
-                if pseudo_label_quality.pseudo_label_margin_mean is not None
-                else local_result.client_metrics.get(ClientMetricKeys.MEAN_MARGIN)
-            ),
-            pseudo_label_correct_count=(
-                pseudo_label_quality.pseudo_label_correct_count
-            ),
-            pseudo_label_evaluated_count=(
-                pseudo_label_quality.pseudo_label_evaluated_count
-            ),
-            accepted_label_distribution=(
-                pseudo_label_quality.accepted_label_distribution
-            ),
-            rejected_label_distribution=(
-                pseudo_label_quality.rejected_label_distribution
-            ),
-            method_diagnostics=extract_client_method_diagnostics(
-                method_name=request.ssl_method_config.name,
-                metrics=local_result.client_metrics,
-            ),
-            timing_breakdown=timing.to_mapping(),
+    return submit_local_training_result(
+        bootstrapped=bootstrapped,
+        round_id=round_id,
+        output_dir=request.output_dir,
+        client_id=shard.client_id,
+        diagnostic_candidate_count=len(diagnostic_unlabeled_rows),
+        client_train_time_seconds=client_train_time_seconds,
+        timing_recorder=timing,
+        local_result=local_result,
+        upload_client_update=upload_agent_local_peft_encoder_update,
+        client_artifact_byte_counter=(
+            server_owned_peft_encoder_update_artifact_byte_count
         ),
-        update_submitted=update_submitted,
+        method_diagnostics=extract_client_method_diagnostics(
+            method_name=request.ssl_method_config.name,
+            metrics=local_result.client_metrics,
+        ),
         peer_client_snapshot=local_result.peer_client_snapshot,
         client_partition_snapshot=local_result.client_partition_parameters,
         query_ssl_algorithm_state=local_result.query_ssl_algorithm_state,
     )
-
-
-def _round_index_from_id(round_id: str) -> int:
-    return int(round_id.rsplit("_", maxsplit=1)[-1])
 
 
 def _release_transient_model_cache(runtime_resource_cache: object | None) -> int:

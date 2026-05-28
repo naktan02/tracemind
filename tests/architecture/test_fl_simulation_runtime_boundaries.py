@@ -189,9 +189,7 @@ def test_scripts_runtime_adapters_do_not_keep_federated_server_facade() -> None:
 
 def test_federated_server_peft_runtime_adapter_keeps_method_core_in_methods() -> None:
     server_step_path = (
-        SCRIPTS_RUNTIME_ADAPTER_SRC
-        / "federated_server"
-        / "peft_encoder_server_step.py"
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server" / "peft_encoder_server_step.py"
     )
     final_projection_path = (
         SCRIPTS_RUNTIME_ADAPTER_SRC
@@ -272,6 +270,7 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         package_root / "artifact_store.py",
         package_root / "backend_resolver.py",
         package_root / "base_state_materialization.py",
+        package_root / "client_update_flow.py",
         package_root / "peft_encoder_local_training.py",
         package_root / "row_validator.py",
         package_root / "scoring_runtime.py",
@@ -337,4 +336,39 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         "backend가 제공하는 simulation capability만 호출한다. PEFT/Lora concrete "
         "이름과 inline executor wiring은 methods/adaptation/<family>/가 소유한다.\n"
         f"violations={training_runtime_violations}"
+    )
+
+
+def test_federated_agent_peft_round_files_do_not_own_update_submission() -> None:
+    package_root = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent"
+    checked_paths = (
+        package_root / "peft_encoder_method_owned_client_round.py",
+        package_root / "peft_encoder_query_ssl_client_round.py",
+    )
+    required_helper = package_root / "client_update_flow.py"
+    forbidden_snippets = (
+        "ClientRoundSummary(",
+        "client_update_submission",
+        "SimulationClientArtifactStore(",
+        "payload_byte_count(",
+        "extract_delta_l2_norm(",
+        "extract_aggregation_example_count(",
+    )
+    violations: list[tuple[Path, str]] = []
+    for path in checked_paths:
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
+
+    assert required_helper.exists(), (
+        "family-specific client round 파일은 update submission/summary 조립을 "
+        "반복 소유하지 않는다. 공통 흐름은 client_update_flow.py가 맡는다.\n"
+        f"missing={_relative_repo_path(required_helper)}"
+    )
+    assert not violations, (
+        "PEFT encoder client-round bridge는 local core 호출과 family upload 함수 "
+        "선택만 맡는다. server submit, payload byte, summary 조립은 generic "
+        "client update flow로 둔다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
