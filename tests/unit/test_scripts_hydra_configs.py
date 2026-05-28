@@ -497,11 +497,11 @@ def test_threshold_sweep_supports_short_leaf_override() -> None:
     assert cfg.runner.score_top_k == 2
     assert len(cfg.threshold_policies) == 3
     assert cfg.threshold_policies[0]._target_ == (
-        "scripts.experiments.prototype_analysis.prototype_strategy.threshold_policies."
+        "methods.prototype.thresholding.policies."
         "FixMatchFixedConfidencePolicy"
     )
     assert cfg.threshold_policies[2]._target_ == (
-        "scripts.experiments.prototype_analysis.prototype_strategy.threshold_policies."
+        "methods.prototype.thresholding.policies."
         "ClasswiseStaticConfidencePolicy"
     )
 

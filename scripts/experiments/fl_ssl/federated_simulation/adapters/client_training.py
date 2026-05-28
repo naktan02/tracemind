@@ -70,6 +70,8 @@ def run_client_round(
         )
 
     raise NotImplementedError(
-        "FL SSL simulation no longer supports prototype-scored generic local "
-        "training. Use the PEFT encoder method/manual local objective path."
+        "FL SSL simulation could not find a configured local objective executor "
+        "for this update family. Add the executor path to the selected "
+        "strategy_axes/trainable_state/update_family leaf instead of branching in "
+        "scripts."
     )

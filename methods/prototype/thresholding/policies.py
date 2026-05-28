@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol, Sequence
 
-from scripts.experiments.prototype_analysis.prototype_strategy.evaluation import (
+from methods.prototype.thresholding.evaluation import (
     evaluate_classwise_confidence_threshold,
     evaluate_global_confidence_threshold,
 )
-from scripts.experiments.prototype_analysis.prototype_strategy.models import (
+from methods.prototype.thresholding.models import (
     EvaluationMetrics,
     PaperReference,
     ScoredPrediction,

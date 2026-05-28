@@ -6,12 +6,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from methods.prototype.thresholding.models import ThresholdArtifact
+from methods.prototype.thresholding.policies import StaticThresholdPolicy
+from methods.prototype.thresholding.selection import ThresholdPolicySelectionPolicy
 from scripts.experiments.prototype_analysis.prototype_strategy.evaluation import (
     embed_rows,
     group_embeddings_by_label,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
-    ThresholdArtifact,
     ThresholdPolicyExperimentSummary,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
@@ -24,9 +26,7 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 from .threshold_artifact_writer import write_threshold_policy_artifacts
-from .threshold_policies import StaticThresholdPolicy
 from .threshold_policy_evaluator import evaluate_threshold_policies
-from .threshold_selection import ThresholdPolicySelectionPolicy
 
 
 @dataclass(slots=True, kw_only=True)

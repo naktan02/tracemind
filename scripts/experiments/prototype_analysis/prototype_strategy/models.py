@@ -9,6 +9,11 @@ from typing import Any, Protocol
 
 import numpy as np
 
+from methods.prototype.thresholding.models import (
+    EvaluationMetrics,
+    ThresholdPolicyEvaluation,
+)
+
 
 @dataclass(slots=True)
 class PrototypeVector:
@@ -47,94 +52,6 @@ class PrototypeIndex:
                 category: [asdict(prototype) for prototype in prototypes]
                 for category, prototypes in sorted(self.categories.items())
             },
-        }
-
-
-@dataclass(slots=True)
-class EvaluationMetrics:
-    """전략 평가 요약."""
-
-    row_count: int
-    top1_accuracy: float
-    accepted_ratio: float
-    mean_true_label_score: float
-    mean_top1_score: float
-    mean_margin_top1_top2: float
-    confusion_matrix: dict[str, dict[str, int]]
-    per_category: dict[str, dict[str, float | int]]
-    accepted_count: int = 0
-    accepted_accuracy: float = 0.0
-    accepted_correct_ratio: float = 0.0
-    accepted_mean_top1_score: float = 0.0
-    accepted_mean_margin_top1_top2: float = 0.0
-
-
-@dataclass(slots=True, frozen=True)
-class PaperReference:
-    """Threshold policy가 참고하는 논문 메타데이터."""
-
-    title: str
-    url: str
-    venue: str | None = None
-    year: int | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "title": self.title,
-            "url": self.url,
-            "venue": self.venue,
-            "year": self.year,
-        }
-
-
-@dataclass(slots=True, frozen=True)
-class ThresholdArtifact:
-    """Runtime에 전달 가능한 정적 threshold 결과물."""
-
-    threshold_kind: str
-    parameters: dict[str, Any]
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "threshold_kind": self.threshold_kind,
-            "parameters": dict(self.parameters),
-        }
-
-
-@dataclass(slots=True, frozen=True)
-class ScoredPrediction:
-    """threshold 실험을 위해 row별 score를 보존한 값 객체."""
-
-    actual_label: str
-    predicted_label: str
-    true_label_score: float
-    top1_score: float
-    top2_score: float
-    margin_top1_top2: float
-    is_correct: bool
-
-
-@dataclass(slots=True)
-class ThresholdPolicyEvaluation:
-    """하나의 threshold policy 후보 평가 결과."""
-
-    policy_name: str
-    candidate_name: str
-    source_paper: PaperReference
-    selection_params: dict[str, Any]
-    threshold_artifact: ThresholdArtifact
-    validation_metrics: EvaluationMetrics
-    test_metrics: EvaluationMetrics
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "policy_name": self.policy_name,
-            "candidate_name": self.candidate_name,
-            "source_paper": self.source_paper.to_dict(),
-            "selection_params": dict(self.selection_params),
-            "threshold_artifact": self.threshold_artifact.to_dict(),
-            "validation_metrics": asdict(self.validation_metrics),
-            "test_metrics": asdict(self.test_metrics),
         }
 
 

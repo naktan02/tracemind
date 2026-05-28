@@ -19,9 +19,9 @@
 1. `../prototype_threshold_sweep.py`
 2. `sweep.py`
 3. `threshold_policy_evaluator.py`
-4. `threshold_selection.py`
+4. `methods/prototype/thresholding/selection.py`
 5. `threshold_artifact_writer.py`
-6. `threshold_policies.py`
+6. `methods/prototype/thresholding/policies.py`
 7. `evaluation.py`
 8. `scoring.py`
 
@@ -37,11 +37,11 @@
   - row별 score와 aggregate metric 계산
 - `projection.py`
   - PCA/UMAP 시각화 산출물
-- `threshold_policies.py`
+- `methods/prototype/thresholding/policies.py`
   - static threshold policy 후보 구현
 - `threshold_policy_evaluator.py`
   - prototype score를 한 번 계산하고 threshold policy 후보별 validation/test 평가를 만든다.
-- `threshold_selection.py`
+- `methods/prototype/thresholding/selection.py`
   - validation metric으로 threshold policy 후보를 선택/정렬한다.
 - `threshold_artifact_writer.py`
   - threshold sweep의 prototype index, policy evaluation grid, summary JSON 저장을 맡는다.
@@ -86,4 +86,6 @@ python -m scripts.experiments.prototype_analysis.prototype_threshold_sweep \
   [docs/strategy_surface_map.md](../../../../docs/strategy_surface_map.md)를
   같이 보면 빠르다.
 - 이 패키지는 prototype 전략 비교 실험용이다.
+  threshold policy와 선택 기준의 method core는 `methods/prototype/thresholding/`이
+  소유하고, 이 패키지는 sweep 실행과 artifact 저장만 맡는다.
   운영 runtime의 canonical prototype 계약은 `shared/src/contracts/prototype_contracts.py`가 기준이다.

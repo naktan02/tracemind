@@ -55,7 +55,7 @@ shared/
 
 methods/
   classification/linear_head/
-  prototype/{building,scoring,evidence,training_inputs}/
+  prototype/{building,scoring,thresholding,evidence,training_inputs}/
   prototype/aggregation_projection.py
   adaptation/
     peft_adapters/{lora,dora}/
@@ -150,9 +150,9 @@ Adapter 뒤로 옮긴다.
   linear head의 scoring/bootstrap/projection primitive다.
 - `methods/adaptation/peft_text_encoder`는 text encoder, PEFT mechanism, head/scorer를
   함께 학습하는 update family다. 여기서 LoRA는 mechanism이고 family 이름이 아니다.
-- `methods/prototype/*`는 prototype pack 생성, scoring, evidence, training input,
-  projection을 소유한다. prototype은 adapter mechanism이 아니라 update family 또는
-  scorer family로 해석한다.
+- `methods/prototype/*`는 prototype pack 생성, scoring, thresholding, evidence,
+  training input, projection을 소유한다. prototype은 adapter mechanism이 아니라
+  update family 또는 scorer family로 해석한다.
 - `conf/strategy_axes/trainable_state/update_family/*`는 update family가 필요로 하는
   runtime payload key와 runtime adapter callable을 선언한다. local objective executor,
   initial state builder, validation evaluator, final projection builder, transient

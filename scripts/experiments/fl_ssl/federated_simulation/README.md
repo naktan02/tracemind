@@ -15,7 +15,8 @@ experiment package로 이해하면 된다.
 현재 v1에서 이 패키지의 기본 비교선은
 `raw query rows -> local Query SSL PEFT text encoder -> server delta aggregation`이다.
 기존 embedding/prototype scorer fallback은 제거했다. 나중에 prototype 기반
-방법론이 실제 비교 method로 확정되면 method-owned capability로 다시 붙인다.
+방법론이 실제 비교 method로 확정되면 scripts runner에 분기를 추가하지 않고
+update-family leaf와 method-owned capability로 붙인다.
 
 ## 읽기 순서
 

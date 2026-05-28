@@ -6,19 +6,18 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from methods.prototype.thresholding.models import ThresholdPolicyEvaluation
+from methods.prototype.thresholding.policies import StaticThresholdPolicy
 from scripts.experiments.prototype_analysis.prototype_strategy.evaluation import (
     score_embeddings,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     PrototypeIndex,
-    ThresholdPolicyEvaluation,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
     PrototypeIndexScorer,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
-
-from .threshold_policies import StaticThresholdPolicy
 
 
 def evaluate_threshold_policies(

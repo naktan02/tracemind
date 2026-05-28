@@ -425,8 +425,9 @@ manual Query SSL 경로와 FedMatch method-owned 경로 모두 `diagnostic_view`
 
 ## 주의
 
-- 현재 FL SSL simulation은 classifier 기반 경로만 지원한다. prototype scorer/rebuild
-  scaffold는 제거했으며, prototype 기반 방법론은 실제 method로 확정될 때 다시 붙인다.
+- 현재 기본 FL SSL simulation 조합은 `peft_text_encoder` update family를 사용한다.
+  prototype 기반 방법론이 실제 method로 확정되면 scripts runner가 아니라 선택된
+  update-family leaf와 `methods/` executor/core를 추가한다.
 - `report.protocol.embedding_adapter`, `local_trainer_runtime`이 논문용 실행
   환경인지 확인한다. CPU/hash debug smoke 결과를 성능 비교에 섞지 않는다.
 - scripts는 Hydra entrypoint, sweep, report/index wrapper만 소유한다. 새 method

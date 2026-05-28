@@ -2873,9 +2873,10 @@ def test_query_peft_teacher_pseudo_label_does_not_keep_exporter_monolith() -> No
 def test_prototype_threshold_sweep_runner_splits_eval_selection_and_write() -> None:
     runner_path = PROTOTYPE_STRATEGY_SRC / "sweep.py"
     evaluator_path = PROTOTYPE_STRATEGY_SRC / "threshold_policy_evaluator.py"
-    selection_path = PROTOTYPE_STRATEGY_SRC / "threshold_selection.py"
+    selection_path = METHODS_SRC / "prototype" / "thresholding" / "selection.py"
+    policies_path = METHODS_SRC / "prototype" / "thresholding" / "policies.py"
     writer_path = PROTOTYPE_STRATEGY_SRC / "threshold_artifact_writer.py"
-    required_files = (evaluator_path, selection_path, writer_path)
+    required_files = (evaluator_path, selection_path, policies_path, writer_path)
     runner_source = runner_path.read_text(encoding="utf-8")
     evaluator_source = evaluator_path.read_text(encoding="utf-8")
     runner_forbidden_snippets = (
@@ -2918,6 +2919,8 @@ def test_prototype_threshold_sweep_runner_splits_eval_selection_and_write() -> N
         "생성은 threshold_artifact_writer.py가 맡는다.\n"
         f"violations={evaluator_violations}"
     )
+    assert not (PROTOTYPE_STRATEGY_SRC / "threshold_policies.py").exists()
+    assert not (PROTOTYPE_STRATEGY_SRC / "threshold_selection.py").exists()
 
 
 def test_prototype_strategy_scoring_does_not_use_runtime_fallback_profile() -> None:

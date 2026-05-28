@@ -119,7 +119,8 @@ PEFT text encoder partitioned step core, `local_ssl_policy`/`server_update_polic
 1. 재사용 가능한 update 계산은 해당 owner에 둔다. PEFT/text encoder 계열은
    `methods/adaptation/<update_family>/`, modality-neutral linear head는
    `methods/classification/linear_head/`, prototype 계열은 `methods/prototype/`이
-   기본 위치다.
+   기본 위치다. prototype score 위 threshold policy는
+   `methods/prototype/thresholding/`에 둔다.
 2. concrete backend는 `methods/adaptation/<family>/training_backend.py`에 둔다.
 3. agent에는 method-specific 파일을 추가하지 말고 local runtime capability adapter만 둔다.
 4. `SharedAdapterTrainingBackend` Protocol을 만족하는 adapter가 필요하면 capability 이름을 쓴다.

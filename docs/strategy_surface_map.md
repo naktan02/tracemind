@@ -69,6 +69,7 @@ central fixed embedding + classifier seed
 | Evidence backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `methods/prototype/evidence/*` core + agent runtime adapter | 활성 runtime |
 | Scorer backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `methods/prototype/scoring/*`, `methods/classification/linear_head/scoring.py` core + agent runtime adapter | 활성 runtime |
 | Score policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` | `methods/prototype/scoring/policy_registry.py` + `score_policies/*` | 활성 runtime |
+| Prototype threshold policy | `fixmatch_fixed_confidence`, `validation_target_error_confidence`, `classwise_static_confidence` | `conf/entrypoints/prototype_analysis/prototype_threshold_sweep.yaml` | `methods/prototype/thresholding/*` core + script runner/artifact writer | 분석 runtime |
 | Acceptance policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `methods/ssl/hooks/selection.py` + agent compatibility metadata | 활성 runtime |
 | Privacy guard | `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `methods/adaptation/privacy_guards/*` core + agent executor | 활성 runtime |
 

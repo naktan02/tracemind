@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from scripts.experiments.prototype_analysis.prototype_strategy.models import (
+from methods.prototype.thresholding.models import (
     ThresholdArtifact,
     ThresholdPolicyEvaluation,
 )

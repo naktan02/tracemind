@@ -7,21 +7,23 @@ import json
 import numpy as np
 import pytest
 
+from methods.prototype.thresholding import policies as threshold_policies
+from methods.prototype.thresholding import selection as threshold_selection
+from methods.prototype.thresholding.evaluation import (
+    evaluate_global_confidence_threshold,
+)
+from methods.prototype.thresholding.models import (
+    ScoredPrediction,
+    ThresholdArtifact,
+    ThresholdPolicyEvaluation,
+)
 from scripts.experiments.prototype_analysis.prototype_strategy import (
     threshold_artifact_writer,
-    threshold_policies,
     threshold_policy_evaluator,
-    threshold_selection,
-)
-from scripts.experiments.prototype_analysis.prototype_strategy.evaluation import (
-    evaluate_global_confidence_threshold,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     PrototypeIndex,
     PrototypeVector,
-    ScoredPrediction,
-    ThresholdArtifact,
-    ThresholdPolicyEvaluation,
     ThresholdPolicyExperimentSummary,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
