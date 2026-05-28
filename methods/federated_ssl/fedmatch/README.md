@@ -42,13 +42,13 @@ capability다. 원본 FedMatch snapshot은
 - `loss_fn_s`의 supervised CE를 `sigma` partition loss로 계산
 - `loss_fn_u`의 confident row filter, helper KL, agreement CE, psi L1,
   sigma/psi L2 regularization을 PyTorch tensor core로 계산
-- LoRA-classifier FedMatch step은 원본 `loss_fn_u` 순서에 맞춰 weak/original view를
+- PEFT encoder FedMatch step은 원본 `loss_fn_u` 순서에 맞춰 weak/original view를
   full unlabeled batch로 먼저 평가하고, confidence를 통과한 row에 대해서만
   strong/backtranslated view forward와 helper weak-view probability를 계산한다.
-- LoRA-classifier trainable tensor에 supervised step과 unsupervised step을 순차
+- PEFT encoder trainable tensor에 supervised step과 unsupervised step을 순차
   적용하고, sub-step delta를 각각 logical `sigma`/`psi` partition으로 기록
-- LoRA-classifier family slice에서 FedMatch local objective를 호출하고, 기존 merged
-  LoRA-classifier delta와 logical `sigma`/`psi` partition delta를 함께 제출
+- PEFT text classifier family slice에서 FedMatch local objective를 호출하고, 기존
+  merged PEFT encoder delta와 logical `sigma`/`psi` partition delta를 함께 제출
 - main fair comparison의 local budget은 `local_budget_policy=iteration_capped`를
   기본으로 하며 `training_task.max_steps`를 따른다. 원본 labels-at-client budget은
   `local_budget_policy=original_method`를 명시할 때만 공통 labeled-anchored SSL
@@ -76,7 +76,7 @@ capability다. 원본 FedMatch snapshot은
   서버는 merged published state와 함께 partition별 trainable adapter/head snapshot을
   artifact metadata에 보존하고, 다음 round client는 해당 partition state에서 시작한다.
 - C2S sparse upload projection. 원본 `cal_c2s`의 `delta_threshold` cut과 `psi`
-  `l1_threshold` sparsify 의미를 LoRA-classifier partition delta에 적용한다.
+  `l1_threshold` sparsify 의미를 PEFT encoder partition delta에 적용한다.
 - S2C sparse download projection. 원본 `cal_s2c`의 sparse mask는 transport 여부만
   결정하고, 적용 값은 raw server partition value로 유지한다.
 - round 사이 client-local previous partition snapshot accounting. C2S 후 snapshot은
@@ -94,16 +94,16 @@ probability provider, `labels-at-server` client-local `psi` upload slice,
 client-local previous partition snapshot accounting은 simulation slice로 열렸지만
 실제 네트워크 packet 측정은 posthoc estimate로 남긴다.
 현재 실행 server path는 `server_step_policy=none`에서
-`server_update_policy=fedavg_merged_delta`면 기존 LoRA-classifier FedAvg가 merged
+`server_update_policy=fedavg_merged_delta`면 PEFT encoder FedAvg가 merged
 delta를 aggregation하고, `server_update_policy=fedmatch_partitioned`면 simulation
-runtime이 LoRA-classifier `partitioned_delta_average` backend로 `partitioned_deltas`를
-소비한다. 이 backend는 client sparse projection 이후 제출된 LoRA-classifier
+runtime이 PEFT encoder `partitioned_delta_average` backend로 `partitioned_deltas`를
+소비한다. 이 backend는 client sparse projection 이후 제출된 PEFT encoder
 partition delta를 평균하는 simulation slice다.
 `fedmatch_agreement`는 원본 FedMatch agreement objective 의미다. generic
 `local_ssl_policy` leaf로 고르지 않고 `method_descriptor=fedmatch`의 method config에서
 파생하며, `server_update_policy=fedmatch_partitioned`와 함께 써야 한다.
 `server_step_policy=supervised_seed_step`은 round open 전에 server bootstrap rows로
-LoRA-classifier active state를 한 번 더 발행한 뒤 client round를 시작한다.
+PEFT encoder active state를 한 번 더 발행한 뒤 client round를 시작한다.
 
 ## Partitioned State Direction
 

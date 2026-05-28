@@ -17,7 +17,7 @@ FEDMATCH_PUBLISHED_STATE_EXPRESSION = "sigma_plus_psi"
 
 @dataclass(frozen=True, slots=True)
 class FedMatchTraceParameterMapping:
-    """원본 sigma/psi를 LoRA-classifier trainable scope에 매핑한다."""
+    """원본 sigma/psi를 PEFT encoder trainable scope에 매핑한다."""
 
     original_trainable_scope: str
     trace_trainable_scope: str

@@ -657,6 +657,31 @@ def test_fl_report_protocol_records_payload_adapter_kind() -> None:
     )
 
 
+def test_federated_ssl_active_docs_use_update_family_terms() -> None:
+    checked_paths = (
+        METHODS_FEDERATED_SSL_SRC / "README.md",
+        METHODS_FEDERATED_SSL_SRC / "fedmatch" / "README.md",
+        METHODS_FEDERATED_SSL_SRC / "fedmatch" / "parameter_routing.py",
+    )
+    forbidden_snippets = (
+        "LoRA-classifier",
+        "lora_classifier_training.py",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "active federated_ssl method 문서는 PEFT encoder/update family 용어를 "
+        "사용한다. v1 LoRA-classifier 이름은 legacy contract/audit이나 실제 "
+        "compatibility adapter 표면에만 남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_federated_ssl_runtime_pairs_are_update_family_oriented() -> None:
     checked_roots = (
         METHODS_FEDERATED_SSL_SRC,
