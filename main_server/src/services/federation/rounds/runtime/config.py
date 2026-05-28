@@ -9,7 +9,8 @@ from dataclasses import dataclass, field
 
 from ..aggregation.models import AggregationConfigScalar
 
-ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
+ROUND_PAYLOAD_ADAPTER_KIND_ENV = "TRACEMIND_ROUND_PAYLOAD_ADAPTER_KIND"
+LEGACY_ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
 ROUND_UPDATE_FAMILY_ENV = "TRACEMIND_ROUND_UPDATE_FAMILY"
 ROUND_AGGREGATION_BACKEND_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND"
 ROUND_AGGREGATION_BACKEND_CONFIG_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND_CONFIG"
@@ -21,7 +22,7 @@ class ServerRoundRuntimeProfile:
     """명시 runtime config가 없을 때 쓰는 compatibility profile."""
 
     profile_name: str
-    adapter_family_name: str
+    payload_adapter_kind: str
     update_family_name: str
     aggregation_backend_name: str
     method_descriptor_name: str | None = None
@@ -32,7 +33,7 @@ class ServerRoundRuntimeProfile:
 
 DEFAULT_PEFT_CLASSIFIER_SERVER_ROUND_RUNTIME_PROFILE = ServerRoundRuntimeProfile(
     profile_name="default_peft_classifier.v1",
-    adapter_family_name="peft_classifier",
+    payload_adapter_kind="peft_classifier",
     update_family_name="peft_text_classifier",
     aggregation_backend_name="fedavg",
 )
@@ -41,11 +42,11 @@ DEFAULT_SERVER_ROUND_RUNTIME_PROFILE = (
 )
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, init=False)
 class ServerRoundRuntimeConfig:
     """서버가 round orchestration을 조립할 때 사용하는 전략 선택 축."""
 
-    adapter_family_name: str = DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.adapter_family_name
+    payload_adapter_kind: str
     update_family_name: str = DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.update_family_name
     aggregation_backend_name: str = (
         DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_name
@@ -57,6 +58,39 @@ class ServerRoundRuntimeConfig:
         default_factory=dict
     )
 
+    def __init__(
+        self,
+        *,
+        payload_adapter_kind: str | None = None,
+        adapter_family_name: str | None = None,
+        update_family_name: str = (
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.update_family_name
+        ),
+        aggregation_backend_name: str = (
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_name
+        ),
+        method_descriptor_name: str | None = (
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.method_descriptor_name
+        ),
+        aggregation_backend_overrides: (
+            Mapping[str, AggregationConfigScalar] | None
+        ) = None,
+    ) -> None:
+        self.payload_adapter_kind = _resolve_payload_adapter_kind(
+            payload_adapter_kind=payload_adapter_kind,
+            adapter_family_name=adapter_family_name,
+        )
+        self.update_family_name = update_family_name
+        self.aggregation_backend_name = aggregation_backend_name
+        self.method_descriptor_name = method_descriptor_name
+        self.aggregation_backend_overrides = dict(aggregation_backend_overrides or {})
+
+    @property
+    def adapter_family_name(self) -> str:
+        """legacy server runtime alias."""
+
+        return self.payload_adapter_kind
+
 
 def load_server_round_runtime_config_from_env(
     *,
@@ -66,9 +100,10 @@ def load_server_round_runtime_config_from_env(
 
     source = environ or os.environ
     return ServerRoundRuntimeConfig(
-        adapter_family_name=source.get(
-            ROUND_ADAPTER_FAMILY_ENV,
-            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.adapter_family_name,
+        payload_adapter_kind=(
+            source.get(ROUND_PAYLOAD_ADAPTER_KIND_ENV)
+            or source.get(LEGACY_ROUND_ADAPTER_FAMILY_ENV)
+            or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.payload_adapter_kind
         ),
         update_family_name=source.get(
             ROUND_UPDATE_FAMILY_ENV,
@@ -118,6 +153,30 @@ def _load_aggregation_backend_overrides(
 
 def _optional_env_value(source: Mapping[str, str], key: str) -> str | None:
     value = source.get(key)
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _resolve_payload_adapter_kind(
+    *,
+    payload_adapter_kind: str | None,
+    adapter_family_name: str | None,
+) -> str:
+    resolved = _optional_str(payload_adapter_kind)
+    legacy = _optional_str(adapter_family_name)
+    if resolved is None:
+        return legacy or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.payload_adapter_kind
+    if legacy is not None and resolved != legacy:
+        raise ValueError(
+            "payload_adapter_kind and legacy adapter_family_name must match "
+            "when both are provided."
+        )
+    return resolved
+
+
+def _optional_str(value: str | None) -> str | None:
     if value is None:
         return None
     normalized = value.strip()

@@ -21,7 +21,7 @@ from ..families.registry import (
 class ServerRoundRuntimeCompatibility:
     """검증된 server-owned round runtime 조합 요약."""
 
-    adapter_family_name: str
+    payload_adapter_kind: str
     update_family_name: str
     adapter_kind: str
     aggregation_backend_name: str
@@ -34,7 +34,7 @@ def validate_server_round_runtime_config(
     """서버 round runtime config가 일관된 family/backend 조합인지 검증한다."""
 
     adapter_family = build_shared_adapter_round_family(
-        config.adapter_family_name,
+        config.payload_adapter_kind,
         aggregation_backend_name=config.aggregation_backend_name,
         aggregation_backend_overrides=config.aggregation_backend_overrides,
     )
@@ -43,7 +43,7 @@ def validate_server_round_runtime_config(
             "Incompatible round runtime config: aggregation backend "
             f"{config.aggregation_backend_name} resolved to adapter_kind="
             f"{adapter_family.aggregation_backend.adapter_kind}, "
-            f"but family {config.adapter_family_name} expects "
+            f"but payload adapter {config.payload_adapter_kind} expects "
             f"{adapter_family.adapter_kind}."
         )
     if config.method_descriptor_name is not None:
@@ -75,7 +75,7 @@ def validate_server_round_runtime_config(
                 f"aggregation_backend={config.aggregation_backend_name}."
             )
     return ServerRoundRuntimeCompatibility(
-        adapter_family_name=config.adapter_family_name,
+        payload_adapter_kind=config.payload_adapter_kind,
         update_family_name=config.update_family_name,
         adapter_kind=adapter_family.adapter_kind,
         aggregation_backend_name=config.aggregation_backend_name,

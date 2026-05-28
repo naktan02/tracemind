@@ -29,10 +29,11 @@ from main_server.src.services.federation.rounds.runtime import (
     factory as runtime_factory_module,
 )
 from main_server.src.services.federation.rounds.runtime.config import (
-    ROUND_ADAPTER_FAMILY_ENV,
+    LEGACY_ROUND_ADAPTER_FAMILY_ENV,
     ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,
     ROUND_METHOD_DESCRIPTOR_ENV,
+    ROUND_PAYLOAD_ADAPTER_KIND_ENV,
     ROUND_UPDATE_FAMILY_ENV,
     ServerRoundRuntimeConfig,
     load_server_round_runtime_config_from_env,
@@ -203,7 +204,7 @@ register_shared_adapter_round_family(
 def test_round_runtime_config_builds_registered_family_and_backend() -> None:
     service = build_round_manager_service_from_config(
         ServerRoundRuntimeConfig(
-            adapter_family_name=TEST_FAMILY_NAME,
+            payload_adapter_kind=TEST_FAMILY_NAME,
             aggregation_backend_name=TEST_BACKEND_NAME,
         )
     )
@@ -218,7 +219,7 @@ def test_round_runtime_config_builds_registered_family_and_backend() -> None:
 def test_round_runtime_config_builds_lora_classifier_family() -> None:
     service = build_round_manager_service_from_config(
         ServerRoundRuntimeConfig(
-            adapter_family_name="lora_classifier",
+            payload_adapter_kind="lora_classifier",
             aggregation_backend_name="fedavg",
         )
     )
@@ -232,7 +233,7 @@ def test_round_runtime_config_rejects_incompatible_family_backend() -> None:
     with pytest.raises(ValueError):
         build_round_manager_service_from_config(
             ServerRoundRuntimeConfig(
-                adapter_family_name="peft_classifier",
+                payload_adapter_kind="peft_classifier",
                 aggregation_backend_name=TEST_BACKEND_NAME,
             )
         )
@@ -242,7 +243,7 @@ def test_round_runtime_config_rejects_mismatched_backend_adapter_kind() -> None:
     with pytest.raises(ValueError, match="Incompatible round runtime config"):
         build_round_manager_service_from_config(
             ServerRoundRuntimeConfig(
-                adapter_family_name=TEST_FAMILY_NAME,
+                payload_adapter_kind=TEST_FAMILY_NAME,
                 aggregation_backend_name=TEST_MISMATCH_BACKEND_NAME,
             )
         )
@@ -259,7 +260,7 @@ def test_round_runtime_config_rejects_method_recipe_runtime_pair_drift(
     with pytest.raises(ValueError, match="method recipe does not support"):
         build_round_manager_service_from_config(
             ServerRoundRuntimeConfig(
-                adapter_family_name="lora_classifier",
+                payload_adapter_kind="lora_classifier",
                 aggregation_backend_name="fedavg",
                 method_descriptor_name=TEST_METHOD_NAME,
             )
@@ -281,7 +282,7 @@ def test_round_lifecycle_config_wires_method_descriptor(
     )
     service = build_round_lifecycle_service_from_config(
         ServerRoundRuntimeConfig(
-            adapter_family_name=TEST_FAMILY_NAME,
+            payload_adapter_kind=TEST_FAMILY_NAME,
             update_family_name=TEST_UPDATE_FAMILY_NAME,
             aggregation_backend_name=TEST_BACKEND_NAME,
             method_descriptor_name=TEST_METHOD_NAME,
@@ -295,7 +296,7 @@ def test_round_lifecycle_config_wires_method_descriptor(
 def test_main_server_app_uses_runtime_config_to_build_round_service() -> None:
     app = create_app(
         round_runtime_config=ServerRoundRuntimeConfig(
-            adapter_family_name=TEST_FAMILY_NAME,
+            payload_adapter_kind=TEST_FAMILY_NAME,
             aggregation_backend_name=TEST_BACKEND_NAME,
         )
     )
@@ -311,7 +312,7 @@ def test_main_server_app_uses_runtime_config_to_build_round_service() -> None:
 def test_runtime_config_loader_reads_environment_mapping() -> None:
     config = load_server_round_runtime_config_from_env(
         environ={
-            ROUND_ADAPTER_FAMILY_ENV: TEST_FAMILY_NAME,
+            ROUND_PAYLOAD_ADAPTER_KIND_ENV: TEST_FAMILY_NAME,
             ROUND_UPDATE_FAMILY_ENV: TEST_UPDATE_FAMILY_NAME,
             ROUND_AGGREGATION_BACKEND_ENV: TEST_BACKEND_NAME,
             ROUND_METHOD_DESCRIPTOR_ENV: f" {TEST_METHOD_NAME} ",
@@ -319,17 +320,29 @@ def test_runtime_config_loader_reads_environment_mapping() -> None:
         }
     )
 
-    assert config.adapter_family_name == TEST_FAMILY_NAME
+    assert config.payload_adapter_kind == TEST_FAMILY_NAME
     assert config.update_family_name == TEST_UPDATE_FAMILY_NAME
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
     assert config.method_descriptor_name == TEST_METHOD_NAME
     assert config.aggregation_backend_overrides == {"min_scale": 0.8}
 
 
+def test_runtime_config_loader_keeps_legacy_adapter_family_env() -> None:
+    config = load_server_round_runtime_config_from_env(
+        environ={
+            LEGACY_ROUND_ADAPTER_FAMILY_ENV: TEST_FAMILY_NAME,
+            ROUND_AGGREGATION_BACKEND_ENV: TEST_BACKEND_NAME,
+        }
+    )
+
+    assert config.payload_adapter_kind == TEST_FAMILY_NAME
+    assert config.adapter_family_name == TEST_FAMILY_NAME
+
+
 def test_main_server_app_uses_environment_runtime_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv(ROUND_ADAPTER_FAMILY_ENV, TEST_FAMILY_NAME)
+    monkeypatch.setenv(ROUND_PAYLOAD_ADAPTER_KIND_ENV, TEST_FAMILY_NAME)
     monkeypatch.setenv(ROUND_UPDATE_FAMILY_ENV, TEST_UPDATE_FAMILY_NAME)
     monkeypatch.setenv(ROUND_AGGREGATION_BACKEND_ENV, TEST_BACKEND_NAME)
     monkeypatch.setenv(ROUND_AGGREGATION_BACKEND_CONFIG_ENV, '{"max_scale": 1.1}')
@@ -338,7 +351,7 @@ def test_main_server_app_uses_environment_runtime_config(
     config = app.state.round_runtime_config
     service = app.state.round_lifecycle_service
 
-    assert config.adapter_family_name == TEST_FAMILY_NAME
+    assert config.payload_adapter_kind == TEST_FAMILY_NAME
     assert config.update_family_name == TEST_UPDATE_FAMILY_NAME
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
     assert config.aggregation_backend_overrides == {"max_scale": 1.1}

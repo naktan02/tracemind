@@ -69,7 +69,7 @@ def build_round_manager_service_from_config(
     effective_clock = clock or SystemUtcClock()
     validate_server_round_runtime_config(config)
     adapter_family = build_shared_adapter_round_family(
-        config.adapter_family_name,
+        config.payload_adapter_kind,
         aggregation_backend_name=config.aggregation_backend_name,
         aggregation_backend_overrides=config.aggregation_backend_overrides,
     )

@@ -1185,7 +1185,7 @@ def test_round_lifecycle_finalizes_registered_custom_family(
     )
     round_manager_service = build_round_manager_service_from_config(
         ServerRoundRuntimeConfig(
-            adapter_family_name=TEST_SHIFT_FAMILY_NAME,
+            payload_adapter_kind=TEST_SHIFT_FAMILY_NAME,
             aggregation_backend_name=TEST_SHIFT_BACKEND_NAME,
         ),
         artifact_repository=state_repository,
