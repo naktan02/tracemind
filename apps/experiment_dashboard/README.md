@@ -67,13 +67,10 @@ FL report를 dashboard 전용 view-model로 평탄화한다.
   macro-F1/loss/ECE.
 - `fl_ssl_client_splits`: client별 non-IID labeled/unlabeled label distribution.
 
-기존 historical v1 LoRA-classifier FL run 중 validation scorer가
-`prototype_similarity`인 결과는 round별 global validation curve가 평평할 수 있다.
-이 scorer는 shared PEFT/head state를 직접 읽지 않기 때문에, client
-update/aggregation artifact가
-생성돼도 `macro_f1`, `accuracy_top_1`, `loss`가 전 라운드 동일하게 기록될 수 있다.
-새 PEFT text encoder FL run은 `peft_classifier_eval` validation을 사용해야 global
-PEFT/head artifact가 실제 성능 곡선에 반영된다.
+현재 FL SSL dashboard는 result-index export가 만든 `peft_adapter_*`,
+`payload_adapter_kind`, `update_family_name` field를 기준으로 읽는다. committed
+historical dashboard cache가 old field를 담을 수 있어 app loader에는 좁은
+normalizer가 남아 있지만, 새 export producer는 current field만 생산한다.
 
 ## 경계
 
