@@ -121,7 +121,7 @@ def test_fl_ssl_run_condition_slug_keeps_legacy_lora_fedprox_mu() -> None:
             "federated_run_budget": {"client_count": 10, "rounds": 30},
             "training_task": {
                 "objective": {
-                    "lora_classifier": {
+                    "peft_classifier": {
                         "proximal_mu": 0.01,
                     }
                 }

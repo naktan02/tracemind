@@ -114,14 +114,10 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - PEFT text classifier backbone/adapter 세부 값은
     `strategy_axes/adaptation/transformer_backbone`과
     `strategy_axes/adaptation/peft_adapter`에서 온다.
-  - v1 payload compatibility 때문에 old report/result reader는
-    `adapter_family_name=peft_classifier` 입력을 `payload_adapter_kind`로
-    정규화할 수 있지만, 새 config와 runtime model은 이 alias를 받거나 생산하지
-    않는다. 새 실행 조합과 산출물 slug는 `update_family_name=peft_text_classifier`를
-    기준으로 해석한다.
-    `lora_classifier`는 old-run artifact/report compatibility reader에서만
-    해석하고, prototype은 adapter가 아니라 `prototype_pack` update family로
-    표현한다.
+  - `adapter_family_name` 입력 alias는 report/result reader에서도 제거됐다. 새 config와
+    runtime model은 `payload_adapter_kind`와
+    `update_family_name=peft_text_classifier`만 기준으로 해석한다.
+    prototype은 adapter가 아니라 `prototype_pack` update family로 표현한다.
 - `strategy_axes/fl/shard_policy`
   - `cfg.shard_policy`로 compose된다.
   - non-IID client split 방식만 소유한다.

@@ -78,9 +78,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         expect_peft_classifier_aggregate_snapshot=(
             args.expect_peft_classifier_aggregate_snapshot
         ),
-        expect_lora_classifier_aggregate_snapshot=(
-            args.expect_lora_classifier_aggregate_snapshot
-        ),
         expected_posthoc_communication_schema_version=(
             args.expected_posthoc_communication_schema_version
         ),
@@ -227,11 +224,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--expect-peft-classifier-aggregate-snapshot",
         action="store_true",
-    )
-    parser.add_argument(
-        "--expect-lora-classifier-aggregate-snapshot",
-        action="store_true",
-        help="Legacy alias for --expect-peft-classifier-aggregate-snapshot.",
     )
     parser.add_argument("--expected-posthoc-communication-schema-version")
     parser.add_argument(
@@ -384,14 +376,7 @@ def _expectation_from_mapping(
 def _normalize_expectation_mapping(
     raw_expectation: Mapping[str, object],
 ) -> dict[str, object]:
-    expectation = dict(raw_expectation)
-    legacy_snapshot = expectation.get("expect_lora_classifier_aggregate_snapshot")
-    if (
-        "expect_peft_classifier_aggregate_snapshot" not in expectation
-        and legacy_snapshot is not None
-    ):
-        expectation["expect_peft_classifier_aggregate_snapshot"] = legacy_snapshot
-    return expectation
+    return dict(raw_expectation)
 
 
 def _optional_manifest_path(manifest_path: Path, raw_path: object) -> Path | None:

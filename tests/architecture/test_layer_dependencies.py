@@ -658,8 +658,8 @@ def test_active_round_runtime_configs_do_not_accept_adapter_family_alias() -> No
 
     assert not violations, (
         "active FL runtime config는 payload_adapter_kind만 받는다. "
-        "adapter_family_name은 old report/result reader에서 payload_adapter_kind로 "
-        "정규화하는 입력 이름일 뿐, 새 실행 config alias로 되살리지 않는다.\n"
+        "adapter_family_name은 새 실행 config, report/result reader alias로 "
+        "되살리지 않는다.\n"
         f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
 
@@ -677,10 +677,7 @@ def test_fl_report_protocol_records_payload_adapter_kind() -> None:
         ),
         (
             SCRIPTS_SRC / "experiments" / "result_index" / "fl_ssl_report_loader.py",
-            (
-                'round_runtime.get("payload_adapter_kind")',
-                'round_runtime.get("adapter_family_name")',
-            ),
+            ('round_runtime.get("payload_adapter_kind")',),
         ),
     )
     missing = [
@@ -692,8 +689,8 @@ def test_fl_report_protocol_records_payload_adapter_kind() -> None:
 
     assert not missing, (
         "새 FL report protocol은 update_family_name과 payload_adapter_kind를 "
-        "canonical field로 기록한다. adapter_family_name은 old-run/result reader "
-        "compatibility field로만 해석한다.\n"
+        "canonical field로 기록한다. adapter_family_name fallback은 result reader에도 "
+        "되살리지 않는다.\n"
         f"{chr(10).join(f'- {item}' for item in missing)}"
     )
 
@@ -746,7 +743,7 @@ def test_result_index_uses_payload_adapter_kind_as_canonical_field() -> None:
 
     assert not missing and not violations, (
         "result-index와 dashboard의 canonical 실행 표면은 payload_adapter_kind다. "
-        "adapter_family_name은 old report/old DB fallback reader에서만 해석한다.\n"
+        "adapter_family_name은 old report/old DB fallback reader로도 해석하지 않는다.\n"
         f"missing:\n{chr(10).join(f'- {item}' for item in missing)}\n"
         f"violations:\n{chr(10).join(f'- {item}' for item in violations)}"
     )

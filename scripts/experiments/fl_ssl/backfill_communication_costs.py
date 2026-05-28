@@ -257,7 +257,7 @@ def _global_state_material_bytes(*, run_dir: Path, model_revision: str) -> int:
     )
     state = _load_json_object(state_path) if state_path.exists() else {}
     artifact_refs = (
-        _optional_str(state.get("lora_adapter_artifact_ref")),
+        _optional_str(state.get("peft_adapter_artifact_ref")),
         _optional_str(state.get("classifier_head_artifact_ref")),
     )
     return sum(
@@ -281,7 +281,7 @@ def _global_partitioned_sparse_transport_bytes(
     )
     state = _load_json_object(state_path) if state_path.exists() else {}
     artifact_refs = (
-        _optional_str(state.get("lora_adapter_artifact_ref")),
+        _optional_str(state.get("peft_adapter_artifact_ref")),
         _optional_str(state.get("classifier_head_artifact_ref")),
     )
     nonzero_count = sum(
@@ -308,7 +308,7 @@ def _partitioned_artifact_nonzero_count(*, run_dir: Path, artifact_ref: str) -> 
     return sum(
         _nested_nonzero_float_count(artifact.get(key))
         for key in (
-            "partitioned_lora_parameters",
+            "partitioned_peft_parameters",
             "partitioned_classifier_head_weights",
             "partitioned_classifier_head_biases",
         )

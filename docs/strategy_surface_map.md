@@ -16,11 +16,12 @@ central fixed embedding + classifier seed
 - 최종 method/runtime 구조 판단은
   `docs/architecture/target-method-runtime-structure.md`를 우선한다. 이 문서는 현재
   실행 표면과 legacy compatibility 이름을 함께 보여준다.
-- 현재 표의 `adapter_family_name`, `lora_classifier`, `fedmatch_agreement`는 old artifact와
-  report compatibility 용어일 수 있다. target 구조에서는 각각
+- 현재 표의 historical `adapter_family_name`, `lora_classifier`, `fedmatch_agreement`는
+  migration 기록에서만 보일 수 있다. target 구조에서는 각각
   `payload_adapter_kind`/`update_family_name`, `peft_text_classifier`,
-  method-local FedMatch objective로 정리한다. `lora_classifier` shared parser/factory는
-  제거됐으므로 새 실험 산출물은 `peft_classifier` payload format을 쓴다.
+  method-local FedMatch objective로 정리한다. `lora_classifier` shared parser/factory와
+  report/result reader fallback은 제거됐으므로 새 실험 산출물은 `peft_classifier`
+  payload format을 쓴다.
 - 중앙 SSL은 pooled/offline control이다.
 - 논문 메인 비교는 `FL SSL under non-IID`에서 수행한다.
 - runtime v1은 `embedding -> global classifier -> local interpretation` baseline을 우선한다.
@@ -195,8 +196,9 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
 - `peft_text_classifier` update family는 FL simulation research path를 1차 범위로
   열고, live `agent`/`main_server` runtime translation은 capability adapter가 준비된
   뒤 연다.
-- `lora_classifier`는 기존 run artifact를 읽기 위한 v1 compatibility family 이름이고,
-  active 실행 config의 source-of-truth는 `peft_text_classifier` update family다.
+- `lora_classifier`는 historical v1 family 이름이고, active 실행 config와
+  report/result reader의 source-of-truth는 `peft_text_classifier` update family와
+  `peft_classifier` payload kind다.
 - `peft_text_classifier` 기본 scaffold는 `mxbai_encoder`, LoRA
   `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
   checkpoint, label schema, split, seed, metric을 고정한다.

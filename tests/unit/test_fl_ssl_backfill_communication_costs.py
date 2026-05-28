@@ -24,11 +24,11 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
         / "versions"
         / "sim_rev_0000.json",
         {
-            "lora_adapter_artifact_ref": (
-                "server-aggregate://lora_classifier/sim_rev_0000/lora_adapter"
+            "peft_adapter_artifact_ref": (
+                "server-aggregate://peft_classifier/sim_rev_0000/peft_adapter"
             ),
             "classifier_head_artifact_ref": (
-                "server-aggregate://lora_classifier/sim_rev_0000/classifier_head"
+                "server-aggregate://peft_classifier/sim_rev_0000/classifier_head"
             ),
         },
     )
@@ -39,11 +39,11 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
         / "versions"
         / "sim_rev_0001.json",
         {
-            "lora_adapter_artifact_ref": (
-                "server-aggregate://lora_classifier/sim_rev_0001/lora_adapter"
+            "peft_adapter_artifact_ref": (
+                "server-aggregate://peft_classifier/sim_rev_0001/peft_adapter"
             ),
             "classifier_head_artifact_ref": (
-                "server-aggregate://lora_classifier/sim_rev_0001/classifier_head"
+                "server-aggregate://peft_classifier/sim_rev_0001/classifier_head"
             ),
         },
     )
@@ -52,9 +52,9 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0000"
-        / "lora_adapter.json",
+        / "peft_adapter.json",
         100,
     )
     _write_bytes(
@@ -62,7 +62,7 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0000"
         / "classifier_head.json",
         20,
@@ -79,11 +79,11 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0001"
-        / "lora_adapter.json",
+        / "peft_adapter.json",
         {
-            "partitioned_lora_parameters": {
+            "partitioned_peft_parameters": {
                 "sigma": {"encoder_lora.weight": [1.0, 0.0]},
                 "psi": {"encoder_lora.weight": [0.0, 2.0]},
             }
@@ -138,11 +138,11 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
         / "versions"
         / "sim_rev_0000.json",
         {
-            "lora_adapter_artifact_ref": (
-                "server-aggregate://lora_classifier/sim_rev_0000/lora_adapter"
+            "peft_adapter_artifact_ref": (
+                "server-aggregate://peft_classifier/sim_rev_0000/peft_adapter"
             ),
             "classifier_head_artifact_ref": (
-                "server-aggregate://lora_classifier/sim_rev_0000/classifier_head"
+                "server-aggregate://peft_classifier/sim_rev_0000/classifier_head"
             ),
         },
     )
@@ -153,11 +153,11 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
         / "versions"
         / "sim_rev_0001.json",
         {
-            "lora_adapter_artifact_ref": (
-                "server-aggregate://lora_classifier/sim_rev_0001/lora_adapter"
+            "peft_adapter_artifact_ref": (
+                "server-aggregate://peft_classifier/sim_rev_0001/peft_adapter"
             ),
             "classifier_head_artifact_ref": (
-                "server-aggregate://lora_classifier/sim_rev_0001/classifier_head"
+                "server-aggregate://peft_classifier/sim_rev_0001/classifier_head"
             ),
         },
     )
@@ -166,11 +166,11 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0001"
-        / "lora_adapter.json",
+        / "peft_adapter.json",
         {
-            "partitioned_lora_parameters": {
+            "partitioned_peft_parameters": {
                 "sigma": {"encoder_lora.weight": [1.0, 0.0]},
                 "psi": {"encoder_lora.weight": [0.0, 2.0]},
             }
@@ -181,7 +181,7 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0001"
         / "classifier_head.json",
         {
@@ -198,11 +198,11 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0000"
-        / "lora_adapter.json",
+        / "peft_adapter.json",
         {
-            "partitioned_lora_parameters": {
+            "partitioned_peft_parameters": {
                 "sigma": {"encoder_lora.weight": [1.0, 0.0]},
                 "psi": {"encoder_lora.weight": [0.0, 2.0]},
             }
@@ -213,7 +213,7 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0000"
         / "classifier_head.json",
         {

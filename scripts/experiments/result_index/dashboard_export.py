@@ -218,7 +218,7 @@ def _unique(values) -> list[Any]:
 
 
 def _payload_adapter_kind(row: dict[str, Any]) -> Any:
-    return row.get("payload_adapter_kind") or row.get("adapter_family_name")
+    return row.get("payload_adapter_kind")
 
 
 def _safe_path_part(value: str) -> str:

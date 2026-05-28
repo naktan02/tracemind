@@ -223,8 +223,7 @@ def verify_federated_simulation_report_payload(
     _expect_equal(
         errors,
         "round_runtime.payload_adapter_kind",
-        round_runtime.get("payload_adapter_kind")
-        or round_runtime.get("adapter_family_name"),
+        round_runtime.get("payload_adapter_kind"),
         expectation.expected_payload_adapter_kind,
     )
     _expect_equal(
@@ -461,7 +460,6 @@ def _verify_shared_update_artifacts(
     if (
         expectation.expect_classifier_aggregate_snapshot
         or expectation.expect_peft_classifier_aggregate_snapshot
-        or expectation.expect_lora_classifier_aggregate_snapshot
     ):
         _verify_classifier_aggregate_snapshot(
             errors=errors,
@@ -561,7 +559,6 @@ def _requires_shared_update_artifact_check(
             expectation.expect_no_agent_local_update_refs,
             expectation.expect_classifier_aggregate_snapshot,
             expectation.expect_peft_classifier_aggregate_snapshot,
-            expectation.expect_lora_classifier_aggregate_snapshot,
         )
     )
 

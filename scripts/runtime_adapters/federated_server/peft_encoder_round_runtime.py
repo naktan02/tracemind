@@ -42,9 +42,8 @@ class FederatedPeftEncoderRuntimeConfig:
                 }
             ),
             artifact_format=artifact_format,
-            peft_adapter_artifact_ref=(
-                _optional_str(source.get("peft_adapter_artifact_ref"))
-                or _optional_str(source.get("lora_adapter_artifact_ref"))
+            peft_adapter_artifact_ref=_optional_str(
+                source.get("peft_adapter_artifact_ref")
             ),
             classifier_head_artifact_ref=_optional_str(
                 source.get("classifier_head_artifact_ref")
@@ -89,7 +88,6 @@ def build_peft_encoder_round_runtime_payloads(
 _PEFT_ENCODER_RUNTIME_ARTIFACT_KEYS = frozenset(
     {
         "artifact_format",
-        "lora_adapter_artifact_ref",
         "peft_adapter_artifact_ref",
         "classifier_head_artifact_ref",
     }

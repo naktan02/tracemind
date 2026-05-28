@@ -88,8 +88,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - `strategy_axes/fl/local_update_profile`에서 compose된다.
   - agent local update를 만드는 training/evidence/scoring/privacy 조합 profile이다.
   - `validation_*` 필드는 local update scorer와 분리된 validation evaluator를
-    고른다. PEFT-classifier profile은 `peft_classifier_eval`을 사용하고,
-    `lora_classifier_eval`은 old-run/config compatibility 이름으로만 남긴다.
+    고른다. PEFT-classifier profile은 `peft_classifier_eval`을 사용한다.
 - `ssl_method`
   - `strategy_axes/fl/method_descriptor`에서 compose된다.
   - method-owned 논문 method identity/report metadata와
@@ -254,8 +253,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 
 - `aggregation_backend_name`과 `update_family_name`은 `round_runtime.*`로 노출된다.
   기본값은 entrypoint leaf의 `peft_text_classifier` / `fedavg`다. `lora_classifier`
-  실행 leaf는 제거됐고, 해당 이름은 old-run artifact/report reader compatibility
-  표면에만 남긴다.
+  실행 leaf와 report/verifier alias는 제거됐다.
 - `local_update_profile`은 local update 조합을 고르고, server round 조합은
   `round_runtime.update_family_name`과 `round_runtime.aggregation_backend_name`을
   직접 override한다. high-level compose preset은 중복 source-of-truth를 피하기 위해
@@ -331,8 +329,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - `weak_strong_pair`는 generic multiview input backend다.
   real agent의 stored scored event 경로는 아직 weak/strong view를 저장하지 않으므로
   현재는 simulation/row-source 경로가 우선이다.
-- validation은 `peft_classifier_eval`을 기본으로 사용하고 legacy
-  `lora_classifier_eval`도 읽는다. 모든 validation row를 classifier
+- validation은 `peft_classifier_eval`을 기본으로 사용한다. 모든 validation row를 classifier
   forward로 평가하므로 accepted ratio는 성능 판단 metric이 아니다.
 - 기본 manual `FixMatch + FedAvg + PEFT-classifier` 경로는
   `methods/ssl/algorithms/*` Query SSL algorithm과 실제 PEFT LoRA/classifier

@@ -23,8 +23,8 @@ central fixed embedding + classifier seed
 
 최종 method/runtime 구조 판단은
 `docs/architecture/target-method-runtime-structure.md`를 우선한다. 기존 문서의
-`lora_classifier`, `adapter_family_name`, `fedmatch_agreement` 같은 이름은 old artifact나
-legacy compatibility 표면일 수 있으며, 새 실행 config 판단에서는 target 문서의
+`lora_classifier`, `adapter_family_name`, `fedmatch_agreement` 같은 이름은 historical
+migration 기록일 수 있으며, 새 실행 config 판단에서는 target 문서의
 `payload_adapter_kind`, `update_family`, `trainable_state`, `method descriptor`,
 `runtime capability` 용어를 기준으로 삼는다.
 
@@ -46,13 +46,14 @@ legacy compatibility 표면일 수 있으며, 새 실행 config 판단에서는 
   방법론에서 공유되는 계산만 축별 `methods` 패키지로 승격한다.
 - FL SSL에서 `PEFT encoder classifier`를 공유 가능한 trainable state로 승격할 때의
   target canonical update family 이름은 `peft_text_classifier`로 둔다.
-  `lora_classifier`는 v1 contract, old artifact, direct import compatibility 이름으로만
+  `lora_classifier` shared contract와 report/result reader fallback은 제거된 상태를
   유지한다. LoRA는 PEFT adapter mechanism이고, classifier head는 linear-head
   primitive이므로 두 개념을 `classifier_head` 옵션이나 bare `lora` family로 숨기지
   않는다.
 - `peft_text_classifier`의 1차 범위는 FL simulation research path이고, live
-  `agent`/`main_server` runtime translation은 2차 범위다. 현행 v1 실행 field는
-  migration window 동안 `lora_classifier` 이름을 쓸 수 있다.
+  `agent`/`main_server` runtime translation은 2차 범위다. 현행 실행 field는
+  `payload_adapter_kind=peft_classifier`와
+  `update_family_name=peft_text_classifier`를 쓴다.
 - PEFT text-classifier 비교의 고정 조건은 `mxbai_encoder`, tokenizer, LoRA
   `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
   checkpoint, label schema, non-IID split, seed, metric으로 둔다. 이 중 하나를
@@ -181,8 +182,8 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
   `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
   `strategy_axes/trainable_state/update_family=peft_text_classifier`,
   `round_runtime.update_family_name=peft_text_classifier`,
-  `round_runtime.aggregation_backend_name=fedavg`다. `lora_classifier`는 v1
-  artifact/report reader compatibility 이름으로만 남긴다.
+  `round_runtime.aggregation_backend_name=fedavg`다. `lora_classifier` 실행/report
+  alias는 제거된 상태를 유지한다.
 - runtime: 기본 실행은 `gpu_local + mxbai`로 본다. CPU/hash debug 결과는
   성능 숫자나 논문 비교 근거로 쓰지 않는다.
 
@@ -191,7 +192,7 @@ Runtime translation:
 - FL SSL winner를 현재 `ModelManifest`나 `TrainingUpdateEnvelope`에 바로 넣지 않는다.
 - 필요한 shared family와 state/update payload를 먼저 정의한다.
 - 현재 1순위 translation 후보는 target 기준 `peft_text_classifier` update family다.
-  v1 contract/report compatibility에서는 `lora_classifier` 이름이 남을 수 있다.
+  v1 `lora_classifier` contract/report compatibility는 제거된 상태를 유지한다.
 - `peft_text_classifier` state/update payload는 PEFT adapter state와 linear classifier
   head state를 함께 표현해야 하며, PEFT weight는 inline JSON vector만 가정하지 않고
   artifact-ref 기반 전송/집계 경로를 열어 둔다.

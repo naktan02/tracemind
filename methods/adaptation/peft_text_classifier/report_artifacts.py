@@ -9,23 +9,12 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
 )
 
-LEGACY_LORA_CLASSIFIER_ADAPTER_KIND = "lora_classifier"
-CLASSIFIER_OBJECTIVE_NAMES = (
-    PEFT_CLASSIFIER_ADAPTER_KIND,
-    LEGACY_LORA_CLASSIFIER_ADAPTER_KIND,
-)
+CLASSIFIER_OBJECTIVE_NAMES = (PEFT_CLASSIFIER_ADAPTER_KIND,)
 PEFT_CLASSIFIER_PRIMARY_REF_FIELDS = (
     "peft_adapter_delta_artifact_ref",
     "classifier_head_delta_artifact_ref",
 )
-LEGACY_LORA_CLASSIFIER_PRIMARY_REF_FIELDS = (
-    "peft_adapter_delta_artifact_ref",
-    "classifier_head_delta_artifact_ref",
-)
-CLASSIFIER_SNAPSHOT_SPECS = (
-    (PEFT_CLASSIFIER_ADAPTER_KIND, "peft_adapter.json"),
-    (LEGACY_LORA_CLASSIFIER_ADAPTER_KIND, "lora_adapter.json"),
-)
+CLASSIFIER_SNAPSHOT_SPECS = ((PEFT_CLASSIFIER_ADAPTER_KIND, "peft_adapter.json"),)
 
 
 def classifier_objective_value(
@@ -46,9 +35,7 @@ def classifier_primary_update_ref_fields(
 ) -> tuple[str, str]:
     """merged update payload의 adapter/head artifact ref field 쌍을 고른다."""
 
-    if update_payload.get("peft_adapter_delta_artifact_ref") is not None:
-        return PEFT_CLASSIFIER_PRIMARY_REF_FIELDS
-    return LEGACY_LORA_CLASSIFIER_PRIMARY_REF_FIELDS
+    return PEFT_CLASSIFIER_PRIMARY_REF_FIELDS
 
 
 def classifier_aggregate_snapshot_candidates(

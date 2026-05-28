@@ -43,7 +43,7 @@ def _report_payload(
     ssl_method_parameter_override_status: str | None = None,
     ssl_algorithm: str = "fixmatch",
     ssl_method: str = "fixmatch_usb_v1",
-    adapter_family: str = "lora_classifier",
+    adapter_family: str = "peft_classifier",
     update_family: str = "peft_text_classifier",
     aggregation: str = "fedavg",
     server_update_policy: str = "fedavg_merged_delta",
@@ -52,7 +52,7 @@ def _report_payload(
     peer_context_policy: str = "none",
     local_ssl_policy: str = "query_ssl_method",
     delta_format: str = "server_uploaded_artifact_ref",
-    objective_adapter_family: str = "lora_classifier",
+    objective_adapter_family: str = "peft_classifier",
     payload_adapter_kind: str | None = None,
     embedding_backend: str = "transformers_mxbai",
     embedding_model_id: str = "mixedbread-ai/mxbai-embed-large-v1",
@@ -107,8 +107,7 @@ def _report_payload(
                 f"{objective_adapter_family}.delta_format": delta_format,
             },
             "round_runtime": {
-                "payload_adapter_kind": payload_adapter_kind,
-                "adapter_family_name": adapter_family,
+                "payload_adapter_kind": payload_adapter_kind or adapter_family,
                 "update_family_name": update_family,
                 "aggregation_backend_name": aggregation,
             },
@@ -164,7 +163,7 @@ def _expectation(
         expected_run_control_output_dir="runs/fl_ssl",
         expected_ssl_algorithm="fixmatch",
         expected_ssl_method="fixmatch_usb_v1",
-        expected_payload_adapter_kind="lora_classifier",
+        expected_payload_adapter_kind="peft_classifier",
         expected_update_family="peft_text_classifier",
         expected_aggregation="fedavg",
         expected_server_update_policy="fedavg_merged_delta",
@@ -232,7 +231,6 @@ def _write_report_run_with_server_update_artifacts(
     *,
     payload: dict[str, object],
     partitioned_only: bool = False,
-    peft_classifier_v2: bool = False,
 ) -> Path:
     run_dir = tmp_path / "run"
     report_path = run_dir / "reports" / "fl_ssl_main_comparison.report.json"
@@ -250,14 +248,8 @@ def _write_report_run_with_server_update_artifacts(
             client_id = f"agent_{client_index:02d}"
             update_id = f"update_{round_id}_{client_id}"
             ref_prefix = f"client_updates/{round_id}/{client_id}/{update_id}"
-            adapter_delta_name = (
-                "peft_adapter_delta" if peft_classifier_v2 else "lora_delta"
-            )
-            adapter_ref_field = (
-                "peft_adapter_delta_artifact_ref"
-                if peft_classifier_v2
-                else "peft_adapter_delta_artifact_ref"
-            )
+            adapter_delta_name = "peft_adapter_delta"
+            adapter_ref_field = "peft_adapter_delta_artifact_ref"
             adapter_ref = f"aggregation_artifact::{ref_prefix}/{adapter_delta_name}"
             head_ref = f"aggregation_artifact::{ref_prefix}/classifier_head_delta"
             partitioned_ref = f"aggregation_artifact::{ref_prefix}/partitioned_delta"
@@ -269,7 +261,7 @@ def _write_report_run_with_server_update_artifacts(
                 partitioned_path.write_text("fake-safetensors", encoding="utf-8")
             else:
                 (artifact_root / f"{ref_prefix}/{adapter_delta_name}.json").write_text(
-                    json.dumps({"lora_parameters": {"a": [1.0]}}),
+                    json.dumps({"peft_parameters": {"a": [1.0]}}),
                     encoding="utf-8",
                 )
                 (artifact_root / f"{ref_prefix}/classifier_head_delta.json").write_text(
@@ -291,14 +283,12 @@ def _write_report_run_with_server_update_artifacts(
             )
 
     final_round = dict(payload["rounds"][-1])  # type: ignore[index,arg-type]
-    snapshot_family = "peft_classifier" if peft_classifier_v2 else "lora_classifier"
-    adapter_snapshot_name = (
-        "peft_adapter.json" if peft_classifier_v2 else "lora_adapter.json"
-    )
+    snapshot_family = "peft_classifier"
+    adapter_snapshot_name = "peft_adapter.json"
     snapshot_dir = artifact_root / snapshot_family / str(final_round["model_revision"])
     snapshot_dir.mkdir(parents=True)
     (snapshot_dir / adapter_snapshot_name).write_text(
-        json.dumps({"lora_parameters": {"a": [1.0]}}),
+        json.dumps({"peft_parameters": {"a": [1.0]}}),
         encoding="utf-8",
     )
     (snapshot_dir / "classifier_head.json").write_text(
@@ -327,7 +317,7 @@ def test_verify_federated_report_flags_method_and_runtime_drift() -> None:
             completed_rounds=1,
             round_budget=1,
             ssl_algorithm="pseudolabel",
-            adapter_family="diagonal_scale",
+            payload_adapter_kind="diagonal_scale",
         ),
         expectation=_expectation(),
     )
@@ -338,19 +328,19 @@ def test_verify_federated_report_flags_method_and_runtime_drift() -> None:
         in result.errors
     )
     assert (
-        "round_runtime.payload_adapter_kind expected 'lora_classifier', "
+        "round_runtime.payload_adapter_kind expected 'peft_classifier', "
         "got 'diagonal_scale'." in result.errors
     )
 
 
-def test_verify_federated_report_prefers_payload_adapter_kind() -> None:
+def test_verify_federated_report_uses_payload_adapter_kind() -> None:
     result = verify_federated_simulation_report_payload(
         artifact="report.json",
         payload=_report_payload(
             client_count=2,
             completed_rounds=1,
             round_budget=1,
-            adapter_family="lora_classifier",
+            adapter_family="peft_classifier",
             payload_adapter_kind="peft_classifier",
         ),
         expectation=FederatedReportExpectation(
@@ -569,7 +559,6 @@ def test_verify_federated_report_accepts_peft_classifier_v2_update_artifacts(
             adapter_family="peft_classifier",
             objective_adapter_family="peft_classifier",
         ),
-        peft_classifier_v2=True,
     )
 
     result = verify_federated_simulation_report_path(
@@ -587,9 +576,9 @@ def test_verify_federated_report_accepts_peft_classifier_v2_update_artifacts(
     assert result.passed
 
 
-def test_lora_classifier_snapshot_expectation_is_legacy_alias() -> None:
+def test_peft_classifier_snapshot_expectation_is_canonical() -> None:
     expectation = FederatedReportExpectation(
-        expect_lora_classifier_aggregate_snapshot=True,
+        expect_peft_classifier_aggregate_snapshot=True,
     )
 
     assert expectation.expect_peft_classifier_aggregate_snapshot is True
@@ -882,7 +871,7 @@ def test_verify_federated_report_flags_agent_local_update_artifact_drift(
     )
     update_payload = json.loads(update_path.read_text(encoding="utf-8"))
     update_payload["peft_adapter_delta_artifact_ref"] = (
-        "agent-local://agent_01/lora_delta"
+        "agent-local://agent_01/peft_adapter_delta"
     )
     update_path.write_text(json.dumps(update_payload), encoding="utf-8")
 
@@ -893,7 +882,7 @@ def test_verify_federated_report_flags_agent_local_update_artifact_drift(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_lora_classifier_aggregate_snapshot=True,
+            expect_peft_classifier_aggregate_snapshot=True,
         ),
     )
 
@@ -921,7 +910,6 @@ def test_verify_federated_report_flags_peft_classifier_v2_artifact_ref_drift(
             adapter_family="peft_classifier",
             objective_adapter_family="peft_classifier",
         ),
-        peft_classifier_v2=True,
     )
     update_path = next(
         (
@@ -945,7 +933,7 @@ def test_verify_federated_report_flags_peft_classifier_v2_artifact_ref_drift(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_lora_classifier_aggregate_snapshot=True,
+            expect_peft_classifier_aggregate_snapshot=True,
         ),
     )
 
@@ -1006,7 +994,7 @@ def test_verify_client_count_sweep_summary_checks_each_report(
             expected_round_update_count_matches_client_count=True,
             expected_ssl_algorithm="fixmatch",
             expected_ssl_method="fixmatch_usb_v1",
-            expected_payload_adapter_kind="lora_classifier",
+            expected_payload_adapter_kind="peft_classifier",
             expected_aggregation="fedavg",
             expected_delta_format="server_uploaded_artifact_ref",
         ),
@@ -1115,7 +1103,7 @@ def test_verify_artifact_manifest_checks_multiple_artifacts(
                     "expected_run_control_output_dir": "runs/fl_ssl",
                     "expected_ssl_algorithm": "fixmatch",
                     "expected_ssl_method": "fixmatch_usb_v1",
-                    "expected_payload_adapter_kind": "lora_classifier",
+                    "expected_payload_adapter_kind": "peft_classifier",
                     "expected_aggregation": "fedavg",
                     "expected_delta_format": "server_uploaded_artifact_ref",
                 },
@@ -1165,7 +1153,6 @@ def test_verify_artifact_manifest_applies_peft_snapshot_default(
             adapter_family="peft_classifier",
             objective_adapter_family="peft_classifier",
         ),
-        peft_classifier_v2=True,
     )
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(

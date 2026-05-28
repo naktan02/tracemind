@@ -364,15 +364,11 @@ def _optional_bool(value: object) -> bool | None:
 def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:
     parts = set(report_path.parts)
     if "central_ssl_initial_eval" in parts:
-        return "central_lora_initial_eval"
+        return "central_peft_initial_eval"
     if "train_peft_ssl_classifier" in parts:
         return "central_peft_ssl"
-    if "train_lora_ssl_classifier" in parts:
-        return "central_lora_ssl"
     if "train_peft_supervised_classifier" in parts:
         return "central_peft_supervised"
-    if "train_lora_supervised_classifier" in parts:
-        return "central_lora_supervised"
     if "train_classifier" in parts:
         return "central_classifier_seed"
     schema_version = str(payload.get("schema_version") or "").strip()
@@ -383,11 +379,6 @@ def _infer_method_family(payload: dict[str, Any]) -> str:
     schema_version = str(payload.get("schema_version") or "")
     if schema_version == "central_peft_classifier_eval.v1":
         return "peft_classifier"
-    if schema_version in {
-        "central_lora_classifier_eval.v1",
-        "central_lora_initial_eval.v1",
-    }:
-        return "lora_classifier"
     return "unknown"
 
 
