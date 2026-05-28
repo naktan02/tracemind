@@ -32,7 +32,9 @@ stages:
   - prototype
 sources:
   train:
-    kind: huggingface
+    download:
+      provider: huggingface
+      callable_path: scripts.datasets.lib.download_sources.download_huggingface_source
     dataset_id: ourafla/Mental-Health_Text-Classification_Dataset
     split: train
     data_file: mental_heath_unbanlanced.csv
@@ -41,7 +43,9 @@ sources:
     reference_urls:
       - https://huggingface.co/datasets/ourafla/Mental-Health_Text-Classification_Dataset
   test:
-    kind: huggingface
+    download:
+      provider: huggingface
+      callable_path: scripts.datasets.lib.download_sources.download_huggingface_source
     dataset_id: ourafla/Mental-Health_Text-Classification_Dataset
     split: test
     data_file: mental_health_combined_test.csv
@@ -55,7 +59,8 @@ split:
   validation_ratio: 0.1
   seed: 42
 prototype:
-  source: split_train
+  input_ref:
+    kind: split_train
   backend: transformers_mxbai
   embedding_model_id: mixedbread-ai/mxbai-embed-large-v1
   embedding_model_revision: main

@@ -12,11 +12,8 @@ from omegaconf import DictConfig, OmegaConf
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-from scripts.datasets.lib.download import (  # noqa: E402
-    build_default_output_path,
-    download_huggingface_dataset_to_csv,
-    download_kaggle_dataset_file_to_csv,
-)
+from scripts.configured_callable import load_configured_callable  # noqa: E402
+from scripts.datasets.lib.download import build_default_output_path  # noqa: E402
 from scripts.datasets.lib.label_mapping import (  # noqa: E402
     build_labeled_query_set,
     load_mapping_config,
@@ -148,17 +145,22 @@ def resolve_prototype_input_jsonl(
     if prototype_cfg is None:
         raise ValueError(f"Dataset '{dataset_cfg.name}' has no prototype config.")
 
-    prototype_source = _require_string(
-        prototype_cfg.get("source"),
-        field_name="prototype.source",
+    input_ref = prototype_cfg.get("input_ref")
+    if input_ref is None:
+        raise ValueError(
+            f"Dataset '{dataset_cfg.name}' prototype.input_ref is required."
+        )
+    input_ref_kind = _require_string(
+        input_ref.get("kind"),
+        field_name="prototype.input_ref.kind",
     )
-    if prototype_source == "split_train":
+    if input_ref_kind == "split_train":
         if split_output is not None:
             return split_output["train_jsonl"]
         split_cfg = dataset_cfg.get("split")
         if split_cfg is None:
             raise ValueError(
-                f"Dataset '{dataset_cfg.name}' prototype.source=split_train "
+                f"Dataset '{dataset_cfg.name}' prototype input split_train "
                 "requires split config."
             )
         split_name = _require_string(
@@ -167,8 +169,11 @@ def resolve_prototype_input_jsonl(
         )
         return split_dir / f"{split_name}.train.jsonl"
 
-    if prototype_source.startswith("mapped:"):
-        mapped_name = prototype_source.removeprefix("mapped:")
+    if input_ref_kind == "mapped_source":
+        mapped_name = _require_string(
+            input_ref.get("source_name"),
+            field_name="prototype.input_ref.source_name",
+        )
         mapped_output = mapped_outputs.get(mapped_name)
         if mapped_output is not None:
             return mapped_output["jsonl"]
@@ -177,7 +182,7 @@ def resolve_prototype_input_jsonl(
         if source_cfg is None:
             raise ValueError(
                 f"Dataset '{dataset_cfg.name}' prototype source "
-                f"'{prototype_source}' is unknown."
+                f"'{mapped_name}' is unknown."
             )
         return resolve_mapped_output_paths(
             source_cfg=source_cfg,
@@ -188,7 +193,7 @@ def resolve_prototype_input_jsonl(
 
     raise ValueError(
         f"Dataset '{dataset_cfg.name}' has unsupported "
-        f"prototype.source='{prototype_source}'."
+        f"prototype.input_ref.kind='{input_ref_kind}'."
     )
 
 
@@ -223,56 +228,33 @@ def _run_download_stage(
     """download stage를 실행하고 source별 raw CSV 경로를 반환한다."""
     raw_outputs: dict[str, str] = {}
     for source_name, source_cfg in dataset_cfg.sources.items():
-        source_kind = _require_string(source_cfg.get("kind"), field_name="kind")
-        if source_kind == "huggingface":
-            output_path = resolve_dataset_output_path(
-                source_cfg=source_cfg,
-                raw_dir=raw_dir,
-            )
-            download_huggingface_dataset_to_csv(
-                dataset_id=_require_string(
-                    source_cfg.get("dataset_id"),
-                    field_name=f"sources.{source_name}.dataset_id",
-                ),
-                split=_require_string(
-                    source_cfg.get("split"),
-                    field_name=f"sources.{source_name}.split",
-                ),
-                output_dir=raw_dir,
-                cache_dir=cache_dir,
-                data_file=source_cfg.get("data_file"),
-                output_path=output_path,
-                revision=source_cfg.get("revision"),
-            )
-            raw_outputs[source_name] = str(output_path)
-            continue
-
-        if source_kind == "kaggle":
-            output_path = resolve_dataset_output_path(
-                source_cfg=source_cfg,
-                raw_dir=raw_dir,
-            )
-            download_kaggle_dataset_file_to_csv(
-                dataset_ref=_require_string(
-                    source_cfg.get("dataset_ref") or source_cfg.get("dataset_id"),
-                    field_name=f"sources.{source_name}.dataset_ref",
-                ),
-                data_file=_require_string(
-                    source_cfg.get("data_file"),
-                    field_name=f"sources.{source_name}.data_file",
-                ),
-                output_path=output_path,
-                dataset_version_number=source_cfg.get("dataset_version_number"),
-                download_url=source_cfg.get("download_url"),
-            )
-            raw_outputs[source_name] = str(output_path)
-            continue
-
-        if source_kind not in {"huggingface", "kaggle"}:
+        download_cfg = source_cfg.get("download")
+        if download_cfg is None:
             raise ValueError(
                 f"Dataset '{dataset_cfg.name}' source '{source_name}' has "
-                f"unsupported kind '{source_kind}'."
+                "no download config."
             )
+        callable_path = _require_string(
+            download_cfg.get("callable_path"),
+            field_name=f"sources.{source_name}.download.callable_path",
+        )
+        download_source = load_configured_callable(
+            callable_path,
+            field_name=f"sources.{source_name}.download.callable_path",
+        )
+        output_path = resolve_dataset_output_path(
+            source_cfg=source_cfg,
+            raw_dir=raw_dir,
+        )
+        raw_outputs[source_name] = str(
+            download_source(
+                source_name=source_name,
+                source_cfg=source_cfg,
+                raw_dir=raw_dir,
+                cache_dir=cache_dir,
+                output_path=output_path,
+            )
+        )
     return raw_outputs
 
 

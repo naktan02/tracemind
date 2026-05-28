@@ -499,6 +499,101 @@ def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
     )
 
 
+def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
+    router_path = (
+        SCRIPTS_SRC / "experiments" / "central_ssl_control" / "ssl_mode_router.py"
+    )
+    entrypoint_config = (
+        CONF_SRC
+        / "entrypoints"
+        / "central_ssl_control"
+        / "train_peft_ssl_classifier.yaml"
+    )
+    source = router_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "run_query_ssl_peft_baseline",
+        "run_pseudo_label_self_training",
+        "SSL_INPUT_MODE_CONSISTENCY",
+        "SSL_INPUT_MODE_PSEUDO_LABEL_REPLAY",
+        'mode == "consistency"',
+        'mode == "pseudo_label_replay"',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert (
+        CONF_SRC / "strategy_axes" / "ssl" / "input_mode" / "consistency.yaml"
+    ).exists()
+    assert (
+        CONF_SRC / "strategy_axes" / "ssl" / "input_mode" / "pseudo_label_replay.yaml"
+    ).exists()
+    assert "/strategy_axes/ssl/input_mode: consistency" in entrypoint_config.read_text(
+        encoding="utf-8"
+    )
+    assert not violations, (
+        "central SSL mode router는 mode별 concrete runner를 직접 import/분기하지 "
+        "않는다. input_mode Hydra leaf가 runner callable을 선언하고 router는 "
+        "generic callable loader만 맡는다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_dataset_pipeline_download_sources_are_config_declared() -> None:
+    source = (SCRIPTS_SRC / "datasets" / "run_dataset_pipeline.py").read_text(
+        encoding="utf-8"
+    )
+    forbidden_snippets = (
+        'source_kind == "huggingface"',
+        'source_kind == "kaggle"',
+        '"unsupported kind"',
+        "download_huggingface_dataset_to_csv(",
+        "download_kaggle_dataset_file_to_csv(",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "dataset pipeline runner는 source provider 이름을 직접 분기하지 않는다. "
+        "dataset asset YAML의 sources.<name>.download.callable_path가 download "
+        "adapter를 선언하고 runner는 configured callable만 실행한다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_dataset_pipeline_prototype_input_ref_is_structured() -> None:
+    source = (SCRIPTS_SRC / "datasets" / "run_dataset_pipeline.py").read_text(
+        encoding="utf-8"
+    )
+    forbidden_snippets = (
+        'prototype_source == "split_train"',
+        'prototype_source.startswith("mapped:")',
+        'removeprefix("mapped:")',
+        "prototype.source",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "prototype input은 접두어 문자열이 아니라 dataset config의 "
+        "prototype.input_ref 구조로 해석한다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_query_peft_artifact_paths_do_not_branch_on_ssl_input_mode_names() -> None:
+    path = QUERY_PEFT_SSL_IO_SRC / "artifact_paths.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        'ssl_input_mode != "consistency"',
+        'ssl_input_mode == "consistency"',
+        'ssl_input_mode == "pseudo_label_replay"',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "central SSL output grouping 규칙은 strategy_axes/ssl/input_mode leaf가 "
+        "소유한다. artifact_paths.py는 central_ssl_runner의 resolved flag만 읽는다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_local_objective_regularizers_stay_update_payload_agnostic() -> None:
     violations = _find_forbidden_imports(
         root=METHODS_SRC / "adaptation" / "local_objective_regularizers",

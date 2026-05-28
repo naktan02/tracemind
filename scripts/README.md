@@ -64,6 +64,9 @@ uv run python scripts/datasets/run_dataset_pipeline.py
 새 dataset asset은 가능하면 `data/datasets/<dataset_id>/` 아래에 `raw`, `mapped`,
 `splits`, `query_ssl`, `views`를 모은다. 기존 stage 중심 `data/processed/*` 자산은
 이동하지 않고 유지한다.
+source별 download 구현은 dataset YAML의
+`sources.<name>.download.callable_path`가 선언한다. Pipeline runner는 provider 이름을
+직접 분기하지 않는다.
 
 중앙 Query SSL labeled/unlabeled split 생성:
 
@@ -117,9 +120,11 @@ uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.
 
 ```bash
 uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py \
-  strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
-  output_dir=runs/train_peft_ssl_classifier_pseudolabel
+  strategy_axes/ssl/consistency_method=pseudolabel_usb_v1
 ```
+
+teacher pseudo-label replay 입력으로 학습하는 mode는 scalar override 대신
+`strategy_axes/ssl/input_mode=pseudo_label_replay`로 고른다.
 
 중앙 PEFT FixMatch control:
 

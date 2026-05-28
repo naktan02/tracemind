@@ -54,9 +54,10 @@
 - `central_ssl_control/train_peft_ssl_classifier.py`
   - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT classifier scaffold에 얹는
     공통 SSL entrypoint.
-  - `ssl_input_mode=consistency`는 `strategy_axes/ssl/consistency_method`를 실행한다.
-  - `ssl_input_mode=pseudo_label_replay`는 이미 생성된 pseudo-label JSONL을
-    같은 scaffold에서 replay/self-training 입력으로 사용한다.
+  - `strategy_axes/ssl/input_mode=consistency`는
+    `strategy_axes/ssl/consistency_method`를 실행한다.
+  - `strategy_axes/ssl/input_mode=pseudo_label_replay`는 이미 생성된
+    pseudo-label JSONL을 같은 scaffold에서 replay/self-training 입력으로 사용한다.
   - method/source/augmentation/strong-view/initial checkpoint source of truth는
     `strategy_axes/ssl/consistency_method`,
     `execution_context/query_data_source`,
@@ -129,8 +130,8 @@
    - labeled seed subset으로 supervised PEFT seed manifest를 먼저 만든다.
 2. `central_ssl_control/train_peft_ssl_classifier.py`
    - 이미 생성된 pseudo-label JSONL을 쓰는 재생 실험은
-     `ssl_input_mode=pseudo_label_replay`와 `pseudo_label_jsonl=<path>`로 같은
-     entrypoint에서 실행한다.
+     `strategy_axes/ssl/input_mode=pseudo_label_replay`와
+     `pseudo_label_jsonl=<path>`로 같은 entrypoint에서 실행한다.
 3. `central_ssl_control/train_peft_ssl_classifier.py`
    - 같은 supervised PEFT seed manifest에서 warm-start하고,
      `strategy_axes/ssl/consistency_method=pseudolabel_usb_v1`로 USB PseudoLabel처럼

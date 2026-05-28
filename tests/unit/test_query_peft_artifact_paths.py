@@ -16,6 +16,10 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
     cfg = OmegaConf.create(
         {
             "ssl_input_mode": "consistency",
+            "central_ssl_runner": {
+                "mode": "consistency",
+                "group_by_query_ssl_method": True,
+            },
             "output_dir": (
                 "runs/train_peft_ssl_classifier/consistency/"
                 "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
@@ -53,6 +57,10 @@ def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> 
     cfg = OmegaConf.create(
         {
             "ssl_input_mode": "pseudo_label_replay",
+            "central_ssl_runner": {
+                "mode": "pseudo_label_replay",
+                "group_by_query_ssl_method": False,
+            },
             "output_dir": (
                 "runs/train_peft_ssl_classifier/pseudo_label_replay/"
                 "labeled-ourafla_reddit_unlabeled-ourafla_reddit"

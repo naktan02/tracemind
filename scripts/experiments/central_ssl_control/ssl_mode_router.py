@@ -1,32 +1,34 @@
-"""중앙 SSL control mode router."""
+"""중앙 SSL control runner router."""
 
 from __future__ import annotations
 
 from omegaconf import DictConfig
 
-from scripts.experiments.query_peft_ssl.runners.consistency import (
-    run_query_ssl_peft_baseline,
-)
-from scripts.experiments.query_peft_ssl.runners.pseudo_label import (
-    run_pseudo_label_self_training,
-)
-
-SSL_INPUT_MODE_CONSISTENCY = "consistency"
-SSL_INPUT_MODE_PSEUDO_LABEL_REPLAY = "pseudo_label_replay"
+from scripts.configured_callable import load_configured_callable
 
 
 def run_central_ssl_mode(cfg: DictConfig) -> None:
-    """ssl_input_mode에 맞는 중앙 SSL runner를 실행한다."""
+    """Hydra input_mode leaf가 선언한 중앙 SSL runner를 실행한다."""
 
-    mode = str(getattr(cfg, "ssl_input_mode", SSL_INPUT_MODE_CONSISTENCY)).strip()
-    if mode == SSL_INPUT_MODE_CONSISTENCY:
-        run_query_ssl_peft_baseline(cfg=cfg)
-        return
-    if mode == SSL_INPUT_MODE_PSEUDO_LABEL_REPLAY:
-        run_pseudo_label_self_training(cfg=cfg)
-        return
-    raise ValueError(
-        "Unsupported ssl_input_mode. "
-        f"Expected one of: {SSL_INPUT_MODE_CONSISTENCY}, "
-        f"{SSL_INPUT_MODE_PSEUDO_LABEL_REPLAY}. Got: {mode!r}."
+    runner_cfg = getattr(cfg, "central_ssl_runner", None)
+    if runner_cfg is None:
+        raise ValueError(
+            "central_ssl_runner is required. Select "
+            "strategy_axes/ssl/input_mode=<mode> instead of overriding only "
+            "ssl_input_mode."
+        )
+    mode = str(getattr(cfg, "ssl_input_mode", "") or "").strip()
+    runner_mode = str(getattr(runner_cfg, "mode", "") or "").strip()
+    if mode != runner_mode:
+        raise ValueError(
+            "ssl_input_mode must match central_ssl_runner.mode. Select "
+            "strategy_axes/ssl/input_mode=<mode> so the mode and runner stay "
+            f"coupled by config. Got ssl_input_mode={mode!r}, "
+            f"central_ssl_runner.mode={runner_mode!r}."
+        )
+
+    runner = load_configured_callable(
+        str(runner_cfg.callable_path),
+        field_name="central_ssl_runner.callable_path",
     )
+    runner(cfg=cfg)

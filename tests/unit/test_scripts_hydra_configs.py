@@ -171,6 +171,11 @@ def test_seed_prototypes_default_runtime_is_gpu_online() -> None:
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is False
     assert cfg.prototype_builder.name == "single"
+    assert (
+        cfg.dataset.sources.train.download.callable_path
+        == "scripts.datasets.lib.download_sources.download_huggingface_source"
+    )
+    assert cfg.dataset.prototype.input_ref.kind == "split_train"
 
 
 @pytest.mark.parametrize(
@@ -480,13 +485,19 @@ def test_train_peft_ssl_classifier_supports_pseudo_label_replay_mode() -> None:
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_peft_ssl_classifier",
             overrides=[
-                "ssl_input_mode=pseudo_label_replay",
+                "strategy_axes/ssl/input_mode=pseudo_label_replay",
                 "pseudo_label_jsonl=data/artifacts/query_peft_pseudo_label/run/pseudo_label_train.jsonl",
                 "include_seed_train_rows=true",
             ],
         )
 
     assert cfg.ssl_input_mode == "pseudo_label_replay"
+    assert cfg.central_ssl_runner.mode == "pseudo_label_replay"
+    assert (
+        cfg.central_ssl_runner.callable_path
+        == "scripts.experiments.query_peft_ssl.runners.pseudo_label."
+        "run_pseudo_label_self_training"
+    )
     assert cfg.pseudo_label_jsonl.endswith("pseudo_label_train.jsonl")
     assert cfg.include_seed_train_rows is True
     assert cfg.pseudo_label_export_root == "data/artifacts/query_peft_pseudo_label"

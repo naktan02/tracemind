@@ -31,7 +31,9 @@ stages:
   - split
 sources:
   train:
-    kind: kaggle
+    download:
+      provider: kaggle
+      callable_path: scripts.datasets.lib.download_sources.download_kaggle_source
     dataset_id: szegeelim/mental-health
     dataset_ref: szegeelim/mental-health
     dataset_version_number: 1

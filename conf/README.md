@@ -46,6 +46,7 @@ conf/
 │   └── ssl/
 │       ├── augmentation_source/
 │       ├── consistency_method/
+│       ├── input_mode/
 │       └── pseudo_label_selection/
 └── run_controls/
     ├── central_ssl/
@@ -282,6 +283,12 @@ labeled/unlabeled split은
 새 model/prototype/adapter 산출물은 `data/artifacts/`, cache성 파일은 `data/cache/`
 아래에 두고, 기존 `data/processed/` 산출물은 legacy로 유지한다.
 
+Dataset source download 방식은 `sources.<name>.download.callable_path`가 선언한다.
+pipeline runner는 `huggingface`, `kaggle` 같은 provider 이름으로 분기하지 않고,
+dataset asset이 선언한 adapter callable을 실행한다. Prototype 입력도
+`prototype.input_ref.kind`와 필요한 세부 field로 구조화해 적고, `mapped:<name>` 같은
+접두어 문자열을 새 config 표면에 쓰지 않는다.
+
 ## Query Split And View Context
 
 `execution_context/query_split`은 `train_jsonl`, `unlabeled_jsonl`, `validation_jsonl`,
@@ -308,6 +315,11 @@ Hydra package shape는 기존 runner compatibility를 위해 각각 `cfg.query_s
 
 중앙 SSL 학습에서 materialized view를 소비하는 축은 둘로 나눈다.
 
+- `strategy_axes/ssl/input_mode`
+  - `ssl_input_mode`, `central_ssl_runner.callable_path`, run output grouping
+    flag를 함께 소유한다.
+  - `ssl_input_mode` scalar만 override하면 mode와 runner가 어긋날 수 있으므로
+    중앙 SSL workflow 교체는 이 config group으로 한다.
 - `strategy_axes/ssl/augmentation_source`
   - `cfg.query_ssl_augmenter`로 compose된다.
   - 학습 입력 strong candidate를 어디서 확보할지 결정한다.
