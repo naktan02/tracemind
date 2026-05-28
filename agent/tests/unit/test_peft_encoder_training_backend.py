@@ -25,7 +25,7 @@ from methods.adaptation.local_update_registry import (
     list_registered_shared_adapter_training_backend_names,
     list_shared_adapter_training_backend_catalog_entries,
 )
-from methods.adaptation.peft_text_classifier import config as lora_config
+from methods.adaptation.peft_text_classifier import config as peft_config
 from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qssl_training,
 )
@@ -40,10 +40,9 @@ from methods.adaptation.query_text_views.local_training_budget import (
     build_query_ssl_local_step_plan,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_lora_classifier_delta_payload,
+    make_peft_classifier_delta_payload,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     LoraClassifierDelta,
 )
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
@@ -78,7 +77,7 @@ class _RecordingPeftEncoderTrainExecutor:
         model_manifest: ModelManifest,
         rows: Sequence[PeftEncoderTrainingRow],
         label_schema: tuple[str, ...],
-        config: lora_config.PeftEncoderTrainingBackendConfig,
+        config: peft_config.PeftEncoderTrainingBackendConfig,
         created_at: datetime,
     ) -> PeftEncoderTrainArtifacts:
         del training_task, model_manifest, rows, config, created_at
@@ -92,10 +91,10 @@ class _RecordingPeftEncoderTrainExecutor:
         )
 
 
-class _QuerySslLoraBackend:
-    backend_name = "lora_classifier_trainer"
+class _QuerySslPeftBackend:
+    backend_name = "peft_classifier_trainer"
 
-    def __init__(self, update_payload: LoraClassifierDelta) -> None:
+    def __init__(self, update_payload: PeftClassifierDelta) -> None:
         self.update_payload = update_payload
         self.called = False
 
@@ -123,7 +122,7 @@ class _QuerySslLoraBackend:
             base_model_revision=model_manifest.model_revision,
             training_scope=training_task.training_scope,
             payload_ref="client-submission::update_query_ssl_test",
-            payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+            payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
             example_count=self.update_payload.example_count,
             client_metrics={"query_ssl_local_steps": 1.0},
         )
@@ -164,8 +163,8 @@ def _build_task(
 ) -> TrainingTask:
     return TrainingTask(
         schema_version="training_task.v1",
-        task_id="task_lora_001",
-        round_id="round_lora_001",
+        task_id="task_peft_001",
+        round_id="round_peft_001",
         model_id="tracemind-peft",
         model_revision="rev_000",
         task_type="pseudo_label_self_training",
@@ -175,7 +174,7 @@ def _build_task(
         learning_rate=1e-4,
         max_steps=1,
         objective_config=TrainingObjectiveConfig(
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             confidence_threshold=0.6,
             margin_threshold=0.02,
             scorer_backend_name="prototype_similarity",
@@ -262,7 +261,7 @@ def test_legacy_lora_backend_builds_artifact_ref_update_without_text() -> None:
     assert update.lora_config.alpha == 32
     assert update.delta_format == "agent_local_artifact_ref"
     assert update.lora_delta_artifact_ref == (
-        "agent-local://lora_classifier/round_lora_001/task_lora_001/"
+        "agent-local://lora_classifier/round_peft_001/task_peft_001/"
         "20260421T123000000000Z/lora_delta"
     )
     assert update.classifier_head_delta_artifact_ref is not None
@@ -299,7 +298,7 @@ def test_peft_classifier_backend_builds_v2_artifact_ref_update() -> None:
     assert update.peft_adapter_config.peft_adapter_name == "lora"
     assert update.peft_adapter_config.parameters["rank"] == 16
     assert update.peft_adapter_delta_artifact_ref == (
-        "agent-local://peft_classifier/round_lora_001/task_lora_001/"
+        "agent-local://peft_classifier/round_peft_001/task_peft_001/"
         "20260421T123000000000Z/lora_delta"
     )
     assert update.classifier_head_delta_artifact_ref is not None
@@ -348,9 +347,9 @@ def test_peft_encoder_train_executor_receives_resolved_label_schema() -> None:
 
 def test_peft_encoder_training_backend_is_registered() -> None:
     backend = build_shared_adapter_training_backend(
-        "lora_classifier_trainer",
+        "peft_classifier_trainer",
         objective_config=TrainingObjectiveConfig(
-            training_backend_name="lora_classifier_trainer"
+            training_backend_name="peft_classifier_trainer"
         ),
     )
     catalog_entries = {
@@ -361,8 +360,8 @@ def test_peft_encoder_training_backend_is_registered() -> None:
     assert "lora_classifier_trainer" in (
         list_registered_shared_adapter_training_backend_names()
     )
-    assert backend.adapter_kind == "lora_classifier"
-    assert backend.payload_format == "lora_classifier_update"
+    assert backend.adapter_kind == "peft_classifier"
+    assert backend.payload_format == "peft_classifier_update"
     assert (
         catalog_entries["lora_classifier_trainer"].metadata["requires_raw_text"] is True
     )
@@ -380,7 +379,7 @@ def test_peft_encoder_training_backend_is_registered() -> None:
     )
 
 
-def test_local_training_service_uses_lora_classifier_backend(
+def test_local_training_service_uses_peft_classifier_backend(
     tmp_path: Path,
 ) -> None:
     repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
@@ -397,8 +396,8 @@ def test_local_training_service_uses_lora_classifier_backend(
 
     assert result.update_envelope is not None
     assert result.update_payload is not None
-    assert result.update_payload.adapter_kind == "lora_classifier"
-    assert result.update_envelope.payload_format == "lora_classifier_update"
+    assert result.update_payload.adapter_kind == "peft_classifier"
+    assert result.update_envelope.payload_format == "peft_classifier_update"
     assert result.update_envelope.client_metrics["lora_training_rows"] == 1.0
     assert result.update_envelope.client_metrics["delta_l2_norm"] == 0.0
     assert result.update_payload.label_counts == {"anxiety": 1}
@@ -406,28 +405,28 @@ def test_local_training_service_uses_lora_classifier_backend(
     loaded_payload = repository.load_shared_adapter_update(
         result.update_envelope.update_id
     )
-    assert isinstance(loaded_payload, LoraClassifierDelta)
+    assert isinstance(loaded_payload, PeftClassifierDelta)
 
 
-def test_query_ssl_local_training_service_runs_lora_backend(
+def test_query_ssl_local_training_service_runs_peft_backend(
     tmp_path: Path,
 ) -> None:
-    update_payload = make_lora_classifier_delta_payload(
+    update_payload = make_peft_classifier_delta_payload(
         model_id="tracemind-peft",
         base_model_revision="rev_000",
         training_scope="adapter_only",
-        backbone=lora_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),
-        lora_config=(
-            lora_config.PeftEncoderTrainingBackendConfig().to_lora_config_payload()
+        backbone=peft_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),
+        peft_adapter_config=(
+            peft_config.PeftEncoderTrainingBackendConfig().to_peft_adapter_config_payload()
         ),
         label_schema=["anxiety", "normal"],
         example_count=2,
-        lora_parameter_deltas={"lora.test": [0.1]},
+        peft_parameter_deltas={"lora.test": [0.1]},
         classifier_head_weight_deltas={"anxiety": [0.1], "normal": [-0.1]},
         classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
         delta_format="inline_delta",
     )
-    backend = _QuerySslLoraBackend(update_payload)
+    backend = _QuerySslPeftBackend(update_payload)
     repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
     service = QuerySslLocalTrainingService(
         repository=repository,
@@ -466,22 +465,22 @@ def test_query_ssl_local_training_service_runs_lora_backend(
 def test_query_ssl_local_training_service_can_skip_local_update_persistence(
     tmp_path: Path,
 ) -> None:
-    update_payload = make_lora_classifier_delta_payload(
+    update_payload = make_peft_classifier_delta_payload(
         model_id="tracemind-peft",
         base_model_revision="rev_000",
         training_scope="adapter_only",
-        backbone=lora_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),
-        lora_config=(
-            lora_config.PeftEncoderTrainingBackendConfig().to_lora_config_payload()
+        backbone=peft_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),
+        peft_adapter_config=(
+            peft_config.PeftEncoderTrainingBackendConfig().to_peft_adapter_config_payload()
         ),
         label_schema=["anxiety", "normal"],
         example_count=2,
-        lora_parameter_deltas={"lora.test": [0.1]},
+        peft_parameter_deltas={"lora.test": [0.1]},
         classifier_head_weight_deltas={"anxiety": [0.1], "normal": [-0.1]},
         classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
         delta_format="inline_delta",
     )
-    backend = _QuerySslLoraBackend(update_payload)
+    backend = _QuerySslPeftBackend(update_payload)
     repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
     service = QuerySslLocalTrainingService(
         repository=repository,
