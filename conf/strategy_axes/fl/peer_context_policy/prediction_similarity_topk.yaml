@@ -1,5 +1,0 @@
-# @package peer_context_policy
-
-name: fixed_probe_output_knn
-parameter_source: method_descriptor
-legacy_alias_name: prediction_similarity_topk

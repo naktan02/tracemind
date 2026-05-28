@@ -60,8 +60,8 @@ descriptor가 source of truth다.
 nearest-neighbor 실행은 `methods/federated_ssl/peer_context.py`의 KDTree 우선 index가
 소유한다. FedMatch의 `num_helpers=2`, `h_interval=10` 같은 값은
 `methods/federated_ssl/fedmatch/original_spec.py`와 method package가 소유한다.
-`prediction_similarity_topk` config file은 기존 override 호환용 alias이며 canonical
-report name은 `fixed_probe_output_knn`이다.
+legacy `prediction_similarity_topk` override alias는 제거됐다. fixed probe 기반
+nearest-neighbor helper context가 필요하면 `fixed_probe_output_knn`만 사용한다.
 
 ## `fl_method` 실행 계획
 

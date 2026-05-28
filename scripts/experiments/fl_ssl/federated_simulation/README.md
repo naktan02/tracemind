@@ -147,8 +147,9 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
     현재 slice는 이전 round client-local PEFT snapshot과 validation probe vector로
     KDTree 우선 nearest-neighbor helper client를 고르고, 선택된 helper snapshot의
     weak-view probability를 method-owned trainer에 주입한다.
-  - `agent_generated_or_cached`는 live agent stored-event 경로가 weak/strong view를
-    만들거나 캐시할 때 열 후속 축이다.
+  - live agent stored-event 경로가 weak/strong view를 만들거나 캐시할 수 있게 되면
+    별도 `query_multiview_source` leaf를 추가한다. 구현 전 placeholder leaf는 두지
+    않는다.
 - `fl_client_split_materialization.labeled_policy`
   - split 생성 entrypoint 전용 값이다.
   - 기본 `mode=all`은 선택된 labeled source 전체를 bootstrap/client labeled pool로

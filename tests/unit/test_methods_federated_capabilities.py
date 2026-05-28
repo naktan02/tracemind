@@ -34,7 +34,6 @@ from methods.federated_ssl.capability_plan import (
     LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
     PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
-    PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
     FederatedSslCapabilityPlan,
 )
 from methods.federated_ssl.compatibility import (
@@ -86,24 +85,21 @@ def test_participation_policy_defaults_to_all_clients() -> None:
     assert selection.skipped_indices == ()
 
 
-def test_peer_context_legacy_topk_name_normalizes_to_fixed_probe_knn() -> None:
-    plan = FederatedSslCapabilityPlan.from_mappings(
-        client_participation_policy=None,
-        aggregation_weight_policy=None,
-        labeled_exposure_policy=None,
-        local_supervision_regime=None,
-        server_step_policy=None,
-        peer_context_policy={"name": PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK},
-        update_partition_policy=None,
-        local_ssl_policy=None,
-        server_update_policy=None,
-        query_multiview_source=None,
-    )
-
-    assert plan.peer_context_policy_name == PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN
-    assert plan.to_payload()["peer_context_policy"] == {
-        "name": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
-    }
+def test_unknown_peer_context_name_is_rejected() -> None:
+    legacy_name = "prediction_similarity_topk"
+    with pytest.raises(ValueError, match="peer_context_policy.name"):
+        FederatedSslCapabilityPlan.from_mappings(
+            client_participation_policy=None,
+            aggregation_weight_policy=None,
+            labeled_exposure_policy=None,
+            local_supervision_regime=None,
+            server_step_policy=None,
+            peer_context_policy={"name": legacy_name},
+            update_partition_policy=None,
+            local_ssl_policy=None,
+            server_update_policy=None,
+            query_multiview_source=None,
+        )
 
 
 def test_local_supervision_regime_requires_client_labeled_rows_when_exposed() -> None:

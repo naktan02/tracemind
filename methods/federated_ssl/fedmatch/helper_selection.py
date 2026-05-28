@@ -7,7 +7,6 @@ from typing import Mapping, Sequence
 
 from methods.federated_ssl.capability_plan import (
     PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
-    PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
 )
 from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_ORIGINAL_METHOD_DEFAULTS,
@@ -19,7 +18,6 @@ from methods.federated_ssl.peer_context import (
 )
 
 FEDMATCH_HELPER_SELECTION_NAME = PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN
-FEDMATCH_LEGACY_HELPER_SELECTION_NAME = PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK
 FEDMATCH_DEFAULT_NUM_HELPERS = FEDMATCH_ORIGINAL_METHOD_DEFAULTS.num_helpers
 FEDMATCH_DEFAULT_REFRESH_INTERVAL = (
     FEDMATCH_ORIGINAL_METHOD_DEFAULTS.helper_refresh_interval

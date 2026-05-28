@@ -37,16 +37,12 @@ SERVER_STEP_POLICIES = frozenset({SERVER_STEP_NONE, SERVER_STEP_SUPERVISED_SEED}
 
 PEER_CONTEXT_NONE = "none"
 PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN = "fixed_probe_output_knn"
-PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK = "prediction_similarity_topk"
 PEER_CONTEXT_POLICIES = frozenset(
     {
         PEER_CONTEXT_NONE,
         PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
     }
 )
-PEER_CONTEXT_POLICY_ALIASES = {
-    PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK: PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
-}
 
 UPDATE_PARTITION_UNIFIED = "unified"
 UPDATE_PARTITION_PARTITIONED = "partitioned"
@@ -58,11 +54,9 @@ UPDATE_PARTITION_POLICIES = frozenset(
 )
 
 QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS = "materialized_rows"
-QUERY_MULTIVIEW_SOURCE_AGENT_GENERATED_OR_CACHED = "agent_generated_or_cached"
 QUERY_MULTIVIEW_SOURCES = frozenset(
     {
         QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS,
-        QUERY_MULTIVIEW_SOURCE_AGENT_GENERATED_OR_CACHED,
     }
 )
 
@@ -135,11 +129,6 @@ class FederatedSslCapabilityPlan:
         )
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "peer_context_policy_name",
-            _normalize_peer_context_policy_name(self.peer_context_policy_name),
-        )
         _validate_name(
             self.labeled_exposure_policy_name,
             allowed=LABELED_EXPOSURE_POLICY_NAMES,
@@ -231,11 +220,7 @@ def _peer_context_policy_name(
     *,
     default: str,
 ) -> str:
-    return _normalize_peer_context_policy_name(_policy_name(source, default=default))
-
-
-def _normalize_peer_context_policy_name(name: str) -> str:
-    return PEER_CONTEXT_POLICY_ALIASES.get(name, name)
+    return _policy_name(source, default=default)
 
 
 def _validate_name(

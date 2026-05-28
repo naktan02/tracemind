@@ -84,12 +84,12 @@ central fixed embedding + classifier seed
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, config-declared runtime adapter executor | simulation active; `supervised_seed_step` implementation is a PEFT encoder runtime adapter, not script-owned policy logic |
 | Server update policy | `fedavg_merged_delta`, `fedmatch_partitioned` | `strategy_axes/fl/server_update_policy` | `methods/federated_ssl/capability_axes.py`, compatibility validator, update-family server update resolver | merged FedAvg active, partitioned PEFT text encoder update simulation active |
-| Peer context policy | `none`, `fixed_probe_output_knn` (`prediction_similarity_topk` legacy alias) | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter, `methods/federated_ssl/peer_context.py` | `none` active, KDTree 우선 fixed-probe nearest-neighbor helper context selection and PEFT text encoder helper weak-probability provider active |
+| Peer context policy | `none`, `fixed_probe_output_knn` | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter, `methods/federated_ssl/peer_context.py` | `none` active, KDTree 우선 fixed-probe nearest-neighbor helper context selection and PEFT text encoder helper weak-probability provider active |
 | Peer probe surface | `label_balanced`, max 128 rows | `peer_probe.*` in FL simulation entrypoint | simulation fixed text probe selector + report protocol metadata | active for `fixed_probe_output_knn` helper selection |
 | Update partition policy | `unified`, `partitioned` | `strategy_axes/fl/update_partition_policy` | common capability + method/adaptation partition helpers | `unified` active, `partitioned` method-gated |
 | Local SSL policy | manual: `profile_pseudo_label` 또는 `query_ssl_method`; method-owned FedMatch: `fedmatch_agreement` | manual은 `strategy_axes/fl/local_ssl_policy` + `strategy_axes/ssl/consistency_method`, method-owned는 descriptor metadata | `methods/federated_ssl/capability_axes.py`, `methods/ssl/algorithms/*`, method-local objective | Query SSL-backed policies active in manual mode, FedMatch agreement는 method-owned slice 전용 |
 | Aggregation weight policy | `example_count`, `uniform`, `accepted_count` | `strategy_axes/fl/aggregation_weight_policy` | `methods/federated/aggregation_weighting.py` + family FedAvg cores | simulation capability |
-| Query multiview source | `materialized_rows`, `agent_generated_or_cached` | `strategy_axes/fl/query_multiview_source` | materialized JSONL rows now, live agent source later | materialized active, live planned |
+| Query multiview source | `materialized_rows`; future live agent source는 구현 시 추가 | `strategy_axes/fl/query_multiview_source` | materialized JSONL rows now, live agent source later | materialized active |
 | FL SSL method descriptor | `fedmatch` original core/config snapshot, future FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `peft_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | PEFT text encoder Query SSL training/evidence/scoring/privacy runtime | FL SSL simulation profile |
@@ -142,8 +142,9 @@ central fixed embedding + classifier seed
   표현한다. nearest-neighbor 실행은 `methods/federated_ssl/peer_context.py`의
   KDTree 우선 index가 소유하고, FedMatch의 `num_helpers`, `h_interval` 같은 원본
   helper 기본값은 `methods/federated_ssl/fedmatch/original_spec.py`와 method package가
-  소유한다. `prediction_similarity_topk`는 기존 config override 호환용 alias다.
-  TraceMind fixed text probe surface는 `peer_probe.*` 실행 metadata가 소유하며,
+  소유한다. legacy `prediction_similarity_topk` config alias는 제거됐고, 새 실행은
+  `fixed_probe_output_knn`만 사용한다. TraceMind fixed text probe surface는
+  `peer_probe.*` 실행 metadata가 소유하며,
   report protocol에 source, row count, label distribution, query id hash를 남긴다.
 - 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
   FedMatch는 원본 repository/commit과 config snapshot, confidence filter,

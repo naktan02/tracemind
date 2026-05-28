@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from hydra import compose, initialize_config_module
 from hydra.utils import instantiate
@@ -33,6 +35,8 @@ from scripts.runtime_adapters.federated_agent.backend_resolver import (
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 
 def _plain_dict(source: DictConfig) -> dict[str, object]:
     raw = OmegaConf.to_container(source, resolve=True)
@@ -56,6 +60,22 @@ def _assert_manual_fl_runtime_is_compatible(cfg: DictConfig) -> None:
     assert resolve_federated_training_backend_adapter_kind(
         objective_config=objective_config
     ) == str(cfg.round_runtime.payload_adapter_kind)
+
+
+def test_trainable_state_update_family_leafs_are_executable_surfaces() -> None:
+    update_family_dir = (
+        REPO_ROOT / "conf" / "strategy_axes" / "trainable_state" / "update_family"
+    )
+    leaf_paths = sorted(
+        path for path in update_family_dir.glob("*.yaml") if path.name != "__init__.py"
+    )
+
+    assert leaf_paths
+    for path in leaf_paths:
+        cfg = OmegaConf.load(path)
+        assert cfg.get("update_family_name"), path
+        assert cfg.get("payload_adapter_kind"), path
+        assert cfg.get("initial_state_builder"), path
 
 
 @pytest.mark.parametrize(
@@ -1036,25 +1056,15 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
     assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
 
 
-def test_federated_simulation_legacy_peer_context_override_uses_canonical_name() -> (
-    None
-):
+def test_federated_simulation_rejects_legacy_peer_context_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/fl_ssl/run_federated_simulation",
-            overrides=[
-                "strategy_axes/fl/peer_context_policy=prediction_similarity_topk",
-            ],
-        )
-
-    capability_plan = _build_capability_plan(
-        cfg=cfg,
-        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
-    )
-
-    assert cfg.peer_context_policy.name == "fixed_probe_output_knn"
-    assert cfg.peer_context_policy.legacy_alias_name == "prediction_similarity_topk"
-    assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
+        with pytest.raises(Exception, match="prediction_similarity_topk"):
+            compose(
+                config_name="entrypoints/fl_ssl/run_federated_simulation",
+                overrides=[
+                    "strategy_axes/fl/peer_context_policy=prediction_similarity_topk",
+                ],
+            )
 
 
 def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> None:

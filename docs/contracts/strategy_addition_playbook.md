@@ -102,8 +102,8 @@ PEFT text encoder partitioned step core, `local_ssl_policy`/`server_update_polic
 핵심 질문:
 
 - update payload shape가 기존 payload adapter contract로 충분한가
-- update family는 기존 `linear_head`, `peft_text_encoder`, `prototype_pack` 중
-  하나인가, 아니면 새 `trainable_state/update_family`가 필요한가
+- update family는 active `linear_head`, `peft_text_encoder` 중 하나인가, future
+  `prototype_pack`처럼 새 `trainable_state/update_family`가 필요한가
 - backend별 세부 파라미터가 필요한가
 
 보통 수정 파일:

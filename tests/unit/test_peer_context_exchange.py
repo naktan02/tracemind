@@ -8,7 +8,6 @@ import pytest
 
 from methods.federated_ssl.capability_plan import (
     PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
-    PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
     FederatedSslCapabilityPlan,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
@@ -20,9 +19,6 @@ def test_fixed_probe_knn_peer_context_is_supported_capability() -> None:
     peer_context_exchange.require_supported_peer_context(_capability_plan("none"))
     peer_context_exchange.require_supported_peer_context(
         _capability_plan(PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN)
-    )
-    peer_context_exchange.require_supported_peer_context(
-        _capability_plan(PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK)
     )
 
 

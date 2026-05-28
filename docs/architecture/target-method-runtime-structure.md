@@ -259,7 +259,7 @@ methods/prototype/*
 methods/federated_ssl/<method>/*
 conf/strategy_axes/fl/method_descriptor/<method>.yaml
 conf/strategy_axes/fl/local_update_profile/prototype_*.yaml
-conf/strategy_axes/trainable_state/update_family/prototype_pack.yaml
+conf/strategy_axes/trainable_state/update_family/prototype_pack.yaml  # runtime callable까지 구현될 때 추가
 tests/*
 ```
 
