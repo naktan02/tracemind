@@ -201,8 +201,9 @@ Adapter 뒤로 옮긴다.
 - `conf/strategy_axes/trainable_state/update_family/`를 추가한다.
 - 기존 `round_runtime.adapter_family_name`은 compatibility alias로 읽되, 새 config와
   report에는 `update_family_name`을 병행 기록한다.
-- `strategy_axes/fl/local_ssl_policy/fedmatch_agreement.yaml` 같은 method-local leaf는
-  method descriptor 내부 요구사항으로 이동한다.
+- `fedmatch_agreement` 같은 method-local objective는 generic
+  `strategy_axes/fl/local_ssl_policy/*.yaml` leaf가 아니라 method descriptor 내부
+  요구사항에서 파생한다.
 
 ### 3단계: methods 구조 정리
 

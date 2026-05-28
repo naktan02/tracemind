@@ -970,6 +970,7 @@ def test_federated_simulation_can_express_fedmatch_server_with_fixmatch() -> Non
                 "strategy_axes/fl/aggregation_weight_policy=uniform",
                 "strategy_axes/fl/peer_context_policy=fixed_probe_output_knn",
                 "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
+                "ssl_method.trace_mapping.local_ssl_policy=fixmatch",
             ],
         )
 
@@ -1015,7 +1016,6 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
                 "strategy_axes/fl/update_partition_policy=partitioned",
                 "strategy_axes/fl/aggregation_weight_policy=uniform",
                 "strategy_axes/fl/peer_context_policy=fixed_probe_output_knn",
-                "strategy_axes/fl/local_ssl_policy=fedmatch_agreement",
             ],
         )
 
@@ -1026,7 +1026,8 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
 
     assert cfg.federated_run_budget.name == "reduced"
     assert cfg.federated_run_budget.rounds == 5
-    assert cfg.local_ssl_policy.name == "fedmatch_agreement"
+    assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
+    assert cfg.ssl_method.trace_mapping.local_ssl_policy == "fedmatch_agreement"
     assert cfg.server_update_policy.name == "fedmatch_partitioned"
     assert capability_plan.local_ssl_policy_name == "fedmatch_agreement"
     assert capability_plan.server_update_policy_name == "fedmatch_partitioned"

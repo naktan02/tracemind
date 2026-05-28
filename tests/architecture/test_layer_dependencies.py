@@ -422,6 +422,22 @@ def test_fl_local_update_profiles_do_not_keep_lora_classifier_leaf() -> None:
     )
 
 
+def test_fl_local_ssl_policy_does_not_expose_method_local_fedmatch_leaf() -> None:
+    forbidden_path = (
+        CONF_SRC
+        / "strategy_axes"
+        / "fl"
+        / "local_ssl_policy"
+        / "fedmatch_agreement.yaml"
+    )
+
+    assert not forbidden_path.exists(), (
+        "fedmatch_agreement는 FedMatch method-local objective다. generic "
+        "local_ssl_policy Hydra leaf로 선택하지 말고 method_descriptor=fedmatch의 "
+        "method config에서 파생한다."
+    )
+
+
 def test_fl_entrypoint_does_not_embed_lora_classifier_runtime_scope() -> None:
     path = CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml"
     source = path.read_text(encoding="utf-8")

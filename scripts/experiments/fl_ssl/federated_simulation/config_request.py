@@ -134,6 +134,7 @@ def build_simulation_request_from_config(
     capability_plan = _build_capability_plan(
         cfg=cfg,
         labeled_exposure_policy=fl_data_source.data_source_config.labeled_exposure_policy,
+        execution_plan=execution_plan,
     )
     query_ssl_objective_config = FederatedQuerySslObjectiveConfig.from_mapping(
         to_plain_dict(cfg.query_ssl_method),
@@ -201,9 +202,11 @@ def _build_capability_plan(
     *,
     cfg: DictConfig,
     labeled_exposure_policy: dict[str, object],
+    execution_plan: FederatedSslExecutionPlan | None = None,
 ) -> FederatedSslCapabilityPlan:
     """Hydra FL strategy axes를 runtime capability plan으로 정규화한다."""
 
+    resolved_execution_plan = execution_plan or _build_execution_plan(cfg)
     return FederatedSslCapabilityPlan.from_mappings(
         client_participation_policy=optional_plain_dict(
             cfg, "client_participation_policy"
@@ -217,10 +220,56 @@ def _build_capability_plan(
         server_step_policy=optional_plain_dict(cfg, "server_step_policy"),
         peer_context_policy=optional_plain_dict(cfg, "peer_context_policy"),
         update_partition_policy=optional_plain_dict(cfg, "update_partition_policy"),
-        local_ssl_policy=optional_plain_dict(cfg, "local_ssl_policy"),
+        local_ssl_policy=_resolve_local_ssl_policy_mapping(
+            cfg=cfg,
+            execution_plan=resolved_execution_plan,
+        ),
         server_update_policy=optional_plain_dict(cfg, "server_update_policy"),
         query_multiview_source=optional_plain_dict(cfg, "query_multiview_source"),
     )
+
+
+def _resolve_local_ssl_policy_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned local SSL objective는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "local_ssl_policy")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "local_ssl_policy")
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    local_ssl_policy_names = descriptor.required_capabilities.local_ssl_policy_names
+    configured_policy_name = _optional_config_str(
+        cfg.ssl_method.trace_mapping,
+        "local_ssl_policy",
+    )
+    if configured_policy_name is not None:
+        if configured_policy_name not in local_ssl_policy_names:
+            raise ValueError(
+                "ssl_method.trace_mapping.local_ssl_policy must be supported by "
+                "descriptor.required_capabilities.local_ssl_policy_names: "
+                f"method={descriptor.name}, value={configured_policy_name!r}, "
+                f"supported={list(local_ssl_policy_names)!r}."
+            )
+        return {
+            "name": configured_policy_name,
+            "parameter_source": "method_descriptor",
+        }
+    if not local_ssl_policy_names:
+        return optional_plain_dict(cfg, "local_ssl_policy")
+    if len(local_ssl_policy_names) != 1:
+        raise ValueError(
+            "method-owned local_ssl_policy derivation requires exactly one "
+            "descriptor.required_capabilities.local_ssl_policy_names entry: "
+            f"method={descriptor.name}, values={list(local_ssl_policy_names)!r}."
+        )
+    return {
+        "name": local_ssl_policy_names[0],
+        "parameter_source": "method_descriptor",
+    }
 
 
 def _optional_config_str(cfg: DictConfig, key: str) -> str | None:

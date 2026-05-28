@@ -273,9 +273,10 @@ Runtime translation:
   없어 current manifest 대상에서 제외했다.
 - FedMatch method-owned smoke는 `peer_context=fixed_probe_output_knn`,
   `server_update_policy=fedmatch_partitioned`,
-  `local_ssl_policy=fedmatch_agreement` 조합으로 2026-05-22에 확인했다.
-  target 구조에서는 `fedmatch_agreement`를 generic `local_ssl_policy` leaf가 아니라
-  `methods/federated_ssl/fedmatch/`가 소유하는 method-local objective로 이동한다.
+  `method_descriptor=fedmatch`에서 파생되는 `fedmatch_agreement` 조합으로
+  2026-05-22에 확인했다. 현재 target 구조에서는 `fedmatch_agreement`를 generic
+  `local_ssl_policy` leaf가 아니라 `methods/federated_ssl/fedmatch/`가 소유하는
+  method-local objective로 둔다.
   1-round smoke는 previous client snapshot이 없어 helper count가 0인 것이 정상이고,
   2-client 2-round smoke에서는 round 2에서 helper count/refreshed가 1.0으로 기록됐다.
   report 검증 CLI도 PASS했다. 다만 `2 clients x 2 rounds x max_steps=1`도 약 10분
@@ -320,7 +321,7 @@ Runtime translation:
    검토한다.
 10. 최적화 후 FedMatch method-owned reduced run을 다시 닫았다. 확인 대상은 현행
    v1 field 기준
-   `method_owned`, `local_ssl_policy=fedmatch_agreement`,
+   `method_owned`, `method_descriptor=fedmatch`에서 파생되는 `fedmatch_agreement`,
    `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
    helper injection, `partitioned_deltas_artifact_ref` 소비, final report metadata였다.
    2026-05-26 `10 clients`, `5 rounds`, `max_steps=20`,
