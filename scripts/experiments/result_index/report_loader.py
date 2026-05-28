@@ -30,6 +30,7 @@ from scripts.experiments.result_index.report_parsing import (
     as_mapping,
     as_sequence,
     infer_created_at,
+    json_object_snapshot,
     optional_float,
     optional_int,
     optional_str,
@@ -220,8 +221,10 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         peft_adapter_target_modules=optional_str(
             peft_adapter_config.get("target_modules")
         ),
-        peft_adapter_use_rslora=_optional_bool(peft_adapter_config.get("use_rslora")),
-        peft_adapter_use_dora=_optional_bool(peft_adapter_config.get("use_dora")),
+        peft_adapter_parameters_json=json_object_snapshot(
+            peft_adapter_config,
+            excluded_keys={"adapter_name", "peft_adapter_name"},
+        ),
         run_control_budget_name=optional_str(run_control.get("budget_name")),
         run_control_output_dir=optional_str(run_control.get("output_root")),
         client_count=None,
@@ -370,21 +373,6 @@ def _peft_adapter_config_from_backbone(backbone: dict[str, Any]) -> dict[str, An
         parameters = as_mapping(current.get("parameters"))
         return {**parameters, **current}
     return {}
-
-
-def _optional_bool(value: object) -> bool | None:
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, int | float):
-        return bool(value)
-    text = str(value).strip().lower()
-    if text in {"true", "1", "yes", "y"}:
-        return True
-    if text in {"false", "0", "no", "n"}:
-        return False
-    return None
 
 
 def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:

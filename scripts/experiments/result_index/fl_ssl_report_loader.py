@@ -20,6 +20,7 @@ from scripts.experiments.result_index.record_builders import (
 from scripts.experiments.result_index.report_parsing import (
     as_mapping,
     infer_created_at,
+    json_object_snapshot,
     optional_float,
     optional_int,
     optional_str,
@@ -133,11 +134,16 @@ def load_fl_ssl_result_index_records(
         peft_adapter_target_modules=optional_str(
             _trainable_state_objective_value(objective, "target_modules")
         ),
-        peft_adapter_use_rslora=_optional_bool(
-            _trainable_state_objective_value(objective, "use_rslora")
-        ),
-        peft_adapter_use_dora=_optional_bool(
-            _trainable_state_objective_value(objective, "use_dora")
+        peft_adapter_parameters_json=json_object_snapshot(
+            _peft_adapter_objective_parameters(
+                objective=objective,
+                payload_adapter_kind=payload_adapter_kind,
+            ),
+            excluded_keys={
+                "delta_format",
+                "peft_adapter_name",
+                "proximal_mu",
+            },
         ),
         run_control_budget_name=optional_str(run_control.get("budget_name")),
         run_control_output_dir=optional_str(run_control.get("output_dir")),
@@ -320,19 +326,23 @@ def _trainable_state_objective_value(objective: dict[str, Any], key: str) -> obj
     return None
 
 
-def _optional_bool(value: object) -> bool | None:
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, int | float):
-        return bool(value)
-    text = str(value).strip().lower()
-    if text in {"true", "1", "yes", "y"}:
-        return True
-    if text in {"false", "0", "no", "n"}:
-        return False
-    return None
+def _peft_adapter_objective_parameters(
+    *,
+    objective: dict[str, Any],
+    payload_adapter_kind: str | None,
+) -> dict[str, Any]:
+    if payload_adapter_kind is None:
+        return {}
+    parameters: dict[str, Any] = {}
+    for raw_key, value in objective.items():
+        key = str(raw_key)
+        prefix = f"{payload_adapter_kind}."
+        if key.startswith(prefix):
+            parameters[key.removeprefix(prefix)] = value
+            continue
+        if key == payload_adapter_kind and isinstance(value, dict):
+            parameters.update(value)
+    return parameters
 
 
 def infer_fl_ssl_run_id(report_path: Path) -> str:

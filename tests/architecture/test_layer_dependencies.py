@@ -667,6 +667,27 @@ def test_fl_server_update_policy_does_not_expose_method_local_fedmatch_leaf() ->
     )
 
 
+def test_generic_fl_ssl_compatibility_does_not_own_fedmatch_policy_rules() -> None:
+    source = (METHODS_FEDERATED_SSL_SRC / "compatibility.py").read_text(
+        encoding="utf-8"
+    )
+    forbidden_snippets = (
+        "SERVER_UPDATE_FEDMATCH_PARTITIONED",
+        "LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT",
+        "LOCAL_SSL_POLICY_FIXMATCH",
+        "fedmatch_partitioned",
+        "fedmatch_agreement",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "methods/federated_ssl/compatibility.py는 capability 공통 규칙만 소유한다. "
+        "FedMatch partitioned server update와 agreement/fixmatch 허용 조합은 "
+        "methods/federated_ssl/fedmatch/compatibility.py가 소유한다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_fl_entrypoint_does_not_embed_lora_classifier_runtime_scope() -> None:
     path = CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml"
     source = path.read_text(encoding="utf-8")
@@ -1555,6 +1576,8 @@ def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
         "lora_target_modules",
         "lora_use_rslora",
         "lora_use_dora",
+        "peft_adapter_use_rslora",
+        "peft_adapter_use_dora",
         "lora_ranks",
         "lora_alphas",
         "replace(/^lora_/",
@@ -2669,6 +2692,27 @@ def test_peft_text_encoder_uses_peft_adapters_axis() -> None:
     )
 
 
+def test_peft_adapter_mechanisms_are_not_trainable_state_family_leaves() -> None:
+    update_family_dir = (
+        CONF_SRC / "strategy_axes" / "trainable_state" / "update_family"
+    )
+    mechanism_fragments = ("lora", "rslora", "dora")
+    violations = [
+        _relative_repo_path(config_path)
+        for config_path in sorted(update_family_dir.glob("*.yaml"))
+        if any(fragment in config_path.stem.lower() for fragment in mechanism_fragments)
+    ]
+
+    assert not violations, (
+        "LoRA/RSLoRA/DoRA는 PEFT adapter mechanism이지 trainable state/update "
+        "family가 아니다. mechanism 선택은 strategy_axes/adaptation/peft_adapter와 "
+        "methods/adaptation/peft_adapters/<mechanism>/builder.py에 두고, "
+        "trainable_state/update_family에는 peft_text_encoder/prototype_pack 같은 "
+        "공유 상태 family만 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_legacy_peft_adapter_packages_are_removed() -> None:
     legacy_paths = (
         METHODS_SRC / "adaptation" / "peft",
@@ -2741,6 +2785,8 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
         "--expected-payload-adapter-kind lora_classifier",
         "--expect-peft-classifier-aggregate-snapshot",
         "expect_peft_classifier_aggregate_snapshot",
+        "--expect-peft-encoder-aggregate-snapshot",
+        "expect_peft_encoder_aggregate_snapshot",
         "--expect-lora-classifier-aggregate-snapshot",
         "FedAvg + FixMatch + LoRA-classifier",
         "LoRA-classifier simulation 병목",

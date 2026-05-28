@@ -42,8 +42,7 @@ class ExperimentRunRecord:
     peft_adapter_dropout: float | None
     peft_adapter_bias: str | None
     peft_adapter_target_modules: str | None
-    peft_adapter_use_rslora: bool | None
-    peft_adapter_use_dora: bool | None
+    peft_adapter_parameters_json: str | None
     run_control_budget_name: str | None
     run_control_output_dir: str | None
     client_count: int | None

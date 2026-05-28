@@ -16,6 +16,9 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
   `payload_adapter_module.py` manifest가 등록한다.
 - `server_update_materialization.py`: payload family별 서버 materialization
   preflight를 찾아 실행하는 dispatcher
+- `update_family_report_artifacts.py`: FL report verifier가 참조하는 update family별
+  artifact field/snapshot 규칙. `scripts`는 PEFT/prototype 같은 family별 파일명을
+  직접 소유하지 않는다.
 - `privacy_guards/`: shared adapter update clipping/DP policy core와 registry
 - `peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와 registry.
   classifier/task payload 의미는 소유하지 않는다.

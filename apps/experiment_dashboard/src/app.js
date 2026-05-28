@@ -2761,15 +2761,7 @@ function peftAdapterConfigLabel(row) {
 }
 
 function peftAdapterVariantLabel(row) {
-  const adapterName = row.peft_adapter_name ?? "-";
-  const modifiers = [];
-  if (row.peft_adapter_use_rslora) {
-    modifiers.push("rs");
-  }
-  if (row.peft_adapter_use_dora) {
-    modifiers.push("dora");
-  }
-  return modifiers.length > 0 ? `${adapterName}+${modifiers.join("+")}` : adapterName;
+  return row.peft_adapter_name ?? "-";
 }
 
 function compareMetric(a, b, metric) {
@@ -2833,8 +2825,7 @@ function isDisplayMetricKey(metric) {
     "peft_adapter_rank",
     "peft_adapter_alpha",
     "peft_adapter_dropout",
-    "peft_adapter_use_dora",
-    "peft_adapter_use_rslora",
+    "peft_adapter_parameters_json",
     "created_at",
   ].includes(metric);
 }
@@ -3252,8 +3243,7 @@ function samePeftAdapterConfig(left, right) {
     "peft_adapter_dropout",
     "peft_adapter_bias",
     "peft_adapter_target_modules",
-    "peft_adapter_use_rslora",
-    "peft_adapter_use_dora",
+    "peft_adapter_parameters_json",
   ];
   return keys.every((key) => String(left[key] ?? "") === String(right[key] ?? ""));
 }

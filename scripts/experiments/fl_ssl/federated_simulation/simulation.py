@@ -188,6 +188,7 @@ def _require_runtime_compatibility(
     validate_federated_ssl_simulation_runtime_support(
         capability_plan=capability_plan,
         composition_mode=execution_plan.composition_mode,
+        method_descriptor=ssl_method_descriptor,
     )
     if ssl_method_descriptor is None:
         return

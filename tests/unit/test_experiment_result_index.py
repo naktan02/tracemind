@@ -19,6 +19,11 @@ from scripts.experiments.result_index.sqlite_store import (
     write_result_index_records,
 )
 
+PEFT_ADAPTER_PARAMETERS_JSON = (
+    '{"alpha":16,"bias":"none","dropout":0.1,"rank":8,'
+    '"target_modules":"all-linear","use_rslora":false}'
+)
+
 
 def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> None:
     report_path = _write_report(tmp_path)
@@ -42,7 +47,7 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.run.peft_adapter_dropout == 0.1
     assert records.run.peft_adapter_bias == "none"
     assert records.run.peft_adapter_target_modules == "all-linear"
-    assert records.run.peft_adapter_use_rslora is False
+    assert records.run.peft_adapter_parameters_json == PEFT_ADAPTER_PARAMETERS_JSON
     assert records.eval_metrics[0].macro_f1 == 0.78
     assert records.per_class_metrics[0].category == "anxiety"
     assert records.confusion_matrix_cells[0].actual_category == "anxiety"
@@ -172,7 +177,7 @@ def test_result_index_schema_migration_adds_run_control_columns(
     assert "labeled_row_exposure_count" in columns
     assert "unique_labeled_row_count" in columns
     assert "peft_adapter_rank" in columns
-    assert "peft_adapter_use_dora" in columns
+    assert "peft_adapter_parameters_json" in columns
     assert "update_family_name" in columns
 
 
@@ -223,7 +228,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.peft_adapter_alpha == 16
     assert records.run.peft_adapter_dropout == 0.1
     assert records.run.peft_adapter_target_modules == "all-linear"
-    assert records.run.peft_adapter_use_rslora is False
+    assert records.run.peft_adapter_parameters_json == PEFT_ADAPTER_PARAMETERS_JSON
     assert records.run.embedding_backend == "transformers_mxbai"
     assert records.run.embedding_device == "cuda"
     assert records.eval_metrics[1].eval_set == "final_validation"
@@ -250,7 +255,7 @@ def test_load_result_index_records_reads_peft_classifier_objective(
     assert records.run.peft_adapter_dropout == 0.1
     assert records.run.peft_adapter_bias == "none"
     assert records.run.peft_adapter_target_modules == "all-linear"
-    assert records.run.peft_adapter_use_rslora is False
+    assert records.run.peft_adapter_parameters_json == PEFT_ADAPTER_PARAMETERS_JSON
     assert records.run.update_delta_format == "server_uploaded_artifact_ref"
 
 
@@ -397,7 +402,9 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["peft_adapter_names"] == ["lora"]
     assert bundle["filters"]["peft_adapter_ranks"] == [8]
     assert bundle["filters"]["peft_adapter_alphas"] == [16]
-    assert bundle["filters"]["peft_adapter_use_rslora_values"] == [False]
+    assert bundle["filters"]["peft_adapter_parameter_snapshots"] == [
+        PEFT_ADAPTER_PARAMETERS_JSON
+    ]
     assert bundle["filters"]["aggregation_backends"] == ["fedavg"]
     assert bundle["filters"]["update_delta_formats"] == ["server_uploaded_artifact_ref"]
     assert bundle["filters"]["embedding_backends"] == ["transformers_mxbai"]

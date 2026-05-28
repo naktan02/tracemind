@@ -10,7 +10,7 @@
     "expected_shared_update_count_matches_round_updates": true,
     "expect_server_owned_update_artifacts": true,
     "expect_no_agent_local_update_refs": true,
-    "expect_peft_encoder_aggregate_snapshot": true
+    "expected_aggregate_snapshot_update_family": "peft_text_encoder"
   },
   "artifacts": [
     {

@@ -582,12 +582,20 @@ def test_verify_federated_report_accepts_peft_classifier_v2_update_artifacts(
     assert result.passed
 
 
-def test_peft_encoder_snapshot_expectation_is_canonical() -> None:
+def test_update_family_snapshot_expectation_is_canonical() -> None:
+    expectation = FederatedReportExpectation(
+        expected_aggregate_snapshot_update_family="peft_text_encoder",
+    )
+
+    assert expectation.aggregate_snapshot_update_family == "peft_text_encoder"
+
+
+def test_peft_encoder_snapshot_expectation_stays_compatibility_alias() -> None:
     expectation = FederatedReportExpectation(
         expect_peft_encoder_aggregate_snapshot=True,
     )
 
-    assert expectation.expect_peft_encoder_aggregate_snapshot is True
+    assert expectation.aggregate_snapshot_update_family == "peft_text_encoder"
 
 
 def test_verify_federated_report_accepts_partitioned_only_update_artifacts(
@@ -1176,7 +1184,7 @@ def test_verify_artifact_manifest_applies_peft_snapshot_default(
                     "expected_shared_update_count_matches_round_updates": True,
                     "expect_server_owned_update_artifacts": True,
                     "expect_no_agent_local_update_refs": True,
-                    "expect_peft_encoder_aggregate_snapshot": True,
+                    "expected_aggregate_snapshot_update_family": "peft_text_encoder",
                 },
                 "artifacts": [
                     {
@@ -1347,7 +1355,7 @@ def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
                     "expected_shared_update_count_matches_round_updates": True,
                     "expect_server_owned_update_artifacts": True,
                     "expect_no_agent_local_update_refs": True,
-                    "expect_peft_encoder_aggregate_snapshot": True,
+                    "expected_aggregate_snapshot_update_family": "peft_text_encoder",
                 },
                 "artifacts": [
                     {

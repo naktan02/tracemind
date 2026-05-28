@@ -359,6 +359,7 @@ def test_fedmatch_agreement_requires_partitioned_server_update() -> None:
 
 
 def test_fedmatch_partitioned_fixmatch_is_simulation_supported() -> None:
+    descriptor = resolve_federated_ssl_method_descriptor("fedmatch")
     plan = FederatedSslCapabilityPlan.from_mappings(
         client_participation_policy={"name": "all_clients"},
         aggregation_weight_policy={"name": "uniform"},
@@ -375,6 +376,7 @@ def test_fedmatch_partitioned_fixmatch_is_simulation_supported() -> None:
     validate_federated_ssl_simulation_runtime_support(
         capability_plan=plan,
         composition_mode=COMPOSITION_MODE_METHOD_OWNED,
+        method_descriptor=descriptor,
     )
 
 

@@ -176,11 +176,8 @@ def _build_filters(
         "peft_adapter_names": _unique(row.get("peft_adapter_name") for row in runs),
         "peft_adapter_ranks": _unique(row.get("peft_adapter_rank") for row in runs),
         "peft_adapter_alphas": _unique(row.get("peft_adapter_alpha") for row in runs),
-        "peft_adapter_use_rslora_values": _unique(
-            row.get("peft_adapter_use_rslora") for row in runs
-        ),
-        "peft_adapter_use_dora_values": _unique(
-            row.get("peft_adapter_use_dora") for row in runs
+        "peft_adapter_parameter_snapshots": _unique(
+            row.get("peft_adapter_parameters_json") for row in runs
         ),
         "run_control_budget_names": _unique(
             row.get("run_control_budget_name") for row in runs

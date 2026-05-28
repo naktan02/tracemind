@@ -72,7 +72,8 @@ central fixed embedding + classifier seed
   `methods/adaptation/peft_text_encoder/simulation_runtime/`가 소유하고,
   scripts runtime adapter는 runtime bridge만 맡는다.
 - result-index와 dashboard reader는 current `peft_adapter_*`,
-  `payload_adapter_kind`, `update_family_name` field를 기준으로 읽는다.
+  `payload_adapter_kind`, `update_family_name` field를 기준으로 읽고,
+  mechanism별 PEFT option은 `peft_adapter_parameters_json` snapshot으로 보존한다.
 
 ## Next Priorities
 

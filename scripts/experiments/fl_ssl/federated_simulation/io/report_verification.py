@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Mapping
 
-from methods.adaptation.peft_text_encoder import report_artifacts
+from methods.adaptation import update_family_report_artifacts as report_artifacts
 
 from .report_verification_helpers import (
     expect_contains as _expect_contains,
@@ -266,8 +266,12 @@ def verify_federated_simulation_report_payload(
     )
     _expect_equal(
         errors,
-        "objective.peft_text_encoder.delta_format",
-        report_artifacts.peft_encoder_objective_value(objective, "delta_format"),
+        "objective.update_family.delta_format",
+        report_artifacts.objective_value(
+            update_family_name=expectation.expected_update_family,
+            objective=objective,
+            key="delta_format",
+        ),
         expectation.expected_delta_format,
     )
     _expect_equal(
@@ -453,11 +457,13 @@ def _verify_shared_update_artifacts(
             update_payload=update_payload,
             expectation=expectation,
         )
-    if expectation.expect_peft_encoder_aggregate_snapshot:
-        _verify_peft_encoder_aggregate_snapshot(
+    aggregate_snapshot_update_family = expectation.aggregate_snapshot_update_family
+    if aggregate_snapshot_update_family is not None:
+        _verify_update_family_aggregate_snapshot(
             errors=errors,
             run_dir=run_dir,
             rounds=rounds,
+            update_family_name=aggregate_snapshot_update_family,
         )
 
 
@@ -565,7 +571,7 @@ def _requires_shared_update_artifact_check(
             expectation.expect_server_owned_update_artifacts,
             expectation.expect_partitioned_update_artifact_refs,
             expectation.expect_no_agent_local_update_refs,
-            expectation.expect_peft_encoder_aggregate_snapshot,
+            expectation.aggregate_snapshot_update_family is not None,
         )
     )
 
@@ -633,6 +639,10 @@ def _verify_shared_update_payload(
         run_dir=run_dir,
         update_label=update_label,
         update_payload=update_payload,
+        update_family_name=(
+            expectation.expected_update_family
+            or expectation.aggregate_snapshot_update_family
+        ),
     )
 
 
@@ -665,6 +675,7 @@ def _verify_server_owned_update_refs(
     run_dir: Path,
     update_label: str,
     update_payload: Mapping[str, object],
+    update_family_name: str | None,
 ) -> None:
     """merged-delta와 partitioned-only update artifact ref를 함께 검증한다."""
 
@@ -678,9 +689,14 @@ def _verify_server_owned_update_refs(
             artifact_ref=partitioned_ref,
         )
         return
-    primary_ref_fields = report_artifacts.peft_encoder_primary_update_ref_fields(
-        update_payload
-    )
+    try:
+        primary_ref_fields = report_artifacts.primary_update_ref_fields(
+            update_family_name=update_family_name,
+            update_payload=update_payload,
+        )
+    except ValueError as error:
+        errors.append(str(error))
+        return
     for field_name, artifact_ref in zip(
         primary_ref_fields,
         (update_payload.get(field_name) for field_name in primary_ref_fields),
@@ -735,15 +751,16 @@ def _aggregation_artifact_path(run_dir: Path, artifact_ref: str) -> Path:
     return json_path
 
 
-def _verify_peft_encoder_aggregate_snapshot(
+def _verify_update_family_aggregate_snapshot(
     *,
     errors: list[str],
     run_dir: Path,
     rounds: tuple[object, ...],
+    update_family_name: str,
 ) -> None:
     if not rounds:
         errors.append(
-            "rounds must not be empty when PEFT text encoder aggregate snapshot "
+            f"rounds must not be empty when {update_family_name} aggregate snapshot "
             "is expected."
         )
         return
@@ -751,21 +768,34 @@ def _verify_peft_encoder_aggregate_snapshot(
     model_revision = final_round.get("model_revision")
     if not isinstance(model_revision, str) or not model_revision:
         errors.append(
-            "rounds[-1].model_revision is required when PEFT text encoder aggregate "
+            "rounds[-1].model_revision is required when "
+            f"{update_family_name} aggregate "
             "snapshot is expected."
         )
         return
     artifact_root = run_dir / "main_server" / "aggregation_artifacts" / "versions"
-    candidate_paths = report_artifacts.peft_encoder_aggregate_snapshot_candidates(
-        artifact_root=artifact_root,
-        model_revision=model_revision,
-    )
+    try:
+        candidate_paths = report_artifacts.aggregate_snapshot_candidates(
+            update_family_name=update_family_name,
+            artifact_root=artifact_root,
+            model_revision=model_revision,
+        )
+    except ValueError as error:
+        errors.append(str(error))
+        return
+    if not candidate_paths:
+        errors.append(
+            f"{update_family_name} aggregate snapshot verification has no "
+            "artifact candidates."
+        )
+        return
     if any(all(path.exists() for path in candidate) for candidate in candidate_paths):
         return
     for candidate in candidate_paths:
         for artifact_path in candidate:
             if not artifact_path.exists():
                 errors.append(
-                    "PEFT text encoder aggregate snapshot artifact does not exist: "
+                    f"{update_family_name} aggregate snapshot artifact does not "
+                    "exist: "
                     f"{artifact_path}."
                 )

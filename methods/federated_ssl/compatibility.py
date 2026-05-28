@@ -11,17 +11,14 @@ from methods.federated.client_split import LABELED_EXPOSURE_SERVER_ONLY_SEED
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.capability_axes import (
     LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
-    LOCAL_SSL_POLICIES_REQUIRING_STATE_SURFACE,
-    LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
-    LOCAL_SSL_POLICY_FIXMATCH,
-    SERVER_UPDATE_FEDMATCH_PARTITIONED,
+    LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
+    SERVER_UPDATE_FEDAVG_MERGED_DELTA,
 )
 from methods.federated_ssl.capability_plan import (
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
     LOCAL_SUPERVISION_SERVER_LABELED_ONLY,
     SERVER_STEP_NONE,
     SERVER_STEP_SUPERVISED_SEED,
-    UPDATE_PARTITION_PARTITIONED,
     FederatedSslCapabilityPlan,
 )
 from methods.federated_ssl.execution_plan import COMPOSITION_MODE_MANUAL
@@ -169,7 +166,6 @@ def validate_federated_ssl_capability_compatibility(
         method_descriptor=method_descriptor,
         capability_plan=capability_plan,
     )
-    _validate_server_update_semantics(capability_plan)
     if method_descriptor is None:
         _validate_manual_capability_plan(capability_plan)
         return
@@ -247,10 +243,13 @@ def _validate_manual_capability_plan(
         raise ValueError(
             "manual FL SSL baseline only supports server_step_policy=none."
         )
-    if capability_plan.local_ssl_policy_name == LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
+    if capability_plan.local_ssl_policy_name not in {
+        LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
+        *LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
+    }:
         raise ValueError(
-            "manual FL SSL baseline cannot use local_ssl_policy=fedmatch_agreement; "
-            "select a method-owned FedMatch descriptor."
+            "manual FL SSL baseline cannot use a method-local local_ssl_policy; "
+            "select a method-owned descriptor."
         )
 
 
@@ -281,27 +280,36 @@ def validate_federated_ssl_simulation_runtime_support(
     *,
     capability_plan: FederatedSslCapabilityPlan,
     composition_mode: str,
+    method_descriptor: FederatedSslMethodDescriptor | None = None,
 ) -> None:
     """현재 simulation runtime이 실제 생산/소비 가능한 capability 조합인지 검증한다."""
 
-    if capability_plan.server_update_policy_name != SERVER_UPDATE_FEDMATCH_PARTITIONED:
+    if (
+        composition_mode == COMPOSITION_MODE_MANUAL
+        and capability_plan.server_update_policy_name
+        != SERVER_UPDATE_FEDAVG_MERGED_DELTA
+    ):
+        raise ValueError(
+            "method-owned server_update_policy requires a local runtime that emits "
+            "partitioned_deltas. Manual Query SSL hybrid partition producer is not "
+            "implemented yet."
+        )
+    if method_descriptor is None:
         return
-    if composition_mode == COMPOSITION_MODE_MANUAL:
-        raise ValueError(
-            "server_update_policy=fedmatch_partitioned requires a local runtime that "
-            "emits partitioned_deltas. Manual Query SSL hybrid partition producer is "
-            "not implemented yet."
-        )
-    if capability_plan.local_ssl_policy_name not in {
-        LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
-        LOCAL_SSL_POLICY_FIXMATCH,
-    }:
-        raise ValueError(
-            "server_update_policy=fedmatch_partitioned currently requires "
-            "local_ssl_policy=fedmatch_agreement or fixmatch in simulation. "
-            "Stateful Query SSL local objectives with partitioned sigma/psi loops "
-            "need a state surface first."
-        )
+    method_module = _import_method_compatibility_module(method_descriptor.name)
+    if method_module is None:
+        return
+    validator = getattr(
+        method_module,
+        "validate_method_simulation_runtime_support",
+        None,
+    )
+    if validator is None:
+        return
+    validator(
+        method_descriptor=method_descriptor,
+        capability_plan=capability_plan,
+    )
 
 
 def _validate_server_only_semantics(
@@ -364,27 +372,6 @@ def _import_method_compatibility_module(method_name: str) -> ModuleType | None:
         if exc.name == module_name:
             return None
         raise
-
-
-def _validate_server_update_semantics(
-    capability_plan: FederatedSslCapabilityPlan,
-) -> None:
-    if capability_plan.server_update_policy_name != SERVER_UPDATE_FEDMATCH_PARTITIONED:
-        return
-    if capability_plan.update_partition_policy_name != UPDATE_PARTITION_PARTITIONED:
-        raise ValueError(
-            "server_update_policy=fedmatch_partitioned requires "
-            "update_partition_policy=partitioned."
-        )
-    if (
-        capability_plan.local_ssl_policy_name
-        in LOCAL_SSL_POLICIES_REQUIRING_STATE_SURFACE
-    ):
-        raise ValueError(
-            "server_update_policy=fedmatch_partitioned with "
-            f"local_ssl_policy={capability_plan.local_ssl_policy_name} requires a "
-            "local SSL state surface before execution."
-        )
 
 
 def _require_supported_capability(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -64,3 +65,27 @@ def optional_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def json_object_snapshot(
+    value: dict[str, Any],
+    *,
+    excluded_keys: set[str] | None = None,
+) -> str | None:
+    """가변 parameter object를 stable JSON 문자열로 보존한다."""
+
+    excluded = set() if excluded_keys is None else excluded_keys
+    payload = {
+        str(key): item
+        for key, item in value.items()
+        if key not in excluded and item is not None
+    }
+    if not payload:
+        return None
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )

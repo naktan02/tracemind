@@ -47,6 +47,7 @@ class FederatedReportExpectation:
     expect_server_owned_update_artifacts: bool = False
     expect_partitioned_update_artifact_refs: bool = False
     expect_no_agent_local_update_refs: bool = False
+    expected_aggregate_snapshot_update_family: str | None = None
     expect_peft_encoder_aggregate_snapshot: bool = False
     expected_communication_estimate_schema_version: str | None = None
     expect_partitioned_sparse_s2c_estimates: bool = False
@@ -58,6 +59,16 @@ class FederatedReportExpectation:
     expected_local_trainer_metadata_status: str | None = None
     expected_local_trainer_device: str | None = None
     expected_local_trainer_local_files_only: bool | None = None
+
+    @property
+    def aggregate_snapshot_update_family(self) -> str | None:
+        """검증할 aggregate snapshot update family를 호환 alias까지 정규화한다."""
+
+        if self.expected_aggregate_snapshot_update_family is not None:
+            return self.expected_aggregate_snapshot_update_family
+        if self.expect_peft_encoder_aggregate_snapshot:
+            return "peft_text_encoder"
+        return None
 
 
 @dataclass(frozen=True, slots=True)
