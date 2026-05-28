@@ -32,14 +32,16 @@ def load_peft_encoder_base_parameters_into_model(
         missing = sorted(set(base_parameters.peft_parameters) - set(name_to_parameter))
         if missing:
             raise ValueError(
-                "Base LoRA artifact contains parameters not present in model: "
+                "Base PEFT adapter artifact contains parameters not present in model: "
                 f"{missing[:5]}."
             )
         for name, values in base_parameters.peft_parameters.items():
             parameter = name_to_parameter[name]
             tensor = torch.tensor(values, dtype=parameter.dtype, device=device)
             if tensor.numel() != parameter.numel():
-                raise ValueError(f"Base LoRA parameter shape mismatch for {name!r}.")
+                raise ValueError(
+                    f"Base PEFT adapter parameter shape mismatch for {name!r}."
+                )
             parameter.data.copy_(tensor.reshape_as(parameter))
 
     if base_parameters.classifier_head_weights:
@@ -82,7 +84,7 @@ def extract_peft_encoder_parameter_deltas(
 ) -> tuple[dict[str, list[float]], dict[str, list[float]], dict[str, float]]:
     """local model과 base global snapshot의 PEFT/head delta를 추출한다."""
 
-    lora_deltas = extract_peft_parameter_deltas(
+    peft_parameter_deltas = extract_peft_parameter_deltas(
         model=model,
         base_parameters=base_parameters.peft_parameters,
     )
@@ -92,7 +94,7 @@ def extract_peft_encoder_parameter_deltas(
         base_weights=base_parameters.classifier_head_weights,
         base_biases=base_parameters.classifier_head_biases,
     )
-    return lora_deltas, head_weight_deltas, head_bias_deltas
+    return peft_parameter_deltas, head_weight_deltas, head_bias_deltas
 
 
 def extract_peft_parameter_deltas(
@@ -100,7 +102,7 @@ def extract_peft_parameter_deltas(
     model: PeftEncoderTextClassifier,
     base_parameters: Mapping[str, Sequence[float]],
 ) -> dict[str, list[float]]:
-    """trainable LoRA parameter delta를 flat vector mapping으로 추출한다."""
+    """trainable PEFT adapter parameter delta를 flat vector mapping으로 추출한다."""
 
     deltas: dict[str, list[float]] = {}
     for name, parameter in model.named_parameters():
@@ -109,7 +111,9 @@ def extract_peft_parameter_deltas(
         current_values = parameter.detach().cpu().reshape(-1).tolist()
         base_values = [float(value) for value in base_parameters.get(name, [])]
         if base_values and len(base_values) != len(current_values):
-            raise ValueError(f"Base LoRA parameter dimension mismatch for {name!r}.")
+            raise ValueError(
+                f"Base PEFT adapter parameter dimension mismatch for {name!r}."
+            )
         if not base_values:
             base_values = [0.0 for _ in current_values]
         deltas[name] = [
@@ -117,7 +121,7 @@ def extract_peft_parameter_deltas(
             for current, base in zip(current_values, base_values, strict=True)
         ]
     if not deltas:
-        raise ValueError("LoRA model did not expose trainable LoRA parameters.")
+        raise ValueError("PEFT adapter model did not expose trainable parameters.")
     return deltas
 
 

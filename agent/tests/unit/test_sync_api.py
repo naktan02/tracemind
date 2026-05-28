@@ -22,7 +22,7 @@ from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_identity_state_payload,
+    make_peft_classifier_state_payload,
 )
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
@@ -52,6 +52,27 @@ def _build_payload() -> PrototypePackPayload:
     )
 
 
+def _peft_state(*, model_revision: str):
+    return make_peft_classifier_state_payload(
+        model_id="model",
+        model_revision=model_revision,
+        backbone={
+            "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "tokenizer_revision": "main",
+            "pooling": "mean",
+            "max_length": 256,
+            "task_prefix": "",
+        },
+        peft_adapter_config={
+            "peft_adapter_name": "lora",
+            "parameters": {"rank": 8},
+        },
+        label_schema=["anxiety", "normal"],
+    )
+
+
 def test_sync_api_reads_current_local_pack(tmp_path: Path) -> None:
     repository = PrototypePackRepository(state_root=tmp_path / "prototype_packs")
     payload = _build_payload()
@@ -73,11 +94,7 @@ def test_sync_api_reads_current_local_shared_adapter_state(tmp_path: Path) -> No
             auxiliary_artifact_versions={"prototype_pack": "proto_001"},
             artifact_ref="/server/state/rev_001.json",
         ),
-        state=make_identity_state_payload(
-            model_id="model",
-            model_revision="rev_001",
-            embedding_dim=2,
-        ),
+        state=_peft_state(model_revision="rev_001"),
     )
 
     response = sync_api.get_current_local_shared_adapter_state(

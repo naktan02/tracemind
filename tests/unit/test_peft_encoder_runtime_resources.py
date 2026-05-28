@@ -286,7 +286,7 @@ def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
     snapshot = FederatedSslPeerClientSnapshot(
         client_id="agent_02",
         selection_vector=(0.2, 0.8),
-        payload_kind=peer_predictions.LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
+        payload_kind=peer_predictions.PEFT_ENCODER_PEER_SNAPSHOT_KIND,
         payload=PeftEncoderMaterializedState(
             peft_parameters={"lora.test": [0.1]},
             classifier_head_weights={
@@ -345,7 +345,7 @@ def test_peft_encoder_helper_provider_counts_only_materializable_snapshots() -> 
     valid_snapshot = FederatedSslPeerClientSnapshot(
         client_id="agent_02",
         selection_vector=(0.2, 0.8),
-        payload_kind=peer_predictions.LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
+        payload_kind=peer_predictions.PEFT_ENCODER_PEER_SNAPSHOT_KIND,
         payload=PeftEncoderMaterializedState(
             peft_parameters={"lora.test": [0.1]},
             classifier_head_weights={

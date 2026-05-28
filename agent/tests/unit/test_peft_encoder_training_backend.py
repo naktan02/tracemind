@@ -80,7 +80,9 @@ class _RecordingPeftEncoderTrainExecutor:
         del training_task, model_manifest, rows, config, created_at
         self.label_schema = label_schema
         return PeftEncoderTrainArtifacts(
-            lora_delta_artifact_ref="agent-local://custom/lora_delta",
+            peft_adapter_delta_artifact_ref=(
+                "agent-local://custom/peft_adapter_delta"
+            ),
             classifier_head_delta_artifact_ref=(
                 "agent-local://custom/classifier_head_delta"
             ),
@@ -259,7 +261,7 @@ def test_peft_classifier_backend_builds_v2_artifact_ref_update() -> None:
     assert update.peft_adapter_config.parameters["rank"] == 16
     assert update.peft_adapter_delta_artifact_ref == (
         "agent-local://peft_classifier/round_peft_001/task_peft_001/"
-        "20260421T123000000000Z/lora_delta"
+        "20260421T123000000000Z/peft_adapter_delta"
     )
     assert update.classifier_head_delta_artifact_ref is not None
     assert update.mean_confidence == pytest.approx(0.92)
@@ -298,7 +300,10 @@ def test_peft_encoder_train_executor_receives_resolved_label_schema() -> None:
     assert isinstance(update, PeftClassifierDelta)
     assert update.adapter_kind == "peft_classifier"
     assert update.label_schema == ["anxiety", "depression", "normal"]
-    assert update.peft_adapter_delta_artifact_ref == "agent-local://custom/lora_delta"
+    assert (
+        update.peft_adapter_delta_artifact_ref
+        == "agent-local://custom/peft_adapter_delta"
+    )
     assert update.classifier_head_delta_artifact_ref == (
         "agent-local://custom/classifier_head_delta"
     )

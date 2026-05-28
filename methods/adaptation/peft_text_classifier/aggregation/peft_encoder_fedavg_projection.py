@@ -133,7 +133,6 @@ def compute_peft_encoder_fedavg(
             "aggregation_weight_policy_example_count": float(
                 weight_policy.name == AGGREGATION_WEIGHT_EXAMPLE_COUNT
             ),
-            "lora_parameter_count": float(len(peft_parameter_deltas)),
             "peft_parameter_count": float(len(peft_parameter_deltas)),
             "classifier_head_label_count": float(len(classifier_head_weight_deltas)),
         },

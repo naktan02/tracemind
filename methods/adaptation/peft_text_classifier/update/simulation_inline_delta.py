@@ -23,7 +23,7 @@ from shared.src.contracts.training_contracts import TrainingTask
 class SimulationInlinePeftEncoderTrainExecutor:
     """서버 집계 가능한 deterministic PEFT encoder/classifier inline delta를 만든다."""
 
-    lora_delta_scale: float = 0.05
+    peft_adapter_delta_scale: float = 0.05
     classifier_delta_scale: float = 1.0
 
     def train(
@@ -43,7 +43,7 @@ class SimulationInlinePeftEncoderTrainExecutor:
         peft_parameter_deltas = _build_peft_parameter_deltas(
             rows=rows,
             config=config,
-            scale=self.lora_delta_scale,
+            scale=self.peft_adapter_delta_scale,
         )
         classifier_head_weight_deltas = _build_classifier_head_weight_deltas(
             rows=rows,

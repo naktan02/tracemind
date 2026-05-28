@@ -108,7 +108,7 @@ def test_materialize_peft_encoder_update_uses_inline_deltas_without_loader() -> 
 def test_materialize_peft_encoder_update_reads_server_artifact_refs() -> None:
     loader = InMemoryJsonArtifactLoader(
         {
-            "aggregation_artifact://client/lora_delta": {
+            "aggregation_artifact://client/peft_adapter_delta": {
                 "peft_parameter_deltas": {
                     "encoder.q_proj.lora_A": [0.2, 0.4],
                 },
@@ -126,7 +126,9 @@ def test_materialize_peft_encoder_update_reads_server_artifact_refs() -> None:
         }
     )
     update = _peft_update(
-        peft_adapter_delta_artifact_ref="aggregation_artifact://client/lora_delta",
+        peft_adapter_delta_artifact_ref=(
+            "aggregation_artifact://client/peft_adapter_delta"
+        ),
         classifier_head_delta_artifact_ref="aggregation_artifact://client/head_delta",
         peft_parameter_deltas=None,
         classifier_head_weight_deltas=None,
@@ -216,7 +218,7 @@ def test_merged_delta_tensor_artifacts_roundtrip() -> None:
         )
     )
 
-    lora_deltas = merged_artifacts.parse_peft_adapter_delta_tensor_artifact(
+    peft_adapter_deltas = merged_artifacts.parse_peft_adapter_delta_tensor_artifact(
         tensors=lora_tensors,
         metadata=lora_metadata,
     )
@@ -227,7 +229,7 @@ def test_merged_delta_tensor_artifacts_roundtrip() -> None:
         )
     )
 
-    assert lora_deltas["encoder.q_proj.lora_A"] == pytest.approx([0.2, -0.1])
+    assert peft_adapter_deltas["encoder.q_proj.lora_A"] == pytest.approx([0.2, -0.1])
     assert head_weight_deltas["normal"] == pytest.approx([-0.5, 0.1])
     assert head_bias_deltas == pytest.approx({"anxiety": 0.2, "normal": -0.2})
 
@@ -255,7 +257,7 @@ def test_materialize_peft_encoder_update_reads_server_tensor_artifact_refs() -> 
     loader = InMemoryTensorArtifactLoader(
         artifacts={},
         tensor_artifacts={
-            "aggregation_artifact://client/lora_delta": (
+            "aggregation_artifact://client/peft_adapter_delta": (
                 lora_tensors,
                 lora_metadata,
             ),
@@ -266,7 +268,9 @@ def test_materialize_peft_encoder_update_reads_server_tensor_artifact_refs() -> 
         },
     )
     update = _peft_update(
-        peft_adapter_delta_artifact_ref="aggregation_artifact://client/lora_delta",
+        peft_adapter_delta_artifact_ref=(
+            "aggregation_artifact://client/peft_adapter_delta"
+        ),
         classifier_head_delta_artifact_ref="aggregation_artifact://client/head_delta",
         peft_parameter_deltas=None,
         classifier_head_weight_deltas=None,

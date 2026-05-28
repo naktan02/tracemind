@@ -265,7 +265,7 @@ def test_peft_classifier_fedavg_aggregation_publishes_next_state_refs(
     assert result.aggregated_metrics["client_count"] == 2.0
     assert result.aggregated_metrics["example_count"] == 3.0
     assert result.aggregated_metrics["mean_confidence"] == pytest.approx(0.8)
-    assert result.aggregated_metrics["lora_parameter_count"] == 2.0
+    assert result.aggregated_metrics["peft_parameter_count"] == 2.0
     assert result.update_count == 2
 
 
@@ -660,7 +660,7 @@ def test_peft_classifier_fedavg_materializes_server_owned_artifact_updates(
 ) -> None:
     artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
     artifact_store.save_json_artifact(
-        "u1/lora_delta",
+        "u1/peft_adapter_delta",
         {
             "peft_parameter_deltas": {
                 "encoder.q_proj.lora_A": [0.2, 0.4],
@@ -703,7 +703,7 @@ def test_peft_classifier_fedavg_materializes_server_owned_artifact_updates(
                 label_schema=("anxiety", "normal"),
                 example_count=2,
                 peft_adapter_delta_artifact_ref=artifact_store.ref_for_artifact(
-                    "u1/lora_delta"
+                    "u1/peft_adapter_delta"
                 ),
                 classifier_head_delta_artifact_ref=(
                     artifact_store.ref_for_artifact("u1/classifier_head_delta")
@@ -721,7 +721,7 @@ def test_peft_classifier_fedavg_materializes_server_owned_artifact_updates(
         "server-aggregate://test_peft/rev_001/peft_adapter"
     )
     assert result.aggregated_metrics["client_count"] == 1.0
-    assert result.aggregated_metrics["lora_parameter_count"] == 2.0
+    assert result.aggregated_metrics["peft_parameter_count"] == 2.0
     assert result.aggregated_metrics["classifier_head_label_count"] == 2.0
 
 
@@ -753,7 +753,9 @@ def test_peft_classifier_fedavg_rejects_agent_local_artifact_only_updates() -> N
                     peft_adapter_config=_peft_adapter_config(),
                     label_schema=("anxiety", "normal"),
                     example_count=1,
-                    peft_adapter_delta_artifact_ref="agent-local://u1/lora_delta",
+                    peft_adapter_delta_artifact_ref=(
+                        "agent-local://u1/peft_adapter_delta"
+                    ),
                     classifier_head_delta_artifact_ref=(
                         "agent-local://u1/classifier_head_delta"
                     ),

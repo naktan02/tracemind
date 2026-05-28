@@ -298,7 +298,7 @@ def run_query_ssl_peft_encoder_training_core(
         )
 
     with _measure(timing_recorder, "core_delta_extract_seconds"):
-        lora_deltas, head_weight_deltas, head_bias_deltas = (
+        peft_parameter_deltas, head_weight_deltas, head_bias_deltas = (
             extract_peft_encoder_parameter_deltas(
                 model=model,
                 base_parameters=base_parameters,
@@ -313,7 +313,7 @@ def run_query_ssl_peft_encoder_training_core(
             client_id=client_id,
             delta_format=lora_config.delta_format,
             artifact_ref_prefix=lora_config.artifact_ref_prefix,
-            peft_parameter_deltas=lora_deltas,
+            peft_parameter_deltas=peft_parameter_deltas,
             classifier_head_weight_deltas=head_weight_deltas,
             classifier_head_bias_deltas=head_bias_deltas,
         )
@@ -327,7 +327,7 @@ def run_query_ssl_peft_encoder_training_core(
             unlabeled_rows=effective_unlabeled_rows,
             step_plan=step_plan,
             history_record=history[-1] if history else {},
-            peft_parameter_deltas=lora_deltas,
+            peft_parameter_deltas=peft_parameter_deltas,
             classifier_head_weight_deltas=head_weight_deltas,
             classifier_head_bias_deltas=head_bias_deltas,
             created_at=created_at,

@@ -98,7 +98,7 @@ def _build_payload_only_artifacts(
         created_at=created_at,
     )
     return PeftEncoderTrainArtifacts(
-        peft_adapter_delta_artifact_ref=f"{base_artifact_ref}/lora_delta",
+        peft_adapter_delta_artifact_ref=f"{base_artifact_ref}/peft_adapter_delta",
         classifier_head_delta_artifact_ref=(
             f"{base_artifact_ref}/classifier_head_delta"
         ),

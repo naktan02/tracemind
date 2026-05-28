@@ -14,7 +14,7 @@ from agent.src.services.training.execution.agent_training_task_runner_service im
     AgentTrainingTaskRunRequest,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_identity_state_payload,
+    make_peft_classifier_state_payload,
 )
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
@@ -40,7 +40,7 @@ def _build_task_payload() -> TrainingTaskPayload:
         max_steps=4,
         objective_config=TrainingObjectiveConfigPayload(
             algorithm_profile_name="prototype_pseudo_label_v1",
-            training_backend_name="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             confidence_threshold=0.6,
             margin_threshold=0.02,
             example_generation_backend_name="weak_strong_pair",
@@ -67,7 +67,7 @@ def _build_supported_task_payload() -> TrainingTaskPayload:
         learning_rate=1e-2,
         max_steps=4,
         objective_config=TrainingObjectiveConfigPayload(
-            training_backend_name="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             example_generation_backend_name="prototype_rescore",
             evidence_backend_name="prototype_similarity_evidence",
             scorer_backend_name="prototype_similarity",
@@ -99,6 +99,42 @@ def _build_prototype_pack() -> PrototypePackPayload:
                 ]
             },
         }
+    )
+
+
+def _peft_backbone() -> dict[str, object]:
+    return {
+        "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "backbone_revision": "main",
+        "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "tokenizer_revision": "main",
+        "pooling": "mean",
+        "max_length": 256,
+        "task_prefix": "",
+    }
+
+
+def _peft_adapter_config() -> dict[str, object]:
+    return {
+        "peft_adapter_name": "lora",
+        "parameters": {
+            "rank": 8,
+            "alpha": 16,
+            "dropout": 0.1,
+            "bias": "none",
+            "target_modules": "all-linear",
+            "use_rslora": False,
+        },
+    }
+
+
+def _build_peft_state(*, model_revision: str):
+    return make_peft_classifier_state_payload(
+        model_id="tracemind-embed",
+        model_revision=model_revision,
+        backbone=_peft_backbone(),
+        peft_adapter_config=_peft_adapter_config(),
+        label_schema=["anxiety", "normal"],
     )
 
 
@@ -171,11 +207,7 @@ def test_runner_syncs_shared_state_and_uses_matching_manifest() -> None:
         auxiliary_artifact_versions={"prototype_pack": "proto_001"},
         artifact_ref="/server/state/rev_001.json",
     )
-    active_state = make_identity_state_payload(
-        model_id="tracemind-embed",
-        model_revision="rev_001",
-        embedding_dim=2,
-    )
+    active_state = _build_peft_state(model_revision="rev_001")
     shared_adapter_runtime_service = MagicMock()
     shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
     shared_adapter_runtime_service.get_active_state.return_value = active_state
@@ -227,11 +259,7 @@ def test_runner_does_not_pull_prototype_when_manifest_has_no_auxiliary_pack() ->
         model_revision="rev_001",
         artifact_ref="/server/state/rev_001.json",
     )
-    active_state = make_identity_state_payload(
-        model_id="tracemind-embed",
-        model_revision="rev_001",
-        embedding_dim=2,
-    )
+    active_state = _build_peft_state(model_revision="rev_001")
     shared_adapter_runtime_service = MagicMock()
     shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
     shared_adapter_runtime_service.get_active_state.return_value = active_state

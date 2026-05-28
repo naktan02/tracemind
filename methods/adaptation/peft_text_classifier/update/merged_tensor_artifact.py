@@ -16,7 +16,6 @@ MERGED_HEAD_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
 )
 MERGED_DELTA_TENSOR_ARTIFACT_FORMAT = "safetensors"
 PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "peft_adapter_delta_index_json"
-LEGACY_LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "lora_delta_index_json"
 HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "head_delta_index_json"
 
 
@@ -57,7 +56,7 @@ def parse_peft_adapter_delta_tensor_artifact(
 
     index = _load_index(
         metadata=metadata,
-        metadata_key=_peft_adapter_delta_metadata_key(metadata),
+        metadata_key=PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
         schema_version=MERGED_PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION,
         artifact_name="PEFT adapter delta",
     )
@@ -172,12 +171,6 @@ def _load_index(
             f"{index.get('schema_version')!r}."
         )
     return index
-
-
-def _peft_adapter_delta_metadata_key(metadata: Mapping[str, str]) -> str:
-    if PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY in metadata:
-        return PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY
-    return LEGACY_LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY
 
 
 def _read_vector_mapping(

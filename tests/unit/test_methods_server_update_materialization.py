@@ -74,20 +74,6 @@ def test_peft_classifier_materialization_allows_server_owned_refs() -> None:
     require_server_materializable_update_payload(payload)
 
 
-def test_legacy_lora_classifier_materialization_uses_noop_dispatcher() -> None:
-    payload = SharedAdapterUpdatePayload(
-        schema_version="lora_classifier_delta.v1",
-        adapter_kind="lora_classifier",
-        model_id="tracemind-test",
-        base_model_revision="rev_000",
-        training_scope="adapter_only",
-        example_count=1,
-        created_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
-    )
-
-    require_server_materializable_update_payload(payload)
-
-
 def _build_peft_payload(**overrides):
     defaults = {
         "model_id": "tracemind-peft",

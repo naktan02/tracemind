@@ -27,11 +27,9 @@ from .partitioned_delta import PeftEncoderPartitionDelta
 from .partitioned_tensor_artifact import parse_partitioned_delta_tensor_artifact
 
 PEFT_STATE_PARAMETERS_KEY = "peft_parameters"
-LEGACY_LORA_STATE_PARAMETERS_KEY = "lora_parameters"
 CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "classifier_head_weights"
 CLASSIFIER_HEAD_STATE_BIASES_KEY = "classifier_head_biases"
 PARTITIONED_PEFT_STATE_PARAMETERS_KEY = "partitioned_peft_parameters"
-LEGACY_PARTITIONED_LORA_STATE_PARAMETERS_KEY = "partitioned_lora_parameters"
 PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "partitioned_classifier_head_weights"
 PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY = "partitioned_classifier_head_biases"
 PeftEncoderStatePayload = PeftClassifierState
@@ -164,13 +162,7 @@ def materialize_base_peft_encoder_partitioned_state(
             artifact_ref=peft_adapter_artifact_ref
         )
         partitioned_peft_parameters = _normalize_partitioned_vector_mapping(
-            peft_adapter_artifact.get(
-                PARTITIONED_PEFT_STATE_PARAMETERS_KEY,
-                peft_adapter_artifact.get(
-                    LEGACY_PARTITIONED_LORA_STATE_PARAMETERS_KEY,
-                    {},
-                ),
-            ),
+            peft_adapter_artifact.get(PARTITIONED_PEFT_STATE_PARAMETERS_KEY, {}),
             field_name=PARTITIONED_PEFT_STATE_PARAMETERS_KEY,
         )
 
@@ -309,7 +301,7 @@ def materialize_peft_encoder_partitioned_update(
         if isinstance(partition, Mapping):
             peft_parameter_deltas = partition.get(
                 "peft_parameter_deltas",
-                partition.get("lora_parameter_deltas", {}),
+                {},
             )
             classifier_head_weight_deltas = partition.get(
                 "classifier_head_weight_deltas",
@@ -379,17 +371,14 @@ def _load_peft_parameter_deltas(
             "PEFT-classifier artifact materialization requires adapter delta "
             "artifact ref."
         )
-    tensor_deltas = _try_load_lora_delta_tensor_artifact(
+    tensor_deltas = _try_load_peft_adapter_delta_tensor_artifact(
         loader=loader,
         artifact_ref=artifact_ref,
     )
     if tensor_deltas is not None:
         return tensor_deltas
     artifact = loader.load_json_artifact(artifact_ref=artifact_ref)
-    source = artifact.get(
-        "peft_parameter_deltas",
-        artifact.get("lora_parameter_deltas", artifact),
-    )
+    source = artifact.get("peft_parameter_deltas", artifact)
     return _normalize_vector_mapping(
         source,
         field_name=_peft_parameter_deltas_field_name(payload),
@@ -429,7 +418,7 @@ def _load_classifier_head_artifact(
     )
 
 
-def _try_load_lora_delta_tensor_artifact(
+def _try_load_peft_adapter_delta_tensor_artifact(
     *,
     loader: AggregationJsonArtifactLoader,
     artifact_ref: str,
@@ -479,10 +468,7 @@ def _load_base_peft_parameters(
     artifact = loader.load_json_artifact(artifact_ref=artifact_ref)
     source = artifact.get(
         PEFT_STATE_PARAMETERS_KEY,
-        artifact.get(
-            LEGACY_LORA_STATE_PARAMETERS_KEY,
-            artifact.get("peft_parameter_deltas", artifact),
-        ),
+        artifact.get("peft_parameter_deltas", artifact),
     )
     return _normalize_vector_mapping(source, field_name=PEFT_STATE_PARAMETERS_KEY)
 
@@ -506,9 +492,7 @@ def _peft_parameter_deltas(
 
 
 def _partition_peft_parameter_deltas(partition: object) -> object:
-    if hasattr(partition, "peft_parameter_deltas"):
-        return partition.peft_parameter_deltas
-    return getattr(partition, "lora_parameter_deltas")
+    return getattr(partition, "peft_parameter_deltas")
 
 
 def _peft_parameter_deltas_field_name(payload: PeftEncoderDeltaPayload) -> str:

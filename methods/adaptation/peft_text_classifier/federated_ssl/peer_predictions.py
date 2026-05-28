@@ -42,10 +42,8 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
 
 PEFT_ENCODER_PEER_SNAPSHOT_KIND = "peft_encoder_materialized_state.v1"
-LORA_CLASSIFIER_PEER_SNAPSHOT_KIND = "lora_classifier_materialized_state.v1"
 PEFT_ENCODER_ACCEPTED_PEER_SNAPSHOT_KINDS = (
     PEFT_ENCODER_PEER_SNAPSHOT_KIND,
-    LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
 )
 
 

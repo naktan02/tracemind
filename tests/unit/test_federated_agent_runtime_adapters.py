@@ -583,7 +583,7 @@ def test_query_ssl_peft_encoder_delta_materialization_writes_server_owned_refs(
         assert store.path_for_safetensors_artifact(artifact_id).exists()
         assert not store.path_for_artifact(artifact_id).exists()
 
-    lora_deltas = merged_artifacts.parse_peft_adapter_delta_tensor_artifact(
+    peft_adapter_deltas = merged_artifacts.parse_peft_adapter_delta_tensor_artifact(
         tensors=lora_tensors,
         metadata=lora_metadata,
     )
@@ -593,7 +593,9 @@ def test_query_ssl_peft_encoder_delta_materialization_writes_server_owned_refs(
             metadata=head_metadata,
         )
     )
-    assert lora_deltas["encoder.q_proj.lora_A"] == pytest.approx([0.1, -0.2])
+    assert peft_adapter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
+        [0.1, -0.2]
+    )
     assert head_weight_deltas["anxiety"] == pytest.approx([0.3, -0.1])
     assert head_bias_deltas == pytest.approx(
         {

@@ -643,7 +643,9 @@ def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
         },
         label_schema=["anxiety", "normal"],
         example_count=2,
-        peft_adapter_delta_artifact_ref="agent-local://agent_001/lora_delta",
+        peft_adapter_delta_artifact_ref=(
+            "agent-local://agent_001/peft_adapter_delta"
+        ),
         classifier_head_delta_artifact_ref=(
             "agent-local://agent_001/classifier_head_delta"
         ),

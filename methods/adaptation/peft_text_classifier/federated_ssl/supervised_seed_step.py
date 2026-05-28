@@ -104,7 +104,7 @@ def run_peft_encoder_supervised_seed_step_core(
         max_grad_norm=0.0 if gradient_clip_norm is None else float(gradient_clip_norm),
         log_every_steps=0,
     )
-    lora_deltas, head_weight_deltas, head_bias_deltas = (
+    peft_parameter_deltas, head_weight_deltas, head_bias_deltas = (
         extract_peft_encoder_parameter_deltas(
             model=model,
             base_parameters=base_parameters,
@@ -112,7 +112,7 @@ def run_peft_encoder_supervised_seed_step_core(
         )
     )
     return PeftEncoderSupervisedSeedStepResult(
-        peft_parameter_deltas=lora_deltas,
+        peft_parameter_deltas=peft_parameter_deltas,
         classifier_head_weight_deltas=head_weight_deltas,
         classifier_head_bias_deltas=head_bias_deltas,
         metrics={

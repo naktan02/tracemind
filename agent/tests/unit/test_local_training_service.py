@@ -25,11 +25,12 @@ from agent.src.services.training.execution.local_training_service import (
 from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
+from methods.adaptation.privacy_guards.base import PrivacyProtectedUpdate
+from methods.adaptation.privacy_guards.registry import (
+    register_shared_adapter_privacy_guard,
+)
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
-)
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    VectorAdapterDelta,
 )
 from shared.src.contracts.adapter_contract_families.registry import (
     register_shared_adapter_update_payload_type,
@@ -42,7 +43,107 @@ from shared.src.contracts.training_contracts import (
     TrainingTask,
 )
 from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.training.shared_adapter_update import (
+    SharedAdapterUpdate,
+)
 from shared.src.domain.services.clock import FixedClock
+
+
+class DefaultTestShiftUpdatePayload(SharedAdapterUpdatePayload):
+    shift_norm: float
+    label_counts: dict[str, int] = {}
+
+
+@dataclass(slots=True)
+class DefaultTestShiftBackend:
+    backend_name: str = "test_shift_default_backend"
+    payload_format: str = "test_shift_update"
+    adapter_kind: str = "test_shift"
+
+    def build_update(
+        self,
+        *,
+        training_task: TrainingTask,
+        model_manifest: ModelManifest,
+        accepted_examples,
+        created_at: datetime,
+    ) -> DefaultTestShiftUpdatePayload:
+        del training_task
+        return DefaultTestShiftUpdatePayload(
+            schema_version="test_shift_update.v1",
+            adapter_kind=self.adapter_kind,
+            model_id=model_manifest.model_id,
+            base_model_revision=model_manifest.model_revision,
+            training_scope=model_manifest.training_scope,
+            example_count=len(accepted_examples),
+            created_at=created_at,
+            shift_norm=float(len(accepted_examples)),
+            label_counts={"anxiety": len(accepted_examples)},
+        )
+
+    def to_payload(
+        self,
+        update: DefaultTestShiftUpdatePayload,
+    ) -> SharedAdapterUpdatePayload:
+        return update
+
+    def build_client_metrics(
+        self,
+        update: DefaultTestShiftUpdatePayload,
+    ) -> dict[str, float]:
+        return {"test_shift_norm": float(update.shift_norm)}
+
+    def matches_objective_config(
+        self,
+        objective_config: TrainingObjectiveConfig | None,
+    ) -> bool:
+        del objective_config
+        return True
+
+
+register_shared_adapter_update_payload_type("test_shift", DefaultTestShiftUpdatePayload)
+register_shared_adapter_training_backend(
+    "test_shift_default_backend",
+    factory=lambda _objective_config: DefaultTestShiftBackend(),
+    catalog_entry=RegistryCatalogEntry(
+        item_name="test_shift_default_backend",
+        display_name="test_shift_default_backend",
+        implementation_module=__name__,
+        core_method_name="test_shift_default_backend",
+        family_name="training_backend",
+        supported_adapter_kinds=("test_shift",),
+        accepted_payload_formats=("test_shift_update",),
+    ),
+)
+
+
+@dataclass(slots=True)
+class PeftOnlyTestPrivacyGuard:
+    guard_name: str = "peft_only_test_guard"
+    supported_adapter_kinds: tuple[str, ...] = ("peft_classifier",)
+
+    def protect(
+        self,
+        *,
+        update: SharedAdapterUpdate,
+        training_task: TrainingTask,
+    ) -> PrivacyProtectedUpdate:
+        del training_task
+        return PrivacyProtectedUpdate(update=update)
+
+
+register_shared_adapter_privacy_guard(
+    "peft_only_test_guard",
+    factory=lambda: PeftOnlyTestPrivacyGuard(),
+    catalog_entry=RegistryCatalogEntry(
+        item_name="peft_only_test_guard",
+        display_name="peft_only_test_guard",
+        implementation_module=__name__,
+        core_method_name="peft_only_test_guard",
+        family_name="privacy_guard",
+        supported_adapter_kinds=("peft_classifier",),
+    ),
+)
 
 
 def _registry_catalog_entry(
@@ -84,9 +185,9 @@ def _build_task(
     gradient_clip_norm: float | None = 0.05,
     acceptance_policy_name: str | None = None,
     pseudo_label_algorithm_name: str | None = None,
-    privacy_guard_name: str | None = "diagonal_scale_clip_only",
+    privacy_guard_name: str | None = "noop",
     scorer_backend_name: str | None = None,
-    loss: str = "diagonal_scale_heuristic",
+    loss: str = "test_shift_default_backend",
     extras: dict[str, str | int | float | bool] | None = None,
 ) -> TrainingTask:
     return TrainingTask(
@@ -182,8 +283,8 @@ def test_local_training_service_creates_update_from_top_candidates(
     assert result.update_payload is not None
     assert result.update_envelope.example_count == 1
     assert result.update_payload.label_counts == {"anxiety": 1}
-    assert result.update_payload.adapter_kind == "diagonal_scale"
-    assert result.update_envelope.payload_format == "diagonal_scale_update"
+    assert result.update_payload.adapter_kind == "test_shift"
+    assert result.update_envelope.payload_format == "test_shift_update"
     assert (
         result.update_envelope.payload_ref
         == f"client-submission::{result.update_envelope.update_id}"
@@ -233,38 +334,7 @@ def test_local_training_service_applies_training_backend_extra_overrides(
     )
 
     assert result.update_payload is not None
-    assert result.update_payload.dimension_deltas == pytest.approx([0.01, 0.0])
-
-
-def test_local_training_service_rejects_unknown_training_backend_extra_key(
-    tmp_path: Path,
-) -> None:
-    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
-    service = LocalTrainingService(repository=repository)
-
-    with pytest.raises(
-        ValueError,
-        match="Unsupported diagonal-scale heuristic training backend config key",
-    ):
-        service.run(
-            LocalTrainingRequest(
-                training_examples=(
-                    _make_example(
-                        query_id="q1",
-                        scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
-                        embedding=[1.0, 0.0],
-                    ),
-                ),
-                training_task=_build_task(
-                    privacy_guard_name="noop",
-                    gradient_clip_norm=None,
-                    extras={
-                        "training_backend.max_abs_dleta": 0.2,
-                    },
-                ),
-                model_manifest=_build_manifest(),
-            )
-        )
+    assert result.update_payload.shift_norm == pytest.approx(1.0)
 
 
 def test_local_training_service_skips_update_when_examples_are_insufficient(
@@ -292,7 +362,7 @@ def test_local_training_service_skips_update_when_examples_are_insufficient(
     assert result.update_payload is None
 
 
-def test_local_training_service_marks_update_as_clipped_when_privacy_guard_scales_delta(
+def test_local_training_service_marks_update_unclipped_with_noop_privacy_guard(
     tmp_path: Path,
 ) -> None:
     repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
@@ -313,9 +383,9 @@ def test_local_training_service_marks_update_as_clipped_when_privacy_guard_scale
     )
 
     assert result.update_envelope is not None
-    assert result.update_envelope.clipped is True
+    assert result.update_envelope.clipped is False
     assert result.update_payload is not None
-    assert result.update_payload.l2_norm() == 0.01
+    assert result.update_payload.shift_norm == pytest.approx(1.0)
 
 
 def test_local_training_service_uses_acceptance_policy_from_task_config(
@@ -376,7 +446,7 @@ def test_local_training_service_can_switch_privacy_guard_from_task_config(
     assert result.update_envelope is not None
     assert result.update_envelope.clipped is False
     assert result.update_payload is not None
-    assert result.update_payload.l2_norm() == 0.05
+    assert result.update_payload.shift_norm == pytest.approx(1.0)
 
 
 def test_local_training_service_uses_injected_clock_when_created_at_missing(
@@ -416,7 +486,7 @@ def test_local_training_service_reuses_injected_backend_on_matching_objective(
     class ReusableTestBackend:
         backend_name: str = "reusable_test_backend"
         payload_format: str = "reusable_test_update"
-        adapter_kind: str = "diagonal_scale"
+        adapter_kind: str = "test_shift"
 
         def build_update(
             self,
@@ -425,27 +495,28 @@ def test_local_training_service_reuses_injected_backend_on_matching_objective(
             model_manifest: ModelManifest,
             accepted_examples,
             created_at: datetime,
-        ) -> VectorAdapterDelta:
+        ) -> DefaultTestShiftUpdatePayload:
             del training_task
-            return VectorAdapterDelta(
-                schema_version="vector_adapter_delta.v1",
+            return DefaultTestShiftUpdatePayload(
+                schema_version="test_shift_update.v1",
                 model_id=model_manifest.model_id,
                 base_model_revision=model_manifest.model_revision,
                 training_scope=model_manifest.training_scope,
-                dimension_deltas=[0.01, 0.0],
                 example_count=len(accepted_examples),
-                mean_confidence=0.91,
-                mean_margin=0.71,
                 created_at=created_at,
                 adapter_kind=self.adapter_kind,
+                shift_norm=1.0,
             )
 
-        def to_payload(self, update: VectorAdapterDelta) -> SharedAdapterUpdatePayload:
+        def to_payload(
+            self,
+            update: DefaultTestShiftUpdatePayload,
+        ) -> SharedAdapterUpdatePayload:
             return update
 
         def build_client_metrics(
             self,
-            update: VectorAdapterDelta,
+            update: DefaultTestShiftUpdatePayload,
         ) -> dict[str, float]:
             return {"reused_backend": float(update.example_count)}
 
@@ -483,7 +554,7 @@ def test_local_training_service_reuses_injected_backend_on_matching_objective(
     assert result.update_envelope.payload_format == "reusable_test_update"
     assert result.update_envelope.client_metrics["reused_backend"] == 1.0
     assert result.update_payload is not None
-    assert result.update_payload.adapter_kind == "diagonal_scale"
+    assert result.update_payload.adapter_kind == "test_shift"
 
 
 def test_local_training_service_can_use_registered_non_diagonal_backend(
@@ -642,7 +713,7 @@ def test_local_training_service_rejects_incompatible_privacy_guard(
                 ),
                 training_task=_build_task(
                     loss="test_shift_backend_incompatible_guard",
-                    privacy_guard_name="diagonal_scale_clip_only",
+                    privacy_guard_name="peft_only_test_guard",
                 ),
                 model_manifest=_build_manifest(),
             )
@@ -690,9 +761,9 @@ def test_local_training_service_rejects_incompatible_scoring_backend(
             return {}
 
     @dataclass(slots=True)
-    class DiagonalOnlyScoringBackend:
-        backend_name: str = "diagonal_only_test_scorer"
-        supported_adapter_kinds: tuple[str, ...] = ("diagonal_scale",)
+    class PeftOnlyScoringBackend:
+        backend_name: str = "peft_only_test_scorer"
+        supported_adapter_kinds: tuple[str, ...] = ("peft_classifier",)
 
         def score(self, embedding, prototypes):
             del embedding, prototypes
@@ -713,14 +784,14 @@ def test_local_training_service_rejects_incompatible_scoring_backend(
         ),
     )
     register_scoring_backend(
-        "diagonal_only_test_scorer",
+        "peft_only_test_scorer",
         factory=lambda _objective_config, _similarity_name: (
-            DiagonalOnlyScoringBackend()
+            PeftOnlyScoringBackend()
         ),
         catalog_entry=_registry_catalog_entry(
-            item_name="diagonal_only_test_scorer",
+            item_name="peft_only_test_scorer",
             family_name="scoring_backend",
-            supported_adapter_kinds=("diagonal_scale",),
+            supported_adapter_kinds=("peft_classifier",),
         ),
     )
 
@@ -740,7 +811,7 @@ def test_local_training_service_rejects_incompatible_scoring_backend(
                 training_task=_build_task(
                     loss="test_shift_backend_incompatible_scorer",
                     privacy_guard_name="noop",
-                    scorer_backend_name="diagonal_only_test_scorer",
+                    scorer_backend_name="peft_only_test_scorer",
                 ),
                 model_manifest=_build_manifest(),
             )
@@ -788,9 +859,9 @@ def test_local_training_service_rejects_incompatible_training_example_backend(
             return {}
 
     @dataclass(slots=True)
-    class DiagonalOnlyTrainingExampleBackend:
-        backend_name: str = "diagonal_only_training_examples"
-        supported_adapter_kinds: tuple[str, ...] = ("diagonal_scale",)
+    class PeftOnlyTrainingExampleBackend:
+        backend_name: str = "peft_only_training_examples"
+        supported_adapter_kinds: tuple[str, ...] = ("peft_classifier",)
 
         def build_examples(self, request) -> tuple:
             del request
@@ -815,12 +886,12 @@ def test_local_training_service_rejects_incompatible_training_example_backend(
         ),
     )
     training_example_backend_registry.register_training_example_backend(
-        "diagonal_only_training_examples",
-        factory=lambda _objective_config: DiagonalOnlyTrainingExampleBackend(),
+        "peft_only_training_examples",
+        factory=lambda _objective_config: PeftOnlyTrainingExampleBackend(),
         catalog_entry=_registry_catalog_entry(
-            item_name="diagonal_only_training_examples",
+            item_name="peft_only_training_examples",
             family_name="example_generation",
-            supported_adapter_kinds=("diagonal_scale",),
+            supported_adapter_kinds=("peft_classifier",),
         ),
     )
 
@@ -854,7 +925,7 @@ def test_local_training_service_rejects_incompatible_training_example_backend(
                         confidence_threshold=0.6,
                         margin_threshold=0.02,
                         example_generation_backend_name=(
-                            "diagonal_only_training_examples"
+                            "peft_only_training_examples"
                         ),
                         privacy_guard_name="noop",
                     ),
