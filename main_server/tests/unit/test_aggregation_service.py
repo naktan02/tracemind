@@ -22,7 +22,7 @@ from methods.adaptation.peft_text_classifier.update import (
     partitioned_tensor_artifact as partitioned_artifacts,
 )
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
 )
 from methods.federated.aggregation.registry import build_federated_aggregation_strategy
 from shared.src.contracts.adapter_contract_families.classifier_head import (
@@ -305,7 +305,7 @@ def test_lora_classifier_partitioned_delta_average_publishes_next_state_refs(
         ),
         update_payloads=(
             make_lora_classifier_delta_payload(
-                model_id="tracemind-lora",
+                model_id="tracemind-peft",
                 base_model_revision="rev_000",
                 training_scope="adapter_only",
                 backbone=_lora_backbone(),
@@ -438,7 +438,7 @@ def test_lora_classifier_partitioned_delta_average_reads_partitioned_artifact_re
         ),
         update_payloads=(
             make_lora_classifier_delta_payload(
-                model_id="tracemind-lora",
+                model_id="tracemind-peft",
                 base_model_revision="rev_000",
                 training_scope="adapter_only",
                 backbone=_lora_backbone(),
@@ -489,7 +489,7 @@ def test_lora_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
     )
     tensors, metadata = partitioned_artifacts.build_partitioned_delta_tensor_artifact(
         {
-            "sigma": LoraClassifierPartitionDelta(
+            "sigma": PeftEncoderPartitionDelta(
                 partition_name="sigma",
                 lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.0]},
                 classifier_head_weight_deltas={
@@ -498,7 +498,7 @@ def test_lora_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
                 },
                 classifier_head_bias_deltas={},
             ),
-            "psi": LoraClassifierPartitionDelta(
+            "psi": PeftEncoderPartitionDelta(
                 partition_name="psi",
                 lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, 0.3]},
                 classifier_head_weight_deltas={
@@ -532,7 +532,7 @@ def test_lora_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
         ),
         update_payloads=(
             make_lora_classifier_delta_payload(
-                model_id="tracemind-lora",
+                model_id="tracemind-peft",
                 base_model_revision="rev_000",
                 training_scope="adapter_only",
                 backbone=_lora_backbone(),
@@ -695,7 +695,7 @@ def test_lora_classifier_fedavg_materializes_server_owned_artifact_updates(
         base_state=_build_lora_state(),
         update_payloads=(
             make_lora_classifier_delta_payload(
-                model_id="tracemind-lora",
+                model_id="tracemind-peft",
                 base_model_revision="rev_000",
                 training_scope="adapter_only",
                 backbone=_lora_backbone(),
@@ -746,7 +746,7 @@ def test_lora_classifier_fedavg_rejects_agent_local_artifact_only_updates() -> N
             base_state=_build_lora_state(),
             update_payloads=(
                 make_lora_classifier_delta_payload(
-                    model_id="tracemind-lora",
+                    model_id="tracemind-peft",
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
                     backbone=_lora_backbone(),
@@ -796,7 +796,7 @@ def _build_lora_state(
     classifier_head_artifact_ref: str | None = None,
 ) -> LoraClassifierState:
     return make_lora_classifier_state_payload(
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         model_revision="rev_000",
         training_scope="adapter_only",
         backbone=_lora_backbone(),
@@ -818,7 +818,7 @@ def _build_lora_update(
     mean_confidence: float,
 ) -> LoraClassifierDelta:
     return make_lora_classifier_delta_payload(
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         base_model_revision=base_model_revision,
         training_scope="adapter_only",
         backbone=_lora_backbone(),

@@ -136,7 +136,7 @@ def test_peft_classifier_compatibility_rejects_adapter_config_drift() -> None:
 
 def _lora_state():
     return make_lora_classifier_state_payload(
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="rev_000",
         training_scope="adapter_only",
         backbone=_BACKBONE,
@@ -147,7 +147,7 @@ def _lora_state():
 
 def _lora_update(**overrides: object):
     values = {
-        "model_id": "mxbai-lora-classifier",
+        "model_id": "mxbai-peft-classifier",
         "base_model_revision": "rev_000",
         "training_scope": "adapter_only",
         "backbone": _BACKBONE,
@@ -168,7 +168,7 @@ def _lora_update(**overrides: object):
 
 def _peft_state():
     return make_peft_classifier_state_payload(
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="rev_000",
         training_scope="adapter_only",
         backbone=_BACKBONE,
@@ -179,7 +179,7 @@ def _peft_state():
 
 def _peft_update(**overrides: object):
     values = {
-        "model_id": "mxbai-lora-classifier",
+        "model_id": "mxbai-peft-classifier",
         "base_model_revision": "rev_000",
         "training_scope": "adapter_only",
         "backbone": _BACKBONE,

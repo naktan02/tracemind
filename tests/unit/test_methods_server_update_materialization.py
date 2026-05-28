@@ -120,7 +120,7 @@ def test_lora_classifier_materialization_rejects_mismatched_payload_type() -> No
 
 def _build_lora_payload(**overrides):
     defaults = {
-        "model_id": "tracemind-lora",
+        "model_id": "tracemind-peft",
         "base_model_revision": "rev_000",
         "training_scope": "adapter_only",
         "backbone": {
@@ -152,7 +152,7 @@ def _build_lora_payload(**overrides):
 
 def _build_peft_payload(**overrides):
     defaults = {
-        "model_id": "tracemind-lora",
+        "model_id": "tracemind-peft",
         "base_model_revision": "rev_000",
         "training_scope": "adapter_only",
         "backbone": {

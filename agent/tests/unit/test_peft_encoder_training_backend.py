@@ -146,7 +146,7 @@ class _QuerySslLoraBackend:
 def _build_manifest() -> ModelManifest:
     return ModelManifest(
         schema_version="model_manifest.v1",
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         model_revision="rev_000",
         published_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
@@ -166,7 +166,7 @@ def _build_task(
         schema_version="training_task.v1",
         task_id="task_lora_001",
         round_id="round_lora_001",
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         model_revision="rev_000",
         task_type="pseudo_label_self_training",
         training_scope="adapter_only",
@@ -225,7 +225,7 @@ def _example(
             query_id=query_id,
             occurred_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
             translated_text=translated_text,
-            embedding_model_id="tracemind-lora",
+            embedding_model_id="tracemind-peft",
             translation_model_id=None,
             category_scores={"anxiety": 0.92, "depression": 0.2, "normal": 0.1},
         ),
@@ -413,7 +413,7 @@ def test_query_ssl_local_training_service_runs_lora_backend(
     tmp_path: Path,
 ) -> None:
     update_payload = make_lora_classifier_delta_payload(
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         base_model_revision="rev_000",
         training_scope="adapter_only",
         backbone=lora_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),
@@ -467,7 +467,7 @@ def test_query_ssl_local_training_service_can_skip_local_update_persistence(
     tmp_path: Path,
 ) -> None:
     update_payload = make_lora_classifier_delta_payload(
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         base_model_revision="rev_000",
         training_scope="adapter_only",
         backbone=lora_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),

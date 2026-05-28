@@ -198,7 +198,7 @@ def test_peft_encoder_base_parameters_cache_lora_v1_state(
     monkeypatch,
 ) -> None:
     active_state = make_lora_classifier_state_payload(
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0003",
         training_scope="adapter_only",
         backbone=LoraClassifierTrainingBackendConfig().to_backbone_payload(),
@@ -746,7 +746,7 @@ def test_upload_agent_local_lora_v1_update_materializes_server_owned_refs(
         classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
     )
     update_payload = make_lora_classifier_delta_payload(
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
         backbone={

@@ -977,7 +977,7 @@ def _lora_state(
     classifier_head_artifact_ref: str | None = None,
 ) -> LoraClassifierState:
     return make_lora_classifier_state_payload(
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         model_revision="rev_000",
         training_scope="adapter_only",
         backbone=_lora_backbone(),
@@ -1002,7 +1002,7 @@ def _lora_update(
     delta_format: str = "inline_delta",
 ) -> LoraClassifierDelta:
     return make_lora_classifier_delta_payload(
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         base_model_revision="rev_000",
         training_scope="adapter_only",
         backbone=_lora_backbone(),
@@ -1030,7 +1030,7 @@ def _peft_state(
     classifier_head_artifact_ref: str | None = None,
 ) -> PeftClassifierState:
     return make_peft_classifier_state_payload(
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         model_revision="rev_000",
         training_scope="adapter_only",
         backbone=_lora_backbone(),
@@ -1055,7 +1055,7 @@ def _peft_update(
     delta_format: str = "inline_delta",
 ) -> PeftClassifierDelta:
     return make_peft_classifier_delta_payload(
-        model_id="tracemind-lora",
+        model_id="tracemind-peft",
         base_model_revision="rev_000",
         training_scope="adapter_only",
         backbone=_lora_backbone(),

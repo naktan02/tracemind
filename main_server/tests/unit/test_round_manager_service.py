@@ -61,7 +61,7 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
     )
     repository.save_shared_adapter_state(
         make_lora_classifier_state_payload(
-            model_id="tracemind-lora",
+            model_id="tracemind-peft",
             model_revision="rev_000",
             training_scope="adapter_only",
             backbone=_lora_backbone(),
@@ -73,7 +73,7 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
     update_repository.save_shared_adapter_update(
         "u_lora_1",
         make_lora_classifier_delta_payload(
-            model_id="tracemind-lora",
+            model_id="tracemind-peft",
             base_model_revision="rev_000",
             training_scope="adapter_only",
             backbone=_lora_backbone(),
@@ -110,7 +110,7 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
         RoundPublicationRequest(
             base_manifest=ModelManifest(
                 schema_version="model_manifest.v1",
-                model_id="tracemind-lora",
+                model_id="tracemind-peft",
                 model_revision="rev_000",
                 published_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
@@ -125,7 +125,7 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
                     update_id="u_lora_1",
                     round_id="round_0001",
                     task_id="task_001",
-                    model_id="tracemind-lora",
+                    model_id="tracemind-peft",
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
                     payload_ref=update_repository.ref_for_update("u_lora_1"),
@@ -266,7 +266,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
     )
     repository.save_shared_adapter_state(
         make_lora_classifier_state_payload(
-            model_id="tracemind-lora",
+            model_id="tracemind-peft",
             model_revision="rev_000",
             training_scope="adapter_only",
             backbone=_lora_backbone(),
@@ -278,7 +278,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
     update_repository.save_shared_adapter_update(
         "u1",
         make_lora_classifier_delta_payload(
-            model_id="tracemind-lora",
+            model_id="tracemind-peft",
             base_model_revision="rev_000",
             training_scope="adapter_only",
             backbone=_lora_backbone(),
@@ -317,7 +317,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
         RoundPublicationRequest(
             base_manifest=ModelManifest(
                 schema_version="model_manifest.v1",
-                model_id="tracemind-lora",
+                model_id="tracemind-peft",
                 model_revision="rev_000",
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
@@ -333,7 +333,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
                     update_id="u1",
                     round_id="round_0001",
                     task_id="task_001",
-                    model_id="tracemind-lora",
+                    model_id="tracemind-peft",
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
                     payload_ref=update_repository.ref_for_update("u1"),

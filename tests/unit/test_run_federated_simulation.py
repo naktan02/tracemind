@@ -781,7 +781,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
         training_scope="adapter_only",
         embedding_dim=2,
@@ -790,7 +790,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
     )
     active = ActiveSimulationState(
         manifest=make_embedding_manifest(
-            model_id="mxbai-lora-classifier",
+            model_id="mxbai-peft-classifier",
             model_revision="sim_rev_0000",
             artifact_ref="shared_adapter_state::sim_rev_0000",
         ),
@@ -804,7 +804,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
         client_count=1,
         rounds=1,
         bootstrap_ratio=1.0,
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         ssl_method_config=FederatedSslMethodConfig(
             schema_version="federated_ssl_method.v1",
             name="fedmatch",
@@ -1006,7 +1006,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
     training_task = TrainingTask(
         task_id="task_round_0001",
         round_id="round_0001",
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
         task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
         training_scope="adapter_only",
@@ -1034,7 +1034,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         min_required_examples=1,
     )
     manifest = make_embedding_manifest(
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
         artifact_ref="shared_adapter_state::sim_rev_0000",
     )
@@ -1043,7 +1043,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
         training_scope="adapter_only",
         embedding_dim=2,
@@ -1065,7 +1065,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
     )
     update_payload = make_peft_classifier_delta_payload(
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
         backbone=_peft_runtime_config().backbone_payload(),
@@ -1084,7 +1084,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         update_id="update_test",
         round_id="round_0001",
         task_id="task_round_0001",
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
         payload_ref="client-submission::update_test",
@@ -1169,7 +1169,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         rounds=1,
         bootstrap_ratio=0.0,
         seed=42,
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
@@ -1291,7 +1291,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     training_task = TrainingTask(
         task_id="task_round_0001",
         round_id="round_0001",
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
         task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
         training_scope="adapter_only",
@@ -1317,7 +1317,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         min_required_examples=1,
     )
     manifest = make_embedding_manifest(
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
         artifact_ref="shared_adapter_state::sim_rev_0000",
     )
@@ -1326,7 +1326,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
         training_scope="adapter_only",
         embedding_dim=2,
@@ -1334,7 +1334,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
     )
     update_payload = make_peft_classifier_delta_payload(
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
         backbone=_peft_runtime_config().backbone_payload(),
@@ -1355,7 +1355,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         update_id="update_test",
         round_id="round_0001",
         task_id="task_round_0001",
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
         payload_ref="client-submission::update_test",
@@ -1502,7 +1502,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         rounds=1,
         bootstrap_ratio=0.0,
         seed=42,
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
@@ -2062,7 +2062,7 @@ def test_run_simulation_request_rejects_manual_partitioned_update_until_producer
         tmp_path,
         output_dir=tmp_path,
         rounds=0,
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
@@ -2323,7 +2323,7 @@ def test_run_simulation_request_rejects_peft_runtime_objective_drift(
             _row("a1", "panic panic", "anxiety"),
             _row("n1", "calm calm", "normal"),
         ],
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=drifted_peft_runtime,
@@ -2353,7 +2353,7 @@ def test_run_simulation_request_rejects_missing_peft_runtime_config(
             _row("a1", "panic panic", "anxiety"),
             _row("n1", "calm calm", "normal"),
         ],
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=FederatedRoundRuntimeConfig(
             payload_adapter_kind="peft_classifier",
             aggregation_backend_name="fedavg",
@@ -2402,10 +2402,10 @@ def test_run_simulation_request_bootstraps_peft_classifier_profile(
     ]
     request = _default_simulation_request(
         tmp_path,
-        output_name="lora_simulation_request",
+        output_name="peft_simulation_request",
         train_rows=train_rows,
         validation_rows=validation_rows,
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
@@ -2435,8 +2435,8 @@ def test_run_simulation_request_bootstraps_peft_classifier_profile(
 def test_peft_classifier_validation_rejects_prototype_similarity(tmp_path) -> None:
     request = _default_simulation_request(
         tmp_path,
-        output_name="lora_prototype_validation_rejected",
-        model_id="mxbai-lora-classifier",
+        output_name="peft_prototype_validation_rejected",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
@@ -2497,7 +2497,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         client_count=4,
         rounds=2,
         bootstrap_ratio=1 / 3,
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
@@ -2728,7 +2728,7 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
         client_count=4,
         rounds=1,
         bootstrap_ratio=1 / 3,
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
@@ -2763,7 +2763,7 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
             client_count=4,
             rounds=2,
             bootstrap_ratio=1 / 3,
-            model_id="mxbai-lora-classifier",
+            model_id="mxbai-peft-classifier",
             round_runtime_config=_default_round_runtime_config(
                 payload_adapter_kind="peft_classifier",
                 peft_classifier=_peft_runtime_config(),
@@ -2795,7 +2795,7 @@ def test_run_simulation_request_rejects_unsupported_legacy_local_update_backend(
             _row("a1", "panic panic", "anxiety"),
             _row("n1", "calm calm", "normal"),
         ],
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
