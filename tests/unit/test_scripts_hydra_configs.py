@@ -531,6 +531,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "clear_peft_encoder_transient_resource_cache"
     )
     assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
+    assert "adapter_family_name" not in cfg.round_runtime
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.lora.name == "default"
@@ -768,6 +769,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "clear_peft_encoder_transient_resource_cache"
     )
     assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
+    assert "adapter_family_name" not in cfg.round_runtime
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.report.labeled_ratio == cfg.client_pool_split.labeled_ratio
     assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio

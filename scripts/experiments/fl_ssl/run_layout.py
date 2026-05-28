@@ -162,7 +162,6 @@ def _is_manual_fl_composition(cfg: DictConfig) -> bool:
 def _resolve_update_runtime_slug(cfg: DictConfig) -> str:
     family = (
         _select(cfg, "round_runtime.update_family_name", default=None)
-        or _select(cfg, "round_runtime.adapter_family_name", default=None)
         or "unknown_family"
     )
     family = str(family).strip() or "unknown_family"

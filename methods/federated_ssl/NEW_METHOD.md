@@ -26,7 +26,7 @@ local/server hint를 소유한다. `local_objective.py`, `server_policy.py`,
 state exchange가 달라질 때 method-local 의미를 담는 seam이다. method recipe는 사람이
 method 폴더를 열었을 때 "이 논문 방법론이 어떤 update family, aggregation backend,
 round policy 조합으로 구성되는지"를 보는 조립표다. shared payload용
-`adapter_family_name`은 local update와 round aggregation compatibility 표면이고,
+`payload_adapter_kind`는 local update와 round aggregation compatibility 표면이고,
 recipe가 소유하는 trainable-state 선택 축은 `update_family_name`이다. 작은 method는
 `descriptor.py`에 recipe metadata를 함께 둘 수 있고, 조합표가 커지거나 별도
 테스트/문서화가 필요할 때만 `recipe.py`로 분리한다.
@@ -65,9 +65,11 @@ threshold, LoRA rank, round 수 같은 일반 실행값의 source of truth는 Hy
 두고, method descriptor YAML은 `scenario`, `use_original_parameters`,
 `parameter_overrides` 같은 실행 표면만 둔다. Update family와 aggregation backend
 조합은 별도 preset YAML을 만들지 않고 `round_runtime.update_family_name`과
-`round_runtime.aggregation_backend_name`을 직접 override한다. v1 shared payload
-compatibility가 필요한 동안에는 `round_runtime.adapter_family_name`도 함께 맞추지만,
-새 method recipe는 adapter family 이름을 조합 키로 삼지 않는다.
+`round_runtime.aggregation_backend_name`을 직접 override하거나
+`strategy_axes/trainable_state/update_family` group을 고른다. v1 shared payload
+compatibility가 필요하면 새 config는 `round_runtime.payload_adapter_kind`를 생산하고,
+old config/report reader만 `round_runtime.adapter_family_name` alias를 fallback으로
+읽는다. 새 method recipe는 adapter family 이름을 조합 키로 삼지 않는다.
 
 FL simulation entrypoint의 `fl_method` section은 `FederatedSslExecutionPlan`으로
 해석된다. 새 논문 method는 기본적으로 `composition_mode=method_owned`로 실행하고,

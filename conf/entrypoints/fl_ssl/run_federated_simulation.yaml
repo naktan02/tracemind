@@ -131,7 +131,7 @@ query_ssl_strong_view_policy: first_aug
 
 # `local_update_profile`은 agent local SSL update 정책을 소유한다.
 # server round의 update family는 strategy_axes/trainable_state/update_family가
-# 소유하고, v1 payload adapter kind compatibility alias도 해당 leaf가 선언한다.
+# 소유하고, v1 shared payload kind는 payload_adapter_kind로만 노출한다.
 round_runtime:
   aggregation_backend_name: fedavg
   # canonical PEFT-classifier runtime payload leaf다. LoRA/DoRA 등 mechanism은
