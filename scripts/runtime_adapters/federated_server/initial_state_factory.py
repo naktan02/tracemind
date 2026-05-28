@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from importlib import import_module
 from typing import Any
 
+from scripts.configured_callable import load_configured_callable
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 
@@ -50,17 +50,7 @@ def _initial_state_builder_path(round_runtime_config: Any) -> str:
 
 
 def _load_initial_state_builder(builder_path: str) -> Any:
-    module_name, separator, function_name = builder_path.rpartition(".")
-    if not separator or not module_name or not function_name:
-        raise ValueError(
-            "round_runtime.initial_state_builder must be a fully qualified "
-            f"function path: {builder_path!r}."
-        )
-    module = import_module(module_name)
-    builder = getattr(module, function_name, None)
-    if not callable(builder):
-        raise ValueError(
-            "round_runtime.initial_state_builder must point to a callable: "
-            f"{builder_path!r}."
-        )
-    return builder
+    return load_configured_callable(
+        builder_path,
+        field_name="round_runtime.initial_state_builder",
+    )

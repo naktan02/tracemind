@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from importlib import import_module
 from pathlib import Path
 
 from methods.adaptation.query_text_views.unlabeled_preparation import (
@@ -18,6 +16,7 @@ from methods.adaptation.query_text_views.unlabeled_preparation import (
     prepare_query_ssl_unlabeled_rows as prepare_methods_query_ssl_unlabeled_rows,
 )
 from methods.ssl.base import QuerySslAlgorithmDescriptor
+from scripts.configured_callable import load_configured_callable
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
@@ -92,18 +91,11 @@ def _resolve_candidate_pair_builder(
 ) -> QuerySslCandidatePairBuilder | None:
     if settings is None or settings.candidate_pair_builder_path is None:
         return None
-    factory = _load_callable(settings.candidate_pair_builder_path)
+    factory = load_configured_callable(
+        settings.candidate_pair_builder_path,
+        field_name="query_ssl_augmenter.candidate_pair_builder_path",
+    )
     return factory(cfg)
-
-
-def _load_callable(path: str) -> Callable[[object], QuerySslCandidatePairBuilder]:
-    module_name, _, function_name = path.strip().rpartition(".")
-    if not module_name or not function_name:
-        raise ValueError(f"Invalid candidate_pair_builder_path: {path}")
-    loaded = getattr(import_module(module_name), function_name)
-    if not callable(loaded):
-        raise TypeError(f"candidate_pair_builder_path is not callable: {path}")
-    return loaded
 
 
 def _optional_text(cfg: object, key: str) -> str | None:

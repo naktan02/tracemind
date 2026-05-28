@@ -28,6 +28,7 @@ from methods.federated_ssl.method_config_surface import (
     default_method_server_update_policy_name,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from scripts.configured_callable import load_configured_callable
 from scripts.experiments.fl_ssl.federated_simulation.config_utils import (
     optional_plain_dict,
     to_plain_dict,
@@ -62,8 +63,6 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
-
-from .adapters.runtime_callable_loader import load_configured_callable
 
 
 def build_simulation_request_from_config(

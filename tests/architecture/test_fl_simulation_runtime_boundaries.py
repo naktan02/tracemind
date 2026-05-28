@@ -77,15 +77,9 @@ def test_fl_simulation_client_training_has_no_payload_adapter_literals() -> None
 
 
 def test_fl_simulation_config_callable_loading_is_centralized() -> None:
-    callable_loader_path = (
-        SCRIPTS_SRC
-        / "experiments"
-        / "fl_ssl"
-        / "federated_simulation"
-        / "adapters"
-        / "runtime_callable_loader.py"
-    )
+    callable_loader_path = SCRIPTS_SRC / "configured_callable.py"
     checked_paths = (
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py",
         SCRIPTS_SRC
         / "experiments"
         / "fl_ssl"
@@ -121,6 +115,15 @@ def test_fl_simulation_config_callable_loading_is_centralized() -> None:
         / "federated_simulation"
         / "io"
         / "final_projection.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "query_peft_ssl"
+        / "query_ssl"
+        / "view_preparation.py",
+        SCRIPTS_SRC
+        / "runtime_adapters"
+        / "federated_server"
+        / "initial_state_factory.py",
     )
     forbidden_snippet = "from importlib import import_module"
     violations = [
@@ -130,12 +133,12 @@ def test_fl_simulation_config_callable_loading_is_centralized() -> None:
     ]
 
     assert callable_loader_path.exists(), (
-        "round_runtime이 선언한 callable import/validation은 한 helper가 소유한다. "
+        "Config가 선언한 callable import/validation은 scripts 공통 helper가 소유한다. "
         f"missing={_relative_repo_path(callable_loader_path)}"
     )
     assert not violations, (
         "FL simulation adapter들은 config-declared callable을 실행만 하고, "
-        "fully-qualified path 파싱과 import 규칙은 runtime_callable_loader.py에 "
+        "fully-qualified path 파싱과 import 규칙은 scripts/configured_callable.py에 "
         "모은다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )

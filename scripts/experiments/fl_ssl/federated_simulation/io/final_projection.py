@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from scripts.configured_callable import load_configured_callable
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
-
-from ..adapters.runtime_callable_loader import load_configured_callable
 
 
 def build_final_projection_artifacts(

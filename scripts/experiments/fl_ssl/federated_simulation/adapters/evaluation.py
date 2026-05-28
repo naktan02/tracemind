@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from methods.common.runtime_resources import RuntimeResourceCache
+from scripts.configured_callable import load_configured_callable
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
 )
@@ -17,8 +18,6 @@ from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
-
-from .runtime_callable_loader import load_configured_callable
 
 
 def evaluate_simulation_validation(

@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from importlib import import_module
 from pathlib import Path
-from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -18,6 +16,7 @@ from methods.federated_ssl.method_config_surface import (
     default_method_server_update_policy_name,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from scripts.configured_callable import load_configured_callable
 
 
 def build_fl_ssl_run_dir(
@@ -203,7 +202,10 @@ def _build_configured_update_family_slug(
     round_runtime = _select(cfg, "round_runtime", default=None)
     if round_runtime is None:
         return None
-    builder = _load_callable(str(builder_path), field_name="composition_slug_builder")
+    builder = load_configured_callable(
+        str(builder_path),
+        field_name="round_runtime.composition_slug_builder",
+    )
     if OmegaConf.is_config(round_runtime):
         runtime_mapping = OmegaConf.to_container(round_runtime, resolve=True)
     else:
@@ -218,22 +220,6 @@ def _build_configured_update_family_slug(
     if not normalized_slug:
         raise ValueError("round_runtime.composition_slug_builder returned empty slug.")
     return normalized_slug
-
-
-def _load_callable(path: str, *, field_name: str) -> Any:
-    module_name, separator, attribute_name = path.rpartition(".")
-    if not separator or not module_name or not attribute_name:
-        raise ValueError(
-            f"round_runtime.{field_name} must be a fully qualified callable path: "
-            f"{path!r}"
-        )
-    target = getattr(import_module(module_name), attribute_name)
-    if not callable(target):
-        raise TypeError(
-            f"round_runtime.{field_name} must point to a callable: {path!r}"
-        )
-    return target
-
 
 def _resolve_labeled_exposure_slug(cfg: DictConfig) -> str | None:
     configured = _select(cfg, "labeled_exposure_policy.name", default=None)
