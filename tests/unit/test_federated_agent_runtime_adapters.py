@@ -414,7 +414,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
     )
     monkeypatch.setattr(
         qtrainer,
-        "load_peft_encoder_base_parameters",
+        "load_peft_encoder_base_parameters_with_timing",
         lambda **_kwargs: object(),
     )
     monkeypatch.setattr(

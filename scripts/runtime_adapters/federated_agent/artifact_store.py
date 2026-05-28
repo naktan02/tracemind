@@ -7,9 +7,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from agent.src.infrastructure.repositories.training_artifact_repository import (
+    TrainingArtifactRepository,
+)
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
     AggregationArtifactStore,
 )
+from methods.common.timing import TimingRecorder
 from shared.src.contracts.training_contracts import TrainingTask
 
 AGENT_LOCAL_ARTIFACT_REF_PREFIX = "agent-local://"
@@ -171,3 +175,23 @@ def _safe_ref_part(value: str) -> str:
     if not normalized or normalized in {".", ".."}:
         raise ValueError("artifact ref path parts must not be empty or traversal.")
     return normalized
+
+
+def save_agent_local_update_payload(
+    *,
+    output_dir: Path,
+    client_id: str,
+    update_id: str,
+    update_payload: object,
+    timing_recorder: TimingRecorder | None = None,
+) -> None:
+    """agent-local repository에 shared adapter update payload를 저장한다."""
+
+    repository = TrainingArtifactRepository(
+        state_root=output_dir / "agents" / client_id
+    )
+    if timing_recorder is None:
+        repository.save_shared_adapter_update(update_id, update_payload)
+        return
+    with timing_recorder.measure("agent_repository_save_seconds"):
+        repository.save_shared_adapter_update(update_id, update_payload)

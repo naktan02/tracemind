@@ -373,3 +373,37 @@ def test_federated_agent_peft_round_files_do_not_own_update_submission() -> None
         "조립은 generic client update flow로 둔다.\n"
         f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
+
+
+def test_peft_local_training_bridge_delegates_runtime_io_helpers() -> None:
+    package_root = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent"
+    local_training_path = package_root / "peft_encoder_local_training.py"
+    expected_owner_paths = (
+        package_root / "base_state_materialization.py",
+        package_root / "artifact_store.py",
+    )
+    source = local_training_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "def _load_base_parameters_if_needed(",
+        "def _load_base_partition_parameters_if_needed(",
+        "def _save_agent_local_update(",
+        "adapter_base_materialization_seconds",
+        "adapter_base_partition_materialization_seconds",
+        "agent_repository_save_seconds",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+    missing_owner_paths = [
+        _relative_repo_path(path) for path in expected_owner_paths if not path.exists()
+    ]
+
+    assert not missing_owner_paths, (
+        "PEFT local training bridge의 runtime IO helper는 가장 가까운 capability "
+        "module이 소유한다.\n"
+        f"{chr(10).join(f'- {path}' for path in missing_owner_paths)}"
+    )
+    assert not violations, (
+        "peft_encoder_local_training.py는 local training core 연결만 맡는다. "
+        "base-state materialization timing은 base_state_materialization.py가, "
+        "agent-local update 저장은 artifact_store.py가 소유한다.\n"
+        f"violations={violations}"
+    )

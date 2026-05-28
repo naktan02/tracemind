@@ -22,7 +22,6 @@ from methods.adaptation.peft_text_encoder.federated_ssl import (
     method_owned_training,
 )
 from methods.adaptation.peft_text_encoder.runtime_family import (
-    PeftEncoderState,
     build_training_backend_config_for_peft_encoder_state,
     build_training_backend_for_peft_encoder_state,
 )
@@ -54,10 +53,11 @@ from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
 )
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
+    save_agent_local_update_payload,
 )
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
-    load_peft_encoder_base_parameters,
-    load_peft_encoder_base_partition_parameters,
+    load_peft_encoder_base_parameters_with_timing,
+    load_peft_encoder_base_partition_parameters_with_timing,
 )
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
@@ -114,21 +114,23 @@ def run_method_owned_peft_encoder_local_training(
             "state."
         )
     effective_created_at = created_at or datetime.now(tz=timezone.utc)
-    base_parameters = _load_base_parameters_if_needed(
-        active_adapter_state=active_adapter_state,
-        output_dir=output_dir,
-        aggregated_at=effective_created_at,
-        round_base_snapshot_cache=round_base_snapshot_cache,
-        base_parameters=base_parameters,
-        timing_recorder=timing_recorder,
-    )
-    if base_partition_parameters is None:
-        base_partition_parameters = _load_base_partition_parameters_if_needed(
+    if base_parameters is None:
+        base_parameters = load_peft_encoder_base_parameters_with_timing(
             active_adapter_state=active_adapter_state,
             output_dir=output_dir,
             aggregated_at=effective_created_at,
             round_base_snapshot_cache=round_base_snapshot_cache,
             timing_recorder=timing_recorder,
+        )
+    if base_partition_parameters is None:
+        base_partition_parameters = (
+            load_peft_encoder_base_partition_parameters_with_timing(
+                active_adapter_state=active_adapter_state,
+                output_dir=output_dir,
+                aggregated_at=effective_created_at,
+                round_base_snapshot_cache=round_base_snapshot_cache,
+                timing_recorder=timing_recorder,
+            )
         )
     effective_peft_config = (
         peft_config
@@ -182,10 +184,11 @@ def run_method_owned_peft_encoder_local_training(
         initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
     )
     if persist_agent_local_update:
-        _save_agent_local_update(
+        save_agent_local_update_payload(
             output_dir=output_dir,
             client_id=client_id,
-            result=result,
+            update_id=result.update_envelope.update_id,
+            update_payload=result.update_payload,
             timing_recorder=timing_recorder,
         )
     return result
@@ -220,14 +223,14 @@ def run_query_ssl_peft_encoder_local_training(
             "Query SSL PEFT classifier local training requires active classifier state."
         )
     effective_created_at = created_at or datetime.now(tz=timezone.utc)
-    base_parameters = _load_base_parameters_if_needed(
-        active_adapter_state=active_adapter_state,
-        output_dir=output_dir,
-        aggregated_at=effective_created_at,
-        round_base_snapshot_cache=round_base_snapshot_cache,
-        base_parameters=base_parameters,
-        timing_recorder=timing_recorder,
-    )
+    if base_parameters is None:
+        base_parameters = load_peft_encoder_base_parameters_with_timing(
+            active_adapter_state=active_adapter_state,
+            output_dir=output_dir,
+            aggregated_at=effective_created_at,
+            round_base_snapshot_cache=round_base_snapshot_cache,
+            timing_recorder=timing_recorder,
+        )
     service = QuerySslLocalTrainingService(
         repository=TrainingArtifactRepository(
             state_root=output_dir / "agents" / client_id
@@ -264,77 +267,3 @@ def run_query_ssl_peft_encoder_local_training(
             ),
         )
     )
-
-
-def _load_base_parameters_if_needed(
-    *,
-    active_adapter_state: PeftEncoderState,
-    output_dir: Path,
-    aggregated_at: datetime,
-    round_base_snapshot_cache: RoundBaseSnapshotCache | None,
-    base_parameters: PeftEncoderMaterializedState | None,
-    timing_recorder: TimingRecorder | None,
-) -> PeftEncoderMaterializedState:
-    if base_parameters is not None:
-        return base_parameters
-    if timing_recorder is None:
-        return load_peft_encoder_base_parameters(
-            active_adapter_state=active_adapter_state,
-            output_dir=output_dir,
-            aggregated_at=aggregated_at,
-            round_base_snapshot_cache=round_base_snapshot_cache,
-        )
-    with timing_recorder.measure("adapter_base_materialization_seconds"):
-        return load_peft_encoder_base_parameters(
-            active_adapter_state=active_adapter_state,
-            output_dir=output_dir,
-            aggregated_at=aggregated_at,
-            round_base_snapshot_cache=round_base_snapshot_cache,
-        )
-
-
-def _load_base_partition_parameters_if_needed(
-    *,
-    active_adapter_state: PeftEncoderState,
-    output_dir: Path,
-    aggregated_at: datetime,
-    round_base_snapshot_cache: RoundBaseSnapshotCache | None,
-    timing_recorder: TimingRecorder | None,
-) -> dict[str, PeftEncoderMaterializedState]:
-    if timing_recorder is None:
-        return load_peft_encoder_base_partition_parameters(
-            active_adapter_state=active_adapter_state,
-            output_dir=output_dir,
-            aggregated_at=aggregated_at,
-            round_base_snapshot_cache=round_base_snapshot_cache,
-        )
-    with timing_recorder.measure("adapter_base_partition_materialization_seconds"):
-        return load_peft_encoder_base_partition_parameters(
-            active_adapter_state=active_adapter_state,
-            output_dir=output_dir,
-            aggregated_at=aggregated_at,
-            round_base_snapshot_cache=round_base_snapshot_cache,
-        )
-
-
-def _save_agent_local_update(
-    *,
-    output_dir: Path,
-    client_id: str,
-    result: QuerySslPeftEncoderClientTrainingResult,
-    timing_recorder: TimingRecorder | None,
-) -> None:
-    repository = TrainingArtifactRepository(
-        state_root=output_dir / "agents" / client_id
-    )
-    if timing_recorder is None:
-        repository.save_shared_adapter_update(
-            result.update_envelope.update_id,
-            result.update_payload,
-        )
-        return
-    with timing_recorder.measure("agent_repository_save_seconds"):
-        repository.save_shared_adapter_update(
-            result.update_envelope.update_id,
-            result.update_payload,
-        )
