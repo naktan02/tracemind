@@ -115,7 +115,7 @@ from scripts.runtime_adapters.federated_agent import (
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
-from scripts.runtime_adapters.federated_agent.local_training import (
+from scripts.runtime_adapters.federated_agent.peft_encoder_local_training import (
     QuerySslPeftEncoderClientTrainingResult,
 )
 from scripts.runtime_adapters.federated_server import peft_encoder_server_step

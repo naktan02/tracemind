@@ -325,8 +325,8 @@ runtime payload를 읽어야 할 때 이 폴더를 통해서만 연결한다.
   - `artifact_store.py`: simulation client artifact ref 생성, 저장, upload bridge.
   - `base_state_materialization.py`: active shared state ref를 client-local base
     parameter snapshot으로 materialize.
-  - `local_training.py`: simulation request/base state/artifact store를 selected
-    methods-owned LoRA-classifier local core에 연결.
+  - `peft_encoder_local_training.py`: simulation request/base state/artifact store를
+    PEFT encoder local core에 연결.
   - `method_owned_client_round.py`, `query_ssl_client_round.py`: method-owned/manual
     client round 실행과 update submission orchestration.
   - `training_runtime.py`: local training service/request bridge. Concrete family

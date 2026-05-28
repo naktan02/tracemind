@@ -663,7 +663,9 @@ def test_fl_simulation_unit_tests_use_active_peft_payload_surface() -> None:
 
 def test_scripts_runtime_bridges_use_peft_config_type_names() -> None:
     checked_paths = (
-        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent" / "local_training.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_agent"
+        / "peft_encoder_local_training.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_server"
         / "peft_encoder_round_runtime.py",
@@ -1371,7 +1373,7 @@ def test_fl_scripts_legacy_family_names_stay_in_declared_compatibility_files() -
         ),
         Path("scripts/experiments/fl_ssl/federated_simulation/models.py"),
         Path("scripts/runtime_adapters/federated_agent/base_state_materialization.py"),
-        Path("scripts/runtime_adapters/federated_agent/local_training.py"),
+        Path("scripts/runtime_adapters/federated_agent/peft_encoder_local_training.py"),
     }
     actual_paths: set[Path] = set()
     for root in roots:

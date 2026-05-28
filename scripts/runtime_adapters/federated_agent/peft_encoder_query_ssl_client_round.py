@@ -38,7 +38,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
-from scripts.runtime_adapters.federated_agent.local_training import (
+from scripts.runtime_adapters.federated_agent.peft_encoder_local_training import (
     run_query_ssl_peft_encoder_local_training,
 )
 from shared.src.contracts.training_contracts import ClientMetricKeys

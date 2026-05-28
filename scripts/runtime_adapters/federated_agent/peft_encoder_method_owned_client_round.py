@@ -46,7 +46,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_agent import local_training as method_trainer
+from scripts.runtime_adapters.federated_agent import (
+    peft_encoder_local_training as method_trainer,
+)
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )

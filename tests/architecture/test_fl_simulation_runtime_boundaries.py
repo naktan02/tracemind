@@ -214,7 +214,7 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         package_root / "artifact_store.py",
         package_root / "backend_resolver.py",
         package_root / "base_state_materialization.py",
-        package_root / "local_training.py",
+        package_root / "peft_encoder_local_training.py",
         package_root / "row_validator.py",
         package_root / "scoring_runtime.py",
         package_root / "selection_runtime.py",
@@ -251,11 +251,16 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
     missing_files = [
         _relative_repo_path(path) for path in expected_files if not path.exists()
     ]
+    generic_local_training_path = package_root / "local_training.py"
 
     assert not monolith_path.exists(), (
         "FL simulation agent runtime bridge는 federated_agent/ package의 책임별 "
         "module을 직접 import한다. 중앙 monolith/facade를 다시 만들지 않는다.\n"
         f"monolith path={_relative_repo_path(monolith_path)}"
+    )
+    assert not generic_local_training_path.exists(), (
+        "PEFT encoder 전용 local training bridge는 peft_encoder_local_training.py에 "
+        "둔다. generic local_training.py에 update-family별 분기를 누적하지 않는다."
     )
     assert not missing_files, (
         "federated_agent runtime adapter package는 artifact store, base-state "

@@ -60,7 +60,9 @@ from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
     RoundBaseSnapshotCache,
 )
 from scripts.runtime_adapters.federated_agent import base_state_materialization
-from scripts.runtime_adapters.federated_agent import local_training as qtrainer
+from scripts.runtime_adapters.federated_agent import (
+    peft_encoder_local_training as qtrainer,
+)
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
@@ -70,7 +72,7 @@ from scripts.runtime_adapters.federated_agent.backend_resolver import (
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
     load_peft_encoder_base_parameters,
 )
-from scripts.runtime_adapters.federated_agent.local_training import (
+from scripts.runtime_adapters.federated_agent.peft_encoder_local_training import (
     run_query_ssl_peft_encoder_local_training,
 )
 from scripts.runtime_adapters.federated_agent.row_validator import (

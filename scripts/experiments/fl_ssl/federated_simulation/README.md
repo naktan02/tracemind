@@ -39,7 +39,7 @@ experiment package로 이해하면 된다.
    - `round_request_mapper.py`: round task/open request 변환
 7. `scripts/runtime_adapters/federated_agent/`
    - agent local runtime adapter package
-   - `local_training.py`: local training request/service bridge
+   - `peft_encoder_local_training.py`: PEFT encoder local training request/service bridge
    - `artifact_store.py`: agent-local/server-owned artifact ref bridge
    - `training_example_mapper.py`: simulation row를 agent training example request로 변환
    - `row_validator.py`: `weak_strong_pair` 같은 row-source 요구사항 검증
