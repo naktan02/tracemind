@@ -462,14 +462,11 @@ def test_run_peft_ssl_control_supports_adamatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_uses_precomputed_query_views() -> None:
+def test_run_peft_ssl_control_uses_entrypoint_precomputed_query_views() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
-            overrides=[
-                "strategy_axes/ssl_objective/augmentation_source=precomputed_usb_candidates_v1",
-                "query_ssl_strong_view_policy=first_aug",
-            ],
+            overrides=["query_ssl_strong_view_policy=first_aug"],
         )
 
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"

@@ -48,12 +48,13 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
 - `central/ssl_control/run_peft_ssl_control.py`
   - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT text encoder scaffold에 얹는
     consistency family SSL entrypoint.
-  - method/source/augmentation/strong-view/initial checkpoint source of truth는
+  - method/source/strong-view/initial checkpoint source of truth는
     `strategy_axes/ssl_objective/consistency_method`,
     `execution_context/query_data_source`,
-    `strategy_axes/ssl_objective/augmentation_source`,
     `query_ssl_strong_view_policy`,
     `strategy_axes/model_architecture/initial_checkpoint` selector다.
+    현재 augmentation reader는 entrypoint의 `query_ssl_augmenter` 고정 설정으로
+    precomputed USB candidates만 사용한다.
 - `scripts/support/query_ssl_peft/`
   - `runners/{supervised,consistency,pseudo_label,query_adaptation}.py`가 query-domain
     PEFT text encoder scaffold를 실행한다.

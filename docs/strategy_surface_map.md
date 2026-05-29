@@ -74,9 +74,10 @@ Central SSL:
 - `pseudo_label_selection` public Hydra group은 제거했다. teacher/pseudo-label artifact
   selection policy는 중앙 method 비교의 독립 축으로 쓰지 않고, method recipe 기본값이나
   explicit ablation metadata로만 남긴다.
-- `augmentation_source`와 `query_ssl_strong_view_policy`는 USB 계열 input view
-  materialization/runtime 입력으로 유지할 수 있다. 특정 method만 의미를 소유하면
-  method config로 내린다.
+- USB 계열 strong view 생성/caching은 `execution_context/query_view` materialization이
+  소유한다. 중앙 SSL 학습 entrypoint는 precomputed USB candidate reader를
+  `query_ssl_augmenter` 고정 설정으로 둔다. `query_ssl_strong_view_policy`는
+  저장된 strong candidate 중 어느 view를 소비할지 고르는 실행 입력이다.
 - teacher source, checkpoint type, prototype/PEFT/EMA teacher 여부는 user-facing
   strategy axis로 만들지 않는다. 필요하면 method/recipe 내부 요구사항과 artifact
   provenance로 기록한다.

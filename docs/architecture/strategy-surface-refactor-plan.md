@@ -43,9 +43,9 @@
 | 번호 | 현재 축/표면 | 현재 위치 | 문제 | 목표 상태 | 우선순위 |
 |---|---|---|---|---|---|
 | 1 | `input_mode` | 제거됨 | method가 아니라 runner/workflow를 고르게 한다 | public strategy axis와 `ssl_input_mode` manifest 표식에서 제거 | 높음 |
-| 2 | `trainable_surface` | `conf/strategy_axes/model_architecture/trainable_surface/*` | 현재 구현이 하나뿐이라 축이 premature다 | 당장은 유지 가능. 단 실제 surface가 2개 이상 열릴 때까지 scaffold axis로만 취급 | 중간 |
+| 2 | `trainable_surface` | `conf/strategy_axes/model_architecture/trainable_surface/*` | 현재 구현은 하나뿐이지만 artifact/provenance 계약의 scaffold 의미가 있다 | public method knob가 아니라 중앙 PEFT trainer의 scaffold/provenance 축으로 유지 | 중간 |
 | 3 | `pseudo_label_selection` | 제거됨 | 중앙 SSL method 축이 아니라 bootstrap/replay 내부 policy에 가깝다 | public method axis에서 제거. recipe 내부 기본값 또는 ablation metadata로 이동 | 높음 |
-| 4 | `augmentation_source` | `conf/strategy_axes/ssl_objective/augmentation_source/*` | 일부 method에만 의미가 있을 수 있다 | 공통 input materialization surface면 유지, 특정 method 전용이면 method 내부로 이동 | 중간 |
+| 4 | `augmentation_source` | 제거됨 | leaf가 하나뿐이고 실제 view materialization은 `execution_context/query_view`가 소유한다 | public strategy axis에서 제거하고 중앙 SSL entrypoint 고정 reader 설정으로 이동 | 중간 |
 | 5 | `teacher_*` bootstrap knobs | 제거됨 | teacher 구현과 bootstrap IO가 user-facing 설정으로 과도하게 노출된다 | public central SSL surface에서 제거. future teacher source는 method hook/recipe가 소유 | 높음 |
 | 6 | `update_partition` | `conf/strategy_axes/fl_topology/update_partition/*` | method-owned 실행에서 method가 결정해야 할 partition semantics가 밖에 나온다 | manual baseline 전용 축으로 제한. method-owned에서는 descriptor/scenario가 파생 | 높음 |
 | 7 | `aggregation_weight` | `conf/strategy_axes/fl_topology/aggregation_weight/*` | method-owned server policy의 일부가 public override로 남아 있다 | manual baseline 전용 축으로 제한. method-owned에서는 method server policy가 파생 | 높음 |
@@ -76,13 +76,13 @@ generic `fedmatch` leaf는 compatibility/ablation 입력으로만 남긴다.
 | 9 | `server_step` | FedMatch 범위 완료 | 9 | labels-at-server 같은 scenario 의미는 variant descriptor에서 파생한다. |
 | 10 | `server_update` | FedMatch 범위 완료 | 10 | method-local server update leaf를 generic Hydra leaf로 만들지 않는다. |
 | 12 | `local_ssl_policy` | FedMatch 범위 완료 | 11 | `fedmatch_agreement` 같은 method-local objective를 generic leaf로 만들지 않는다. |
-| 4 | `augmentation_source` | 보류 | 12 | 공통 USB input materialization이면 유지하고, 특정 method 전용이면 method recipe로 내린다. |
-| 2 | `trainable_surface` | 보류 | 13 | 실제 surface가 두 개 이상 구현/검증될 때 scaffold axis 유지 여부를 재판정한다. |
+| 4 | `augmentation_source` | 완료 | - | public Hydra group을 제거했고, 중앙 SSL entrypoint의 precomputed USB candidate reader 설정으로 내렸다. |
+| 2 | `trainable_surface` | 유지 결정 | - | 중앙 PEFT trainer manifest와 artifact kind를 설명하는 scaffold/provenance 축으로 유지한다. 새 surface leaf는 실제 구현/검증 전까지 추가하지 않는다. |
 
 실행 묶음은 README/compose/report expectation을 새 surface에 맞췄고,
 `11, 13`의 FSSL 잔여 노출은 guard로 닫았다. 마지막으로
-`4, 2` scaffold/input materialization 축을 재판정하고, 기존 config/run 참조가 사라진
-뒤 generic `fedmatch` compatibility leaf 제거 여부를 결정한다.
+`2` scaffold 축은 유지로 닫았다. 다음은 기존 config/run 참조가 사라진 뒤 generic
+`fedmatch` compatibility leaf 제거 여부를 결정한다.
 
 ## 축별 목표 구조
 
@@ -218,9 +218,12 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
 
 ### Phase 4. Scaffold axis 재검토
 
-1. `trainable_surface`가 실제로 두 개 이상 구현/검증되면 public scaffold axis로 유지한다.
-2. `augmentation_source`는 공통 materialization surface인지, 특정 method 전용 입력인지
-   다시 판정한다.
+1. `trainable_surface`는 중앙 PEFT trainer manifest와 artifact kind를 설명하는
+   scaffold/provenance 축으로 유지한다. 단, 새 surface leaf는 실제 구현과 검증이
+   함께 들어오기 전까지 추가하지 않는다.
+2. `augmentation_source`는 public strategy axis에서 제거했다. `query_ssl_augmenter`
+   fixed reader 설정은 중앙 SSL entrypoint가 소유하고, 실제 view materialization은
+   `execution_context/query_view`와 dataset workflow가 소유한다.
 3. `consistency_method`는 central SSL과 manual baseline에는 유지하고,
    method-owned FSSL에서의 노출 여부를 정리한다.
 
@@ -246,14 +249,10 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
 ## 비목표
 
 - 지금 문서만으로 최종 method taxonomy를 확정하지 않는다.
-- 당장 `trainable_surface`를 제거한다고 결정하지 않는다.
+- `trainable_surface`는 제거하지 않고 scaffold/provenance 축으로 유지한다.
 - teacher compatibility code를 즉시 삭제하지 않는다.
 - manual baseline 조합 능력 자체를 없애지 않는다.
 
 ## 현재 우선순위
 
-1. central SSL README, Hydra compose, report expectation을 새 public surface로 갱신
-2. FSSL method-owned의 잔여 `local_update_profile`, `consistency_method` 노출 감사
-3. `augmentation_source`, `trainable_surface`를 scaffold/input materialization 축으로
-   유지할지 재판정
-4. 기존 generic `fedmatch` 참조가 사라진 뒤 compatibility leaf 제거 여부 결정
+1. 기존 generic `fedmatch` 참조가 사라진 뒤 compatibility leaf 제거 여부 결정

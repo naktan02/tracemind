@@ -1,5 +1,0 @@
-# @package query_ssl_augmenter
-
-name: precomputed_usb_candidates_v1
-augmenter_type: precomputed_usb_candidates
-cache_dir: data/cache/query_ssl_augmentations

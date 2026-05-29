@@ -45,7 +45,7 @@ def prepare_query_ssl_unlabeled_rows(
 
 
 def build_query_ssl_augmenter_manifest(cfg: object) -> dict[str, object]:
-    """query_ssl_augmenter Hydra group를 run manifest shape로 변환한다."""
+    """query_ssl_augmenter 실행 설정을 run manifest shape로 변환한다."""
 
     return build_manifest_from_settings(build_query_ssl_augmenter_settings(cfg))
 
@@ -53,7 +53,7 @@ def build_query_ssl_augmenter_manifest(cfg: object) -> dict[str, object]:
 def build_query_ssl_augmenter_settings(
     cfg: object,
 ) -> QuerySslAugmenterSettings | None:
-    """Hydra query_ssl_augmenter group을 typed settings로 정규화한다."""
+    """query_ssl_augmenter 실행 설정을 typed settings로 정규화한다."""
 
     augmenter_cfg = getattr(cfg, "query_ssl_augmenter", None)
     if augmenter_cfg is None:

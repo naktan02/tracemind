@@ -130,9 +130,10 @@ Query Buffer (raw text)
   `aug_0` 또는 `aug_1` 후보를 사용한다. 기본값은 기존 동작 보존을 위해
   `first_aug`다.
   `aug_0`, `aug_1` 생성/caching은 `execution_context/query_view`의 view
-  materialization config가 담당한다. 학습의
-  `strategy_axes/ssl_objective/augmentation_source`는 이미 저장된
-  `text + aug_0 + aug_1` row를 읽을지, 실행 중 생성할지를 고른다.
+  materialization config가 담당한다. 중앙 SSL 학습 entrypoint는 현재
+  `query_ssl_augmenter` 고정 설정으로 이미 저장된 `text + aug_0 + aug_1`
+  row를 읽는다. 실행 중 augmentation 생성은 public strategy axis가 아니라
+  별도 materialization/runtime workflow가 필요할 때 다시 연다.
 - 중앙 SSL 알고리즘 비교용 canonical query source는
   `ourafla_ssl_labeled1024_per_class_seed42_v1`이다.
   `data/datasets/ourafla_mental_health/splits/ourafla_train_split.v1.train.jsonl`에서 각 class별
