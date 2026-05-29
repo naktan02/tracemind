@@ -77,10 +77,7 @@ def build_query_peft_run_artifact_paths(
 
 
 def _resolve_query_ssl_run_group(cfg: Any) -> str | None:
-    runner_cfg = getattr(cfg, "central_ssl_runner", None)
-    if runner_cfg is None:
-        return None
-    if not bool(getattr(runner_cfg, "group_by_query_ssl_method", False)):
+    if not bool(getattr(cfg, "group_by_query_ssl_method", False)):
         return None
     query_ssl_method = getattr(cfg, "query_ssl_method", None)
     if query_ssl_method is None:

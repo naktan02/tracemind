@@ -6,13 +6,11 @@ import pytest
 from hydra import compose, initialize_config_module
 from omegaconf import OmegaConf
 
-from scripts.experiments.fl_ssl.run_federated_client_count_sweep import (
+from scripts.experiments.fl_ssl.federated_simulation.sweep import (
     run_client_count_sweep_from_config,
-)
-from scripts.experiments.fl_ssl.run_federated_seed_sweep import (
     run_seed_sweep_from_config,
 )
-from scripts.experiments.fl_ssl.run_safety import (
+from scripts.experiments.fl_ssl.support.safety import (
     DEFAULT_LONG_RUN_ACK,
     require_fl_ssl_run_budget_allowed,
 )
@@ -83,7 +81,10 @@ def test_client_count_sweep_guard_blocks_total_rounds_before_running() -> None:
     )
 
     with pytest.raises(ValueError, match="client_count_sweep"):
-        run_client_count_sweep_from_config(cfg)
+        run_client_count_sweep_from_config(
+            cfg,
+            line_renderer=lambda **_: [],
+        )
 
 
 def test_seed_sweep_guard_blocks_total_rounds_before_running() -> None:
@@ -94,7 +95,10 @@ def test_seed_sweep_guard_blocks_total_rounds_before_running() -> None:
     )
 
     with pytest.raises(ValueError, match="seed_sweep"):
-        run_seed_sweep_from_config(cfg)
+        run_seed_sweep_from_config(
+            cfg,
+            line_renderer=lambda **_: [],
+        )
 
 
 def _minimal_cfg(
@@ -127,14 +131,16 @@ def _minimal_cfg(
                 "labeled_ratio": 0.1,
                 "unlabeled_ratio": 0.9,
             },
-            "client_count_sweep": {
-                "output_dir": "runs/test_client_count_sweep",
-                "client_counts": client_counts or [1],
-                "split_manifest_by_client_count": None,
-            },
-            "seed_sweep": {
-                "output_dir": "runs/test_seed_sweep",
-                "seeds": seeds or [42, 43, 44],
+            "sweep": {
+                "axis": "none",
+                "output_dir": "runs/test_sweep",
+                "client_count": {
+                    "members": client_counts or [1],
+                    "split_manifest_by_client_count": None,
+                },
+                "seed": {
+                    "members": seeds or [42, 43, 44],
+                },
             },
             "run_safety": run_safety or {},
         }

@@ -1,6 +1,7 @@
 # FL SSL 실행
 
-이 폴더는 FL SSL 실험 entrypoint와 sweep wrapper만 둔다. FL method identity와
+이 폴더는 FL SSL 실험 entrypoint와 support helper만 둔다. 직접 실행하는 파일은
+top-level에 두고, path/safety 같은 내부 helper는 `support/` 아래에 둔다. FL method identity와
 method-only 정책은 `methods/federated_ssl/`, SSL objective core는 `methods/ssl`,
 update-family 계산 core는 `methods/adaptation/*`, 실행 조합과 파라미터는 `conf/`
 Hydra config가 소유한다.
@@ -80,19 +81,21 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 ## Sweep
 
 ```bash
-uv run python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=smoke \
+  sweep.axis=seed \
   strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
 ```
 
 ```bash
-uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=smoke \
+  sweep.axis=client_count \
   strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
 ```
 
 `materialized_client_split` 기반 client-count sweep은
-`client_count_sweep.split_manifest_by_client_count`에 count별 manifest를 명시한다.
+`sweep.client_count.split_manifest_by_client_count`에 count별 manifest를 명시한다.
 
 ## Report
 

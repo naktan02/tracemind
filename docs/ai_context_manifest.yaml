@@ -16,6 +16,7 @@ source_of_truth_priority:
   - plan.md
   - docs/project_execution_plan.md
   - docs/architecture/target-method-runtime-structure.md
+  - docs/architecture/strategy-surface-refactor-plan.md
   - docs/architecture/system-overview.md
   - docs/contracts/*
   - docs/strategy_surface_map.md

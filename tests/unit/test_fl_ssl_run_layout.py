@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from omegaconf import OmegaConf
 
-from scripts.experiments.fl_ssl.run_layout import (
+from scripts.experiments.fl_ssl.support.layout import (
     build_fl_ssl_client_count_sweep_member_dir,
     build_fl_ssl_run_dir,
     resolve_fl_ssl_method_composition_slug,

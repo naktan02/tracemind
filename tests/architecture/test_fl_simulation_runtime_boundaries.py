@@ -82,7 +82,7 @@ def test_fl_simulation_client_training_has_no_payload_adapter_literals() -> None
 def test_fl_simulation_config_callable_loading_is_centralized() -> None:
     callable_loader_path = SCRIPTS_SRC / "support" / "configured_callable.py"
     checked_paths = (
-        SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py",
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "support" / "layout.py",
         SCRIPTS_SRC
         / "experiments"
         / "fl_ssl"

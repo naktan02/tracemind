@@ -77,7 +77,7 @@ conf/
   entrypoints/
     {fl_ssl,central_ssl,prototype_analysis}/run.yaml
   strategy_axes/
-    ssl_objective/{consistency_method,input_mode,local_update_profile,pseudo_label_selection}/
+    ssl_objective/{consistency_method,local_update_profile,pseudo_label_selection}/
     model_architecture/{backbone,trainable_surface,peft,update_family,initial_checkpoint}/
     prototype/build_strategy/
     fssl_method/
@@ -147,14 +147,15 @@ write_outputs(result, context)
 Adapter 뒤로 옮긴다.
 
 6. 중앙 SSL의 teacher는 독립 실행 stage나 별도 strategy axis가 아니다.
-   방법론 또는 workflow recipe가 teacher 사용 여부를 내부에서 결정한다. 현재
-   transitional `teacher_bootstrap` input mode는 checkpoint artifact에서 pseudo-label
-   replay input을 materialize하는 recipe이고, fixed embedding classifier는 그 recipe의
-   내부 artifact kind로 manifest에만 남긴다. prototype, PEFT checkpoint, EMA teacher,
-   external pseudo-label source는 별도 user-facing teacher selector가 아니라 새
-   method/recipe 또는 method descriptor 내부 요구사항으로 추가한다. scripts는 teacher
-   구현 family를 새 axis로 노출하지 않고, artifact materialization, Hydra cfg 해석,
-   output write 같은 실행 glue만 맡는다.
+   방법론 또는 내부 workflow/helper가 teacher 사용 여부를 내부에서 결정한다.
+   checkpoint artifact에서 pseudo-label input을 materialize하는 bootstrap helper는
+   public experiment entrypoint가 아니라 내부 compatibility workflow로만 남기고,
+   fixed embedding classifier는 그 helper의 내부 artifact kind로 manifest에만 남긴다.
+   prototype, PEFT checkpoint, EMA teacher, external pseudo-label source는 별도
+   user-facing teacher selector가 아니라 새 method/recipe 또는 method descriptor
+   내부 요구사항으로 추가한다. scripts는 teacher 구현 family를 새 axis로 노출하지
+   않고, artifact materialization, Hydra cfg 해석, output write 같은 실행 glue만
+   맡는다.
 
 ## 해석 Guard
 

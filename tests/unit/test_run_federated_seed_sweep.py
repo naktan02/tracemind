@@ -13,7 +13,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationResult,
     SimulationRoundSummary,
 )
-from scripts.experiments.fl_ssl.run_federated_seed_sweep import (
+from scripts.experiments.fl_ssl.federated_simulation.sweep import (
     SeedSweepRunResult,
     build_seed_sweep_summary_payload,
     resolve_seed_sweep_values,
@@ -38,7 +38,11 @@ def _cfg(*, seeds: list[int], seed_count: int = 3):
                 "labeled_ratio": 0.1,
                 "unlabeled_ratio": 0.9,
             },
-            "seed_sweep": {"seeds": seeds},
+            "sweep": {
+                "seed": {
+                    "members": seeds,
+                }
+            },
         }
     )
 

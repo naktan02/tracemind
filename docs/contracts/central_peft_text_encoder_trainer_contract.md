@@ -47,7 +47,7 @@ query가 충분히 쌓인 뒤 그 query 분포에 맞춰 표현과 경계를 함
 
 고정 임베딩 classifier는 더 이상 독립 실행 stage나 중앙 SSL의 숨은 선행 단계가
 아니다. unlabeled pool에 pseudo-label 후보를 만들 필요가 있을 때만
-`teacher_bootstrap` input mode의 source 설정으로 선택한다.
+teacher bootstrap helper 내부 source 설정으로 선택한다.
 
 1. label order, category, classifier head provenance는 teacher output manifest와
    student run manifest에 남긴다.

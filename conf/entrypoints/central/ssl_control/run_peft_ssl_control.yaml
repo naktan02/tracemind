@@ -8,7 +8,6 @@ defaults:
   - /strategy_axes/model_architecture/peft: default
   - /run_controls/central_ssl/budget: main
   - /execution_context/query_data_source: default
-  - /strategy_axes/ssl_objective/input_mode: consistency
   - /strategy_axes/ssl_objective/consistency_method: fixmatch_usb_v1
   - /strategy_axes/ssl_objective/augmentation_source: precomputed_usb_candidates_v1
   - /strategy_axes/model_architecture/initial_checkpoint: none
@@ -16,10 +15,12 @@ defaults:
   - override /hydra/hydra_logging: disabled
   - _self_
 
+group_by_query_ssl_method: true
+
 pseudo_label_jsonl: null
 pseudo_label_export_root: data/artifacts/query_peft_pseudo_label
 include_seed_train_rows: false
-output_dir: ${central_ssl_budget.output_root}/run_peft_ssl_control/${ssl_input_mode}/${query_data_selection_slug}
+output_dir: ${central_ssl_budget.output_root}/run_peft_ssl_control/${query_data_selection_slug}
 fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}

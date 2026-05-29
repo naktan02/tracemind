@@ -185,9 +185,9 @@ uv run python scripts/workflows/datasets/materialize_query_ssl_views.py \
   execution_context/query_view=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
 ```
 
-Teacher bootstrap은 별도 seed entrypoint가 아니라 중앙 SSL
-`input_mode=teacher_bootstrap` 내부 source 설정으로 조립한다. 중앙 SSL method 비교
-기본값은 `initial_checkpoint=none`이다.
+Teacher bootstrap은 public central SSL experiment entrypoint가 아니라 내부 helper/
+compatibility workflow로만 남긴다. 중앙 SSL method 비교 기본값은
+`initial_checkpoint=none`이다.
 
 PEFT supervised baseline:
 
@@ -237,8 +237,9 @@ uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
 FL SSL seed sweep smoke:
 
 ```bash
-uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py \
+uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
   run_controls/fl_ssl/budget=smoke \
+  sweep.axis=seed \
   federated_run_budget.rounds=1
 ```
 

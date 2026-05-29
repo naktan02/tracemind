@@ -11,12 +11,9 @@ SSL objective는 `methods/ssl`, adaptation core는 `methods/adaptation/peft_text
 
 1. `run_peft_supervised_control.py`로 같은 PEFT scaffold의 supervised baseline을 만든다.
 2. `run_peft_ssl_control.py`에서 SSL objective만 바꿔 pooled/offline control을 비교한다.
-3. teacher bootstrap이 필요하면 별도 seed entrypoint가 아니라
-   `strategy_axes/ssl_objective/input_mode=teacher_bootstrap`와 source 설정으로
-   `scripts/support/query_ssl_peft/runners/bootstrap_teacher.py`를 조립한다.
 
 중앙 SSL method 비교의 기본 initial checkpoint는 `none`이다. teacher는 SSL 실행의
-숨은 sub-step이 아니라 bootstrap/pseudo-label source를 명시할 때만 쓴다.
+숨은 sub-step이 아니라 방법론이 필요할 때 teacher hook으로 소비한다.
 
 ## 기본 실행
 
@@ -55,27 +52,15 @@ uv run python scripts/experiments/central/ssl_control/run_peft_supervised_contro
   query_data_selection.test=ourafla_reddit
 ```
 
-## 입력 모드와 initial checkpoint
+## Method Surface
 
-기본 `consistency` mode는 `unlabeled_jsonl`과 precomputed weak/strong view를 읽는다.
+`run_peft_ssl_control.py`는 `unlabeled_jsonl`과 precomputed weak/strong view를 읽는
+consistency-family central SSL entrypoint다. pseudo-label replay나 teacher bootstrap은
+독립 public 실험 entrypoint가 아니라 내부 helper/workflow와 method hook로만 남긴다.
 
 ```bash
 uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl_objective/input_mode=consistency \
   strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1
-
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl_objective/input_mode=pseudo_label_replay \
-  pseudo_label_jsonl=data/artifacts/query_peft_pseudo_label/<run_id>/pseudo_label_train.jsonl \
-  include_seed_train_rows=false
-```
-
-teacher bootstrap을 실행하는 helper는 concrete provider가 필요하다.
-
-```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl_objective/input_mode=teacher_bootstrap \
-  strategy_axes/ssl_objective/pseudo_label_selection=margin_threshold_v1
 ```
 
 ## 경계와 Read Path

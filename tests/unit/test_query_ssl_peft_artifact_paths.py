@@ -15,13 +15,9 @@ from scripts.support.query_ssl_peft.io.artifact_paths import (
 def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
     cfg = OmegaConf.create(
         {
-            "ssl_input_mode": "consistency",
-            "central_ssl_runner": {
-                "mode": "consistency",
-                "group_by_query_ssl_method": True,
-            },
+            "group_by_query_ssl_method": True,
             "output_dir": (
-                "runs/run_peft_ssl_control/consistency/"
+                "runs/run_peft_ssl_control/"
                 "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
             ),
             "adapter_output_dir": "data/processed/peft_adapters",
@@ -39,13 +35,12 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
     )
 
     assert str(paths.output_dir) == (
-        "runs/run_peft_ssl_control/consistency/"
+        "runs/run_peft_ssl_control/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
         "fixmatch_usb_v1/peft_fixmatch_2026_05_10_155954"
     )
     assert str(paths.report_path) == (
         "runs/run_peft_ssl_control/"
-        "consistency/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
         "fixmatch_usb_v1/"
         "peft_fixmatch_2026_05_10_155954/"
@@ -53,16 +48,12 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
     )
 
 
-def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> None:
+def test_non_grouped_query_ssl_run_output_dir_skips_method_group() -> None:
     cfg = OmegaConf.create(
         {
-            "ssl_input_mode": "pseudo_label_replay",
-            "central_ssl_runner": {
-                "mode": "pseudo_label_replay",
-                "group_by_query_ssl_method": False,
-            },
+            "group_by_query_ssl_method": False,
             "output_dir": (
-                "runs/run_peft_ssl_control/pseudo_label_replay/"
+                "runs/query_peft_workflow/"
                 "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
             ),
             "adapter_output_dir": "data/processed/peft_adapters",
@@ -80,7 +71,7 @@ def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> 
     )
 
     assert str(paths.output_dir) == (
-        "runs/run_peft_ssl_control/pseudo_label_replay/"
+        "runs/query_peft_workflow/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
         "peft_replay_2026_05_10_155954"
     )
@@ -100,7 +91,7 @@ def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
     )
 
     assert str(paths.output_dir) == (
-        "runs/_smoke/run_peft_ssl_control/consistency/"
+        "runs/_smoke/run_peft_ssl_control/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
         "validation-ourafla_reddit_test-ourafla_reddit/"
         "fixmatch_usb_v1/peft_smoke_2026_05_10_155954"

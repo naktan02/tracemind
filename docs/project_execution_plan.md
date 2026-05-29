@@ -77,13 +77,15 @@ central fixed embedding + classifier seed
 
 ## Next Priorities
 
-1. `scripts/report/result-index`에서 old-run reader compatibility가 active producer
+1. `docs/architecture/strategy-surface-refactor-plan.md` 기준으로 중앙 SSL/FSSL의
+   public axis, method-owned axis, workflow surface를 분리한다.
+2. `scripts/report/result-index`에서 old-run reader compatibility가 active producer
    의미로 새지 않는지 마지막으로 점검한다.
-2. `conf/strategy_axes` leaf가 실행 조합과 파라미터만 소유하는지 확인하고, 얇지만
+3. `conf/strategy_axes` leaf가 실행 조합과 파라미터만 소유하는지 확인하고, 얇지만
    의미 있는 leaf와 중복 leaf를 구분한다.
-3. active docs가 완료된 migration 계획을 current priority처럼 보이게 하지 않도록
+4. active docs가 완료된 migration 계획을 current priority처럼 보이게 하지 않도록
    archive 또는 축약한다.
-4. dead folder와 architecture guard를 최종 감사한다. `data`, `runs`, historical
+5. dead folder와 architecture guard를 최종 감사한다. `data`, `runs`, historical
    artifact cache는 건드리지 않는다.
 
 ## Validation Criteria

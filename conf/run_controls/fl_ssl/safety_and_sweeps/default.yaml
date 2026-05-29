@@ -1,28 +1,28 @@
 # @package _global_
 
-seed_sweep:
+sweep:
+  axis: none
   output_dir: ${federated_run_budget.output_dir}
-  seeds:
-    - 42
-    - 43
-    - 44
-
-client_count_sweep:
-  output_dir: ${federated_run_budget.output_dir}
-  client_counts:
-    - 1
-    - 2
-    - 3
-    - 4
-    - 5
-    - 6
-    - 7
-    - 8
-    - 9
-    - 10
-  # materialized_client_split sweep에서는 count별로 별도 manifest를 지정해야 한다.
-  # 예: 1: data/datasets/fl_client_splits/client_local_labeled/..._clients1_.../manifest.json
-  split_manifest_by_client_count: null
+  seed:
+    members:
+      - 42
+      - 43
+      - 44
+  client_count:
+    members:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      - 10
+    # materialized_client_split sweep에서는 count별로 별도 manifest를 지정해야 한다.
+    # 예: 1: data/datasets/fl_client_splits/client_local_labeled/..._clients1_.../manifest.json
+    split_manifest_by_client_count: null
 
 run_safety:
   # 총 예정 communication round가 이 값을 넘으면 명시 ack 없이는 runner가 시작되지 않는다.

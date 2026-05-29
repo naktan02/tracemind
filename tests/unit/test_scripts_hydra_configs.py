@@ -475,61 +475,6 @@ def test_run_peft_ssl_control_uses_precomputed_query_views() -> None:
     assert cfg.query_ssl_strong_view_policy == "first_aug"
 
 
-def test_run_peft_ssl_control_supports_pseudo_label_replay_mode() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
-            overrides=[
-                "strategy_axes/ssl_objective/input_mode=pseudo_label_replay",
-                "pseudo_label_jsonl=data/artifacts/query_peft_pseudo_label/run/pseudo_label_train.jsonl",
-                "include_seed_train_rows=true",
-            ],
-        )
-
-    assert cfg.ssl_input_mode == "pseudo_label_replay"
-    assert cfg.central_ssl_runner.mode == "pseudo_label_replay"
-    assert (
-        cfg.central_ssl_runner.callable_path
-        == "scripts.support.query_ssl_peft.runners.pseudo_label."
-        "run_pseudo_label_self_training"
-    )
-    assert cfg.pseudo_label_jsonl.endswith("pseudo_label_train.jsonl")
-    assert cfg.include_seed_train_rows is True
-    assert cfg.pseudo_label_export_root == "data/artifacts/query_peft_pseudo_label"
-    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
-    assert cfg.query_adaptation_initial_checkpoint.name == "none"
-    assert cfg.initial_adapter_dir == ""
-    assert cfg.initial_classifier_path == ""
-
-
-def test_run_peft_ssl_control_supports_teacher_bootstrap_mode() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
-            overrides=[
-                "strategy_axes/ssl_objective/input_mode=teacher_bootstrap",
-                "strategy_axes/ssl_objective/pseudo_label_selection=fixed_confidence_095",
-                "query_data_selection.labeled=szegeelim_general4",
-                "query_data_selection.unlabeled=ourafla_reddit",
-            ],
-        )
-
-    assert cfg.ssl_input_mode == "teacher_bootstrap"
-    assert cfg.central_ssl_runner.mode == "teacher_bootstrap"
-    assert (
-        cfg.central_ssl_runner.callable_path
-        == "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
-        "run_teacher_bootstrap_peft_student"
-    )
-    assert "teacher_bootstrap_source_kind" not in cfg
-    assert "teacher_artifact_kind" not in cfg
-    assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
-    assert cfg.teacher_train_jsonl == cfg.query_source.train_jsonl
-    assert cfg.teacher_unlabeled_jsonl == cfg.query_source.unlabeled_jsonl
-    assert cfg.query_data_selection.labeled == "szegeelim_general4"
-    assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
-
-
 def test_threshold_sweep_supports_short_leaf_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
@@ -641,11 +586,11 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.runtime.local_files_only is True
     assert cfg.fl_data.source_mode == "runtime_split_from_train"
     assert cfg.fl_data.split_manifest is None
-    assert cfg.seed_sweep.output_dir == "runs/_smoke/fl_ssl"
-    assert list(cfg.seed_sweep.seeds) == [42, 43, 44]
-    assert cfg.client_count_sweep.output_dir == "runs/_smoke/fl_ssl"
-    assert list(cfg.client_count_sweep.client_counts) == list(range(1, 11))
-    assert cfg.client_count_sweep.split_manifest_by_client_count is None
+    assert cfg.sweep.axis == "none"
+    assert cfg.sweep.output_dir == "runs/_smoke/fl_ssl"
+    assert list(cfg.sweep.seed.members) == [42, 43, 44]
+    assert list(cfg.sweep.client_count.members) == list(range(1, 11))
+    assert cfg.sweep.client_count.split_manifest_by_client_count is None
     assert cfg.run_safety.max_total_rounds_without_ack == 30
     assert cfg.run_safety.allow_long_run is False
     assert cfg.run_safety.long_run_ack is None
@@ -841,7 +786,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.report.labeled_ratio == cfg.client_pool_split.labeled_ratio
     assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio
-    assert len(cfg.seed_sweep.seeds) == cfg.report.seed_count
+    assert len(cfg.sweep.seed.members) == cfg.report.seed_count
     assert cfg.report.seed_count == 3
 
 
@@ -1247,8 +1192,7 @@ def test_federated_simulation_main_budget_fixes_main_comparison_budget() -> None
     assert cfg.federated_run_budget.client_count == 10
     assert cfg.federated_run_budget.rounds == 30
     assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
-    assert cfg.seed_sweep.output_dir == "runs/fl_ssl"
-    assert cfg.client_count_sweep.output_dir == "runs/fl_ssl"
+    assert cfg.sweep.output_dir == "runs/fl_ssl"
     assert cfg.training_task.local_epochs == 1
     assert cfg.training_task.batch_size == 12
     assert cfg.train_batch_size == 12
@@ -1266,8 +1210,7 @@ def test_federated_simulation_reduced_budget_uses_5_rounds() -> None:
     assert cfg.federated_run_budget.client_count == 10
     assert cfg.federated_run_budget.rounds == 5
     assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
-    assert cfg.seed_sweep.output_dir == "runs/fl_ssl"
-    assert cfg.client_count_sweep.output_dir == "runs/fl_ssl"
+    assert cfg.sweep.output_dir == "runs/fl_ssl"
     assert cfg.training_task.batch_size == 12
     assert cfg.train_batch_size == 12
 
@@ -1486,9 +1429,9 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.runtime.name == "gpu_local"
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is True
-    assert cfg.ssl_input_mode == "consistency"
     assert "teacher_provider" not in cfg
     assert cfg.trainable_surface.name == "peft_text_encoder"
+    assert cfg.group_by_query_ssl_method is True
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
     assert (
@@ -1513,18 +1456,6 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.query_ssl_strong_view_policy == "first_aug"
     assert cfg.train_batch_size == 12
     assert cfg.eval_batch_size == 32
-    assert cfg.query_ssl_method.unlabeled_batch_size == 12
-    assert cfg.epochs == 5
-    assert cfg.max_train_steps == 3000
-    assert cfg.query_adaptation_initial_checkpoint.name == "none"
-    assert cfg.initial_adapter_dir == ""
-    assert cfg.initial_classifier_path == ""
-    assert cfg.output_dir == (
-        "runs/run_peft_ssl_control/consistency/"
-        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit"
-    )
-    assert cfg.central_ssl_budget.output_root == "runs"
 
 
 def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:

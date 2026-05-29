@@ -14,8 +14,15 @@ from scripts.experiments.fl_ssl.federated_simulation.config_request import (
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation_request,
 )
-from scripts.experiments.fl_ssl.run_layout import build_fl_ssl_run_dir
-from scripts.experiments.fl_ssl.run_safety import require_fl_ssl_run_budget_allowed
+from scripts.experiments.fl_ssl.federated_simulation.sweep import (
+    SWEEP_AXIS_CLIENT_COUNT,
+    SWEEP_AXIS_SEED,
+    resolve_sweep_axis,
+    run_client_count_sweep_from_config,
+    run_seed_sweep_from_config,
+)
+from scripts.experiments.fl_ssl.support.layout import build_fl_ssl_run_dir
+from scripts.experiments.fl_ssl.support.safety import require_fl_ssl_run_budget_allowed
 
 
 def render_simulation_result_lines(
@@ -69,6 +76,17 @@ def render_simulation_result_lines(
     config_name="entrypoints/fl_ssl/run_federated_simulation",
 )
 def main(cfg: DictConfig) -> None:
+    sweep_axis = resolve_sweep_axis(cfg)
+    if sweep_axis == SWEEP_AXIS_SEED:
+        run_seed_sweep_from_config(cfg, line_renderer=render_simulation_result_lines)
+        return
+    if sweep_axis == SWEEP_AXIS_CLIENT_COUNT:
+        run_client_count_sweep_from_config(
+            cfg,
+            line_renderer=render_simulation_result_lines,
+        )
+        return
+
     require_fl_ssl_run_budget_allowed(
         cfg,
         run_kind="single_simulation",

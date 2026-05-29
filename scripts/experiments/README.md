@@ -47,27 +47,20 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
   - query-domain 적응 단계의 `frozen backbone + PEFT text encoder + linear head` canonical supervised baseline entrypoint.
 - `central/ssl_control/run_peft_ssl_control.py`
   - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT text encoder scaffold에 얹는
-    공통 SSL entrypoint.
-  - `strategy_axes/ssl_objective/input_mode=consistency`는
-    `strategy_axes/ssl_objective/consistency_method`를 실행한다.
-  - `strategy_axes/ssl_objective/input_mode=pseudo_label_replay`는 이미 생성된
-    pseudo-label JSONL을 같은 scaffold에서 replay/self-training 입력으로 사용한다.
+    consistency family SSL entrypoint.
   - method/source/augmentation/strong-view/initial checkpoint source of truth는
     `strategy_axes/ssl_objective/consistency_method`,
     `execution_context/query_data_source`,
     `strategy_axes/ssl_objective/augmentation_source`,
     `query_ssl_strong_view_policy`,
     `strategy_axes/model_architecture/initial_checkpoint` selector다.
-  - teacher bootstrap은 별도 seed entrypoint가 아니라
-    `input_mode=teacher_bootstrap`의 source 설정과
-    `scripts/support/query_ssl_peft/runners/bootstrap_teacher.py`로 조립한다.
 - `scripts/support/query_ssl_peft/`
   - `runners/{supervised,consistency,pseudo_label,query_adaptation}.py`가 query-domain
     PEFT text encoder scaffold를 실행한다.
   - Query SSL family 공통 scaffolding은 `query_ssl/common.py`, strict USB NLP
     view preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
-  - bootstrap teacher의 selection preset은 `local_update_profile`이 아니라
-    `strategy_axes/ssl_objective/pseudo_label_selection`으로 고른다.
+  - bootstrap teacher와 pseudo-label replay helper는 public experiment entrypoint가
+    아니라 내부 workflow/helper 표면으로만 남긴다.
   - agent-local query adaptation export는 `io/query_adaptation*.py`가 담당하고,
     `source_row.query_id`를 single source of truth로 쓴다.
 

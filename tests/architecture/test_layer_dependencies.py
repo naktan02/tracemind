@@ -493,9 +493,13 @@ def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
     )
 
 
-def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
-    router_path = (
-        SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "ssl_mode_router.py"
+def test_central_ssl_consistency_entrypoint_imports_runner_directly() -> None:
+    entrypoint_path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "central"
+        / "ssl_control"
+        / "run_peft_ssl_control.py"
     )
     entrypoint_config = (
         CONF_SRC
@@ -504,35 +508,20 @@ def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
         / "ssl_control"
         / "run_peft_ssl_control.yaml"
     )
-    source = router_path.read_text(encoding="utf-8")
+    source = entrypoint_path.read_text(encoding="utf-8")
     forbidden_snippets = (
-        "run_query_ssl_peft_baseline",
-        "run_pseudo_label_self_training",
-        "SSL_INPUT_MODE_CONSISTENCY",
-        "SSL_INPUT_MODE_PSEUDO_LABEL_REPLAY",
-        'mode == "consistency"',
-        'mode == "pseudo_label_replay"',
+        "run_central_ssl_mode",
+        "load_configured_callable",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
-    assert (
-        CONF_SRC / "strategy_axes" / "ssl_objective" / "input_mode" / "consistency.yaml"
-    ).exists()
-    assert (
-        CONF_SRC
-        / "strategy_axes"
-        / "ssl_objective"
-        / "input_mode"
-        / "pseudo_label_replay.yaml"
-    ).exists()
-    assert (
-        "/strategy_axes/ssl_objective/input_mode: consistency"
-        in entrypoint_config.read_text(encoding="utf-8")
+    assert "run_query_ssl_peft_baseline" in source
+    assert "group_by_query_ssl_method: true" in entrypoint_config.read_text(
+        encoding="utf-8"
     )
     assert not violations, (
-        "central SSL mode router는 mode별 concrete runner를 직접 import/분기하지 "
-        "않는다. input_mode Hydra leaf가 runner callable을 선언하고 router는 "
-        "generic callable loader만 맡는다.\n"
+        "central SSL consistency entrypoint는 explicit workflow 진입점이므로 "
+        "generic mode router를 통하지 않는다.\n"
         f"violations={violations}"
     )
 
@@ -584,13 +573,14 @@ def test_query_peft_artifact_paths_do_not_branch_on_ssl_input_mode_names() -> No
         'ssl_input_mode != "consistency"',
         'ssl_input_mode == "consistency"',
         'ssl_input_mode == "pseudo_label_replay"',
+        "central_ssl_runner",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert not violations, (
         "central SSL output grouping 규칙은 "
-        "strategy_axes/ssl_objective/input_mode leaf가 소유한다. artifact_paths.py는 "
-        "central_ssl_runner의 resolved flag만 읽는다.\n"
+        "entrypoint top-level flag가 소유한다. artifact_paths.py는 "
+        "group_by_query_ssl_method만 읽는다.\n"
         f"violations={violations}"
     )
 
@@ -839,7 +829,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
 
 
 def test_fl_run_layout_does_not_own_labeled_exposure_policy_slug_map() -> None:
-    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py"
+    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "support" / "layout.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "def _compact_labeled_exposure_slug(",
@@ -2087,7 +2077,7 @@ def test_fl_scripts_legacy_payload_names_stay_in_compatibility_files() -> None:
 
 
 def test_fl_run_layout_stays_update_family_oriented() -> None:
-    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py"
+    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "support" / "layout.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "training_task.objective.peft_classifier.proximal_mu",

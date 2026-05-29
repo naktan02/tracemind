@@ -1,12 +1,12 @@
-"""중앙집중형 PEFT text encoder SSL control entrypoint."""
+"""중앙집중형 PEFT text encoder consistency SSL entrypoint."""
 
 from __future__ import annotations
 
 import hydra
 from omegaconf import DictConfig
 
-from scripts.experiments.central.ssl_control.ssl_mode_router import (
-    run_central_ssl_mode,
+from scripts.support.query_ssl_peft.runners.consistency import (
+    run_query_ssl_peft_baseline,
 )
 
 
@@ -16,7 +16,7 @@ from scripts.experiments.central.ssl_control.ssl_mode_router import (
     config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
 )
 def main(cfg: DictConfig) -> None:
-    run_central_ssl_mode(cfg)
+    run_query_ssl_peft_baseline(cfg)
 
 
 if __name__ == "__main__":
