@@ -1,3 +1,0 @@
-name: gpu_online
-device: cuda
-local_files_only: false

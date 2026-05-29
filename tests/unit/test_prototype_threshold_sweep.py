@@ -2,27 +2,32 @@
 
 from __future__ import annotations
 
-from scripts.experiments.prototype_strategy.evaluation import (
+import json
+
+import numpy as np
+import pytest
+
+from methods.prototype.index import PrototypeIndex, PrototypeVector
+from methods.prototype.thresholding import policies as threshold_policies
+from methods.prototype.thresholding import selection as threshold_selection
+from methods.prototype.thresholding.evaluation import (
     evaluate_global_confidence_threshold,
 )
-from scripts.experiments.prototype_strategy.models import (
-    PrototypeIndex,
-    PrototypeVector,
+from methods.prototype.thresholding.models import (
     ScoredPrediction,
     ThresholdArtifact,
     ThresholdPolicyEvaluation,
 )
-from scripts.experiments.prototype_strategy.scoring import (
+from scripts.experiments.prototype_analysis.prototype_strategy import (
+    threshold_artifact_writer,
+    threshold_policy_evaluator,
+)
+from scripts.experiments.prototype_analysis.prototype_strategy.models import (
+    ThresholdPolicyExperimentSummary,
+)
+from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
     PrototypeScoringConfig,
     build_prototype_index_scorer,
-)
-from scripts.experiments.prototype_strategy.sweep import (
-    ThresholdPolicySelectionPolicy,
-)
-from scripts.experiments.prototype_strategy.threshold_policies import (
-    ClasswiseStaticConfidencePolicy,
-    FixMatchFixedConfidencePolicy,
-    ValidationTargetErrorConfidencePolicy,
 )
 
 
@@ -105,6 +110,13 @@ def test_prototype_index_scorer_can_switch_to_top_k_mean_policy() -> None:
     assert scores["alert"] == 0.5
 
 
+def test_prototype_index_scorer_rejects_non_prototype_backend() -> None:
+    with pytest.raises(ValueError, match="only supports 'prototype_similarity'"):
+        build_prototype_index_scorer(
+            scorer_backend_name="classifier_head_logits",
+        )
+
+
 def test_prototype_index_scorer_accepts_canonical_scoring_config() -> None:
     scorer = build_prototype_index_scorer(
         config=PrototypeScoringConfig(
@@ -143,8 +155,33 @@ def test_prototype_index_scorer_accepts_canonical_scoring_config() -> None:
     assert scores["alert"] == 0.5
 
 
+def test_prototype_index_scorer_uses_default_policy_when_config_is_null() -> None:
+    scorer = build_prototype_index_scorer(
+        scorer_backend_name=None,
+        score_policy_name=None,
+    )
+
+    scores = scorer.score(
+        [1.0, 0.0],
+        PrototypeIndex(
+            strategy_name="single",
+            categories={
+                "alert": [
+                    PrototypeVector(
+                        prototype_id="p1",
+                        centroid=[1.0, 0.0],
+                        member_count=1,
+                    )
+                ]
+            },
+        ),
+    )
+
+    assert scores["alert"] == 1.0
+
+
 def test_fixmatch_policy_builds_threshold_candidates() -> None:
-    policy = FixMatchFixedConfidencePolicy(thresholds=(0.8, 0.95))
+    policy = threshold_policies.FixMatchFixedConfidencePolicy(thresholds=(0.8, 0.95))
     predictions = (
         ScoredPrediction(
             actual_label="anxiety",
@@ -174,16 +211,14 @@ def test_fixmatch_policy_builds_threshold_candidates() -> None:
 
     assert len(evaluations) == 2
     assert evaluations[0].policy_name == "fixmatch_fixed_confidence"
-    assert (
-        evaluations[0].threshold_artifact.parameters["confidence_threshold"] == 0.8
-    )
-    assert (
-        evaluations[1].threshold_artifact.parameters["confidence_threshold"] == 0.95
-    )
+    assert evaluations[0].threshold_artifact.parameters["confidence_threshold"] == 0.8
+    assert evaluations[1].threshold_artifact.parameters["confidence_threshold"] == 0.95
 
 
 def test_target_error_policy_selects_maximum_coverage_feasible_threshold() -> None:
-    policy = ValidationTargetErrorConfidencePolicy(target_errors=(0.1,))
+    policy = threshold_policies.ValidationTargetErrorConfidencePolicy(
+        target_errors=(0.1,)
+    )
     predictions = (
         ScoredPrediction(
             actual_label="anxiety",
@@ -256,7 +291,7 @@ def test_target_error_policy_selects_maximum_coverage_feasible_threshold() -> No
 
 
 def test_classwise_static_policy_builds_label_specific_thresholds() -> None:
-    policy = ClasswiseStaticConfidencePolicy(target_errors=(0.1,))
+    policy = threshold_policies.ClasswiseStaticConfidencePolicy(target_errors=(0.1,))
     predictions = (
         ScoredPrediction(
             actual_label="anxiety",
@@ -320,9 +355,12 @@ def test_classwise_static_policy_builds_label_specific_thresholds() -> None:
     assert evaluations[0].validation_metrics.accepted_accuracy == 1.0
 
 
-def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met(
-) -> None:
-    policy = ThresholdPolicySelectionPolicy(minimum_accepted_ratio=0.5)
+def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met() -> (
+    None
+):
+    policy = threshold_selection.ThresholdPolicySelectionPolicy(
+        minimum_accepted_ratio=0.5
+    )
 
     def evaluation(
         *,
@@ -343,7 +381,7 @@ def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met
         return ThresholdPolicyEvaluation(
             policy_name=policy_name,
             candidate_name=f"confidence={confidence_threshold:.2f}",
-            source_paper=FixMatchFixedConfidencePolicy().source_paper,
+            source_paper=threshold_policies.FixMatchFixedConfidencePolicy().source_paper,
             selection_params={"confidence_threshold": confidence_threshold},
             threshold_artifact=ThresholdArtifact(
                 threshold_kind="global_confidence",
@@ -381,3 +419,116 @@ def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met
 
     assert selected.policy_name == "validation_target_error_confidence"
     assert selected.threshold_artifact.parameters["confidence_threshold"] == 0.7
+
+
+def test_threshold_policy_evaluator_scores_once_then_evaluates_candidates() -> None:
+    prototype_index = PrototypeIndex(
+        strategy_name="single",
+        categories={
+            "anxiety": [
+                PrototypeVector(
+                    prototype_id="anxiety:0",
+                    centroid=[1.0, 0.0],
+                    member_count=2,
+                )
+            ],
+            "normal": [
+                PrototypeVector(
+                    prototype_id="normal:0",
+                    centroid=[-1.0, 0.0],
+                    member_count=2,
+                )
+            ],
+        },
+    )
+    rows = (
+        {
+            "query_id": "q1",
+            "mapped_label_4": "anxiety",
+            "text": "panic",
+        },
+        {
+            "query_id": "q2",
+            "mapped_label_4": "normal",
+            "text": "calm",
+        },
+    )
+
+    evaluations = threshold_policy_evaluator.evaluate_threshold_policies(
+        validation_rows=rows,
+        validation_embeddings=np.asarray(
+            [[1.0, 0.0], [-1.0, 0.0]],
+            dtype=float,
+        ),
+        test_rows=rows,
+        test_embeddings=np.asarray(
+            [[1.0, 0.0], [-1.0, 0.0]],
+            dtype=float,
+        ),
+        prototype_index=prototype_index,
+        threshold_policies=(
+            threshold_policies.FixMatchFixedConfidencePolicy(thresholds=(0.9,)),
+        ),
+        scorer=build_prototype_index_scorer(),
+    )
+
+    assert len(evaluations) == 1
+    assert evaluations[0].threshold_artifact.parameters["confidence_threshold"] == 0.9
+    assert evaluations[0].validation_metrics.accepted_accuracy == 1.0
+    assert evaluations[0].test_metrics.accepted_accuracy == 1.0
+
+
+def test_threshold_artifact_writer_writes_summary_and_policy_grid(tmp_path) -> None:
+    metrics = evaluate_global_confidence_threshold(
+        scored_predictions=(),
+        categories=(),
+        confidence_threshold=0.8,
+    )
+    evaluation = ThresholdPolicyEvaluation(
+        policy_name="fixmatch_fixed_confidence",
+        candidate_name="confidence=0.800",
+        source_paper=threshold_policies.FixMatchFixedConfidencePolicy().source_paper,
+        selection_params={"confidence_threshold": 0.8},
+        threshold_artifact=ThresholdArtifact(
+            threshold_kind="global_confidence",
+            parameters={"confidence_threshold": 0.8},
+        ),
+        validation_metrics=metrics,
+        test_metrics=metrics,
+    )
+    summary = ThresholdPolicyExperimentSummary(
+        run_id="run-1",
+        strategy_name="single",
+        prototype_index=PrototypeIndex(
+            strategy_name="single",
+            categories={
+                "anxiety": [
+                    PrototypeVector(
+                        prototype_id="anxiety:0",
+                        centroid=[1.0, 0.0],
+                        member_count=1,
+                    )
+                ]
+            },
+        ),
+        selected_evaluation=evaluation,
+        policy_evaluations=(evaluation,),
+    )
+
+    threshold_artifact_writer.write_threshold_policy_artifacts(
+        output_dir=tmp_path,
+        summary=summary,
+    )
+
+    summary_payload = json.loads((tmp_path / "summary.json").read_text())
+    evaluations_payload = json.loads(
+        (tmp_path / "validation" / "policy_evaluations.json").read_text()
+    )
+    prototype_payload = json.loads(
+        (tmp_path / "strategy" / "prototype_index.json").read_text()
+    )
+    assert summary_payload["run_id"] == "run-1"
+    assert evaluations_payload["evaluations"][0]["candidate_name"] == (
+        "confidence=0.800"
+    )
+    assert prototype_payload["strategy_name"] == "single"

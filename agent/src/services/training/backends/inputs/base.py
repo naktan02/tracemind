@@ -9,6 +9,10 @@ from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
 )
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.training_example_backends import (
+    PROTOTYPE_RESCORE_EXAMPLE_BACKEND,
+    WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
+)
 
 from .models import (
     StoredEventTrainingExampleBuildRequest,
@@ -16,8 +20,8 @@ from .models import (
 )
 
 ANY_ADAPTER_KIND = "*"
-PROTOTYPE_RESCORE_BACKEND_NAME = "prototype_rescore"
-WEAK_STRONG_PAIR_BACKEND_NAME = "weak_strong_pair"
+PROTOTYPE_RESCORE_BACKEND_NAME = PROTOTYPE_RESCORE_EXAMPLE_BACKEND
+WEAK_STRONG_PAIR_BACKEND_NAME = WEAK_STRONG_PAIR_EXAMPLE_BACKEND
 
 
 class TrainingExampleBackend(Protocol):
@@ -43,13 +47,4 @@ class TrainingExampleBackend(Protocol):
 TrainingExampleBackendFactory = Callable[
     [TrainingObjectiveConfig],
     TrainingExampleBackend,
-]
-
-
-__all__ = [
-    "ANY_ADAPTER_KIND",
-    "PROTOTYPE_RESCORE_BACKEND_NAME",
-    "TrainingExampleBackend",
-    "TrainingExampleBackendFactory",
-    "WEAK_STRONG_PAIR_BACKEND_NAME",
 ]

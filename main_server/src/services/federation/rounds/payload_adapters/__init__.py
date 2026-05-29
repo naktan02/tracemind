@@ -1,0 +1,1 @@
+"""Round payload adapter wiring."""

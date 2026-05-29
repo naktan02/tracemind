@@ -52,7 +52,9 @@ class TimeSeriesAccumulator:
         for category in sorted(categories):
             current_score = scored_event.category_scores.get(
                 category,
-                previous_state.latest_scores.get(category, 0.0) if previous_state else 0.0,
+                previous_state.latest_scores.get(category, 0.0)
+                if previous_state
+                else 0.0,
             )
             baseline = baseline_profile.category_means.get(category, 0.0)
             delta = current_score - baseline
@@ -77,16 +79,18 @@ class TimeSeriesAccumulator:
                 else 0
             )
             previous_count = (
-                previous_state.event_counts.get(category, 0)
-                if previous_state
-                else 0
+                previous_state.event_counts.get(category, 0) if previous_state else 0
             )
 
             latest_scores[category] = current_score
             latest_deltas[category] = delta
-            ewma_scores[category] = alpha * current_score + (1.0 - alpha) * previous_score
+            ewma_scores[category] = (
+                alpha * current_score + (1.0 - alpha) * previous_score
+            )
             ewma_deltas[category] = alpha * delta + (1.0 - alpha) * previous_delta
-            elevated_streaks[category] = previous_streak + 1 if delta >= threshold else 0
+            elevated_streaks[category] = (
+                previous_streak + 1 if delta >= threshold else 0
+            )
             event_counts[category] = previous_count + (
                 1 if category in scored_event.category_scores else 0
             )

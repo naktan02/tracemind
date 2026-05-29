@@ -1,0 +1,39 @@
+# @package dataset
+
+name: cssrs
+description: CSSRS-labelled Reddit SuicideWatch dataset
+output_root: data/datasets/cssrs_reddit
+output_paths:
+  raw_dir: data/datasets/cssrs_reddit/raw
+  labeled_query_set_dir: data/datasets/cssrs_reddit/mapped
+  split_dir: data/datasets/cssrs_reddit/splits
+  pipeline_run_dir: data/datasets/cssrs_reddit/pipeline_runs
+raw_train_csv: data/datasets/cssrs_reddit/raw/cssrs_train.csv
+raw_test_csv: null
+train_labeled_jsonl: data/datasets/cssrs_reddit/mapped/av9ash_cssrs_reddit.v1.jsonl
+test_labeled_jsonl: null
+split_name: null
+train_jsonl: null
+validation_jsonl: null
+test_jsonl: null
+prototype_input_jsonl: null
+query_dev_jsonl: null
+query_calibration_jsonl: null
+unlabeled_query_pool_jsonl: null
+prototype_expected_categories:
+  - suicidal
+stages:
+  - download
+sources:
+  train:
+    download:
+      provider: huggingface
+      callable_path: scripts.workflows.datasets.lib.download_sources.download_huggingface_source
+    dataset_id: av9ash/CSSR-S_labelled_suicidewatch_posts_reddit
+    split: train
+    data_file: labeled_rSuicidewatch_posts.csv
+    output_filename: cssrs_train.csv
+    mapping_config: data/mappings/cssrs_to_4cat.v1.toml
+    reference_urls:
+      - https://www.kaggle.com/datasets/av9ash/labelled-reddit-suicidewatch-posts-cssr-s
+      - https://huggingface.co/datasets/av9ash/CSSR-S_labelled_suicidewatch_posts_reddit

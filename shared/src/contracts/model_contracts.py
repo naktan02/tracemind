@@ -8,12 +8,13 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .common_types import TrainingScope, TrainingTaskType
 
 MODEL_MANIFEST_V1 = "model_manifest.v1"
 ModelManifestSchemaVersion: TypeAlias = Literal["model_manifest.v1"]
+PROTOTYPE_PACK_AUXILIARY_KEY = "prototype_pack"
 
 
 class ArtifactKind(StrEnum):
@@ -37,15 +38,36 @@ class ModelManifest(BaseModel):
     published_at: datetime
     artifact_kind: ArtifactKind
     artifact_ref: str
-    prototype_version: str
+    auxiliary_artifact_versions: dict[str, str] = Field(default_factory=dict)
     training_scope: TrainingScope
     training_enabled: bool
     compatible_task_types: tuple[TrainingTaskType, ...] = ()
     base_model_id: str | None = None
     base_model_revision: str | None = None
-    translation_model_id: str | None = None
-    translation_model_revision: str | None = None
     notes: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_artifact_specific_fields(cls, data: object) -> object:
+        """구형 manifest의 artifact-specific top-level 필드를 정규화한다."""
+
+        if not isinstance(data, dict):
+            return data
+        migrated = dict(data)
+        migrated.pop("translation_model_id", None)
+        migrated.pop("translation_model_revision", None)
+        if "prototype_version" not in migrated:
+            return migrated
+        prototype_version = migrated.pop("prototype_version")
+        if prototype_version is None:
+            return migrated
+        auxiliary_versions = dict(migrated.get("auxiliary_artifact_versions") or {})
+        auxiliary_versions.setdefault(
+            PROTOTYPE_PACK_AUXILIARY_KEY,
+            str(prototype_version),
+        )
+        migrated["auxiliary_artifact_versions"] = auxiliary_versions
+        return migrated
 
 
 ModelManifestPayload = ModelManifest
@@ -55,8 +77,8 @@ def make_embedding_manifest(
     *,
     model_id: str,
     model_revision: str,
-    prototype_version: str,
     artifact_ref: str,
+    auxiliary_artifact_versions: dict[str, str] | None = None,
     training_enabled: bool = True,
     compatible_task_types: (
         tuple[TrainingTaskType, ...] | list[TrainingTaskType] | None
@@ -67,14 +89,14 @@ def make_embedding_manifest(
 ) -> ModelManifest:
     """임베딩 모델용 manifest payload를 만드는 표준 factory.
 
-    필수 필드(model_id, model_revision, prototype_version, artifact_ref)만
-    지정하면 나머지는 임베딩 배포 기본값으로 채워진다.
+    필수 필드(model_id, model_revision, artifact_ref)만 지정하면 나머지는 임베딩
+    배포 기본값으로 채워진다. prototype pack 같은 부속 artifact는
+    auxiliary_artifact_versions에 기록한다.
 
     >>> p = make_embedding_manifest(
     ...     model_id="bg-m3",
     ...     model_revision="rev_001",
-    ...     prototype_version="proto_v1",
-    ...     artifact_ref="/state/shared_adapter_states/versions/rev_001.json",
+    ...     artifact_ref="shared_adapter_state::rev_001",
     ... )
     """
     return ModelManifest(
@@ -82,7 +104,7 @@ def make_embedding_manifest(
         artifact_kind=ArtifactKind.EMBEDDING,
         model_id=model_id,
         model_revision=model_revision,
-        prototype_version=prototype_version,
+        auxiliary_artifact_versions=dict(auxiliary_artifact_versions or {}),
         artifact_ref=artifact_ref,
         training_scope=training_scope,
         training_enabled=training_enabled,
@@ -105,15 +127,3 @@ def dump_model_manifest_payload(path: Path, payload: ModelManifest) -> None:
         json.dumps(payload.model_dump(mode="json"), indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
-
-
-__all__ = [
-    "ArtifactKind",
-    "MODEL_MANIFEST_V1",
-    "ModelManifest",
-    "ModelManifestPayload",
-    "ModelManifestSchemaVersion",
-    "dump_model_manifest_payload",
-    "load_model_manifest_payload",
-    "make_embedding_manifest",
-]

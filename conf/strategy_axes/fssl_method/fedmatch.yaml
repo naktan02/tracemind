@@ -1,0 +1,8 @@
+# @package ssl_method
+
+schema_version: federated_ssl_method.v1
+name: fedmatch
+scenario: labels-at-client
+use_original_parameters: true
+local_budget_policy: iteration_capped
+parameter_overrides: {}

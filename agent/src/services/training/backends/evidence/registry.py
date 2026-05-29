@@ -2,39 +2,40 @@
 
 from __future__ import annotations
 
-from shared.src.config.registry_catalog_metadata import (
-    RegistryCatalogEntry,
-    dedupe_registry_catalog_entries,
-)
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from collections.abc import Callable
+
+from agent.src.services.runtime_registry import RuntimeRegistry
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import (
-    ANY_ADAPTER_KIND,
-    PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
     PseudoLabelEvidenceBackend,
     PseudoLabelEvidenceBackendFactory,
 )
-from .prototype_similarity import PrototypeSimilarityEvidenceBackend
 
-_PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY: dict[
-    str,
-    tuple[PseudoLabelEvidenceBackendFactory, RegistryCatalogEntry],
-] = {}
+_PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY = RuntimeRegistry[
+    PseudoLabelEvidenceBackendFactory
+](
+    package_name="agent.src.services.training.backends.evidence",
+    item_kind="pseudo-label evidence backend",
+)
 
 
 def register_pseudo_label_evidence_backend(
     *backend_names: str,
-    factory: PseudoLabelEvidenceBackendFactory,
     catalog_entry: RegistryCatalogEntry,
-) -> None:
-    """얇은 wiring registry에 evidence backend를 등록한다."""
+    factory: PseudoLabelEvidenceBackendFactory | None = None,
+) -> (
+    Callable[[PseudoLabelEvidenceBackendFactory], PseudoLabelEvidenceBackendFactory]
+    | PseudoLabelEvidenceBackendFactory
+):
+    """evidence backend factory 옆에서 runtime wiring을 등록한다."""
 
-    registered_backend = (factory, catalog_entry)
-    for backend_name in backend_names:
-        _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY[backend_name.strip().lower()] = (
-            registered_backend
-        )
+    return _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY.register(
+        *backend_names,
+        catalog_entry=catalog_entry,
+        factory=factory,
+    )
 
 
 def build_pseudo_label_evidence_backend(
@@ -44,64 +45,19 @@ def build_pseudo_label_evidence_backend(
 ) -> PseudoLabelEvidenceBackend:
     """backend 이름과 objective config로 evidence backend를 조립한다."""
 
-    normalized_name = backend_name.strip().lower()
-    registered_backend = _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY.get(normalized_name)
-    if registered_backend is not None:
-        factory, _catalog_entry = registered_backend
-        return factory(objective_config)
-    raise ValueError(f"Unsupported pseudo-label evidence backend: {backend_name}.")
+    factory, _catalog_entry = _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY.get(backend_name)
+    return factory(objective_config)
 
 
 def list_registered_pseudo_label_evidence_backend_names() -> tuple[str, ...]:
     """등록된 evidence backend 이름을 정렬된 tuple로 반환한다."""
 
-    return tuple(sorted(_PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY))
+    return _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY.list_names()
 
 
-def list_pseudo_label_evidence_backend_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_pseudo_label_evidence_backend_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """등록된 evidence backend catalog entry를 canonical item 기준으로 반환한다."""
 
-    return dedupe_registry_catalog_entries(
-        catalog_entry
-        for _factory, catalog_entry in _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY.values()
-    )
-
-
-def resolve_pseudo_label_evidence_backend(
-    *,
-    objective_config: TrainingObjectiveConfig,
-) -> PseudoLabelEvidenceBackend:
-    """objective config 기준으로 evidence backend를 조립한다."""
-
-    backend_name = (
-        objective_config.evidence_backend_name
-        or DEFAULT_TRAINING_PROFILE.evidence_backend_name
-    )
-    return build_pseudo_label_evidence_backend(
-        backend_name,
-        objective_config=objective_config,
-    )
-
-
-register_pseudo_label_evidence_backend(
-    PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-    factory=lambda _objective_config: PrototypeSimilarityEvidenceBackend(),
-    catalog_entry=RegistryCatalogEntry(
-        item_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-        display_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-        implementation_module=PrototypeSimilarityEvidenceBackend.__module__,
-        core_method_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-        family_name="pseudo_label_evidence",
-        supported_adapter_kinds=(ANY_ADAPTER_KIND,),
-    ),
-)
-
-
-__all__ = [
-    "build_pseudo_label_evidence_backend",
-    "list_pseudo_label_evidence_backend_catalog_entries",
-    "list_registered_pseudo_label_evidence_backend_names",
-    "register_pseudo_label_evidence_backend",
-    "resolve_pseudo_label_evidence_backend",
-]
+    return _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY.list_catalog_entries()

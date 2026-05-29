@@ -1,0 +1,48 @@
+# @package round_runtime
+
+update_family_name: peft_text_encoder
+payload_adapter_kind: peft_classifier
+runtime_payload_key: peft_text_encoder
+training_objective_payload_scope: peft_classifier
+training_objective_payload_key: peft_text_encoder
+training_objective_payload_excluded_keys:
+  - artifact_format
+  - peft_adapter_artifact_ref
+  - classifier_head_artifact_ref
+composition_slug_builder: methods.adaptation.peft_text_encoder.update_family_runtime.build_peft_text_encoder_composition_slug
+round_runtime_payload_builder: methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime.build_peft_encoder_round_runtime_payloads
+local_objective_executors:
+  - scripts.runtime_adapters.federated_agent.generic_client_runtime_bridge.run_method_owned_client_round_if_supported
+  - scripts.runtime_adapters.federated_agent.generic_client_runtime_bridge.run_query_ssl_client_round_if_supported
+server_step_executors:
+  supervised_seed_step: scripts.runtime_adapters.federated_server.generic_server_runtime_bridge.run_supervised_seed_step
+initial_state_builder: methods.adaptation.peft_text_encoder.update_family_runtime.build_initial_peft_encoder_state
+validation_evaluator: methods.adaptation.peft_text_encoder.evaluation.evaluate_peft_encoder_simulation_validation_payload
+final_projection_builder: scripts.runtime_adapters.federated_server.generic_server_runtime_bridge.build_final_projection_artifacts
+transient_resource_cleaner: methods.adaptation.peft_text_encoder.resource_cache.clear_peft_encoder_transient_resource_cache
+
+runtime_payloads:
+  peft_text_encoder:
+    backbone_model_id: ${paper_backbone.model_id}
+    backbone_revision: ${paper_backbone.revision}
+    tokenizer_model_id: ${paper_backbone.tokenizer_model_id}
+    tokenizer_revision: ${paper_backbone.tokenizer_revision}
+    pooling: ${paper_backbone.pooling}
+    max_length: ${paper_backbone.max_length}
+    task_prefix: ${paper_backbone.task_prefix}
+    peft_adapter_name: ${peft_adapter.peft_adapter_name}
+    rank: ${peft_adapter.rank}
+    alpha: ${peft_adapter.alpha}
+    dropout: ${peft_adapter.dropout}
+    bias: ${peft_adapter.bias}
+    target_modules: ${peft_adapter.target_modules}
+    use_rslora: ${peft_adapter.use_rslora}
+    proximal_mu: 0.0
+    delta_format: server_uploaded_artifact_ref
+    artifact_ref_prefix: agent-local://peft_classifier
+    text_metadata_keys: strong_text,training_text,raw_text,text,weak_text
+    label_schema: anxiety,depression,normal,suicidal
+    artifact_format: simulation_peft_classifier_state_ref
+    peft_adapter_artifact_ref: null
+    classifier_head_artifact_ref: null
+

@@ -2,7 +2,7 @@
 
 ## 1. 목적
 
-`TrainingTask`는 중앙 `main-server`가 로컬 `agent`에 내려주는 학습 작업 정의다.
+`TrainingTask`는 중앙 `main_server`가 로컬 `agent`에 내려주는 학습 작업 정의다.
 
 이 객체는 아래를 고정한다.
 
@@ -23,7 +23,7 @@ v1 원칙:
 4. 초기에는 작은 param subset 학습을 우선한다.
 5. `task.model_revision`은 현재 active pair의 `model_revision`과 일치해야 한다.
 6. 이 문서는 현재 시스템/FL runtime task 계약을 설명한다. 논문 트랙의
-   query-domain 적응 단계의 `central LoRA classifier` trainer는 별도 중앙 실험 레일 config를 사용할 수 있다.
+   query-domain PEFT text encoder 적응은 별도 중앙 실험 레일 config를 사용할 수 있다.
 
 ---
 
@@ -92,13 +92,13 @@ v1 원칙:
 
 2. `head_only`
    - backbone/encoder는 고정하고 최종 분류 head만 학습한다.
-   - 현재 TraceMind v1의 시스템/FL classifier baseline이다.
+   - 고정 feature 위 linear head baseline에 쓰는 범위다.
    - shared adapter family와는 별개 축이다.
 
 3. `selected_encoder_block`
    - encoder 전체가 아니라 미리 정한 일부 블록만 학습한다.
-   - future `lora` family처럼 특정 transformer block에 trainable module을
-     삽입하는 경우와 잘 맞는다.
+   - PEFT text encoder처럼 특정 transformer block에 trainable module을 삽입하는
+     경우와 잘 맞는다.
 
 4. `full_encoder`
    - encoder 전체를 학습한다.
@@ -107,10 +107,10 @@ v1 원칙:
 정리하면:
 
 - `training_scope`는 "어디를 학습하느냐"
-- `adapter_family`는 "그 범위를 어떤 구조로 파라미터화하느냐"
+- `update_family_name`은 "그 범위를 어떤 공유 가능 trainable state로 해석하느냐"
 
-예를 들어 `adapter_only` 범위 안에서도 `diagonal_scale` family와 `LoRA`
-family는 서로 다른 선택이다.
+예를 들어 `adapter_only` 범위 안에서도 `peft_text_encoder`, future
+`prototype_pack` update, `linear_head`는 서로 다른 선택이다.
 
 ---
 
@@ -131,7 +131,7 @@ family는 서로 다른 선택이다.
   "max_steps": 50,
   "objective_config": {
     "algorithm_profile_name": "prototype_pseudo_label_v1",
-    "training_backend_name": "diagonal_scale_heuristic",
+    "training_backend_name": "peft_classifier_trainer",
     "confidence_threshold": 0.6,
     "margin_threshold": 0.02,
     "example_generation_backend_name": "prototype_rescore",
@@ -140,7 +140,7 @@ family는 서로 다른 선택이다.
     "score_policy_name": "max_cosine",
     "pseudo_label_algorithm_name": "top1_margin_threshold",
     "acceptance_policy_name": "top1_margin_threshold",
-    "privacy_guard_name": "diagonal_scale_clip_only"
+    "privacy_guard_name": "noop"
   },
   "selection_policy": {
     "max_examples": 128,
@@ -156,12 +156,12 @@ family는 서로 다른 선택이다.
 ```
 
 `secure_aggregation`은 secure aggregation 계층 요구사항을 나타내는 task 축이다.
-server round runtime이 내부적으로 어떤 aggregation backend를 쓰는지와는 별도다.
-예를 들어 현재 server-owned round runtime 기본 aggregation backend는 `fedavg`지만,
+server round runtime이 내부적으로 어떤 aggregation backend를 선택하는지와는 별도다.
+예를 들어 현재 round runtime의 기본 aggregation backend 이름은 `fedavg`지만,
 이 값은 `TrainingTaskPayload.secure_aggregation` 필드와 같은 의미가 아니다.
 
 위 JSON은 시스템/FL runtime의 `adapter_only + prototype_pseudo_label_v1` 예시다.
-논문 트랙의 중앙 LoRA 적응 비교는 별도 중앙 trainer
+논문 트랙의 중앙 PEFT text encoder 적응 비교는 별도 중앙 trainer
 config를 사용하며, 이 예시를 그대로 재현 기준으로 삼지 않는다.
 
 ---

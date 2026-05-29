@@ -19,6 +19,12 @@ from agent.src.infrastructure.repositories.query_buffer_repository import (
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
+from agent.src.services.assets.adapters.composition_service import (
+    AdapterCompositionService,
+    AdapterRuntimeContext,
+    LocalAdapterRuntimeProvider,
+    SharedAdapterRuntimeProvider,
+)
 from agent.src.services.inference.embedding_service import EmbeddingService
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.language.preprocess_service import PreprocessService
@@ -56,6 +62,9 @@ class InferencePipelineService:
     scoring_service: ScoringService
     prototype_provider: PrototypeProvider
     event_repository: ScoredEventRepository
+    adapter_composition_service: AdapterCompositionService | None = None
+    shared_adapter_provider: SharedAdapterRuntimeProvider | None = None
+    local_adapter_provider: LocalAdapterRuntimeProvider | None = None
     query_buffer_repository: QueryBufferRepository | None = None
     preprocess_service: PreprocessService = field(default_factory=PreprocessService)
     translation_service: TranslationService | None = None
@@ -83,10 +92,16 @@ class InferencePipelineService:
             translation_model_id = None
 
         embeddings = self.embedding_service.embed_batch([text_for_embedding])
-        embedding = embeddings[0]
+        base_embedding = embeddings[0]
 
         prototypes = self.prototype_provider.get_active_prototypes()
-        category_scores = self.scoring_service.score(embedding, prototypes)
+        adapter_context = self._load_adapter_context()
+        scoring_embedding = adapter_context.apply_for_inference(base_embedding)
+        category_scores = self.scoring_service.score(
+            scoring_embedding,
+            prototypes,
+            shared_state=adapter_context.shared_state,
+        )
 
         scored_event = ScoredEvent(
             query_id=event.query_id,
@@ -98,25 +113,29 @@ class InferencePipelineService:
         )
         # base_embedding을 함께 저장한다.
         # 학습 시 재임베딩 없이 EmbeddedTrainingExample 조립에 사용한다.
-        self.event_repository.save(scored_event, base_embedding=list(embedding))
+        self.event_repository.save(scored_event, base_embedding=list(base_embedding))
         query_buffer_record = None
         if self.query_buffer_repository is not None:
+            metadata = {
+                "embedding_model_id": self.embedding_model_id,
+                "translation_model_id": translation_model_id,
+                "scorer_backend_name": self.scoring_service.backend_name,
+                "was_translated": needs_translation,
+            }
+            metadata.update(adapter_context.query_buffer_metadata())
             query_buffer_record = build_query_buffer_record(
                 event=event,
                 scored_event=scored_event,
-                model_revision=self.model_revision,
+                model_revision=adapter_context.model_revision_for_record(
+                    self.model_revision
+                ),
                 confidence_kind=self.scoring_service.confidence_kind,
-                metadata={
-                    "embedding_model_id": self.embedding_model_id,
-                    "translation_model_id": translation_model_id,
-                    "scorer_backend_name": self.scoring_service.backend_name,
-                    "was_translated": needs_translation,
-                },
+                metadata=metadata,
             )
             self.query_buffer_repository.save(query_buffer_record)
         return InferencePipelineResult(
             scored_event=scored_event,
-            base_embedding=list(embedding),
+            base_embedding=list(base_embedding),
             was_translated=needs_translation,
             query_buffer_record=query_buffer_record,
         )
@@ -127,6 +146,14 @@ class InferencePipelineService:
         """여러 QueryEvent를 순서대로 처리한다."""
         return [self.process(event) for event in events]
 
+    def _load_adapter_context(self) -> AdapterRuntimeContext:
+        if self.adapter_composition_service is not None:
+            return self.adapter_composition_service.get_context()
+        return AdapterCompositionService(
+            shared_adapter_provider=self.shared_adapter_provider,
+            local_adapter_provider=self.local_adapter_provider,
+        ).get_context()
+
 
 def _get_translation_model_id(service: TranslationService) -> str | None:
     """TranslationService 어댑터에서 model_id를 읽는다. 없으면 None."""
@@ -135,6 +162,7 @@ def _get_translation_model_id(service: TranslationService) -> str | None:
         return None
     model_id = getattr(adapter, "model_id", None)
     return model_id if isinstance(model_id, str) else None
+
 
 def make_query_event(
     text: str,

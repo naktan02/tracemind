@@ -4,6 +4,9 @@
 세부 설명과 현재 우선순위는
 [`docs/project_execution_plan.md`](project_execution_plan.md)
 를 기준으로 본다.
+최종 method/runtime 구조와 용어는
+[`docs/architecture/target-method-runtime-structure.md`](architecture/target-method-runtime-structure.md)
+를 기준으로 본다.
 
 ## Phase Map
 
@@ -19,23 +22,42 @@
 
 - query 버퍼, threshold/policy selection, 소량 수동 라벨 개입 지점을 정한다.
 
-### Phase 3. 중앙집중형 적응 비교
+### Phase 3. 중앙집중형 SSL control 비교
 
 - 같은 초기 seed checkpoint와 accepted query-derived rows를 기준으로
-  `LoRA + classifier` continual adaptation 위에서
-  `supervised -> pseudo-label self-training -> R-Drop -> MixText`를 비교한다.
+  `PEFT text encoder` continual adaptation 위에서
+  `supervised -> USB PseudoLabel -> teacher pseudo-label self-training -> FixMatch -> R-Drop -> MixText`를
+  pooled/offline control table로 비교한다.
 
-### Phase 4. 시스템 FL baseline
+### Phase 4. FL SSL non-IID 메인 비교
 
-- `fixed embedding + classifier_head` 기준 FL baseline을 닫는다.
+- client non-IID split 위에서 `FedMatch`, `FedLGMatch`, `(FL)^2` 같은
+  FL-specific SSL 방법론을 메인 논문 비교선으로 닫는다.
+- main condition은 `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`,
+  선택된 labeled/unlabeled source pool 전체 분배다.
+- `alpha=0.3`을 기본/main condition으로 둔다.
+- Dirichlet `alpha=0.1`은 마지막 stress/robustness 확인으로만 연다.
+- full-budget preset은 `30 communication rounds`, `local_epochs=1`,
+  `max_steps=20`이다. 새 method/wiring은 먼저 `1-round` 또는 `5-round` reduced
+  run으로 확인한 뒤 full-budget 비교로 올린다.
+- smoke preset은 실행 확인용 `3 rounds`지만, 현재 method/wiring 검증은 필요에
+  따라 `1-round` smoke 또는 `5-round` reduced run으로 제한한다.
+- primary metric은 `macro-F1 + worst-client macro-F1`이고,
+  `ECE`, communication cost, per-client variance는 tie-breaker/risk 지표다.
+- method baseline과 추가 후보 구현 기준은 `docs/project_execution_plan.md`의
+  active decision을 따른다.
 
-### Phase 5. 시스템 FL translation
+### Phase 5. 시스템 FL runtime translation
 
-- 적응 winner를 우선 `LoRA family + classifier` 후보로 FL/runtime 제약에 맞게 옮긴다.
+- FL SSL winner를 우선 `peft_text_encoder` update family 후보로
+  runtime/privacy 제약에 맞게 옮긴다. v1 `lora_classifier` 이름은 compatibility
+  표면으로만 해석한다.
 
-### Phase 6. richer shared adapter
+### Phase 6. richer trainable state / capability
 
-- diagonal scale보다 표현력 있는 shared adapter를 검토한다.
+- `peft_text_encoder`, `prototype_pack`, future multimodal state처럼 실제 필요성이
+  확인된 trainable state와 runtime capability를 추가한다. 제거된 `diagonal_scale`을
+  기준 baseline으로 되살리지 않는다.
 
 ### Phase 7. privacy hardening
 
@@ -49,60 +71,17 @@
 4. source of truth가 코드 가까이에 있는가
 5. full encoder FL이 너무 이르게 열리지 않았는가
 
+## 현재 상태 위치
 
-## Current Checkpoint
-
-- `Phase 1` 방향은 `central fixed embedding + classifier` seed로 확정했고,
-  canonical artifact는 `clf_2026_04_11_143138`으로 고정했다.
-- query-domain 적응은 바로 학습하지 않고, 먼저 `query buffer` 로컬 저장과 selection 준비를 닫는다.
-- `QueryBuffer`는 `agent` 소유 local state이고, source of truth는 `docs/contracts/query_buffer_v1.md`다.
-- `agent`에는 `QueryBufferRepository`와 inference append 경로가 들어갔다.
-- 현재 local query buffer 최소 조회는 `count`, `get(query_id)`, `get_recent(limit)` 기준으로 닫혔다.
-- query buffer와 scored event를 `PseudoLabelEvidence`로 연결하는 projection helper가 들어갔다.
-- query buffer snapshot을 기존 acceptance policy로 평가하는 selection runner가 들어갔다.
-- accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립하는 경로가 들어갔다.
-- adaptation dataset은 `source_row.query_id`를 single source of truth로 두고,
-  canonical provenance는 typed field로 유지한다.
-- query buffer retention / purge는 agent-local config로 분리했고 기본값은 `30일 + 최신 5000건 유지`다.
-- adaptation dataset label 기본 정책은 `pseudo_label_only`이며 future manual override hook을 열어 두었다.
-- adaptation dataset을 기존 `train_lora_classifier` JSONL 입력 shape로 export하는 scripts bridge가 들어갔다.
-- adaptation dataset export는 JSONL/manifest와 함께 summary JSON도 남긴다.
-- adaptation dataset은 baseline runner에 labeled row를 메모리에서 직접 넘기고,
-  export JSONL은 trace/audit 산출물로만 남긴다.
-- `runtime=auto_local` 기준으로 query adaptation dataset에서 supervised `LoRA + classifier` smoke run 1회를 검증했다.
-- query-buffer selection 결과를 family-agnostic summary/trace diagnostics shape로 정리하고,
-  JSON/JSONL dump로 저장하는 helper가 들어갔다.
-- single-view query adaptation dataset에서 weak/strong source row를 만드는
-  multiview preparation service와 JSONL export helper가 들어갔다.
-- multiview preparation은 augmentation recipe를 고정하지 않고 pluggable augmenter hook으로 연다.
-- supervised baseline 학습 코어를 `agent/src/services/training/query_adaptation/`로 옮기고,
-  scripts는 entrypoint/artifact layer로 얇게 정리했다.
-- canonical supervised baseline entrypoint는 `scripts/experiments/train_lora_classifier.py`로,
-  concrete helper는 `scripts/experiments/lora_classifier/runner.py`와
-  `query_adaptation_runner.py` direct import 기준으로 정리했다.
-- 첫 pseudo-label bootstrap entrypoint로
-  `train_lora_bootstrap_classifier_teacher.py`를 추가했고,
-  `fixed embedding + classifier` teacher가 unlabeled pool에 pseudo-label을 붙인 뒤
-  `LoRA + classifier` student를 학습한다.
-- `pseudo-label self-training` runner를 추가했다.
-- 현재 helper는 첫 bootstrap 이후 같은-family loop에서
-  seed labeled rows와 pseudo-labeled rows를 합쳐 실행하는 offline 경로를 가진다.
-- 다만 central canonical 비교 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`으로 정리한다.
-- `FedMatch`, `FedLGMatch`, `(FL)^2`는 central 단계가 아니라 FL 단계 비교선으로 미룬다.
-- selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
-- 아직 하지 않는 것:
-  - `lora family` shared/FL contract 추가
-  - FL update 생성 및 서버 집계
-
-## Next Session Checklist
-
-1. same initial checkpoint reuse를 기준으로 central continual adaptation 비교 규약을 잠근다.
-2. 현재 offline union helper와 canonical continual protocol 사이의 차이를 정리한다.
-3. `R-Drop` objective를 baseline trainer 위에 추가한다.
+현재 checkpoint, next priority, 고정 artifact는 이 문서에 복제하지 않는다.
+`docs/project_execution_plan.md`가 active decision과 next priority를 소유한다.
 
 ## Guardrails
 
 - `QueryBuffer` 단계에서는 저장만 하고 실제 학습은 하지 않는다.
 - raw query text는 로컬에만 남기고 서버로 보내지 않는다.
 - `ScoredEventRepository`와 `QueryBuffer` 역할을 섞지 않는다.
-- `shared` contract에 아직 `lora family` payload를 추가하지 않는다.
+- `peft_text_encoder` update family는 FL simulation/runtime translation 후보로 이미
+  열려 있다. v1 `lora_classifier` shared payload 이름은 compatibility 표면이다.
+  `projection_head`, full encoder, 추가 PEFT family payload는 실제 필요성이 확인되기
+  전까지 열지 않는다.

@@ -1,0 +1,40 @@
+# @package _global_
+
+seed_sweep:
+  output_dir: ${federated_run_budget.output_dir}
+  seeds:
+    - 42
+    - 43
+    - 44
+
+client_count_sweep:
+  output_dir: ${federated_run_budget.output_dir}
+  client_counts:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+  # materialized_client_split sweep에서는 count별로 별도 manifest를 지정해야 한다.
+  # 예: 1: data/datasets/fl_client_splits/client_local_labeled/..._clients1_.../manifest.json
+  split_manifest_by_client_count: null
+
+run_safety:
+  # 총 예정 communication round가 이 값을 넘으면 명시 ack 없이는 runner가 시작되지 않는다.
+  # 단일 main 30-round는 허용하고, 그보다 큰 accidental long run은 막는다.
+  max_total_rounds_without_ack: 30
+  allow_long_run: false
+  long_run_ack: null
+  required_long_run_ack: ALLOW_FL_SSL_LONG_RUN
+
+resume:
+  # 완료 round summary만 작은 JSON checkpoint로 저장한다. model/update artifact는
+  # 기존 server-owned 산출물을 재사용하므로 학습 시간 대비 overhead는 작다.
+  checkpoint_enabled: true
+  enabled: false
+  run_dir: null

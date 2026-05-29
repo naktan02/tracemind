@@ -27,7 +27,7 @@
 1. 장기 기록용 별도 부모 웹 대시보드
 2. 원격 agent 선택 UI
 3. 다중 자녀 프로필
-4. LLM 대화
+4. cloud LLM provider opt-in 대화
 5. persisted personalization state와의 정밀 연결
 
 ## 개발 실행
@@ -87,9 +87,9 @@ Chrome extension manifest는 `public/manifest.json`을 source로 사용한다.
 
 ## 타입 동기화
 
-- [src/contracts/generated.ts](/home/jmgjmg102/tracemind_server/apps/family_extension/src/contracts/generated.ts)는 generated file이다.
+- [src/contracts/generated.ts](src/contracts/generated.ts)는 generated file이다.
 - shared `wellbeing_signal` 또는 `family_access` contract를 바꾼 뒤에는 repo root에서 아래를 다시 실행한다.
 
 ```bash
-./.venv/bin/python scripts/generate_family_extension_types.py
+./.venv/bin/python scripts/codegen/generate_family_extension_types.py
 ```

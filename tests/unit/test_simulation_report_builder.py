@@ -1,0 +1,677 @@
+"""FL simulation report builder 계산값 검증."""
+
+from __future__ import annotations
+
+import pytest
+
+from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from scripts.experiments.fl_ssl.federated_simulation.io import (
+    simulation_report_builder,
+    split_diagnostics,
+)
+from scripts.experiments.fl_ssl.federated_simulation.models import (
+    ClientEvaluationSummary,
+    ClientRoundSummary,
+    FederatedArtifactPersistenceConfig,
+    FederatedClientPoolSplitConfig,
+    FederatedClientShard,
+    FederatedDatasetSplit,
+    FederatedDataSourceConfig,
+    FederatedDiagnosticViewConfig,
+    FederatedLocalTrainerRuntimeConfig,
+    FederatedPeerProbeManifest,
+    FederatedReportConfig,
+    FederatedRoundRuntimeConfig,
+    FederatedSslMethodConfig,
+    FederatedValidationConfig,
+    SimulationEvaluation,
+    SimulationResult,
+    SimulationRoundSummary,
+)
+from scripts.runtime_adapters.federated_server.round_request_mapper import (
+    build_federated_training_task_config,
+)
+from shared.src.contracts.training_contracts import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+)
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
+
+
+def _row(query_id: str, label: str) -> dict[str, str]:
+    return {
+        "query_id": query_id,
+        "text": f"{label} text",
+        "mapped_label_4": label,
+    }
+
+
+def _evaluation(
+    *,
+    macro_f1: float,
+    loss: float,
+    accepted_ratio: float = 0.5,
+    row_count: int = 10,
+) -> SimulationEvaluation:
+    return SimulationEvaluation(
+        row_count=row_count,
+        top1_accuracy=macro_f1,
+        accepted_ratio=accepted_ratio,
+        loss=loss,
+        loss_kind="negative_log_likelihood_from_score_distribution",
+        accuracy_top_1=macro_f1,
+        correct_top_1=round(macro_f1 * row_count),
+        macro_f1=macro_f1,
+        macro_precision=macro_f1,
+        macro_recall=macro_f1,
+        weighted_f1=macro_f1,
+        balanced_accuracy=macro_f1,
+        expected_calibration_error=0.1,
+        max_calibration_error=0.2,
+        score_distribution_kind="softmax_raw_scores_temperature_1.0",
+    )
+
+
+def _report_config() -> FederatedReportConfig:
+    return FederatedReportConfig(
+        schema_version="federated_simulation_report.v1",
+        track="fl_ssl_main_comparison",
+        table_role="main_comparison",
+        labeled_ratio=0.1,
+        unlabeled_ratio=0.9,
+        seed_count=3,
+        primary_metrics=["macro_f1", "worst_client_macro_f1"],
+        secondary_metrics=["loss", "communication_cost"],
+    )
+
+
+def _training_task_config() -> object:
+    return build_federated_training_task_config(
+        local_epochs=1,
+        batch_size=16,
+        learning_rate=1e-4,
+        max_steps=50,
+        min_required_examples=1,
+        gradient_clip_norm=1.0,
+        objective_config=TrainingObjectiveConfig.from_mapping(
+            {
+                "training_backend_name": "peft_classifier_trainer",
+                "confidence_threshold": 0.0,
+                "margin_threshold": 0.0,
+            }
+        ),
+        selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 8}),
+    )
+
+
+def _dataset_split() -> FederatedDatasetSplit:
+    agent_001_rows = [
+        _row("a1", "anxiety"),
+        _row("a2", "anxiety"),
+        _row("n1", "normal"),
+    ]
+    agent_002_rows = [
+        _row("d1", "depression"),
+        _row("d2", "depression"),
+    ]
+    return FederatedDatasetSplit(
+        bootstrap_rows=[_row("b1", "normal")],
+        client_shards=(
+            FederatedClientShard(
+                client_id="agent_001",
+                rows=agent_001_rows,
+                labeled_rows=agent_001_rows[:1],
+                unlabeled_rows=agent_001_rows[1:],
+                client_pool_split_enforced=True,
+            ),
+            FederatedClientShard(
+                client_id="agent_002",
+                rows=agent_002_rows,
+                labeled_rows=agent_002_rows[:1],
+                unlabeled_rows=agent_002_rows[1:],
+                client_pool_split_enforced=True,
+            ),
+        ),
+    )
+
+
+def test_simulation_report_builder_computes_round_client_and_split_metrics() -> None:
+    result = SimulationResult(
+        initial_model_revision="sim_rev_0000",
+        initial_validation=_evaluation(macro_f1=0.2, loss=0.9),
+        final_validation=_evaluation(macro_f1=0.6, loss=0.5),
+        rounds=(
+            SimulationRoundSummary(
+                round_id="round_0001",
+                model_revision="sim_rev_0001",
+                update_count=1,
+                validation=_evaluation(macro_f1=0.4, loss=0.8),
+                round_time_seconds=1.5,
+                round_timing_breakdown={
+                    "round_client_execution_seconds": 1.0,
+                    "round_validation_seconds": 0.2,
+                },
+                aggregation_metrics={"server_update_partitioned": 1.0},
+                total_payload_bytes=100,
+                clients=(
+                    ClientRoundSummary(
+                        client_id="agent_001",
+                        candidate_count=10,
+                        diagnostic_candidate_count=5,
+                        accepted_count=5,
+                        update_generated=True,
+                        delta_l2_norm=2.0,
+                        aggregation_example_count=5,
+                        client_train_time_seconds=0.11,
+                        client_payload_bytes=100,
+                        pseudo_label_confidence_mean=0.8,
+                        pseudo_label_margin_mean=0.2,
+                        pseudo_label_correct_count=4,
+                        pseudo_label_evaluated_count=5,
+                        accepted_label_distribution={"anxiety": 5},
+                        rejected_label_distribution={"normal": 5},
+                        method_diagnostics={
+                            "fedmatch_helper_count": 0.0,
+                            "fedmatch_peer_context_helper_count": 0.0,
+                            "fedmatch_helper_provider_count": 0.0,
+                            "fedmatch_missing_helper_snapshot_count": 0.0,
+                            "fedmatch_materialized_helper_model_count": 0.0,
+                            "fedmatch_peer_context_refreshed": 0.0,
+                            "fedmatch_c2s_sparse_upload_value_count": 3.0,
+                            "fedmatch_s2c_sparse_download_value_count": 0.0,
+                        },
+                        timing_breakdown={
+                            "core_training_loop_seconds": 0.04,
+                            "core_pseudo_label_diagnostics_seconds": 0.01,
+                        },
+                    ),
+                    ClientRoundSummary(
+                        client_id="agent_002",
+                        candidate_count=10,
+                        diagnostic_candidate_count=5,
+                        accepted_count=0,
+                        update_generated=False,
+                        client_train_time_seconds=0.07,
+                        pseudo_label_confidence_mean=0.4,
+                        pseudo_label_margin_mean=0.1,
+                        rejected_label_distribution={"depression": 10},
+                        timing_breakdown={
+                            "core_training_loop_seconds": 0.03,
+                            "core_pseudo_label_diagnostics_seconds": 0.02,
+                        },
+                    ),
+                ),
+            ),
+            SimulationRoundSummary(
+                round_id="round_0002",
+                model_revision="sim_rev_0002",
+                update_count=2,
+                validation=_evaluation(macro_f1=0.6, loss=0.5),
+                round_time_seconds=2.5,
+                round_timing_breakdown={
+                    "round_client_execution_seconds": 1.7,
+                    "round_validation_seconds": 0.3,
+                },
+                aggregation_metrics={
+                    "server_update_partitioned": 1.0,
+                    "partitioned_global_state_count": 2.0,
+                },
+                total_payload_bytes=200,
+                clients=(
+                    ClientRoundSummary(
+                        client_id="agent_001",
+                        candidate_count=10,
+                        diagnostic_candidate_count=5,
+                        accepted_count=4,
+                        update_generated=True,
+                        delta_l2_norm=4.0,
+                        aggregation_example_count=4,
+                        client_train_time_seconds=0.2,
+                        client_payload_bytes=80,
+                        pseudo_label_confidence_mean=0.9,
+                        pseudo_label_margin_mean=0.3,
+                        pseudo_label_correct_count=4,
+                        pseudo_label_evaluated_count=4,
+                        accepted_label_distribution={"anxiety": 4},
+                        rejected_label_distribution={"normal": 6},
+                        method_diagnostics={
+                            "fedmatch_helper_count": 1.0,
+                            "fedmatch_peer_context_helper_count": 1.0,
+                            "fedmatch_helper_provider_count": 1.0,
+                            "fedmatch_missing_helper_snapshot_count": 0.0,
+                            "fedmatch_materialized_helper_model_count": 1.0,
+                            "fedmatch_peer_context_refreshed": 1.0,
+                            "fedmatch_c2s_sparse_upload_value_count": 5.0,
+                            "fedmatch_s2c_sparse_download_value_count": 2.0,
+                        },
+                        timing_breakdown={
+                            "core_training_loop_seconds": 0.08,
+                            "core_pseudo_label_diagnostics_seconds": 0.03,
+                        },
+                    ),
+                    ClientRoundSummary(
+                        client_id="agent_002",
+                        candidate_count=10,
+                        diagnostic_candidate_count=5,
+                        accepted_count=6,
+                        update_generated=True,
+                        delta_l2_norm=6.0,
+                        aggregation_example_count=6,
+                        client_train_time_seconds=0.3,
+                        client_payload_bytes=120,
+                        pseudo_label_confidence_mean=0.7,
+                        pseudo_label_margin_mean=0.2,
+                        pseudo_label_correct_count=3,
+                        pseudo_label_evaluated_count=6,
+                        accepted_label_distribution={"depression": 6},
+                        rejected_label_distribution={"normal": 4},
+                        timing_breakdown={
+                            "core_training_loop_seconds": 0.12,
+                            "core_pseudo_label_diagnostics_seconds": 0.04,
+                        },
+                    ),
+                ),
+            ),
+        ),
+        client_evaluations=(
+            ClientEvaluationSummary(
+                client_id="agent_001",
+                validation=_evaluation(macro_f1=0.7, loss=0.3),
+            ),
+            ClientEvaluationSummary(
+                client_id="agent_002",
+                validation=_evaluation(macro_f1=0.5, loss=0.7),
+            ),
+        ),
+        result_timing_breakdown={
+            "result_client_evaluation_seconds": 0.12,
+        },
+    )
+
+    payload = simulation_report_builder.SimulationReportBuilder().build_payload(
+        result=result,
+        report_config=_report_config(),
+        client_count=2,
+        round_budget=2,
+        bootstrap_ratio=0.2,
+        seed=7,
+        run_budget_name="reduced",
+        run_output_dir="runs/fl_ssl",
+        shard_policy=FederatedShardPolicyConfig(
+            name="label_dominant",
+            client_id_prefix="agent",
+            dominant_ratio=0.75,
+        ),
+        dataset_split=_dataset_split(),
+        ssl_method_config=FederatedSslMethodConfig(
+            schema_version="federated_ssl_method.v1",
+            name="fedmatch",
+            display_name="FedMatch",
+            method_role="method_owned",
+            implementation_status="partitioned_trainable_state_slice_v1",
+            local_budget_policy="iteration_capped",
+        ),
+        client_pool_split_config=FederatedClientPoolSplitConfig(
+            labeled_ratio=0.1,
+            unlabeled_ratio=0.9,
+        ),
+        training_task_config=_training_task_config(),
+        validation_config=FederatedValidationConfig(
+            similarity_name="cosine",
+            scorer_backend_name="prototype_similarity",
+            score_policy_name="max_cosine",
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        round_runtime_config=FederatedRoundRuntimeConfig(
+            payload_adapter_kind="peft_classifier",
+            aggregation_backend_name="fedavg",
+            update_family_name="peft_text_encoder",
+        ),
+        embedding_spec=EmbeddingAdapterSpec(
+            backend="mxbai",
+            model_id="mixedbread-ai/mxbai-embed-large-v1",
+            revision="main",
+            device="cuda",
+            batch_size=16,
+            cache_dir="data/cache/hf",
+            local_files_only=True,
+        ),
+        local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
+            device="cuda",
+            local_files_only=True,
+            cache_dir="data/cache/hf",
+            trust_remote_code=False,
+            classifier_dropout=0.1,
+        ),
+        artifact_persistence_config=FederatedArtifactPersistenceConfig(
+            persist_agent_local_updates=False,
+        ),
+        diagnostic_view_config=FederatedDiagnosticViewConfig(
+            enabled=True,
+            selection_policy="deterministic_random",
+            max_rows=5,
+            seed_offset=1309,
+        ),
+        peer_probe_manifest=FederatedPeerProbeManifest(
+            selection_policy="label_balanced",
+            seed=42,
+            seed_offset=907,
+            source="validation_rows",
+            requested_max_rows=128,
+            row_count=4,
+            query_ids_sha256="abc123",
+            label_distribution={
+                "anxiety": 1,
+                "depression": 1,
+                "normal": 1,
+                "suicidal": 1,
+            },
+            query_ids=("a1", "d1", "n1", "s1"),
+        ),
+        data_source_config=FederatedDataSourceConfig(
+            source_mode="materialized_client_split",
+            split_manifest_path="data/datasets/fl_client_splits/main/manifest.json",
+            split_manifest_sha256="abc123",
+            split_id="main",
+            source_selection={"labeled": "ourafla_reddit"},
+            source_jsonl={"labeled": "labeled.jsonl"},
+            labeled_policy={"mode": "all"},
+            labeled_exposure_policy={"name": "client_local_split"},
+            view_schema={
+                "weak_text_field": "text",
+                "strong_text_fields": ["aug_0", "aug_1"],
+            },
+            test_jsonl="test.jsonl",
+        ),
+    )
+
+    second_round_aggregation = payload["diagnostics"]["aggregation"]["rounds"][1]
+    assert payload["protocol"]["ssl_method"]["local_budget_policy"] == (
+        "iteration_capped"
+    )
+    assert payload["protocol"]["round_runtime"]["payload_adapter_kind"] == (
+        "peft_classifier"
+    )
+    assert "adapter_family_name" not in payload["protocol"]["round_runtime"]
+    assert payload["protocol"]["round_runtime"]["update_family_name"] == (
+        "peft_text_encoder"
+    )
+    assert payload["rounds"][0]["round_index"] == 1
+    assert payload["rounds"][0]["global_validation"]["macro_f1"] == pytest.approx(0.4)
+    assert payload["rounds"][0]["round_time_seconds"] == pytest.approx(1.5)
+    assert payload["rounds"][0]["total_payload_bytes"] == 100
+    assert payload["rounds"][1]["clients"][0]["fedmatch_helper_count"] == (
+        pytest.approx(1.0)
+    )
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_peer_context_refreshed"
+    ] == pytest.approx(1.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_helper_provider_count"
+    ] == pytest.approx(1.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_missing_helper_snapshot_count"
+    ] == pytest.approx(0.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_materialized_helper_model_count"
+    ] == pytest.approx(1.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_c2s_sparse_upload_value_count"
+    ] == pytest.approx(5.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_s2c_sparse_download_value_count"
+    ] == pytest.approx(2.0)
+    assert payload["rounds"][1]["aggregation_metrics"][
+        "partitioned_global_state_count"
+    ] == pytest.approx(2.0)
+    assert payload["rounds"][1]["delta_from_previous_round"]["loss_reduction"] == (
+        pytest.approx(0.3)
+    )
+    round_progression = payload["diagnostics"]["round_progression"]
+    assert len(round_progression["validation_curve"]) == 3
+    assert round_progression["best_round"]["round_id"] == "round_0002"
+    assert round_progression["best_round"]["selection_metric"] == "macro_f1"
+    assert round_progression["validation_curve"][0]["round_index"] == 0
+    assert second_round_aggregation["zero_update_client_count"] == 0
+    assert second_round_aggregation["aggregation_metrics"][
+        "server_update_partitioned"
+    ] == pytest.approx(1.0)
+    assert second_round_aggregation["fedmatch_helper_count_summary"][
+        "max"
+    ] == pytest.approx(1.0)
+    assert second_round_aggregation["fedmatch_peer_context_refreshed_count"] == 1
+    assert second_round_aggregation["fedmatch_helper_provider_count_summary"][
+        "max"
+    ] == pytest.approx(1.0)
+    assert second_round_aggregation["fedmatch_missing_helper_snapshot_count_summary"][
+        "max"
+    ] == pytest.approx(0.0)
+    assert second_round_aggregation["fedmatch_materialized_helper_model_count_summary"][
+        "max"
+    ] == pytest.approx(1.0)
+    assert second_round_aggregation["fedmatch_c2s_sparse_upload_value_count_summary"][
+        "max"
+    ] == pytest.approx(5.0)
+    assert second_round_aggregation["fedmatch_s2c_sparse_download_value_count_summary"][
+        "max"
+    ] == pytest.approx(2.0)
+    assert second_round_aggregation["total_aggregation_examples"] == 10
+    assert second_round_aggregation["aggregation_example_basis"] == (
+        "update_envelope.example_count"
+    )
+    assert second_round_aggregation["aggregation_weight_summary"]["max"] == (
+        pytest.approx(0.6)
+    )
+    assert second_round_aggregation["mean_delta_l2_norm"] == pytest.approx(5.0)
+    assert second_round_aggregation["max_delta_l2_norm"] == pytest.approx(6.0)
+    assert second_round_aggregation["update_norm_variance"] == pytest.approx(1.0)
+
+    pseudo_label_quality = payload["diagnostics"]["pseudo_label_quality"]
+    assert pseudo_label_quality["summary"]["candidate_count"] == 40
+    assert pseudo_label_quality["summary"]["diagnostic_candidate_count"] == 20
+    assert pseudo_label_quality["summary"]["accepted_count"] == 15
+    assert pseudo_label_quality["summary"]["pseudo_label_accuracy"] == pytest.approx(
+        11 / 15
+    )
+    assert pseudo_label_quality["summary"]["candidate_confidence_mean"] == (
+        pytest.approx(0.7)
+    )
+    assert pseudo_label_quality["summary"]["accepted_label_distribution"] == {
+        "anxiety": 9,
+        "depression": 6,
+    }
+
+    communication_cost = payload["diagnostics"]["communication_cost"]
+    assert communication_cost["total_payload_bytes"] == 300
+    assert communication_cost["payload_byte_accounting_status"] == "measured"
+    assert communication_cost["round_time_seconds"]["mean"] == pytest.approx(2.0)
+    assert communication_cost["round_timing_breakdown_summary"][
+        "round_validation_seconds"
+    ]["mean"] == pytest.approx(0.25)
+    assert communication_cost["client_train_time_seconds"]["max"] == pytest.approx(0.3)
+    assert communication_cost["timing_breakdown_summary"]["core_training_loop_seconds"][
+        "max"
+    ] == pytest.approx(0.12)
+    assert payload["diagnostics"]["result_timing_breakdown"][
+        "result_client_evaluation_seconds"
+    ] == pytest.approx(0.12)
+
+    client_validation = payload["metrics"]["client_validation"]
+    agent_001_summary = client_validation["clients"][0]
+    assert client_validation["fairness_gap"] == pytest.approx(0.2)
+    assert client_validation["macro_f1_std"] == pytest.approx(0.1)
+    assert client_validation["loss_std"] == pytest.approx(0.2)
+    assert agent_001_summary["client_train_size"] == 3
+    assert agent_001_summary["client_labeled_count"] == 1
+    assert agent_001_summary["client_unlabeled_count"] == 2
+    assert agent_001_summary["client_candidate_count"] == 20
+    assert agent_001_summary["client_diagnostic_candidate_count"] == 10
+    assert agent_001_summary["client_accepted_count"] == 9
+    assert agent_001_summary["client_accepted_ratio"] == pytest.approx(0.45)
+    assert agent_001_summary["client_payload_bytes"] == 180
+    assert agent_001_summary["update_generated_round_count"] == 2
+    assert agent_001_summary["client_delta_l2_norm"] == pytest.approx(4.0)
+    assert agent_001_summary["mean_delta_l2_norm"] == pytest.approx(3.0)
+    assert agent_001_summary["client_train_time_seconds"] == pytest.approx(0.2)
+    assert agent_001_summary["mean_client_train_time_seconds"] == pytest.approx(0.155)
+    assert agent_001_summary["client_timing_breakdown_summary"][
+        "core_pseudo_label_diagnostics_seconds"
+    ]["mean"] == pytest.approx(0.02)
+    assert agent_001_summary["client_validation_loss"] == pytest.approx(0.3)
+    assert agent_001_summary["client_validation_macro_f1"] == pytest.approx(0.7)
+    assert agent_001_summary["client_validation_ece"] == pytest.approx(0.1)
+    assert agent_001_summary["pseudo_label_accuracy"] == pytest.approx(8 / 9)
+    assert agent_001_summary["accepted_label_distribution"] == {"anxiety": 9}
+
+    split = payload["protocol"]["labeled_unlabeled_split"]
+    assert split["status"] == "materialized_client_split"
+    assert split["labeled_ratio"] == pytest.approx(0.4)
+    assert split["unlabeled_ratio"] == pytest.approx(0.6)
+    assert split["counting_basis"] == "client_exposure"
+    assert split["unique_counting_basis"] == "query_id"
+    assert split["actual_total_exposure_count"] == 5
+    assert split["actual_labeled_exposure_count"] == 2
+    assert split["actual_unlabeled_exposure_count"] == 3
+    assert split["unique_total_count"] == 5
+    assert split["unique_labeled_count"] == 2
+    assert split["unique_unlabeled_count"] == 3
+    assert split["unique_labeled_ratio"] == pytest.approx(0.4)
+    assert split["unique_unlabeled_ratio"] == pytest.approx(0.6)
+    assert split["configured_labeled_ratio"] == pytest.approx(0.1)
+    assert split["min_client_size"] == 2
+    assert split["max_client_size"] == 3
+    assert split["label_skew_summary"]["dominant_label_ratio"]["max"] == 1.0
+    fl_data_source = payload["protocol"]["fl_data_source"]
+    assert payload["protocol"]["run_control"] == {
+        "metadata_status": "recorded",
+        "budget_name": "reduced",
+        "output_dir": "runs/fl_ssl",
+    }
+    assert fl_data_source["source_mode"] == "materialized_client_split"
+    assert fl_data_source["split_manifest_sha256"] == "abc123"
+    assert fl_data_source["labeled_policy"] == {"mode": "all"}
+    assert fl_data_source["labeled_exposure_policy"] == {"name": "client_local_split"}
+    assert fl_data_source["view_schema"]["strong_text_fields"] == [
+        "aug_0",
+        "aug_1",
+    ]
+    embedding_adapter = payload["protocol"]["embedding_adapter"]
+    assert embedding_adapter["metadata_status"] == "recorded"
+    assert embedding_adapter["backend"] == "mxbai"
+    assert embedding_adapter["model_id"] == "mixedbread-ai/mxbai-embed-large-v1"
+    assert embedding_adapter["device"] == "cuda"
+    local_trainer_runtime = payload["protocol"]["local_trainer_runtime"]
+    assert local_trainer_runtime["metadata_status"] == "recorded"
+    assert local_trainer_runtime["device"] == "cuda"
+    assert local_trainer_runtime["local_files_only"] is True
+    artifact_persistence = payload["protocol"]["artifact_persistence"]
+    assert artifact_persistence["metadata_status"] == "recorded"
+    assert artifact_persistence["persist_agent_local_updates"] is False
+    assert artifact_persistence["canonical_update_source"] == (
+        "server_owned_aggregation_artifact"
+    )
+    diagnostic_view = payload["protocol"]["diagnostic_view"]
+    assert diagnostic_view["metadata_status"] == "recorded"
+    assert diagnostic_view["selection_policy"] == "deterministic_random"
+    assert diagnostic_view["max_rows"] == 5
+    assert diagnostic_view["scope"] == "pseudo_label_diagnostics_only"
+    peer_probe = payload["protocol"]["peer_probe"]
+    assert peer_probe["metadata_status"] == "recorded"
+    assert peer_probe["selection_policy"] == "label_balanced"
+    assert peer_probe["row_count"] == 4
+    assert peer_probe["query_ids_sha256"] == "abc123"
+
+
+def test_split_diagnostics_separates_shared_seed_exposure_and_unique_counts() -> None:
+    shared_labeled_row = _row("shared_l1", "anxiety")
+    dataset_split = FederatedDatasetSplit(
+        bootstrap_rows=[shared_labeled_row],
+        client_shards=(
+            FederatedClientShard(
+                client_id="agent_001",
+                rows=[shared_labeled_row, _row("u1", "normal")],
+                labeled_rows=[shared_labeled_row],
+                unlabeled_rows=[_row("u1", "normal")],
+                client_pool_split_enforced=True,
+            ),
+            FederatedClientShard(
+                client_id="agent_002",
+                rows=[shared_labeled_row, _row("u2", "depression")],
+                labeled_rows=[shared_labeled_row],
+                unlabeled_rows=[_row("u2", "depression")],
+                client_pool_split_enforced=True,
+            ),
+        ),
+    )
+
+    payload = split_diagnostics.build_client_pool_split_payload(
+        dataset_split=dataset_split,
+        client_pool_split_config=None,
+        report_config=_report_config(),
+        data_source_config=FederatedDataSourceConfig(
+            source_mode="materialized_client_split",
+            split_manifest_path="manifest.json",
+            labeled_exposure_policy={"name": "shared_client_seed"},
+        ),
+    )
+
+    assert payload["actual_labeled_count"] == 2
+    assert payload["actual_labeled_exposure_count"] == 2
+    assert payload["actual_total_exposure_count"] == 4
+    assert payload["actual_labeled_ratio"] == pytest.approx(0.5)
+    assert payload["unique_labeled_count"] == 1
+    assert payload["unique_unlabeled_count"] == 2
+    assert payload["unique_total_count"] == 3
+    assert payload["unique_labeled_ratio"] == pytest.approx(1 / 3)
+    assert payload["unique_label_distribution"] == {
+        "anxiety": 1,
+        "depression": 1,
+        "normal": 1,
+    }
+
+
+def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
+    report_config = _report_config()
+    report_config.primary_metrics.append("missing_metric")
+    result = SimulationResult(
+        initial_model_revision="sim_rev_0000",
+        initial_validation=_evaluation(macro_f1=0.2, loss=0.9),
+        final_validation=_evaluation(macro_f1=0.6, loss=0.5),
+        rounds=(),
+        client_evaluations=(),
+    )
+
+    with pytest.raises(ValueError, match="report.primary_metrics"):
+        simulation_report_builder.SimulationReportBuilder().build_payload(
+            result=result,
+            report_config=report_config,
+            client_count=2,
+            round_budget=2,
+            bootstrap_ratio=0.2,
+            seed=7,
+            shard_policy=FederatedShardPolicyConfig(
+                name="label_dominant",
+                client_id_prefix="agent",
+                dominant_ratio=0.75,
+            ),
+            dataset_split=_dataset_split(),
+            ssl_method_config=None,
+            client_pool_split_config=FederatedClientPoolSplitConfig(
+                labeled_ratio=0.1,
+                unlabeled_ratio=0.9,
+            ),
+            training_task_config=_training_task_config(),
+            validation_config=FederatedValidationConfig(
+                similarity_name="cosine",
+                scorer_backend_name="prototype_similarity",
+                score_policy_name="max_cosine",
+                confidence_threshold=0.0,
+                margin_threshold=0.0,
+            ),
+            round_runtime_config=FederatedRoundRuntimeConfig(
+                payload_adapter_kind="peft_classifier",
+                aggregation_backend_name="fedavg",
+                update_family_name="peft_text_encoder",
+            ),
+        )

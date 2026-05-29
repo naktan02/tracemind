@@ -1,0 +1,26 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/embedding_adapter: mxbai
+  - /execution_context/runtime_env: gpu_online
+  - /strategy_axes/prototype/build_strategy: single
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+input_jsonl: ${dataset.prototype_input_jsonl}
+output_dir: data/artifacts/prototype_packs
+build_state_output_dir: data/artifacts/prototype_build_states
+prototype_version: ""
+translation_model_id: null
+translation_model_revision: null
+translation_direction: null
+expected_categories: ${dataset.prototype_expected_categories}
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

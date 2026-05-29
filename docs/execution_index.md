@@ -1,183 +1,116 @@
 # TraceMind Execution Index
 
-## 목적
+짧은 문서 지도다. task별 read order는 `docs/ai_context_manifest.yaml`을 우선한다.
 
-이 문서는 TraceMind 작업의 짧은 진입점이다.
-현재 활성 경로는 `personalized local inference + federated shared model improvement`다.
-현재 작업 순서는 `central fixed+classifier seed -> query continual adaptation LoRA+classifier -> 시스템용 FL translation`으로 본다.
+```text
+central fixed embedding + classifier seed
+-> central SSL pooled/offline control
+-> FL SSL non-IID main comparison
+-> FL/runtime translation
+```
 
-Codex CLI와 VS Code Codex extension을 사용할 때는
-`docs/ai_context_manifest.yaml`의 task route를 먼저 보고, 아래 문서 지도에서
-필요한 문서만 고른다. 아래 목록은 전체 읽기 순서가 아니다.
+## Core Docs
 
-## 문서 지도
+| 문서 | 역할 |
+|---|---|
+| `AGENTS.md` | repo-wide 작업 규칙과 소유 경계 |
+| `docs/ai_context_manifest.yaml` | task route와 source-of-truth 우선순위 |
+| `plan.md` | 연구 비전과 global/local 경계 |
+| `docs/project_execution_plan.md` | active decision, phase, next step |
+| `docs/architecture/system-overview.md` | 런타임 구성요소와 코드 경계 |
+| `docs/architecture/target-method-runtime-structure.md` | 최종 method/runtime 구조와 migration plan |
+| `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 guard |
+| `docs/architecture/pattern-integrity-refactor-backlog.md` | 패턴 경계 guard와 남은 후보 |
+| `docs/architecture/code-expression-guidelines.md` | 코드 표현 밀도와 읽기 난이도 기준 |
+| `shared/src/contracts/README.md` | payload 계약 해석 |
+| `docs/contracts/legacy_contract_ledger.md` | legacy/compatibility 표면의 소유자와 제거 조건 |
+| `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |
+| `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
+| `docs/governance/document-governance.md` | 문서 class와 갱신 규칙 |
+| `methods/README.md` | 재사용 algorithm/method core 소유 경계 |
+| `methods/evaluation/README.md` | 중앙/FL 공통 evaluation metric helper 경계 |
+| `conf/README.md` | Hydra config group과 strategy/runtime 축 |
 
-- `docs/ai_context_manifest.yaml`
-  - AI용 문맥 지도와 task route
-- `AGENTS.md`
-  - 저장소 구조, 소유 경계, 작업 규칙
-- `docs/architecture/system-overview.md`
-  - 현재 런타임 구성요소, 활성 rail, 코드 소유 경계
-- `docs/operations/local-runbook.md`
-  - 로컬 실행, GPU preflight, smoke 절차
-- `plan.md` (repo root)
-  - 왜 seed 단계와 적응 단계를 분리했는지
-- `docs/project_execution_plan.md`
-  - 지금 무엇을 구현하고 무엇을 미루는지, Phase별 현황
-- `docs/api/api-surface.md`
-  - agent/main_server API route 표면과 contract source
-- `shared/src/contracts/README.md`
-  - 현재 payload 계약 해석
-- `docs/fl_runtime_implementation_checklist.md`
-  - 시스템 FL 트랙의 실제 구현 순서와 완료 기준
-- `docs/strategy_surface_map.md`
-  - 지금 실제로 바꿀 수 있는 전략 축과 metadata-only 축을 한눈에 확인
-- `docs/contracts/strategy_addition_playbook.md`
-  - 새 전략을 어떤 순서로 구현, 등록, 기본값 반영, 테스트할지
-- `docs/contracts/algorithm_extension_guide.md`
-  - 새 Protocol이나 전략 축 구현 세부가 필요할 때만 본다
-- `docs/contracts/query_buffer_v1.md`
-  - query buffer와 threshold/policy selection의 local boundary
-- `shared/src/contracts/workspace_manifest_contracts.py`
-  - Phase 2 workspace manifest와 compile preview canonical contract
-- `apps/AGENTS.md`
-  - web/app 구현을 볼 때만 읽는다
-- `apps/experiment_web/AGENTS.md`
-  - 실험 workspace UI 구현을 볼 때만 읽는다
-- `docs/staged_execution_roadmap.md`
-  - Phase 이름과 검증 포인트가 필요할 때만 읽는다
-- `docs/family_extension_wellbeing_signal_mvp_plan.md`
-  - 가족용 확장 MVP를 볼 때만 읽는다
-- `apps/family_extension/AGENTS.md`
-  - 가족용 확장 UI 구현을 볼 때만 읽는다
+## Research Docs
 
-## AI Harness 빠른 경로
+| 문서 | 역할 |
+|---|---|
+| `docs/contracts/query_buffer_v1.md` | query retention과 selection boundary |
+| `docs/contracts/central_peft_text_encoder_trainer_contract.md` | 중앙 SSL control scaffold |
+| `docs/fl_runtime_implementation_checklist.md` | FL/runtime translation 작업표 |
+| `docs/strategy_surface_map.md` | 전략 축, 기본값, 구현 상태 |
+| `docs/contracts/strategy_addition_playbook.md` | 새 strategy 추가 절차 |
+| `docs/contracts/algorithm_extension_guide.md` | 새 protocol/전략 축 세부 |
+| `docs/contracts/fl_ssl_method_capability_matrix.md` | FedMatch/FedLGMatch/(FL)^2 선택 전 capability matrix |
 
-Codex용 하네스 문서는 아래 순서를 권장한다.
+## Reference / Historical Docs
 
-1. `docs/ai_context_manifest.yaml`
-2. 관련 path-specific `AGENTS.md`
-3. 실험 의도 정렬이나 skill 선택이 애매할 때만
-   `.codex/skills/tracemind-research-loop/SKILL.md`
-4. 하네스 자체를 유지보수할 때만 `docs/ai_harness_operating_model.md`
-5. harness spot check가 필요할 때만 `docs/ai_harness_eval_cases.yaml`
+| 문서 | 역할 |
+|---|---|
+| `docs/notes/decisions/2026-05-28-archived-text-classifier-adaptation-refactor-plan.md` | 완료된 text classifier migration 기록. legacy shim 변경 때만 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-lora-classifier-v1-terminology-audit.md` | 완료된 `lora_classifier` 용어 감사 기록. legacy migration 추적 때만 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-strategy-surface-map.md` | 긴 strategy surface 감사 기록. 현재 축 확인은 active `docs/strategy_surface_map.md`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-conf-readme.md` | 긴 Hydra config group 설명 기록. 현재 config 경계는 active `conf/README.md`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-scripts-guide.md` | 긴 scripts cookbook 기록. 현재 scripts 경계는 active `scripts/README.md`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-central-ssl-control-readme.md` | 긴 central SSL 실행 예시 기록. 현재 entrypoint 경계는 code-adjacent README와 `conf/`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-experiment-results.md` | 긴 과거 결과 표 기록. 현재 결과 지도는 active `docs/experiment_results.md`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-fl-ssl-runbook.md` | 긴 FL SSL 실행 예시 기록. 현재 실행 경계는 `scripts/experiments/fl_ssl/README.md`를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-fl-simulation-package-readme.md` | 긴 FL simulation package 설명 기록. 현재 패키지 경계는 code-adjacent README를 먼저 읽는다 |
+| `docs/notes/decisions/2026-05-28-archived-project-execution-plan.md` | 긴 실행 계획 기록. 현재 우선순위는 active `docs/project_execution_plan.md`를 먼저 읽는다 |
+| `docs/notes/sessions/2026-05-28-archived-fl-ssl-execution-audit.md` | 특정 시점 FL SSL artifact 감사 기록 |
+| `docs/notes/sessions/2026-05-28-archived-fl-ssl-runtime-performance-audit.md` | FedMatch runtime 성능 개선 전후 수치 기록 |
+| `docs/staged_execution_roadmap.md` | phase 이름만 보는 축약 지도. 현재 우선순위는 project execution plan이 소유 |
 
-## 코드 읽기 빠른 경로
+## Fast Code Paths
 
-필요한 문서만 확인한 뒤 코드를 볼 때는 아래 순서가 가장 빠르다.
+Central SSL:
 
-### seed / 적응 실험
-
-1. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/experiments/train_lora_bootstrap_classifier_teacher.yaml`, `scripts/conf/experiments/train_lora_pseudo_label_classifier.yaml`, `scripts/conf/experiments/train_lora_fixmatch.yaml`, `scripts/conf/query_adaptation_initial_checkpoint/*`, `scripts/conf/query_ssl_method/*`, `scripts/conf/query_ssl_train_source/*`, `scripts/conf/query_ssl_augmenter/*`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
-2. `scripts/experiments/train_softmax_classifier.py`
+1. relevant `conf/**`
+2. `docs/architecture/target-method-runtime-structure.md`
 3. `docs/contracts/query_buffer_v1.md`
-4. `docs/contracts/central_lora_classifier_trainer_contract.md`
-5. `scripts/experiments/train_lora_classifier.py`
-6. `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`
-7. `scripts/experiments/train_lora_pseudo_label_classifier.py`
-8. `scripts/experiments/lora_classifier/runner.py`
-9. `scripts/experiments/lora_classifier/bootstrap_runner.py`
-10. `scripts/experiments/lora_classifier/query_adaptation_runner.py`
-11. `scripts/experiments/lora_classifier/pseudo_label_runner.py`
-12. `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
-13. `scripts/experiments/lora_classifier/query_ssl/augmentation.py`
-14. `scripts/README.md`는 command discovery나 cross-script convention이 필요할 때만 읽는다.
-15. 필요 시 적응 단계 실험 스크립트/노트북
+4. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
+5. `scripts/experiments/central/ssl_control/README.md`
+6. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
+7. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
+8. `scripts/support/query_ssl_peft/*`
+9. `methods/ssl/hooks/teacher.py` (teacher source hook 변경 시)
+10. `methods/adaptation/peft_text_encoder/*`
+11. `methods/evaluation/*`
+12. `methods/adaptation/query_text_views/*`
+13. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
+14. `methods/ssl/*`
+15. `methods/adaptation/*`
 
-### agent 로컬 추론/학습
+Agent runtime:
 
 1. `agent/src/services/README.md`
-2. `agent/src/services/inference/pipeline_service.py`
-3. `agent/src/services/training/examples/service.py`
-4. `agent/src/services/training/execution/local_training_service.py`
-5. `agent/src/services/federation/rounds/runtime_service.py`
+2. `docs/architecture/method-owned-runtime-refactor-plan.md`
+3. `agent/src/services/inference/pipeline_service.py`
+4. `agent/src/services/training/execution/agent_training_task_runner_service.py`
+5. `agent/src/services/training/execution/local_training_service.py`
+6. `agent/src/services/federation/rounds/runtime_service.py`
 
-### main_server FL round orchestration
+Main server FL:
 
 1. `main_server/src/services/README.md`
-2. `main_server/src/services/federation/rounds/README.md`
+2. `docs/architecture/method-owned-runtime-refactor-plan.md`
 3. `main_server/src/services/federation/rounds/round_lifecycle_service.py`
 4. `main_server/src/services/federation/rounds/round_manager_service.py`
 
-### 실험 entrypoint
+Apps:
 
-1. `scripts/experiments/README.md`
-2. `scripts/experiments/prototype_strategy/README.md`
-3. `scripts/experiments/federated_simulation/README.md`
+1. `apps/AGENTS.md`
+2. app-specific `AGENTS.md`
+3. `shared/src/contracts/README.md`
 
-### prototype artifact build/eval
+## Start Checklist
 
-1. `scripts/prototypes/README.md`
-2. `scripts/prototypes/seed_prototypes.py`
-3. `scripts/prototypes/evaluate_prototype_pack.py`
-
-## 문서 역할
-
-| 파일 | 역할 |
-|---|---|
-| `docs/ai_context_manifest.yaml` | AI용 문맥 지도, task route, source-of-truth 우선순위 |
-| `docs/ai_harness_operating_model.md` | 하네스 유지보수용 보조 문서 |
-| `docs/ai_harness_eval_cases.yaml` | maintainer 전용 harness spot check sample |
-| `.codex/skills/tracemind-research-loop/SKILL.md` | 실험 의도 정렬과 project-local skill routing |
-| `.codex/skills/THIRD_PARTY_NOTICES.md` | 외부에서 가져온 project-local skills 출처와 license |
-| `AGENTS.md` | 저장소 구조, 소유 경계, 작업 규칙 |
-| `docs/architecture/system-overview.md` | 현재 런타임, 활성 rail, 코드 소유 경계 |
-| `docs/api/api-surface.md` | agent/main_server API route 표면과 contract source |
-| `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke 절차 |
-| `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
-| `docs/governance/document-governance.md` | 문서 class, source-of-truth, 갱신 규칙 |
-| `plan.md` | 연구 비전, 핵심 가설, staged seed/adaptation 원칙 |
-| `docs/project_execution_plan.md` | 활성 아키텍처, 현재 Phase, 다음 액션, 검증 기준 |
-| `docs/fl_runtime_implementation_checklist.md` | 시스템 FL 트랙 구현 작업표 |
-| `docs/staged_execution_roadmap.md` | 중복 설명 없이 Phase map만 제공 |
-| `shared/src/contracts/README.md` | 코드 가까운 contract 해설 |
-| `docs/contracts/` | 계약 설계 배경, 알고리즘 확장 가이드 |
-| `docs/contracts/algorithm_extension_guide.md` | 교체 가능한 모든 전략 지점과 교체 절차 |
-| `docs/contracts/central_lora_classifier_trainer_contract.md` | query-domain LoRA 적응 scaffold와 산출물 경계 |
-| `docs/contracts/query_buffer_v1.md` | agent-owned local query retention, selection 입력, adaptation 준비 경계 |
-| `docs/contracts/strategy_addition_playbook.md` | 전략 추가 시 실제 작업 순서와 검증 순서 |
-| `docs/strategy_surface_map.md` | 전략 축, 기본값 source, 실험 override 가능 여부, 구현 상태 |
-| `docs/family_extension_wellbeing_signal_mvp_plan.md` | 아이용/부모용 확장과 wellbeing signal 출력 계약 기반 MVP 계획 |
-| `shared/src/contracts/workspace_manifest_contracts.py` | workspace manifest, core method/variant profile/override patch, compile preview 계약 |
-| `docs/contracts/shared_adapter_contracts_v1.md` | adapter payload 구조와 수학적 의미 |
-| `docs/contracts/training_update_envelope_v1.md` | envelope 필드 설계 이유 |
-
-## 작업 시작 체크리스트
-
-1. 이번 요청이 `seed baseline`, `query-domain 적응`, `시스템 FL 트랙` 중 어디인지 먼저 구분한다.
-2. 변경 소유 경계가 `shared`, `agent`, `main_server`, `scripts` 중 어디인지 적는다.
-3. 바뀔 축이 무엇인지 적는다.
-   - 예: classifier family, query buffer, training backend, aggregation backend, privacy layer, scoring policy
-4. 전략/알고리즘 추가라면 `docs/strategy_surface_map.md`에서 현재 활성 축인지 먼저 확인한다.
-5. 새 Protocol이나 구현 세부가 필요할 때만 `docs/contracts/algorithm_extension_guide.md`를 본다.
-6. 운영 후보 로직이면 `scripts`가 아니라 `shared/agent/main_server` 소유 경계에 먼저 둔다.
-7. 사용자 판단이 필요한 항목인지 확인한다.
-
-## 운영 문서 빠른 경로
-
-1. 시스템 구조 확인: `docs/architecture/system-overview.md`
-2. API route 확인: `docs/api/api-surface.md`
-3. 로컬 실행과 smoke: `docs/operations/local-runbook.md`
-4. 테스트 범위 확인: `docs/quality/test-strategy.md`
-5. 문서 갱신 기준 확인: `docs/governance/document-governance.md`
-
-## 문서 우선순위
-
-1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`
-2. `shared/src/contracts/README.md`
-3. `docs/contracts/*`, active `docs/*.md`, `docs/architecture/*`, `docs/api/*`,
-   `docs/operations/*`, `docs/quality/*`, `docs/governance/*`
-
-`docs/notes/**`는 archive-only다. 현재 규칙으로 쓰려면 active docs나
-code-adjacent 문서로 요약 승격한 뒤 참조한다.
-
-## 사용자 확인이 필요한 변경
-
-1. query 버퍼에 raw text를 어떤 retention policy로 남길지
-2. 적응 단계 LoRA spec과 threshold/policy를 무엇으로 고정할지
-3. `lora` family FL 활성화
-4. pseudo-label을 정식 학습 신호로 승격
-   - central canonical 비교는 seed 1회 이후 new accepted query-derived rows only continual adaptation을 기준으로 본다.
-5. 서버로 보내는 update 메타데이터 확대
-6. private adapter/head를 언제 열지
-7. secure aggregation, DP, HE 도입 시점
+1. 요청이 seed, central SSL control, FL SSL non-IID, runtime translation 중 어디인지 구분한다.
+2. 변경 소유 경계가 `shared`, `methods`, `conf`, `agent`, `main_server`, `scripts`, `apps`, `docs` 중 어디인지 정한다.
+3. 전략/알고리즘 추가라면 `docs/architecture/target-method-runtime-structure.md`를
+   먼저 보고, 현행 실행 표면은 `docs/strategy_surface_map.md`에서 확인한다.
+4. SSL 논문 비교라면 중앙 control과 FL main comparison을 분리한다.
+5. `docs/notes/**`는 archive-only로 둔다.
+6. FL SSL smoke/main/sweep은 기본적으로 `gpu_local + mxbai`로 실행한다.
+   `gpu_online`은 cache warm-up/최초 다운로드용이고, `cpu_local + hash_debug`는
+   entrypoint wiring smoke나 빠른 단위 검증에만 쓴다.

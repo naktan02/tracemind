@@ -1,182 +1,145 @@
 # Repository Guidelines
 
-## AI Harness Entry Points
+## Start
 
-이 저장소는 Codex CLI와 VS Code Codex extension이 같은 하네스를 공유하도록
-구성한다. 작업 시작 기본 순서는 아래와 같다.
+1. `docs/ai_context_manifest.yaml`에서 task route를 고른다.
+2. `docs/execution_index.md`에서 필요한 문서만 고른다.
+3. 작업 경로의 `AGENTS.md`를 읽는다.
+4. 관련 contract, Hydra config, code, test를 확인한다.
 
-1. `docs/ai_context_manifest.yaml`
-   - task별 읽기 순서와 source-of-truth 우선순위
-2. `docs/execution_index.md`
-   - 짧은 문서 지도
-3. 현재 작업 경로의 path-specific `AGENTS.md`
-   - `shared/`, `agent/`, `main_server/`, `scripts/`, `tests/`, `docs/`, `apps/`
-4. 관련 code contract와 active docs
+Path-specific instructions: `shared/`, `methods/`, `conf/`, `agent/`,
+`main_server/`, `scripts/`, `tests/`, `docs/`, `apps/`,
+`apps/family_extension/`.
 
-## AI Working Principles
+## Working Rules
 
-하네스는 아래 행동 기준을 기본값으로 둔다.
+- 모호한 요구는 가정, 선택지, 성공 기준을 먼저 드러낸다.
+- 알고리즘, baseline, ablation, 논문 비교는 구현 전 목표, 고정/변경 변수,
+  dataset/split/seed, metric, output metadata를 맞춘다.
+- 요청과 직접 연결된 파일만 고치고 주변 리팩터링은 별도 필요로 언급한다.
+- 단일 사용처용 추상화, 설정 축, compatibility layer를 미리 만들지 않는다.
+- 새 기능이나 method의 1차 읽기 경로는 보통 README/index -> descriptor/contract ->
+  core 구현 -> 필요한 adapter/config 순서로 3-5개 주요 파일 안에 들어와야 한다.
+- 파일을 새로 나누기 전에는 독립 변경 이유, 독립 테스트 표면, 여러 caller, 경계
+  contract, 긴 구현 은닉 중 하나가 있는지 확인한다. 이름/상수/한 줄 위임만 가진
+  파일은 가까운 owner 파일로 합친다.
+- 반복되는 의미는 가장 가까운 공통 owner에 모으되, 모양만 비슷하고 의미가 다른
+  코드는 공통화하지 않는다. Hydra leaf YAML이나 route module처럼 원래 얇은 파일은
+  예외지만 기본값과 계약 의미를 중복 소유하지 않는다.
+- 변경은 테스트, lint, 실행 결과, 문서 동기화 중 적절한 검증으로 닫는다.
+- 주석과 설명 문서는 기본적으로 한국어로 쓴다.
 
-- 모호한 요구나 여러 해석이 있으면 가정, 선택지, 성공 기준을 먼저 드러낸다.
-- 알고리즘, 방법론, baseline, ablation 비교처럼 의도 해석이 갈릴 수 있는
-  작업은 구현이나 실행 전에 비교 목표, 고정 변수, 변경 변수, metric, seed,
-  산출물 metadata를 먼저 맞춘다.
-- 요청과 직접 연결되는 파일만 고치고, 주변 리팩터링은 별도 필요로 언급한다.
-- 단일 사용처를 위한 추상화, 설정 축, compatibility layer를 미리 만들지 않는다.
-- 변경은 테스트, lint, 실행 결과처럼 검증 가능한 기준으로 닫는다.
+## Ownership
 
-## Project Structure & Ownership
+- `shared/`: 공통 contract, domain entity, canonical payload 해석 규칙.
+- `methods/`: 교체 가능한 알고리즘/method 계산 core.
+- `agent/`: 로컬 inference/training, private/local state, FL participant.
+- `main_server/`: round lifecycle, aggregation, publication, server API.
+- `scripts/`: Hydra 실험 entrypoint, sweep, report, visualization thin wrapper.
+- `apps/`: UI shell/API consumer. 계약 의미나 기본값을 소유하지 않는다.
+- `tests/`: cross-boundary integration/e2e와 architecture guard.
+- `docs/`: 설명 계층. source of truth를 대체하지 않는다.
 
-이 저장소는 역할별 모듈이 나뉜 monorepo 구조다.
+운영 후보 알고리즘은 `scripts`에 먼저 만들고 나중에 복사하지 않는다.
+재사용 알고리즘 core는 처음부터 `methods`에 둔다. 공통 contract/domain은
+`shared`, runtime adapter는 `agent`/`main_server`, 실험 실행은 `scripts`에 둔다.
 
-- `shared/`
-  - 공통 contract, domain entity, canonical 계산 규칙의 source of truth
-- `agent/`
-  - agent-owned 로컬 추론/로컬 학습 runtime과 API
-- `main_server/`
-  - server-owned round lifecycle, aggregation, publication orchestration과 API
-- `scripts/`
-  - 코어를 조합하는 실험층
-  - thin wrapper, sweep, report, visualization, exploratory-only logic만 둔다
-- `tests/`
-  - cross-boundary integration/e2e 및 architecture 검증
-- `apps/`
-  - developer/product UI shell
-  - source of truth를 가지지 않고 `shared` contract와 `main_server` API를 소비한다
-- `infra/`
-  - 배포/운영 manifest
-  - 현재 repo에는 아직 실제 `infra/` 디렉터리나 Docker Compose manifest가 없다
+최종 구조 방향:
 
-중요:
+- `methods/`는 SSL, FL aggregation, adaptation, prototype 계산 core를 소유한다.
+- `conf/`는 Hydra 실행 조합과 파라미터만 소유한다.
+- `scripts/`는 entrypoint, sweep, report, visualization thin wrapper만 소유한다.
+- `agent/`와 `main_server/`는 production/runtime adapter로 선택된 core를 호출한다.
+- `shared/`는 contract, domain entity, canonical payload 해석만 소유한다.
 
-- 운영 후보 알고리즘 구현은 `scripts`에 먼저 만들고 나중에 복사하지 않는다.
-- 공용 계산 규칙은 `shared`, agent-owned 로컬 실행은 `agent`,
-  server-owned orchestration은 `main_server`에 둔다.
-- `apps`는 실행 조합 UI, 결과 표시, 사용자 상호작용 shell만 둔다.
-  계약 의미, 전략 이름, 실행 기본값을 UI가 소유하지 않는다.
-- 테스트 위치도 책임 경계를 따른다. 패키지별 테스트는 각 패키지 아래에 두고,
-  경계를 넘는 검증만 repo 루트 `tests/`에 둔다.
-- 실행용 스크립트 설정은 `scripts/conf/`의 Hydra config group를 source of
-  truth로 유지한다. `dataset`, `embedding`, `runtime` group를 기본 축으로
-  사용하고, 스크립트의 기본 runtime은 `gpu_online`으로 본다.
+새 method/algorithm 추가의 기본 변경 위치는 `methods/`와 `conf/`다. `agent`와
+`main_server`에 `fedmatch_*`, `freematch_*`, `<method>_server_policy` 같은
+method-specific 파일을 추가하지 않는다. 새 runtime capability가 정말 필요하면
+method 이름이 아니라 capability 이름의 port/adapter를 추가하고, method identity,
+local objective, server/round policy 의미는 `methods/`에 둔다.
+adapter family 실행 구현도 method 이름 파일로 증식시키지 않는다.
+`methods/adaptation/<family>/federated_ssl/`는 `partitioned_training_loop.py`처럼
+family execution primitive 이름을 쓰고, FedMatch/FedLGMatch 같은 method 의미는
+`methods/federated_ssl/<method>/`와 descriptor entrypoint에서만 보이게 한다.
 
-## Documentation Priority
-
-문서 우선순위는 다음과 같이 본다.
+## Source Of Truth
 
 1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`
 2. `shared/src/contracts/README.md`
-3. `docs/contracts/*`, active `docs/*.md`, `docs/architecture/*`, `docs/api/*`,
-   `docs/operations/*`, `docs/quality/*`, `docs/governance/*`
+3. `plan.md`, `docs/contracts/*`, active `docs/*.md`
 
-`docs/notes/**`는 source of truth가 아니라 archive다. 현재 규칙으로 쓰려면
-active docs나 code-adjacent 문서로 요약 승격한 뒤 참조한다.
+`docs/notes/**`는 archive-only다. 현재 규칙은 active docs나 code-adjacent 문서로
+요약 승격한 뒤 사용한다.
 
-세부 active doc 목록과 문서 지도는 `docs/execution_index.md`가 소유한다.
-task별 read order는 `docs/ai_context_manifest.yaml`을 우선한다.
+## Architecture Bias
 
-## Architecture Direction
+- contract-first와 change-axis separation을 우선한다.
+- 필드 의미는 코드 가까이에 두고, 경계에서는 canonical representation을 쓴다.
+- policy/mechanism, runtime/aggregation, privacy/training을 분리한다.
+- 튜닝 전에 dump, trace, summary 같은 관측 가능성을 만든다.
+- 비교 대상이 2개 이상이면 같은 경계에 다음 알고리즘을 얹을 수 있게 한다.
 
-구조 변경은 contract-first와 change-axis separation을 우선한다.
+## Active Research
 
-- 서로 다른 이유로 바뀌는 책임을 한 클래스나 한 payload에 섞지 않는다.
-- `shared/src/contracts/`와 `shared/src/domain/entities/`를 source of truth로
-  본다.
-- 중요한 필드 의미는 코드 가까이에 둔다.
-- 경계에서는 canonical representation을 우선한다.
-- legacy format이나 임시 변환은 compatibility 계층으로 명시적으로 격리한다.
-- 공통 계층과 문맥별 계층을 분리한다.
-- policy와 mechanism을 분리한다.
-- 튜닝 전에 dump, trace, summary 같은 관측 가능성을 먼저 만든다.
-- raw registry는 얇은 wiring 용도로만 쓰고 핵심 도메인 추상화로 남용하지
-  않는다.
-- 같은 family 안에 후속 알고리즘 추가가 이미 예상되면, 첫 구현부터
-  family-level 공통 surface를 먼저 세운다.
-- 단일 알고리즘 전용 임시 구조를 먼저 만들고 곧바로 다시 일반화해야 하는
-  형태는 피한다.
-- 즉시 비교 대상이 2개 이상 보이는 경우에는 과설계는 피하되, 최소한 다음
-  알고리즘을 같은 경계에 얹을 수 있는 미래지향 구조를 우선한다.
+```text
+central fixed embedding + classifier seed
+-> central SSL pooled/offline control
+-> FL SSL non-IID main comparison
+-> FL/runtime translation
+```
 
-## Build, Test, and Development Commands
+- canonical seed artifact: `clf_2026_04_11_143138`
+- 중앙 SSL은 pooled/offline control이며 최종 논문 메인 랭킹이 아니다.
+- `FedMatch`, `FedLGMatch`, `(FL)^2`는 non-IID client split에서 메인 비교한다.
+- 원문 텍스트와 개인 해석 상태는 agent-local boundary에 남긴다.
 
-- 환경 준비: `python -m venv .venv && source .venv/bin/activate`
-- 의존성 설치: `uv sync --extra dev --extra experiments`
-- main server API: `uv run uvicorn main_server.src.api.main:app --reload --port 8000`
-- agent API: `uv run uvicorn agent.src.api.main:app --reload --port 8001`
-- 기본 테스트: `uv run pytest`
+## Commands
+
+- install: `uv sync --extra dev --extra experiments`
+- main server: `uv run uvicorn main_server.src.api.main:app --reload --port 8000`
+- agent: `uv run uvicorn agent.src.api.main:app --reload --port 8001`
+- tests: `uv run pytest`
 - lint: `uv run ruff check main_server/src agent/src shared/src scripts tests`
-- format check: `uv run ruff format --check main_server/src agent/src shared/src scripts tests`
-- 현재 repo에는 Docker Compose parity 명령이 없다
+- format: `uv run ruff format --check main_server/src agent/src shared/src scripts tests`
 
-테스트나 디버그 실행이 중단됐거나 터미널 상태가 이상하면 먼저 `ps aux`를
-실행해 남아 있는 `pytest`, `uv run python`, 기타 stale 프로세스를 확인한다.
+실행이 꼬이면 먼저 `ps aux`로 stale process를 확인한다. GPU 실행 전에는 실제
+실행 환경에서 `nvidia-smi`와 `torch.cuda.is_available()`를 확인한다.
 
-GPU 의존 실행 전에는 실제 실행 환경에서 `nvidia-smi`와 해당 가상환경의
-`torch.cuda.is_available()`를 먼저 확인한다. sandbox에서 GPU가 보이지 않으면
-즉시 GPU 부재로 단정하지 말고, 필요 시 sandbox 밖에서 다시 확인한다.
+## Permission Boundaries
 
-## Command Permission Policy
+검증용 로컬 명령은 실행하되, repo 밖 대량 수정/삭제, destructive git, commit/push,
+remote 변경, secret/system config 변경, 비용 API/대용량 다운로드, 무관한 프로세스
+종료는 사용자 요청 또는 별도 확인 뒤 진행한다.
 
-프로젝트 기본 Codex 설정은 `approval_policy=on-request`,
-`sandbox_mode=danger-full-access`다. 따라서 GPU preflight, `uv run pytest`,
-`uv run python ...`, `nvidia-smi`, local API/app 실행처럼 작업 검증에 직접 필요한
-명령은 실제 실행 환경에서 우선 실행한다.
+## Code Style
 
-그래도 아래 작업은 사용자가 명시적으로 요청하거나 별도 확인을 받은 뒤 진행한다.
-
-- repo 밖 파일 삭제/이동/대량 수정
-- `git reset --hard`, `git clean`, checkout으로 작업물 되돌리기
-- commit, push, remote 변경, branch 삭제
-- 비밀값, `.env`, credential, system config 변경
-- 장시간/대용량 다운로드, 비용 발생 가능 API 호출
-- 관련 없는 프로세스 종료
-
-## Coding Style & Naming Conventions
-
-- Python 3.11 기준
-- four-space indentation
-- Black-compatible line wrapping
-- public 함수는 명시적 type hint
-- 모듈/함수/변수는 snake_case
-- 클래스는 PascalCase
-- 상수는 SCREAMING_SNAKE_CASE
-- request/response body는 dataclass 또는 Pydantic 우선
-- 주석과 설명 문서는 기본적으로 한국어로 쓴다
-
-## Package Import Conventions
-
-- 기본값은 직접 파일 import다.
-  - 예: `from agent.src.services.training.local_training_service import LocalTrainingService`
-- package-level import는 실제 공개 API surface가 필요할 때만 연다.
-  - 예: 여러 모듈에서 반복적으로 쓰는 stable entrypoint, contract boundary, script helper package
-- 내부 구현 패키지의 `__init__.py`는 기본적으로 marker/docstring only로 유지한다.
-- `__init__.py`에 concrete 구현체를 광범위하게 re-export하지 않는다.
-- `__all__`은 package가 의도적으로 공개하는 이름 집합이 있을 때만 둔다.
-- `__getattr__` lazy export는 순환 import 회피나 무거운 import 지연이 명확할 때만 사용한다.
-- repo 내부에서 package-level import 사용이 거의 없으면 barrel export를 추가하지 않고 direct-file import를 유지한다.
-- 새 코드를 추가할 때는 먼저 direct-file import로 두고, 반복 사용이 확인된 뒤에만 `__init__.py` export를 승격한다.
-
-## Testing Guidelines
-
+- Python 3.11, type hint, Black-compatible wrapping.
+- snake_case 함수/변수, PascalCase 클래스, SCREAMING_SNAKE_CASE 상수.
+- request/response body는 dataclass 또는 Pydantic 우선.
+- plain function, local helper, direct import를 우선한다. 패턴 객체, registry,
+  facade, DTO는 변화 축이 실제로 있거나 boundary contract가 필요할 때만 만든다.
+- `@dataclass(frozen=True, slots=True)`, `Protocol`, `TypedDict`, 긴 generic type은
+  shared contract, stable value object, port/interface에 제한한다.
+- `Any`는 Hydra/OmegaConf, ML framework, tokenizer/model 같은 untyped 외부 경계에서만
+  허용하고, 내부 흐름으로 들어오기 전에 typed payload나 작은 helper로 정규화한다.
+- runner/service/controller의 첫 화면은 orchestration 흐름이 보여야 한다. 긴 rule table,
+  report row assembly, artifact IO, plotting, validation boilerplate는 의미 단위 helper나
+  declaration table로 낮춘다.
+- 새 폴더/파일을 추가하면 사람이 어디서 시작해야 하는지 code-adjacent README나
+  active architecture 문서에 남긴다. 반대로 README 없이도 파일명이 충분히 설명되는
+  얇은 leaf 파일에는 별도 문서를 만들지 않는다.
+- 내부 import는 direct-file import가 기본이다. package-level export는 stable public
+  API일 때만 열고, 내부 `__init__.py`는 기본적으로 marker/docstring only로 둔다.
+- `__all__`는 사용하지 않는다. 공개 표면이 필요하면 package-level export 대신
+  호출부에서 direct-file import를 명시한다.
 - Pytest가 authoritative framework다.
-- 파일명은 `test_<module>.py`, 함수명은 `test_<behavior>`를 쓴다.
-- 빠른 deterministic 검증은 `tests/unit`
-- contract/integration 검증은 `tests/integration`
-- core service는 statement coverage 90% 이상을 목표로 본다.
-- 수동 dict보다 fixture/factory를 우선한다.
+- 빠른 deterministic 검증은 `tests/unit`, 경계 검증은 `tests/integration`에 둔다.
 
-## Commit & Pull Request Guidelines
+## Commit And Security
 
-- commit message는 `type: subject` 형식을 쓴다.
-- `type`은 `feat`, `fix`, `docs`, `test`, `refactor`, `chore`처럼 영어 conventional prefix를 쓴다.
-- `subject`는 한국어로 작성할 수 있다.
-- 예: `feat: 아이용 로컬 LLM 대화 경계 추가`
+- commit format: `type: subject`
+- `type`: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`
+- `subject`는 한국어 가능. 예: `feat: 아이용 로컬 LLM 대화 경계 추가`
 - 한 commit은 한 concern에 집중한다.
-- behavior 변경 시 테스트 근거를 남긴다.
-- shared interface를 건드리면 관련 설계 문서를 함께 연결한다.
-
-## Security & Configuration Tips
-
-- `.env`는 커밋하지 않는다. 대신 `.env.example`을 유지한다.
-- 비밀값은 하드코딩보다 environment variable을 우선한다.
-- PII가 관련된 migration은 retention policy를 문서화하고 승인 후 배포한다.
+- `.env`는 커밋하지 않고 비밀값은 environment variable을 우선한다.
+- PII migration은 retention policy를 문서화하고 승인 후 배포한다.

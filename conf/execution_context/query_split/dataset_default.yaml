@@ -1,0 +1,7 @@
+# @package query_source
+
+name: dataset_default
+train_jsonl: ${dataset.train_jsonl}
+unlabeled_jsonl: ${dataset.unlabeled_query_pool_jsonl}
+validation_jsonl: ${dataset.validation_jsonl}
+test_jsonl: ${dataset.test_labeled_jsonl}

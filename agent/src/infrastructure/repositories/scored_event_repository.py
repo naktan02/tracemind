@@ -1,7 +1,8 @@
 """ScoredEvent SQLite 저장소.
 
 scored event를 로컬에 영속 저장하고 학습 시 조회한다.
-base_embedding을 함께 저장해서 학습 시 재임베딩 없이 EmbeddedTrainingExample을 조립 가능하다.
+base_embedding을 함께 저장해 학습 시 재임베딩 없이
+EmbeddedTrainingExample을 조립할 수 있게 한다.
 """
 
 from __future__ import annotations
@@ -109,9 +110,7 @@ class ScoredEventRepository:
 
     def get_recent_stored(self, *, days: int = 7) -> list[StoredScoredEvent]:
         """최근 N일 이내의 ScoredEvent와 base_embedding을 함께 반환한다."""
-        cutoff = (
-            datetime.now(tz=timezone.utc) - timedelta(days=days)
-        ).isoformat()
+        cutoff = (datetime.now(tz=timezone.utc) - timedelta(days=days)).isoformat()
         with self._connect() as conn:
             rows = conn.execute(_SELECT_RECENT_SQL, (cutoff,)).fetchall()
         return [_row_to_stored(row) for row in rows]

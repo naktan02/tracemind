@@ -1,0 +1,73 @@
+{
+  "schema_version": "training_update_submission.v1",
+  "envelope": {
+    "schema_version": "training_update_envelope.v1",
+    "update_id": "update_round_1_agent_1",
+    "round_id": "round_1",
+    "task_id": "task_1",
+    "model_id": "mxbai-peft-classifier",
+    "base_model_revision": "rev_peft_001",
+    "training_scope": "adapter_only",
+    "payload_ref": "client-submission::update_round_1_agent_1",
+    "payload_format": "peft_classifier_update",
+    "example_count": 3,
+    "client_metrics": {
+      "accepted_ratio": 0.75
+    },
+    "created_at": "2026-04-08T00:00:00Z",
+    "clipped": null,
+    "dp_applied": null,
+    "checksum": null,
+    "agent_id": null,
+    "secure_aggregation": null,
+    "notes": null
+  },
+  "update_payload": {
+    "schema_version": "peft_classifier_delta.v2",
+    "adapter_kind": "peft_classifier",
+    "model_id": "mxbai-peft-classifier",
+    "base_model_revision": "rev_peft_001",
+    "training_scope": "adapter_only",
+    "example_count": 3,
+    "created_at": "2026-04-08T00:00:00Z",
+    "backbone": {
+      "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+      "backbone_revision": "main",
+      "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+      "tokenizer_revision": "main",
+      "pooling": "mean",
+      "max_length": 256,
+      "task_prefix": ""
+    },
+    "peft_adapter_config": {
+      "peft_adapter_name": "lora",
+      "parameters": {
+        "rank": 8,
+        "alpha": 16,
+        "dropout": 0.1,
+        "bias": "none",
+        "target_modules": "all-linear",
+        "use_rslora": false
+      }
+    },
+    "label_schema": [
+      "anxiety",
+      "normal"
+    ],
+    "peft_adapter_delta_artifact_ref": "client-submission::peft_adapter_delta",
+    "classifier_head_delta_artifact_ref": "client-submission::classifier_head_delta",
+    "peft_parameter_deltas": null,
+    "classifier_head_weight_deltas": null,
+    "classifier_head_bias_deltas": {},
+    "partitioned_deltas": null,
+    "partitioned_deltas_artifact_ref": null,
+    "delta_format": "artifact_ref",
+    "mean_confidence": 0.87,
+    "mean_margin": 0.24,
+    "label_counts": {
+      "anxiety": 2,
+      "normal": 1
+    },
+    "delta_l2_norm": 1.25
+  }
+}

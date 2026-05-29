@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
@@ -35,9 +35,9 @@ class RoundPublicationSummary:
     aggregated_metrics: dict[str, float]
     update_count: int
     finalized_at: datetime
-    prototype_pack_ref: str | None = None
-    prototype_build_state_ref: str | None = None
-    prototype_rebuild_input_id: str | None = None
+    round_state_summary_metrics: dict[str, float] = field(default_factory=dict)
+    auxiliary_artifact_refs: dict[str, str] = field(default_factory=dict)
+    auxiliary_artifact_metadata: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -60,10 +60,10 @@ class RoundTaskConfig:
     """active manifest를 제외한 reusable round task 설정."""
 
     task_type: TrainingTaskType = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING
-    local_epochs: int = DEFAULT_TRAINING_PROFILE.local_epochs
-    batch_size: int = DEFAULT_TRAINING_PROFILE.batch_size
-    learning_rate: float = DEFAULT_TRAINING_PROFILE.learning_rate
-    max_steps: int = DEFAULT_TRAINING_PROFILE.max_steps
+    local_epochs: int = RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs
+    batch_size: int = RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size
+    learning_rate: float = RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate
+    max_steps: int = RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps
     objective_config: (
         TrainingObjectiveConfig | Mapping[str, TrainingConfigScalar] | None
     ) = None
@@ -73,8 +73,12 @@ class RoundTaskConfig:
     secure_aggregation: (
         SecureAggregationConfig | Mapping[str, TrainingConfigScalar] | bool | None
     ) = None
-    min_required_examples: int | None = DEFAULT_TRAINING_PROFILE.min_required_examples
-    gradient_clip_norm: float | None = DEFAULT_TRAINING_PROFILE.gradient_clip_norm
+    min_required_examples: int | None = (
+        RUNTIME_FALLBACK_TRAINING_PROFILE.min_required_examples
+    )
+    gradient_clip_norm: float | None = (
+        RUNTIME_FALLBACK_TRAINING_PROFILE.gradient_clip_norm
+    )
     deadline_at: datetime | None = None
     notes: str | None = None
 
@@ -107,8 +111,16 @@ class RoundTaskConfig:
 
 
 @dataclass(slots=True, kw_only=True)
+class RoundOpenDraftRequest(RoundTaskConfig):
+    """active manifest를 아직 붙이지 않은 새 round open 요청."""
+
+    round_id: str | None = None
+    task_id: str | None = None
+
+
+@dataclass(slots=True, kw_only=True)
 class RoundOpenRequest(RoundTaskConfig):
-    """새 round open 요청."""
+    """서버 active manifest로 resolve된 새 round open 요청."""
 
     active_manifest: ModelManifest
     round_id: str | None = None
@@ -119,8 +131,8 @@ class RoundOpenRequest(RoundTaskConfig):
 class RoundFinalizeRequest:
     """round finalize 요청."""
 
-    next_prototype_version: str
     next_model_revision: str | None = None
+    next_auxiliary_artifact_versions: Mapping[str, str] = field(default_factory=dict)
     published_at: datetime | None = None
 
 

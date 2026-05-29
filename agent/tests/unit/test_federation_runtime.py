@@ -16,8 +16,15 @@ from agent.src.services.federation.rounds.runtime_service import (
 from agent.src.services.training.execution.local_training_service import (
     LocalTrainingResult,
 )
-from agent.src.services.training.selection.pseudo_label_service import PseudoLabelSelectionResult
-from shared.src.contracts.model_contracts import ModelManifest
+from agent.src.services.training.selection.pseudo_label_service import (
+    PseudoLabelSelectionResult,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_current_shared_adapter_state_payload,
+    make_peft_classifier_delta_payload,
+    make_peft_classifier_state_payload,
+)
+from shared.src.contracts.model_contracts import ModelManifest, make_embedding_manifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfigPayload,
     TrainingSelectionPolicyPayload,
@@ -36,11 +43,37 @@ def _build_manifest(revision: str = "rev_000") -> ModelManifest:
         published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref="/tmp/rev_000.json",
-        prototype_version="proto_000",
+        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
     )
+
+
+def _peft_backbone() -> dict[str, object]:
+    return {
+        "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "backbone_revision": "main",
+        "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "tokenizer_revision": "main",
+        "pooling": "mean",
+        "max_length": 256,
+        "task_prefix": "",
+    }
+
+
+def _peft_adapter_config() -> dict[str, object]:
+    return {
+        "peft_adapter_name": "lora",
+        "parameters": {
+            "rank": 8,
+            "alpha": 16,
+            "dropout": 0.1,
+            "bias": "none",
+            "target_modules": "all-linear",
+            "use_rslora": False,
+        },
+    }
 
 
 def _build_task_payload(
@@ -62,7 +95,7 @@ def _build_task_payload(
         learning_rate=1e-2,
         max_steps=10,
         objective_config=TrainingObjectiveConfigPayload(
-            training_backend_name="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             confidence_threshold=0.6,
             margin_threshold=0.02,
         ),
@@ -126,9 +159,7 @@ def test_round_client_fetch_current_task_returns_none_when_status_not_open() -> 
             "batch_size": 8,
             "learning_rate": 1e-2,
             "max_steps": 10,
-            "objective_config": {
-                "training_backend_name": "diagonal_scale_heuristic"
-            },
+            "objective_config": {"training_backend_name": "peft_classifier_trainer"},
             "selection_policy": {},
         },
         "created_at": "2026-03-29T00:00:00Z",
@@ -141,6 +172,36 @@ def test_round_client_fetch_current_task_returns_none_when_status_not_open() -> 
     result = client.fetch_current_task()
 
     assert result is None
+
+
+def test_round_client_fetches_current_shared_adapter_state() -> None:
+    state = make_peft_classifier_state_payload(
+        model_id="tracemind-embed",
+        model_revision="rev_000",
+        backbone=_peft_backbone(),
+        peft_adapter_config=_peft_adapter_config(),
+        label_schema=["anxiety", "normal"],
+    )
+    manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_000",
+        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+        artifact_ref="/server/state/rev_000.json",
+    )
+    payload = make_current_shared_adapter_state_payload(
+        manifest=manifest,
+        state=state,
+    )
+    client = RoundClient(
+        server_base_url="http://localhost:8000",
+        _transport=_transport_with_json(payload.model_dump(mode="json")),
+    )
+
+    current = client.fetch_current_shared_adapter_state()
+
+    assert current is not None
+    assert current.manifest.model_revision == "rev_000"
+    assert current.state.adapter_kind == "peft_classifier"
 
 
 # ─── FederationRuntimeService 테스트 ─────────────────────────────────────────
@@ -287,7 +348,7 @@ def test_federation_runtime_uploads_update_and_marks_completed(
         base_model_revision="rev_000",
         training_scope="adapter_only",
         payload_ref=str(update_file),
-        payload_format="diagonal_scale_update",
+        payload_format="peft_classifier_update",
         example_count=3,
         client_metrics={
             "accepted_ratio": 0.75,
@@ -306,9 +367,24 @@ def test_federation_runtime_uploads_update_and_marks_completed(
         feedback_signals=(),
     )
     local_service = MagicMock()
+    update_payload = make_peft_classifier_delta_payload(
+        model_id="tracemind-embed",
+        base_model_revision="rev_000",
+        backbone=_peft_backbone(),
+        peft_adapter_config=_peft_adapter_config(),
+        label_schema=["anxiety", "normal"],
+        peft_parameter_deltas={"encoder.q_proj.lora_A": [0.01, -0.01]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.01, 0.0],
+            "normal": [0.0, -0.01],
+        },
+        example_count=3,
+        mean_confidence=0.85,
+    )
     local_service.run_task.return_value = LocalTrainingResult(
         selection_result=selection,
         update_envelope=envelope,
+        update_payload=update_payload,
     )
     service = FederationRuntimeService(
         round_client=client,
@@ -326,6 +402,9 @@ def test_federation_runtime_uploads_update_and_marks_completed(
     # 완료 task_id가 기록돼야 한다.
     assert "task_001" in service._completed_task_ids
     client.upload_update.assert_called_once()
+    submission = client.upload_update.call_args.args[1]
+    assert submission.envelope.update_id == "update_abc"
+    assert submission.update_payload.example_count == 3
 
 
 def test_federation_runtime_clear_completed_resets_state() -> None:

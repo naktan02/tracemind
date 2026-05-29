@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.generate_family_extension_types import render_family_extension_types
+from scripts.codegen.generate_family_extension_types import (
+    render_family_extension_types,
+)
 
 
 def test_family_extension_types_are_in_sync_with_shared_contracts() -> None:

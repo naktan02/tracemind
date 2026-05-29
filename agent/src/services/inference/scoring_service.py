@@ -5,14 +5,18 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from agent.src.services.inference.scoring_backends import (
-    PrototypeSimilarityScoringBackend,
-    ScoringBackend,
-    build_scoring_backend,
+from agent.src.services.inference.scoring_backends.base import ScoringBackend
+from agent.src.services.inference.scoring_backends.helpers import (
     resolve_scoring_backend_name,
     resolve_scoring_confidence_kind,
 )
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from agent.src.services.inference.scoring_backends.prototype_similarity import (
+    PrototypeSimilarityScoringBackend,
+)
+from agent.src.services.inference.scoring_backends.registry import (
+    build_scoring_backend,
+)
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
@@ -36,7 +40,7 @@ class ScoringService:
 
         backend_name = (
             objective_config.scorer_backend_name
-            or DEFAULT_TRAINING_PROFILE.scorer_backend_name
+            or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
         )
         backend = build_scoring_backend(
             backend_name,
@@ -49,11 +53,16 @@ class ScoringService:
         self,
         embedding: Sequence[float],
         prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        *,
+        shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
+        effective_shared_state = (
+            shared_state if shared_state is not None else self.shared_state
+        )
         return self.backend.score(
             embedding,
             prototypes,
-            shared_state=self.shared_state,
+            shared_state=effective_shared_state,
         )
 
     @property

@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+from pydantic import ValidationError
+
 from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository as prototype_build_state_repository_module,
 )
@@ -14,25 +17,56 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.infrastructure.repositories import (
     prototype_rebuild_input_repository as prototype_rebuild_input_repository_module,
 )
-from main_server.src.services.federation.assets.prototypes import (
-    InMemoryPrototypePublicationStrategy,
-    PrototypeBuildStateService,
-    PrototypePackService,
-    PrototypeRebuildInputRecord,
-    PrototypeRebuildService,
-    ReferencePrototypeRebuildRequest,
-    ReferencePrototypeSourceRow,
-    ReferenceRebuildPrototypePublicationStrategy,
-    StoredReferencePrototypeRebuildRequest,
-    StoredReferencePrototypeRebuildService,
+from main_server.src.services.federation.prototypes import (
+    models as prototype_models,
 )
-from shared.src.contracts.adapter_contracts import VectorAdapterState
-from shared.src.domain.services.clock import FixedClock
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
-from shared.src.services.prototypes.build_strategies import (
-    KMeansPrototypeBuildStrategy,
+from main_server.src.services.federation.prototypes import (
+    prototype_build_state_service as build_state_service_module,
+)
+from main_server.src.services.federation.prototypes import (
+    prototype_pack_service as pack_service_module,
+)
+from main_server.src.services.federation.prototypes import (
+    prototype_rebuild_service as rebuild_service_module,
+)
+from main_server.src.services.federation.prototypes import (
+    publication_strategies as publication_strategy_module,
+)
+from main_server.src.services.federation.prototypes import (
+    stored_input_rebuild_service as stored_rebuild_service_module,
+)
+from methods.prototype.building.base import (
     PrototypeBuildRequest,
+)
+from methods.prototype.building.kmeans import (
+    KMeansPrototypeBuildStrategy,
+)
+from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
+)
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    ClassifierHeadAdapterStatePayload,
+)
+from shared.src.domain.services.clock import FixedClock
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
+
+InMemoryPrototypePublicationStrategy = (
+    publication_strategy_module.InMemoryPrototypePublicationStrategy
+)
+PrototypeBuildStateService = build_state_service_module.PrototypeBuildStateService
+PrototypePackService = pack_service_module.PrototypePackService
+PrototypeRebuildInputRecord = prototype_models.PrototypeRebuildInputRecord
+PrototypeRebuildService = rebuild_service_module.PrototypeRebuildService
+ReferencePrototypeRebuildRequest = prototype_models.ReferencePrototypeRebuildRequest
+ServerReferencePrototypeSourceRow = prototype_models.ServerReferencePrototypeSourceRow
+ReferenceRebuildPrototypePublicationStrategy = (
+    publication_strategy_module.ReferenceRebuildPrototypePublicationStrategy
+)
+StoredReferencePrototypeRebuildRequest = (
+    prototype_models.StoredReferencePrototypeRebuildRequest
+)
+StoredReferencePrototypeRebuildService = (
+    stored_rebuild_service_module.StoredReferencePrototypeRebuildService
 )
 
 
@@ -208,10 +242,11 @@ def test_rebuild_service_rebuilds_from_reference_rows_with_builder_strategy() ->
             "normal_2": [0.0, 1.1],
         }
     )
-    adapter_state = VectorAdapterState.identity(
+    adapter_state = ClassifierHeadAdapterStatePayload.zero_initialized(
         model_id="tracemind-embed-sim",
         model_revision="sim_rev_0000",
         training_scope="adapter_only",
+        labels=("anxiety", "normal"),
         embedding_dim=2,
         updated_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
     )
@@ -219,27 +254,27 @@ def test_rebuild_service_rebuilds_from_reference_rows_with_builder_strategy() ->
     result = service.rebuild_from_reference_rows(
         ReferencePrototypeRebuildRequest(
             rows=(
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_a_1",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_a_2",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_b_1",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_b_2",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="normal_1",
                     category="normal",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="normal_2",
                     category="normal",
                 ),
@@ -273,10 +308,11 @@ def test_rebuild_service_applies_reference_row_metadata_override() -> None:
             "cluster_a_2": [1.0, 0.1],
         }
     )
-    adapter_state = VectorAdapterState.identity(
+    adapter_state = ClassifierHeadAdapterStatePayload.zero_initialized(
         model_id="tracemind-embed-sim",
         model_revision="sim_rev_0000",
         training_scope="adapter_only",
+        labels=("anxiety", "normal"),
         embedding_dim=2,
         updated_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
     )
@@ -284,11 +320,11 @@ def test_rebuild_service_applies_reference_row_metadata_override() -> None:
     result = service.rebuild_from_reference_rows(
         ReferencePrototypeRebuildRequest(
             rows=(
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_a_1",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_a_2",
                     category="anxiety",
                 ),
@@ -329,8 +365,8 @@ def test_rebuild_input_repository_saves_and_loads_active_input(tmp_path: Path) -
             hash_dim=8,
         ),
         rows=(
-            ReferencePrototypeSourceRow(text="alpha", category="anxiety"),
-            ReferencePrototypeSourceRow(text="beta", category="normal"),
+            ServerReferencePrototypeSourceRow(text="alpha", category="anxiety"),
+            ServerReferencePrototypeSourceRow(text="beta", category="normal"),
         ),
         mapping_version="ourafla_to_4cat.v1",
         required_categories=("anxiety", "normal"),
@@ -347,6 +383,30 @@ def test_rebuild_input_repository_saves_and_loads_active_input(tmp_path: Path) -
     assert loaded.embedding_spec.backend == "hash_debug"
     assert tuple(row.text for row in loaded.rows) == ("alpha", "beta")
     assert loaded.required_categories == ("anxiety", "normal")
+
+
+def test_server_reference_row_rejects_agent_query_source_kind() -> None:
+    with pytest.raises(ValueError, match="Agent query/raw text"):
+        ServerReferencePrototypeSourceRow(
+            text="agent raw query",
+            category="anxiety",
+            source_kind="query_buffer",  # type: ignore[arg-type]
+        )
+
+
+def test_rebuild_input_payload_rejects_query_buffer_source_kind() -> None:
+    row_payload = (
+        prototype_rebuild_input_repository_module.PrototypeRebuildInputRowPayload
+    )
+
+    with pytest.raises(ValidationError):
+        row_payload.model_validate(
+            {
+                "text": "agent raw query",
+                "category": "anxiety",
+                "source_kind": "query_buffer",
+            }
+        )
 
 
 def test_stored_reference_rebuild_service_rebuilds_from_active_input(
@@ -367,9 +427,15 @@ def test_stored_reference_rebuild_service_rebuilds_from_active_input(
                 hash_dim=8,
             ),
             rows=(
-                ReferencePrototypeSourceRow(text="cluster_a_1", category="anxiety"),
-                ReferencePrototypeSourceRow(text="cluster_a_2", category="anxiety"),
-                ReferencePrototypeSourceRow(text="normal_1", category="normal"),
+                ServerReferencePrototypeSourceRow(
+                    text="cluster_a_1",
+                    category="anxiety",
+                ),
+                ServerReferencePrototypeSourceRow(
+                    text="cluster_a_2",
+                    category="anxiety",
+                ),
+                ServerReferencePrototypeSourceRow(text="normal_1", category="normal"),
             ),
             mapping_version="ourafla_to_4cat.v1",
         )
@@ -392,10 +458,11 @@ def test_stored_reference_rebuild_service_rebuilds_from_active_input(
         ),
         adapter_factory=_StaticEmbeddingAdapterFactory,
     )
-    adapter_state = VectorAdapterState.identity(
+    adapter_state = ClassifierHeadAdapterStatePayload.zero_initialized(
         model_id="tracemind-embed-sim",
         model_revision="sim_rev_0001",
         training_scope="adapter_only",
+        labels=("anxiety", "normal"),
         embedding_dim=2,
         updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
     )

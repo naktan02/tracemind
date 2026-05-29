@@ -140,3 +140,22 @@ def test_sync_service_pulls_current_pack_and_activates_it(tmp_path: Path) -> Non
 
     assert pointer.prototype_version == payload.prototype_version
     assert repository.path_for_version(payload.prototype_version).exists()
+
+
+def test_sync_service_pulls_specific_pack_version_and_activates_it(
+    tmp_path: Path,
+) -> None:
+    repository = PrototypePackRepository(state_root=tmp_path / "prototype_packs")
+    payload = _load_fixture_payload()
+    sync_service = PrototypeSyncService(
+        repository=repository,
+        _transport=_transport_with_json(payload.model_dump(mode="json")),
+    )
+
+    pointer = sync_service.pull_version(
+        server_base_url="http://127.0.0.1:8000/",
+        prototype_version=payload.prototype_version,
+    )
+
+    assert pointer.prototype_version == payload.prototype_version
+    assert repository.path_for_version(payload.prototype_version).exists()

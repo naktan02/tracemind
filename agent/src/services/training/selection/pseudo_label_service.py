@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 
-from agent.src.services.training.acceptance_policies.base import (
-    PseudoLabelAcceptancePolicy,
+from methods.federated_ssl.runtime_fallbacks import (
+    RUNTIME_FALLBACK_TRAINING_PROFILE,
+    RuntimeFallbackTrainingProfile,
 )
-from agent.src.services.training.acceptance_policies.top1 import (
-    Top1MarginThresholdAcceptancePolicy,
+from methods.ssl.hooks.acceptance import PseudoLabelAcceptancePolicySpec
+from methods.ssl.hooks.registry import (
+    build_pseudo_label_acceptance_policy,
+    build_pseudo_label_selection_hook,
 )
-from shared.src.config.training_defaults import (
-    DEFAULT_TRAINING_PROFILE,
-    TrainingDefaultsProfile,
+from methods.ssl.hooks.selection import (
+    MarginThresholdPseudoLabelSelectionHook,
+    PseudoLabelSelectionConfig,
+    PseudoLabelSelectionHook,
 )
 from shared.src.contracts.training_contracts import (
     DecisionFeedbackSignal,
@@ -21,26 +25,24 @@ from shared.src.contracts.training_contracts import (
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
-    PseudoLabelSelectionContext,
-    PseudoLabelSelectionStage,
 )
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
-from ..query_adaptation.ssl.algorithms.margin_threshold import (
-    MarginThresholdQuerySslAlgorithm,
-)
-from ..query_adaptation.ssl.base import (
-    QuerySslAlgorithm,
-    QuerySslAlgorithmConfig,
-)
-from ..query_adaptation.ssl.registry import (
-    build_query_ssl_algorithm,
-)
+from .candidate_builder import PseudoLabelCandidateBuilder
 from .evidence_service import (
     PseudoLabelEvidenceService,
 )
+from .selector import PseudoLabelSelector
+
+
+def _build_default_acceptance_policy() -> PseudoLabelAcceptancePolicySpec:
+    """runtime fallback의 acceptance policy를 methods-owned spec으로 해석한다."""
+
+    return build_pseudo_label_acceptance_policy(
+        RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
+    )
 
 
 @dataclass(slots=True)
@@ -67,36 +69,23 @@ class PseudoLabelSelectionResult:
         return self.accepted_count / self.total_count
 
 
-@dataclass(frozen=True, slots=True)
-class _SelectionContextSeed:
-    pseudo_label_algorithm_name: str
-    evidence_backend_name: str
-    evidence_confidence_kind: str
-    evidence_view_kind: str
-
-
-@dataclass(frozen=True, slots=True)
-class _BuiltCandidate:
-    candidate: PseudoLabelCandidate
-    context_seed: _SelectionContextSeed
-
-
 @dataclass(slots=True)
 class PseudoLabelSelectionService:
     """score threshold와 margin 기준으로 pseudo-label을 선별한다."""
 
-    default_profile: TrainingDefaultsProfile = field(
-        default=DEFAULT_TRAINING_PROFILE
+    default_profile: RuntimeFallbackTrainingProfile = field(
+        default=RUNTIME_FALLBACK_TRAINING_PROFILE
     )
     evidence_service: PseudoLabelEvidenceService = field(
         default_factory=PseudoLabelEvidenceService
     )
-    default_policy: PseudoLabelAcceptancePolicy = field(
-        default_factory=Top1MarginThresholdAcceptancePolicy
+    default_policy: PseudoLabelAcceptancePolicySpec = field(
+        default_factory=_build_default_acceptance_policy
     )
-    default_algorithm: QuerySslAlgorithm = field(
-        default_factory=MarginThresholdQuerySslAlgorithm
+    default_selection_hook: PseudoLabelSelectionHook = field(
+        default_factory=MarginThresholdPseudoLabelSelectionHook
     )
+    selector: PseudoLabelSelector = field(default_factory=PseudoLabelSelector)
 
     def __post_init__(self) -> None:
         if self.default_acceptance_policy_name != self.default_policy.policy_name:
@@ -105,11 +94,19 @@ class PseudoLabelSelectionService:
                 "configured default objective profile."
             )
         if (
-            self.default_pseudo_label_algorithm_name
-            != self.default_algorithm.algorithm_name
+            self.default_policy.selection_hook_name
+            != self.default_pseudo_label_algorithm_name
         ):
             raise ValueError(
-                "Default query SSL algorithm does not match the configured "
+                "Default pseudo-label acceptance policy does not point to the "
+                "configured default selection hook."
+            )
+        if (
+            self.default_pseudo_label_algorithm_name
+            != self.default_selection_hook.hook_name
+        ):
+            raise ValueError(
+                "Default pseudo-label selection hook does not match the configured "
                 "default objective profile."
             )
         if (
@@ -168,224 +165,49 @@ class PseudoLabelSelectionService:
             if training_task.objective_config.margin_threshold is not None
             else self.default_margin_threshold
         )
-        ssl_algorithm = self._resolve_algorithm(training_task=training_task)
+        selection_hook = self._resolve_selection_hook(training_task=training_task)
         max_examples = training_task.selection_policy.max_examples
         evidence_list = tuple(evidences)
-        algorithm_config = QuerySslAlgorithmConfig(
+        selection_config = PseudoLabelSelectionConfig(
             confidence_threshold=confidence_threshold,
             margin_threshold=margin_threshold,
         )
+        candidate_builder = PseudoLabelCandidateBuilder(
+            default_evidence_backend_name=self.default_profile.evidence_backend_name
+        )
 
-        built_candidates = [
-            self._build_candidate(
+        built_candidates = tuple(
+            candidate_builder.build(
                 evidence=evidence,
                 training_task=training_task,
-                algorithm_config=algorithm_config,
-                ssl_algorithm=ssl_algorithm,
+                selection_config=selection_config,
+                selection_hook=selection_hook,
             )
             for evidence in evidence_list
-        ]
-        initial_candidates = tuple(
-            built_candidate.candidate for built_candidate in built_candidates
         )
-        context_seed_by_candidate_id = {
-            built_candidate.candidate.candidate_id: built_candidate.context_seed
-            for built_candidate in built_candidates
-        }
-        prelim_accepted = [
-            candidate for candidate in initial_candidates if candidate.accepted
-        ]
-        prelim_accepted.sort(
-            key=lambda candidate: (
-                -candidate.confidence,
-                -candidate.margin,
-                candidate.source_event_ref,
-            )
+        finalized = self.selector.finalize(
+            built_candidates=built_candidates,
+            training_task=training_task,
+            selection_config=selection_config,
+            max_examples=max_examples,
         )
-
-        if max_examples is not None:
-            selected_ids = {
-                candidate.candidate_id
-                for candidate in prelim_accepted[: max(max_examples, 0)]
-            }
-        else:
-            selected_ids = {candidate.candidate_id for candidate in prelim_accepted}
-        pre_cap_ranks = {
-            candidate.candidate_id: index + 1
-            for index, candidate in enumerate(prelim_accepted)
-        }
-
-        finalized_candidates: list[PseudoLabelCandidate] = []
-        accepted_candidates: list[PseudoLabelCandidate] = []
-        feedback_signals: list[DecisionFeedbackSignal] = []
-        for candidate in initial_candidates:
-            threshold_accepted = candidate.accepted
-            is_selected = candidate.candidate_id in selected_ids
-            final_accepted = threshold_accepted and is_selected
-            if final_accepted:
-                selection_stage = "accepted"
-            elif threshold_accepted:
-                selection_stage = "dropped_by_cap"
-            else:
-                selection_stage = "threshold_rejected"
-
-            selection_context = self._build_selection_context(
-                threshold_accepted=threshold_accepted,
-                selected_by_cap=is_selected,
-                final_accepted=final_accepted,
-                selection_stage=selection_stage,
-                context_seed=context_seed_by_candidate_id[candidate.candidate_id],
-                pre_cap_rank=(
-                    None
-                    if not threshold_accepted
-                    else pre_cap_ranks[candidate.candidate_id]
-                ),
-                confidence_threshold=algorithm_config.confidence_threshold,
-                margin_threshold=algorithm_config.margin_threshold,
-                max_examples=max_examples,
-            )
-
-            finalized = replace(
-                candidate,
-                accepted=final_accepted,
-                selection_context=selection_context,
-                metadata=selection_context.to_compatibility_metadata(),
-            )
-            finalized_candidates.append(finalized)
-            if finalized.accepted:
-                accepted_candidates.append(finalized)
-                feedback_signals.append(
-                    self._to_feedback_signal(
-                        candidate=finalized,
-                        training_task=training_task,
-                    )
-                )
 
         return PseudoLabelSelectionResult(
             evidences=evidence_list,
-            candidates=tuple(finalized_candidates),
-            accepted_candidates=tuple(accepted_candidates),
-            feedback_signals=tuple(feedback_signals),
+            candidates=finalized.candidates,
+            accepted_candidates=finalized.accepted_candidates,
+            feedback_signals=finalized.feedback_signals,
         )
 
-    def _build_candidate(
-        self,
-        *,
-        evidence: PseudoLabelEvidence,
-        training_task: TrainingTask,
-        algorithm_config: QuerySslAlgorithmConfig,
-        ssl_algorithm: QuerySslAlgorithm,
-    ) -> _BuiltCandidate:
-        decision = ssl_algorithm.evaluate(
-            evidence=evidence,
-            config=algorithm_config,
-        )
-
-        return _BuiltCandidate(
-            candidate=PseudoLabelCandidate(
-                schema_version="pseudo_label_candidate.v1",
-                candidate_id=f"{training_task.round_id}:{evidence.source_event_ref}",
-                source_event_ref=evidence.source_event_ref,
-                occurred_at=evidence.occurred_at,
-                label=decision.label,
-                confidence=decision.confidence,
-                margin=decision.margin,
-                accepted=decision.accepted,
-                runner_up_label=decision.runner_up_label,
-                runner_up_score=decision.runner_up_score,
-                evidence_ref=evidence.evidence_id,
-                confidence_kind=decision.confidence_kind,
-                sample_weight=decision.sample_weight,
-                task_id=training_task.task_id,
-                round_id=training_task.round_id,
-            ),
-            context_seed=_SelectionContextSeed(
-                pseudo_label_algorithm_name=ssl_algorithm.algorithm_name,
-                evidence_backend_name=self._resolve_evidence_backend_name(
-                    evidence=evidence,
-                    training_task=training_task,
-                ),
-                evidence_confidence_kind=evidence.confidence_kind,
-                evidence_view_kind=evidence.view_kind,
-            ),
-        )
-
-    def _build_selection_context(
-        self,
-        *,
-        threshold_accepted: bool,
-        selected_by_cap: bool,
-        final_accepted: bool,
-        selection_stage: str,
-        context_seed: _SelectionContextSeed,
-        pre_cap_rank: int | None,
-        confidence_threshold: float,
-        margin_threshold: float,
-        max_examples: int | None,
-    ) -> PseudoLabelSelectionContext:
-        return PseudoLabelSelectionContext(
-            threshold_accepted=threshold_accepted,
-            selected_by_cap=selected_by_cap,
-            final_accepted=final_accepted,
-            selection_stage=PseudoLabelSelectionStage(selection_stage),
-            pre_cap_rank=pre_cap_rank,
-            confidence_threshold=confidence_threshold,
-            margin_threshold=margin_threshold,
-            max_examples=max_examples,
-            pseudo_label_algorithm_name=context_seed.pseudo_label_algorithm_name,
-            evidence_backend_name=context_seed.evidence_backend_name,
-            evidence_confidence_kind=context_seed.evidence_confidence_kind,
-            evidence_view_kind=context_seed.evidence_view_kind,
-        )
-
-    def _resolve_algorithm(
+    def _resolve_selection_hook(
         self,
         *,
         training_task: TrainingTask,
-    ) -> QuerySslAlgorithm:
+    ) -> PseudoLabelSelectionHook:
         algorithm_name = (
             training_task.objective_config.pseudo_label_algorithm_name
             or self.default_pseudo_label_algorithm_name
         )
-        if algorithm_name == self.default_algorithm.algorithm_name:
-            return self.default_algorithm
-        return build_query_ssl_algorithm(algorithm_name)
-
-    def _resolve_evidence_backend_name(
-        self,
-        *,
-        evidence: PseudoLabelEvidence,
-        training_task: TrainingTask,
-    ) -> str:
-        evidence_backend_name = evidence.metadata.get("evidence_backend_name")
-        if isinstance(evidence_backend_name, str) and evidence_backend_name.strip():
-            return evidence_backend_name
-        return (
-            training_task.objective_config.evidence_backend_name
-            or self.default_profile.evidence_backend_name
-        )
-
-    @staticmethod
-    def _to_feedback_signal(
-        *,
-        candidate: PseudoLabelCandidate,
-        training_task: TrainingTask,
-    ) -> DecisionFeedbackSignal:
-        return DecisionFeedbackSignal(
-            schema_version="decision_feedback_signal.v1",
-            signal_id=f"signal:{candidate.candidate_id}",
-            signal_type="pseudo_label",
-            label=candidate.label,
-            confidence=candidate.confidence,
-            occurred_at=candidate.occurred_at,
-            source_event_ref=candidate.source_event_ref,
-            task_context={
-                "task_id": training_task.task_id,
-                "round_id": training_task.round_id,
-                "margin": candidate.margin,
-                "runner_up_score": candidate.runner_up_score or 0.0,
-                "confidence_kind": candidate.confidence_kind or "unknown",
-                "sample_weight": candidate.sample_weight,
-                "evidence_ref": candidate.evidence_ref or "",
-            },
-        )
+        if algorithm_name == self.default_selection_hook.hook_name:
+            return self.default_selection_hook
+        return build_pseudo_label_selection_hook(algorithm_name)

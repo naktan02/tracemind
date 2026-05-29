@@ -1,0 +1,28 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/runtime_env: gpu_online
+  - /strategy_axes/prototype/build_strategy: single
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+paths:
+  raw_dir: ${dataset.output_root}/raw
+  labeled_query_set_dir: ${dataset.output_root}/mapped
+  split_dir: ${dataset.output_root}/splits
+  prototype_pack_dir: data/artifacts/prototype_packs
+  prototype_build_state_dir: data/artifacts/prototype_build_states
+  pipeline_run_dir: ${dataset.output_root}/pipeline_runs
+  cache_dir: data/cache/hf
+
+only_stages: []
+list_datasets: false
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

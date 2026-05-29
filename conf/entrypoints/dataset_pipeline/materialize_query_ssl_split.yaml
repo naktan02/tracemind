@@ -1,0 +1,23 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+query_ssl_split_materialization:
+  name: labeled1024_per_class_seed42_v1
+  source_train_jsonl: ${dataset.train_jsonl}
+  source_validation_jsonl: ${dataset.validation_jsonl}
+  source_test_jsonl: ${dataset.test_jsonl}
+  labeled_count_per_class: 1024
+  seed: 42
+  output_root: ${dataset.output_root}/query_ssl
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

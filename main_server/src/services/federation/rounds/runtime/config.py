@@ -7,24 +7,91 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
+from methods.federated_ssl.runtime_fallbacks import (
+    RUNTIME_FALLBACK_SERVER_ROUND_PROFILE,
+)
 
-from ..aggregation.diagonal_scale_defaults import AggregationConfigScalar
+from ..aggregation.models import AggregationConfigScalar
 
-ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
+ROUND_PAYLOAD_ADAPTER_KIND_ENV = "TRACEMIND_ROUND_PAYLOAD_ADAPTER_KIND"
+ROUND_UPDATE_FAMILY_ENV = "TRACEMIND_ROUND_UPDATE_FAMILY"
 ROUND_AGGREGATION_BACKEND_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND"
 ROUND_AGGREGATION_BACKEND_CONFIG_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND_CONFIG"
+ROUND_METHOD_DESCRIPTOR_ENV = "TRACEMIND_ROUND_METHOD_DESCRIPTOR"
 
 
-@dataclass(slots=True)
-class ServerRoundRuntimeConfig:
-    """서버가 round orchestration을 조립할 때 사용하는 전략 선택 축."""
+@dataclass(frozen=True, slots=True)
+class ServerRoundRuntimeProfile:
+    """명시 runtime config가 없을 때 쓰는 compatibility profile."""
 
-    adapter_family_name: str = DIAGONAL_SCALE_FAMILY_METADATA.family_name
-    aggregation_backend_name: str = "fedavg"
+    profile_name: str
+    payload_adapter_kind: str
+    update_family_name: str
+    aggregation_backend_name: str
+    method_descriptor_name: str | None = None
     aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] = field(
         default_factory=dict
     )
+
+
+DEFAULT_PEFT_CLASSIFIER_SERVER_ROUND_RUNTIME_PROFILE = ServerRoundRuntimeProfile(
+    profile_name=RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.profile_name,
+    payload_adapter_kind=RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.payload_adapter_kind,
+    update_family_name=RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.update_family_name,
+    aggregation_backend_name=(
+        RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.aggregation_backend_name
+    ),
+    method_descriptor_name=RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.method_descriptor_name,
+    aggregation_backend_overrides=dict(
+        RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.aggregation_backend_overrides
+    ),
+)
+DEFAULT_SERVER_ROUND_RUNTIME_PROFILE = (
+    DEFAULT_PEFT_CLASSIFIER_SERVER_ROUND_RUNTIME_PROFILE
+)
+
+
+@dataclass(slots=True, init=False)
+class ServerRoundRuntimeConfig:
+    """서버가 round orchestration을 조립할 때 사용하는 전략 선택 축."""
+
+    payload_adapter_kind: str
+    update_family_name: str = DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.update_family_name
+    aggregation_backend_name: str = (
+        DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_name
+    )
+    method_descriptor_name: str | None = (
+        DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.method_descriptor_name
+    )
+    aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] = field(
+        default_factory=dict
+    )
+
+    def __init__(
+        self,
+        *,
+        payload_adapter_kind: str | None = None,
+        update_family_name: str = (
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.update_family_name
+        ),
+        aggregation_backend_name: str = (
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_name
+        ),
+        method_descriptor_name: str | None = (
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.method_descriptor_name
+        ),
+        aggregation_backend_overrides: (
+            Mapping[str, AggregationConfigScalar] | None
+        ) = None,
+    ) -> None:
+        self.payload_adapter_kind = (
+            _optional_str(payload_adapter_kind)
+            or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.payload_adapter_kind
+        )
+        self.update_family_name = update_family_name
+        self.aggregation_backend_name = aggregation_backend_name
+        self.method_descriptor_name = method_descriptor_name
+        self.aggregation_backend_overrides = dict(aggregation_backend_overrides or {})
 
 
 def load_server_round_runtime_config_from_env(
@@ -35,15 +102,26 @@ def load_server_round_runtime_config_from_env(
 
     source = environ or os.environ
     return ServerRoundRuntimeConfig(
-        adapter_family_name=source.get(
-            ROUND_ADAPTER_FAMILY_ENV,
-            DIAGONAL_SCALE_FAMILY_METADATA.family_name,
+        payload_adapter_kind=(
+            source.get(ROUND_PAYLOAD_ADAPTER_KIND_ENV)
+            or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.payload_adapter_kind
+        ),
+        update_family_name=source.get(
+            ROUND_UPDATE_FAMILY_ENV,
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.update_family_name,
         ),
         aggregation_backend_name=source.get(
             ROUND_AGGREGATION_BACKEND_ENV,
-            "fedavg",
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_name,
         ),
-        aggregation_backend_overrides=_load_aggregation_backend_overrides(source),
+        method_descriptor_name=(
+            _optional_env_value(source, ROUND_METHOD_DESCRIPTOR_ENV)
+            or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.method_descriptor_name
+        ),
+        aggregation_backend_overrides=(
+            _load_aggregation_backend_overrides(source)
+            or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_overrides
+        ),
     )
 
 
@@ -72,3 +150,18 @@ def _load_aggregation_backend_overrides(
             f"types, got {type(value)!r} for key={key!r}."
         )
     return overrides
+
+
+def _optional_env_value(source: Mapping[str, str], key: str) -> str | None:
+    value = source.get(key)
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _optional_str(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None

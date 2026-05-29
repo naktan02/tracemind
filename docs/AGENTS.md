@@ -48,10 +48,14 @@ docs나 code-adjacent 문서로 요약 승격한다.
 - `docs/ai_harness_operating_model.md`와 `docs/ai_harness_eval_cases.yaml`은
   maintainer 전용 보조 문서로만 둔다.
 - `docs/contracts/*`는 설계 배경과 확장 절차를 설명한다.
-- `docs/contracts/central_lora_classifier_trainer_contract.md`는 논문 트랙의
-  canonical LoRA scaffold와 산출물 경계를 설명한다.
+- `docs/contracts/central_peft_text_encoder_trainer_contract.md`는 논문 트랙의
+  canonical PEFT text encoder scaffold와 산출물 경계를 설명한다.
 - `docs/notes/**`는 참고/아카이브 용도이며 source of truth로 취급하지 않는다.
 - 새 `docs/notes/sessions/**`는 300-500 words 요약으로 제한하고 대화 전문
   transcript를 추가하지 않는다.
+- active markdown은 index와 링크를 우선하고 반복 cookbook을 피한다. 계약 reference를
+  제외하면 새 문서는 보통 250 lines 안쪽으로 유지한다.
+- 긴 archive 문서는 더 길게 고치지 말고, 현재 결정만 active docs로 승격한 뒤
+  archive 요약으로 줄인다.
 - 구조 변경 시 관련 README, execution index, manifest를 같은 턴에서 함께
   맞춘다.

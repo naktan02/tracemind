@@ -1,13 +1,14 @@
 # TraceMind Test Strategy
 
-이 문서는 2026-04-25 기준 TraceMind 테스트 구성을 설명한다.
+이 문서는 2026-05-19 기준 TraceMind 테스트 구성을 설명한다.
 
-현재 기준 수치:
+현재 기준 수치(`uv run pytest --collect-only -q` 기준):
 
 | 항목 | 수치 |
 |---|---:|
-| Python test modules | 73 |
-| `def test_*` test cases | 324 |
+| Python test modules | 125 |
+| collected pytest items | 778 |
+| direct `def test_*` functions | 745 |
 
 정확한 수치는 계속 변할 수 있다. 전략의 핵심은 contract drift, local/server boundary drift, 실험 entrypoint/config drift를 빠르게 잡는 것이다.
 
@@ -26,7 +27,7 @@ TraceMind의 주요 위험은 아래에 있다.
 
 1. `shared` contract와 canonical helper
 2. `agent` local inference/training/query buffer/wellbeing service
-3. `main_server` round/prototype/experiment orchestration
+3. `main_server` round/prototype orchestration
 4. script entrypoint, Hydra config, artifact IO
 5. cross-boundary integration과 architecture guard
 
@@ -36,7 +37,7 @@ TraceMind의 주요 위험은 아래에 있다.
 |---|---|
 | `shared/tests/unit` | shared contract, prototype contract, training defaults, generated UI contract |
 | `agent/tests/unit` | local inference, query buffer, query adaptation, training, wellbeing API/service |
-| `main_server/tests/unit` | FL round lifecycle, aggregation, prototype publication, experiment workspace API/service |
+| `main_server/tests/unit` | FL round lifecycle, aggregation, prototype publication |
 | `tests/unit` | scripts, Hydra config, prototype builder/projection, generated app types |
 | `tests/integration` | cross-boundary integration |
 | `tests/federation/e2e` | multi-agent federation scenario용 위치 |
@@ -84,7 +85,6 @@ uv run ruff format --check main_server/src agent/src shared/src scripts tests
 | `shared/tests/unit/test_adapter_contracts.py` | adapter family state/update payload |
 | `shared/tests/unit/test_new_training_contracts.py` | training task/update/feedback signal |
 | `shared/tests/unit/test_prototype_contracts.py` | prototype pack serialization/helper |
-| `shared/tests/unit/test_workspace_manifest_contracts.py` | experiment workspace manifest/compile contract |
 | `shared/tests/unit/test_family_access_contracts.py` | family setup/unlock contract |
 | `shared/tests/unit/test_wellbeing_signal_contracts.py` | wellbeing summary/timeseries contract |
 
@@ -100,7 +100,13 @@ Contract 변경은 producer, consumer, serialization/compatibility test, 관련 
 | `agent/tests/unit/test_scoring_service.py` | scoring backend/policy |
 | `agent/tests/unit/test_query_buffer_repository.py` | query buffer local persistence |
 | `agent/tests/unit/test_query_buffer_selection_service.py` | query buffer selection |
-| `agent/tests/unit/test_query_adaptation_fixmatch.py` | FixMatch adaptation objective |
+| `tests/unit/test_methods_fixmatch.py` | reusable FixMatch method objective |
+| `tests/unit/test_methods_freematch.py` | reusable FreeMatch method objective |
+| `tests/unit/test_methods_federated_ssl.py` | reusable FL SSL method descriptor |
+| `tests/unit/test_methods_federated_shard_policy.py` | reusable FL shard policy method core |
+| `tests/unit/test_methods_prototype_scoring.py` | reusable prototype scoring method core |
+| `tests/unit/test_methods_prototype_evidence.py` | reusable prototype evidence method core |
+| `tests/unit/test_methods_prototype_training_inputs.py` | reusable prototype training input method core |
 | `agent/tests/unit/test_local_training_service.py` | local training execution |
 | `agent/tests/unit/test_training_api.py` | agent training route |
 | `agent/tests/unit/test_wellbeing_api.py` | family/wellbeing route |
@@ -116,11 +122,9 @@ Agent 테스트는 raw text, local retention, private state가 server boundary�
 | `main_server/tests/unit/test_round_lifecycle_service.py` | round open/update/finalize |
 | `main_server/tests/unit/test_round_manager_service.py` | round orchestration facade |
 | `main_server/tests/unit/test_aggregation_service.py` | aggregation backend |
+| `tests/unit/test_methods_fedavg.py` | FedAvg generic/family aggregation core |
 | `main_server/tests/unit/test_fl_rounds_api.py` | FL round API |
 | `main_server/tests/unit/test_prototype_pack_service.py` | prototype pack publication |
-| `main_server/tests/unit/test_experiment_workspace_service.py` | workspace save/compile |
-| `main_server/tests/unit/test_experiment_run_service.py` | local experiment run orchestration |
-
 Server 테스트는 round state, aggregation policy, publication side effect가 agent local concern과 섞이지 않는지 확인해야 한다.
 
 ### Scripts and Experiment Surface
@@ -131,11 +135,11 @@ Server 테스트는 round state, aggregation policy, publication side effect가 
 |---|---|
 | `tests/unit/test_scripts_hydra_configs.py` | Hydra config group drift |
 | `tests/unit/test_script_entrypoint_imports.py` | script entrypoint import |
-| `tests/unit/test_fixed_classifier_runner.py` | fixed classifier seed runner |
-| `tests/unit/test_lora_supervised_runner.py` | LoRA supervised runner |
-| `tests/unit/test_lora_fixmatch_runner.py` | FixMatch runner |
+| `tests/unit/test_fixed_classifier_runner.py` | fixed embedding classifier bootstrap artifact runner |
+| `tests/unit/test_peft_supervised_runner.py` | PEFT supervised runner |
+| `tests/unit/test_peft_fixmatch_runner.py` | FixMatch runner |
+| `tests/unit/test_methods_ssl_hooks.py` | reusable SSL pseudo-labeling/masking/selection hooks |
 | `tests/unit/test_run_federated_simulation.py` | FL simulation entrypoint |
-| `tests/unit/test_experiment_web_type_generation.py` | experiment web generated type drift |
 | `tests/unit/test_family_extension_type_generation.py` | family extension generated type drift |
 
 Script 테스트는 실제 GPU 학습 성능을 보장하지 않는다. 실행 표면, config wiring, deterministic IO를 보호한다.
@@ -147,9 +151,17 @@ Script 테스트는 실제 GPU 학습 성능을 보장하지 않는다. 실행 �
 | 파일 | 보호 범위 |
 |---|---|
 | `tests/integration/test_fl_round_e2e.py` | FL round e2e flow |
-| `tests/architecture/test_layer_dependencies.py` | dependency direction과 layer rule |
+| `tests/architecture/test_layer_dependencies.py` | dependency direction, layer rule, FL method descriptor placeholder 방지 |
 
 경계를 넘는 변경은 root `tests/`에 검증을 남긴다.
+
+FL SSL method 추가 전후에는 architecture guard가 다음을 확인해야 한다.
+
+- `agent`, `main_server`, `scripts/runtime_adapters`에 FedMatch/FedLGMatch 같은
+  논문 method 이름 파일이 생기지 않는다.
+- `conf/strategy_axes/fssl_method/<method>.yaml`은 실제
+  `methods/federated_ssl/<method>/` 구현 파일이 있을 때만 추가된다.
+- 선택 전 placeholder config나 dummy production method module을 남기지 않는다.
 
 ## 5. 테스트 추가 기준
 

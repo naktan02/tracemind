@@ -12,20 +12,20 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
 from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
+from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
+from agent.src.services.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
+from agent.src.services.assets.shared_adapters.sync_service import (
+    SharedAdapterSyncService,
+)
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.federation.rounds.runtime_service import (
-    FederationRunResult,
     FederationRuntimeService,
 )
-from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.backends.inputs.models import (
-    StoredEventTrainingExampleBuildRequest,
-)
-from agent.src.services.training.examples.service import (
-    TrainingExampleService,
-)
-from agent.src.services.training.execution.runtime_compatibility import (
-    validate_live_agent_stored_event_runtime,
+from agent.src.services.training.execution.agent_training_task_runner_service import (
+    AgentTrainingTaskRunnerService,
+    AgentTrainingTaskRunRequest,
 )
 from shared.src.contracts.training_contracts import TrainingTaskPayload
 
@@ -105,6 +105,39 @@ def get_prototype_runtime_service(request: Request) -> PrototypeRuntimeService:
     return service
 
 
+def get_prototype_sync_service(request: Request) -> PrototypeSyncService:
+    """app.state에서 PrototypeSyncService를 읽는다."""
+    service = getattr(request.app.state, "prototype_sync_service", None)
+    if service is None:
+        raise RuntimeError(
+            "PrototypeSyncService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.prototype_sync_service를 설정하세요."
+        )
+    return service
+
+
+def get_shared_adapter_runtime_service(request: Request) -> SharedAdapterRuntimeService:
+    """app.state에서 SharedAdapterRuntimeService를 읽는다."""
+    service = getattr(request.app.state, "shared_adapter_runtime_service", None)
+    if service is None:
+        raise RuntimeError(
+            "SharedAdapterRuntimeService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.shared_adapter_runtime_service를 설정하세요."
+        )
+    return service
+
+
+def get_shared_adapter_sync_service(request: Request) -> SharedAdapterSyncService:
+    """app.state에서 SharedAdapterSyncService를 읽는다."""
+    service = getattr(request.app.state, "shared_adapter_sync_service", None)
+    if service is None:
+        raise RuntimeError(
+            "SharedAdapterSyncService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.shared_adapter_sync_service를 설정하세요."
+        )
+    return service
+
+
 def get_round_client_factory(request: Request) -> RoundClientFactory:
     """app.state에서 RoundClient factory를 읽는다."""
     factory = getattr(request.app.state, "round_client_factory", None)
@@ -137,10 +170,50 @@ ProtoServiceDep = Annotated[
     PrototypeRuntimeService,
     Depends(get_prototype_runtime_service),
 ]
+PrototypeSyncServiceDep = Annotated[
+    PrototypeSyncService,
+    Depends(get_prototype_sync_service),
+]
+SharedAdapterRuntimeServiceDep = Annotated[
+    SharedAdapterRuntimeService,
+    Depends(get_shared_adapter_runtime_service),
+]
+SharedAdapterSyncServiceDep = Annotated[
+    SharedAdapterSyncService,
+    Depends(get_shared_adapter_sync_service),
+]
 RoundClientFactoryDep = Annotated[RoundClientFactory, Depends(get_round_client_factory)]
 FederationRuntimeFactoryDep = Annotated[
     FederationRuntimeServiceFactory,
     Depends(get_federation_runtime_service_factory),
+]
+
+
+def get_training_task_runner_service(
+    repo: ScoredEventRepoDep,
+    proto_service: ProtoServiceDep,
+    proto_sync_service: PrototypeSyncServiceDep,
+    shared_adapter_runtime_service: SharedAdapterRuntimeServiceDep,
+    shared_adapter_sync_service: SharedAdapterSyncServiceDep,
+    round_client_factory: RoundClientFactoryDep,
+    runtime_factory: FederationRuntimeFactoryDep,
+) -> AgentTrainingTaskRunnerService:
+    """run-current-task application service를 조립한다."""
+
+    return AgentTrainingTaskRunnerService(
+        scored_event_repository=repo,
+        prototype_runtime_service=proto_service,
+        prototype_sync_service=proto_sync_service,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+        federation_runtime_service_factory=runtime_factory,
+    )
+
+
+TrainingTaskRunnerServiceDep = Annotated[
+    AgentTrainingTaskRunnerService,
+    Depends(get_training_task_runner_service),
 ]
 
 
@@ -156,10 +229,7 @@ FederationRuntimeFactoryDep = Annotated[
 )
 def run_current_task(
     request: RunCurrentTaskRequest,
-    repo: ScoredEventRepoDep,
-    proto_service: ProtoServiceDep,
-    round_client_factory: RoundClientFactoryDep,
-    runtime_factory: FederationRuntimeFactoryDep,
+    runner_service: TrainingTaskRunnerServiceDep,
 ) -> RunCurrentTaskResponse:
     """현재 active task를 읽어 로컬 학습을 실행하고 update를 업로드한다.
 
@@ -168,54 +238,15 @@ def run_current_task(
     두 경우 모두 200 OK로 응답하고 status 필드로 구분한다.
     """
     try:
-        round_client = round_client_factory(request.server_base_url)
-        task_payload = round_client.fetch_current_task()
-        if task_payload is None:
-            return RunCurrentTaskResponse(
-                status="no_active_task",
-                message="현재 active round 또는 open task가 없습니다.",
+        result = runner_service.run_current_task(
+            AgentTrainingTaskRunRequest(
+                server_base_url=request.server_base_url,
+                scored_event_days=request.scored_event_days,
+                agent_id=request.agent_id,
             )
-        try:
-            validate_live_agent_stored_event_runtime(task_payload)
-        except ValueError as error:
-            return RunCurrentTaskResponse(
-                status="unsupported_runtime",
-                round_id=task_payload.round_id,
-                task_id=task_payload.task_id,
-                message=str(error),
-            )
-
-        stored_events = repo.get_recent_stored(days=request.scored_event_days)
-        try:
-            active_pack = proto_service.get_active_pack()
-        except FileNotFoundError:
-            training_examples = ()
-        else:
-            scoring_service = ScoringService.from_objective_config(
-                task_payload.objective_config
-            )
-            training_example_service = TrainingExampleService.from_objective_config(
-                task_payload.objective_config
-            )
-            training_examples = (
-                training_example_service.build_examples_from_stored_events(
-                    StoredEventTrainingExampleBuildRequest(
-                        stored_events=stored_events,
-                        prototype_pack=active_pack,
-                        scoring_service=scoring_service,
-                    )
-                )
-            )
-
-        service = runtime_factory(request.server_base_url)
-        result: FederationRunResult = service.run_current_task(
-            training_examples=training_examples,
-            model_manifest=None,
-            agent_id=request.agent_id,
-            task_payload=task_payload,
         )
         return RunCurrentTaskResponse(
-            status=str(result.status),
+            status=result.status,
             round_id=result.round_id,
             task_id=result.task_id,
             update_id=result.update_id,

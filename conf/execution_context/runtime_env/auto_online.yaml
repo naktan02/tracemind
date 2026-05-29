@@ -1,0 +1,5 @@
+# @package runtime
+
+name: auto_online
+device: auto
+local_files_only: false

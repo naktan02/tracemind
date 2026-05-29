@@ -1,0 +1,4 @@
+# @package server_update_policy
+
+name: fedavg_merged_delta
+delta_format: merged_update

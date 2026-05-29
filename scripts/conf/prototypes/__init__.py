@@ -1,1 +1,0 @@
-"""Prototype-related config groups."""

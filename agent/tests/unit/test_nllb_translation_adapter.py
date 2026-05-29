@@ -92,8 +92,9 @@ def test_nllb_translation_adapter_translates_and_reuses_cached_bundle(
     _, cached_model = adapter._load_bundle()
 
     assert outputs == ["decoded::0", "decoded::1"]
-    assert cached_model.generate_calls[0]["forced_bos_token_id"] == 17
-    assert cached_model.generate_calls[0]["generation_config"].max_length is None
+    generation_config = cached_model.generate_calls[0]["generation_config"]
+    assert generation_config.forced_bos_token_id == 17
+    assert generation_config.max_length is None
     assert _FakeAutoModelForSeq2SeqLM.last_kwargs["torch_dtype"] == torch.float32
     assert _FakeAutoTokenizer.call_count == 1
     assert _FakeAutoModelForSeq2SeqLM.call_count == 1

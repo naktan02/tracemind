@@ -15,7 +15,7 @@
 
 - `inference/`
   - 로컬 추론 rail
-  - global classifier/prototype evidence 계산, 의사결정, 시계열 누적 담당
+  - shared scoring state/prototype evidence 계산, 의사결정, 시계열 누적 담당
 - `training/`
   - 로컬 학습 rail
   - selection, example assembly, execution, dataset 조립, backend 구현 담당
@@ -24,6 +24,10 @@
   - current round fetch/upload 담당
 - `assets/prototypes/`
   - prototype artifact 동기화/로컬 runtime helper
+- `assets/shared_adapters/`
+  - 서버 current shared adapter state 동기화/로컬 runtime helper
+- `assets/adapters/`
+  - global shared state와 future agent-private local state의 조합 경계
 - `language/`
   - preprocess, translation, backtranslation helper
 - `wellbeing/`
@@ -33,7 +37,7 @@
 
 현재 v1에서 권장하는 읽기 관점:
 
-- `global classifier`는 공통 evidence producer다.
+- shared scoring state는 공통 evidence producer다.
 - `local interpretation`이 final decision owner다.
 - shared adapter와 prototype scoring은 비교/확장 경로로 유지한다.
 
@@ -51,13 +55,18 @@
 2. `training/selection/pseudo_label_service.py`
 3. `training/execution/runtime_compatibility.py`
 4. `training/execution/local_training_service.py`
-5. `training/backends/`
+5. `training/execution/query_ssl_local_training_service.py`
+6. `training/execution/local_update_executor.py`
+7. `training/backends/`
 
 ### 3. agent가 서버 round에 참여하는 흐름을 보고 싶을 때
 
 1. `federation/rounds/round_client.py`
-2. `federation/rounds/runtime_service.py`
-3. `training/execution/local_training_service.py`
+2. `training/execution/agent_training_task_runner_service.py`
+3. `federation/rounds/runtime_service.py`
+4. `assets/shared_adapters/sync_service.py`
+5. `assets/adapters/composition_service.py`
+6. `training/execution/local_training_service.py`
 
 ### 4. 가족용 확장 출력 surface를 보고 싶을 때
 
@@ -76,10 +85,11 @@
 
 ## 파일 역할 빠른 맵
 
-- `inference/scoring_backends.py`
-  - scorer backend registry와 concrete scorer 구현
-- `inference/scoring_policies.py`
-  - 같은 scorer backend 안에서 score 집계 정책
+- `inference/scoring_backends/`
+  - scorer backend registry와 agent runtime adapter 구현
+  - backend 구현 옆 catalog entry와 decorator 등록을 둔다
+- `methods/prototype/scoring/`
+  - prototype similarity와 score 집계 policy core
 - `training/selection/pseudo_label_service.py`
   - score를 pseudo-label candidate/accepted set으로 해석
 - `docs/contracts/query_buffer_v1.md`
@@ -87,17 +97,15 @@
 - `infrastructure/repositories/query_buffer_repository.py`
   - raw text + prediction snapshot을 로컬에 저장하는 query buffer 저장소
 - `training/selection/query_buffer_projection.py`
-  - query buffer snapshot + scored event를 `PseudoLabelEvidence`로 정규화
+  - query buffer snapshot + scored event를 `methods/prototype/evidence/` core로
+    `PseudoLabelEvidence`에 투영
 - `training/selection/query_buffer_selection_service.py`
   - query buffer 기반 selection runner
 - `training/selection/query_buffer_selection_diagnostics.py`
   - selection 결과를 family-agnostic summary/trace 진단 shape로 정리
-- `training/query_adaptation/ssl/algorithms/`
-  - query-domain adaptation 실험에서 재사용하는 pseudo-label selection 알고리즘 구현
-  - 현재 agent selection과 bootstrap teacher pseudo-labeling이 같은 코어를 공유한다
-- `training/query_adaptation/algorithms/fixmatch.py`
-  - USB `FixMatch` 수식 코어를 query adaptation trainer에 옮긴 구현
-  - weak view pseudo-label/mask, strong view consistency CE를 같은 파일에서 닫는다
+- `training/selection/pseudo_label_service.py`
+  - `methods/ssl/hooks/`의 selection hook을 agent-local
+    candidate/context/diagnostics로 감싼다
 - `language/backtranslation_service.py`
   - 운영 translation 코어와 같은 층에서 재사용하는 backtranslation service
   - strict USB NLP input용 `aug_0`, `aug_1` strong candidate 생성에 재사용한다
@@ -114,23 +122,50 @@
   - local training과 federation이 공유하는 example DTO
 - `training/execution/runtime_compatibility.py`
   - training/example/scorer/privacy 조합 검증
+- `training/execution/local_training_service.py`
+  - pseudo-label selection과 accepted example 조립 orchestration
+- `training/execution/query_ssl_local_training_service.py`
+  - Query SSL raw-row local training을 agent-local artifact 저장과 submission envelope에 연결
+- `training/execution/local_update_executor.py`
+  - accepted example을 selected local update backend, privacy guard, payload 저장,
+    submission envelope로 연결하는 agent runtime port
+- `training/execution/agent_training_task_runner_service.py`
+  - active task 조회, shared/prototype sync, example build, update upload까지의
+    agent application flow 소유
 - `training/examples/service.py`
   - raw row 또는 stored event를 `EmbeddedTrainingExample`으로 변환
 - `training/backends/inputs/`
   - single-view, weak/strong pair 같은 training input backend 구현
+- `methods/prototype/training_inputs/`
+  - prototype score 기반 single/multiview input view 계산 core
 - `training/backends/evidence/`
   - pseudo-label evidence 정규화 backend 구현
-- `training/acceptance_policies/`
-  - evidence 기반 pseudo-label acceptance 정책 구현
-- `training/backends/training/`
-  - adapter update 생성 backend 구현과 registry wiring
+- local update backend registry는 `methods/adaptation/local_update_registry.py`가 소유한다
+  - `training/backends/training/` old path는 재도입하지 않는다
+  - 새 local update backend는 `methods/adaptation/<family>/training_backend.py`에 둔다
+- `methods/adaptation/peft_text_encoder/`
+  - PEFT text encoder update family와 local update backend core
+  - raw text를 agent-local 입력으로 요구하고 shared payload에는 artifact ref만 남긴다.
 
 ## 전략 추가 시 출발점
 
-- training backend 추가: `training/backends/training/`
-- example-generation backend 추가: `training/backends/inputs/`와 `training/examples/service.py`
-- scorer backend/policy 추가: `inference/scoring_backends.py`, `inference/scoring_policies.py`
-- privacy guard 추가: `training/execution/privacy_guard_service.py`
+- local update/adaptation 계산 추가: `methods/adaptation/<family>/`
+  - `agent`에는 raw text 접근, local artifact materialization, payload upload 같은
+    runtime capability adapter만 둔다.
+  - fixed embedding을 쓰는 family와 raw text/tokenized batch를 쓰는 family를 같은
+    adapter 내부에서 섞지 않는다.
+- example-generation backend 추가: `methods/prototype/training_inputs/`,
+  `training/backends/inputs/`, `training/examples/service.py`
+- scorer backend 추가: `methods/prototype/scoring/` 또는 다른 methods core를 먼저
+  추가하고, `inference/scoring_backends/`에는 agent runtime adapter만 둔다
+- prototype score policy 추가: `methods/prototype/scoring/`
+- pseudo-label acceptance/selection 정책 추가: `methods/ssl/hooks/`
+- privacy guard 추가: `methods/adaptation/privacy_guards/`
+
+FedMatch, FedLGMatch, FreeMatch 같은 method 이름을 가진 파일은 `agent`에 만들지
+않는다. 해당 method의 local objective, hook, selection/threshold 의미는
+`methods/`가 소유하고, `agent`는 선택된 method core를 local data와 contract
+payload에 연결한다.
 
 확장 전에 `shared/src/contracts/README.md`,
 `docs/contracts/algorithm_extension_guide.md`,

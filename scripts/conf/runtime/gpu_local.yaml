@@ -1,3 +1,0 @@
-name: gpu_local
-device: cuda
-local_files_only: true

@@ -1,0 +1,22 @@
+# @package query_view_materialization
+
+name: szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
+split_dir: data/datasets/szegeelim_mental_health/query_ssl/labeled1024_per_class_seed42_v1
+split_name: labeled1024_per_class_seed42_v1
+augmenter_name: backtranslation_nllb_en_de_fr_usb_v1
+source_lang: eng_Latn
+pivot_languages:
+  - deu_Latn
+  - fra_Latn
+model_id: facebook/nllb-200-distilled-600M
+revision: main
+device: ${runtime.device}
+batch_size: 64
+max_new_tokens: 256
+torch_dtype: auto
+cache_dir: data/cache/query_ssl_views/model_cache
+local_files_only: ${runtime.local_files_only}
+chunk_size: 128
+output_root: data/datasets/szegeelim_mental_health/views
+resume: true
+overwrite: false

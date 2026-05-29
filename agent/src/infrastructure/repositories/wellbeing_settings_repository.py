@@ -67,9 +67,7 @@ ALTER TABLE wellbeing_settings ADD COLUMN child_max_attempts INTEGER NOT NULL DE
 class WellbeingSettingsRecord:
     """가족용 확장 MVP의 최소 설정 record."""
 
-    default_timeseries_range: WellbeingSignalRange = (
-        WellbeingSignalRange.LAST_7_DAYS
-    )
+    default_timeseries_range: WellbeingSignalRange = WellbeingSignalRange.LAST_7_DAYS
     child_session_minutes: int = 10
     child_lock_minutes: int = 3
     child_max_attempts: int = 5
@@ -142,9 +140,7 @@ def _row_to_settings_record(row: tuple[object, ...]) -> WellbeingSettingsRecord:
 
 
 def _migrate_settings_columns(conn: sqlite3.Connection) -> None:
-    table_info_rows = conn.execute(
-        "PRAGMA table_info(wellbeing_settings)"
-    ).fetchall()
+    table_info_rows = conn.execute("PRAGMA table_info(wellbeing_settings)").fetchall()
     columns = {row[1] for row in table_info_rows}
     if "child_session_minutes" not in columns:
         conn.execute(_ADD_CHILD_SESSION_COLUMN_SQL)

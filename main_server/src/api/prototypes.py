@@ -6,8 +6,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from main_server.src.services.federation.assets.prototypes.prototype_pack_service import (
-    PrototypePackService,
+from main_server.src.services.federation.prototypes import (
+    prototype_pack_service as prototype_pack_service_module,
 )
 from shared.src.contracts.prototype_contracts import (
     CurrentPrototypePackResponse,
@@ -17,6 +17,7 @@ from shared.src.contracts.prototype_contracts import (
 )
 
 router = APIRouter(prefix="/api/v1/prototypes", tags=["prototypes"])
+PrototypePackService = prototype_pack_service_module.PrototypePackService
 
 
 def get_prototype_pack_service(request: Request) -> PrototypePackService:

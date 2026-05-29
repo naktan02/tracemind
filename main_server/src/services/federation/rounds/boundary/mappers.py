@@ -12,10 +12,9 @@ from shared.src.contracts.training_contracts import (
 
 from .models import (
     RoundFinalizeRequest,
-    RoundOpenRequest,
+    RoundOpenDraftRequest,
     RoundPublicationSummary,
     RoundRecord,
-    RoundTaskConfig,
     RoundUpdateAcceptance,
 )
 from .payloads import (
@@ -70,9 +69,9 @@ def round_publication_to_payload(
         aggregated_metrics=dict(publication.aggregated_metrics),
         update_count=publication.update_count,
         finalized_at=publication.finalized_at,
-        prototype_pack_ref=publication.prototype_pack_ref,
-        prototype_build_state_ref=publication.prototype_build_state_ref,
-        prototype_rebuild_input_id=publication.prototype_rebuild_input_id,
+        round_state_summary_metrics=dict(publication.round_state_summary_metrics),
+        auxiliary_artifact_refs=dict(publication.auxiliary_artifact_refs),
+        auxiliary_artifact_metadata=dict(publication.auxiliary_artifact_metadata),
     )
 
 
@@ -85,9 +84,9 @@ def round_publication_from_payload(
         aggregated_metrics=dict(payload.aggregated_metrics),
         update_count=payload.update_count,
         finalized_at=payload.finalized_at,
-        prototype_pack_ref=payload.prototype_pack_ref,
-        prototype_build_state_ref=payload.prototype_build_state_ref,
-        prototype_rebuild_input_id=payload.prototype_rebuild_input_id,
+        round_state_summary_metrics=dict(payload.round_state_summary_metrics),
+        auxiliary_artifact_refs=dict(payload.auxiliary_artifact_refs),
+        auxiliary_artifact_metadata=dict(payload.auxiliary_artifact_metadata),
     )
 
 
@@ -132,25 +131,21 @@ def round_record_from_payload(payload: RoundRecordPayload) -> RoundRecord:
     )
 
 
-def round_open_request_from_payload(
+def round_open_draft_request_from_payload(
     payload: RoundOpenRequestPayload,
-) -> RoundOpenRequest:
-    """API payload를 domain open request로 변환한다."""
-    return RoundTaskConfig(
+) -> RoundOpenDraftRequest:
+    """API payload를 active manifest 없는 open draft로 변환한다."""
+    return RoundOpenDraftRequest(
         task_type=payload.task_type,
         local_epochs=payload.local_epochs,
         batch_size=payload.batch_size,
         learning_rate=payload.learning_rate,
         max_steps=payload.max_steps,
         objective_config=(
-            payload.objective_config
-            if payload.objective_config is not None
-            else None
+            payload.objective_config if payload.objective_config is not None else None
         ),
         selection_policy=(
-            payload.selection_policy
-            if payload.selection_policy is not None
-            else None
+            payload.selection_policy if payload.selection_policy is not None else None
         ),
         secure_aggregation=(
             payload.secure_aggregation
@@ -161,8 +156,6 @@ def round_open_request_from_payload(
         gradient_clip_norm=payload.gradient_clip_norm,
         deadline_at=payload.deadline_at,
         notes=payload.notes,
-    ).to_round_open_request(
-        active_manifest=model_manifest_from_payload(payload.active_manifest),
         round_id=payload.round_id,
         task_id=payload.task_id,
     )
@@ -173,8 +166,8 @@ def round_finalize_request_from_payload(
 ) -> RoundFinalizeRequest:
     """API payload를 domain finalize request로 변환한다."""
     return RoundFinalizeRequest(
-        next_prototype_version=payload.next_prototype_version,
         next_model_revision=payload.next_model_revision,
+        next_auxiliary_artifact_versions=dict(payload.next_auxiliary_artifact_versions),
         published_at=payload.published_at,
     )
 

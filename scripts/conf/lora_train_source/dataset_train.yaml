@@ -1,2 +1,0 @@
-name: dataset_train
-train_jsonl: ${dataset.train_jsonl}

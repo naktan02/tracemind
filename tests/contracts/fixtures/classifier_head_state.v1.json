@@ -1,0 +1,22 @@
+{
+  "schema_version": "classifier_head_state.v1",
+  "adapter_kind": "classifier_head",
+  "model_id": "tracemind-embed",
+  "model_revision": "rev_head_001",
+  "training_scope": "head_only",
+  "updated_at": "2026-04-08T00:00:00Z",
+  "label_weights": {
+    "anxiety": [
+      0.5,
+      -0.1
+    ],
+    "normal": [
+      -0.2,
+      0.4
+    ]
+  },
+  "label_biases": {
+    "anxiety": 0.1,
+    "normal": -0.1
+  }
+}

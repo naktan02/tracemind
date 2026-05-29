@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.classification_report import (
+from methods.evaluation.classification_report import (
+    build_classification_evaluation_report,
+)
+from methods.evaluation.pseudo_label_quality import (
+    PseudoLabelCandidateRecord,
+    build_pseudo_label_quality_summary,
+)
+from shared.src.domain.services.classification_report import (
     build_confusion_matrix,
     render_confusion_table,
     render_per_category_table,
@@ -89,3 +96,63 @@ def test_render_table_uses_requested_metric_headers() -> None:
     assert "actual \\ predicted" in confusion
     assert "mean_true_score" in table
     assert "mean_top1_score" in table
+
+
+def test_build_classification_evaluation_report_exposes_paper_metrics() -> None:
+    report = build_classification_evaluation_report(
+        categories=["a", "b"],
+        actual_labels=["a", "a", "b"],
+        predicted_labels=["a", "b", "b"],
+        true_probs=[0.9, 0.2, 0.8],
+        top_1_values=[0.9, 0.7, 0.8],
+        margins=[0.4, 0.1, 0.3],
+        total_loss=1.25,
+        total_rows=3,
+    )
+
+    assert report["rows_total"] == 3
+    assert report["loss"] == pytest.approx(0.416667)
+    assert report["accuracy_top_1"] == pytest.approx(0.666667)
+    assert report["macro_f1"] == pytest.approx(0.666667)
+    assert report["weighted_f1"] == pytest.approx(0.666667)
+    assert report["worst_category_f1"] == "a"
+    assert "max_calibration_error" in report
+
+
+def test_build_pseudo_label_quality_summary_uses_accepted_candidates() -> None:
+    summary = build_pseudo_label_quality_summary(
+        candidates=[
+            PseudoLabelCandidateRecord(
+                source_event_ref="q1",
+                label="a",
+                confidence=0.9,
+                margin=0.4,
+                accepted=True,
+            ),
+            PseudoLabelCandidateRecord(
+                source_event_ref="q2",
+                label="b",
+                confidence=0.7,
+                margin=0.2,
+                accepted=True,
+            ),
+            PseudoLabelCandidateRecord(
+                source_event_ref="q3",
+                label="a",
+                confidence=0.5,
+                margin=0.1,
+                accepted=False,
+            ),
+        ],
+        rows_with_simulation_labels=[
+            {"query_id": "q1", "mapped_label_4": "a"},
+            {"query_id": "q2", "mapped_label_4": "a"},
+            {"query_id": "q3", "mapped_label_4": "a"},
+        ],
+    )
+
+    assert summary.pseudo_label_correct_count == 1
+    assert summary.pseudo_label_evaluated_count == 2
+    assert summary.pseudo_label_confidence_mean == pytest.approx(0.7)
+    assert summary.accepted_label_distribution == {"a": 1, "b": 1}
+    assert summary.rejected_label_distribution == {"a": 1}

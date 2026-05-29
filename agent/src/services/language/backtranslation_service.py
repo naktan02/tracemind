@@ -43,8 +43,8 @@ class NllbBacktranslationService:
     ) -> list[BacktranslationCandidatePair]:
         if len(self.pivot_languages) != 2:
             raise ValueError(
-                "Strict USB-style FixMatch augmentation requires exactly two "
-                "pivot languages."
+                "Strict two-view backtranslation augmentation requires exactly "
+                "two pivot languages."
             )
         if not texts:
             return []

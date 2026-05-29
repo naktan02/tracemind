@@ -2,7 +2,7 @@
 
 ## 1. 목적
 
-`TrainingUpdateEnvelope`는 로컬 `agent`가 중앙 `main-server`로 보내는 학습 업데이트 단위다.
+`TrainingUpdateEnvelope`는 로컬 `agent`가 중앙 `main_server`로 보내는 학습 업데이트 단위다.
 
 이 객체는 payload 그 자체보다,
 payload를 안전하게 집계하고 추적하기 위한 메타데이터를 정의한다.
@@ -18,7 +18,7 @@ v1 원칙:
 3. 로컬 개인화 상태를 직접 포함하지 않는다.
 4. 개인정보성 원문이나 개별 샘플을 포함하지 않는다.
 5. 이 문서는 현재 시스템/FL runtime update 봉투를 설명한다. 중앙집중형
-   논문 트랙의 LoRA trainer checkpoint/gradient 저장 형식은 범위 밖이다.
+   논문 트랙의 PEFT text encoder trainer checkpoint/gradient 저장 형식은 범위 밖이다.
 
 ---
 
@@ -43,7 +43,9 @@ v1 원칙:
    - 실제 update tensor/blob 위치 또는 조회 키
 
 9. `payload_format`
-   - 예: `classifier_head_update`, `diagonal_scale_update`, `lora_delta`
+   - 예: `classifier_head_update`, `peft_classifier_update`
+   - `diagonal_scale_update`, `lora_classifier_update`는 active producer에서 제거된
+     legacy format이며, 필요하면 old-run reader fallback에서만 해석한다
 
 10. `example_count`
 
@@ -104,7 +106,7 @@ v1 원칙:
 ```
 
 위 예시는 시스템/FL runtime의 `classifier_head` update 봉투 예시다.
-논문 트랙의 중앙집중형 LoRA trainer 결과물은 이 envelope을 직접 쓰지 않는다.
+논문 트랙의 중앙집중형 PEFT text encoder trainer 결과물은 이 envelope을 직접 쓰지 않는다.
 
 ---
 

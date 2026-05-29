@@ -1,34 +1,28 @@
 from __future__ import annotations
 
-from omegaconf import OmegaConf
-
-from scripts.experiments.lora_classifier.query_ssl.augmentation import (
-    prepare_fixmatch_unlabeled_rows,
+from methods.adaptation.query_text_views.unlabeled_preparation import (
+    NLLB_BACKTRANSLATION_AUGMENTER,
+    QuerySslAugmenterSettings,
+    prepare_query_ssl_unlabeled_rows,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
+from methods.adaptation.query_text_views.view_rows import USB_MULTIVIEW_BUILDER_NAME
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
-def _cfg(cache_dir: str) -> object:
-    return OmegaConf.create(
-        {
-            "query_ssl_method": {
-                "algorithm_name": "fixmatch",
-            },
-            "query_ssl_augmenter": {
-                "name": "backtranslation_nllb_en_de_fr_usb_v1",
-                "augmenter_type": "nllb_backtranslation",
-                "source_lang": "eng_Latn",
-                "pivot_languages": ["deu_Latn", "fra_Latn"],
-                "model_id": "facebook/nllb-200-distilled-600M",
-                "revision": "main",
-                "device": "cpu",
-                "local_files_only": True,
-                "batch_size": 8,
-                "max_new_tokens": 256,
-                "torch_dtype": "auto",
-                "cache_dir": cache_dir,
-            },
-        }
+def _augmenter_settings(cache_dir: str) -> QuerySslAugmenterSettings:
+    return QuerySslAugmenterSettings(
+        name="backtranslation_nllb_en_de_fr_usb_v1",
+        augmenter_type=NLLB_BACKTRANSLATION_AUGMENTER,
+        source_lang="eng_Latn",
+        pivot_languages=("deu_Latn", "fra_Latn"),
+        model_id="facebook/nllb-200-distilled-600M",
+        revision="main",
+        device="cpu",
+        local_files_only=True,
+        batch_size=8,
+        max_new_tokens=256,
+        torch_dtype="auto",
+        cache_dir=cache_dir,
     )
 
 
@@ -63,23 +57,21 @@ class _FakeBacktranslationAugmenter:
         ]
 
 
-def test_prepare_fixmatch_unlabeled_rows_generates_and_caches(
-    monkeypatch,
+def test_prepare_usb_multiview_unlabeled_rows_generates_and_caches(
     tmp_path,
 ) -> None:
-    cfg = _cfg(str(tmp_path))
+    settings = _augmenter_settings(str(tmp_path))
     rows = [_row("u1", "I feel anxious today.")]
 
-    monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.query_ssl.augmentation."
-        "_build_nllb_backtranslation_service",
-        lambda _cfg: _FakeBacktranslationAugmenter(),
-    )
-
-    prepared = prepare_fixmatch_unlabeled_rows(
-        cfg,
+    prepared = prepare_query_ssl_unlabeled_rows(
+        view_builder_name=USB_MULTIVIEW_BUILDER_NAME,
+        algorithm_name="fixmatch",
         rows=rows,
         source_jsonl=None,
+        augmenter_settings=settings,
+        candidate_pair_builder=lambda texts: (
+            _FakeBacktranslationAugmenter().build_candidate_pairs(texts=texts)
+        ),
     )
 
     assert prepared.mode == "generated_and_cached"
@@ -93,18 +85,15 @@ def test_prepare_fixmatch_unlabeled_rows_generates_and_caches(
     assert prepared.summary_path is not None
     assert prepared.summary_path.exists()
 
-    monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.query_ssl.augmentation."
-        "_build_nllb_backtranslation_service",
-        lambda _cfg: (_ for _ in ()).throw(
-            AssertionError("cache hit should skip regeneration")
-        ),
-    )
-
-    cached = prepare_fixmatch_unlabeled_rows(
-        cfg,
+    cached = prepare_query_ssl_unlabeled_rows(
+        view_builder_name=USB_MULTIVIEW_BUILDER_NAME,
+        algorithm_name="fixmatch",
         rows=rows,
         source_jsonl=None,
+        augmenter_settings=settings,
+        candidate_pair_builder=lambda _texts: (_ for _ in ()).throw(
+            AssertionError("cache hit should skip regeneration")
+        ),
     )
 
     assert cached.mode == "cache_hit"

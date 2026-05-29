@@ -1,0 +1,7 @@
+# @package _global_
+
+ssl_input_mode: pseudo_label_replay
+central_ssl_runner:
+  mode: pseudo_label_replay
+  callable_path: scripts.support.query_ssl_peft.runners.pseudo_label.run_pseudo_label_self_training
+  group_by_query_ssl_method: false

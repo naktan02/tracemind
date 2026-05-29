@@ -55,6 +55,12 @@ def dump_labeled_query_rows(
             file.write(json.dumps(row, ensure_ascii=True) + "\n")
 
 
+def get_labeled_query_row_mapped_label(row: LabeledQueryRow) -> str:
+    """canonical 4-class label 값을 반환한다."""
+
+    return str(row["mapped_label_4"])
+
+
 def group_labeled_query_rows_by_label(
     rows: Sequence[LabeledQueryRow],
 ) -> dict[str, list[LabeledQueryRow]]:
@@ -62,7 +68,7 @@ def group_labeled_query_rows_by_label(
 
     rows_by_label: dict[str, list[LabeledQueryRow]] = defaultdict(list)
     for row in rows:
-        rows_by_label[row["mapped_label_4"]].append(row)
+        rows_by_label[get_labeled_query_row_mapped_label(row)].append(row)
     return dict(sorted(rows_by_label.items()))
 
 
@@ -71,4 +77,6 @@ def count_labeled_query_rows_by_label(
 ) -> dict[str, int]:
     """mapped_label_4 기준 row 개수를 센다."""
 
-    return dict(sorted(Counter(row["mapped_label_4"] for row in rows).items()))
+    return dict(
+        sorted(Counter(get_labeled_query_row_mapped_label(row) for row in rows).items())
+    )

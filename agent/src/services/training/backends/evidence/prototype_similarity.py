@@ -4,13 +4,30 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from methods.prototype.evidence.helpers import (
+    build_ranked_evidence,
+    rank_category_scores,
+)
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
 from .base import ANY_ADAPTER_KIND, PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME
-from .helpers import build_ranked_evidence, rank_category_scores
+from .registry import register_pseudo_label_evidence_backend
+
+PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
+    display_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
+    implementation_module=(
+        "agent.src.services.training.backends.evidence.prototype_similarity"
+    ),
+    core_method_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
+    family_name="pseudo_label_evidence",
+    supported_adapter_kinds=(ANY_ADAPTER_KIND,),
+)
 
 
 @dataclass(slots=True)
@@ -37,4 +54,14 @@ class PrototypeSimilarityEvidenceBackend:
         )
 
 
-__all__ = ["PrototypeSimilarityEvidenceBackend"]
+@register_pseudo_label_evidence_backend(
+    PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
+    catalog_entry=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_CATALOG_ENTRY,
+)
+def build_prototype_similarity_evidence_backend(
+    objective_config: TrainingObjectiveConfig,
+) -> PrototypeSimilarityEvidenceBackend:
+    """registry용 prototype-similarity evidence backend factory."""
+
+    del objective_config
+    return PrototypeSimilarityEvidenceBackend()

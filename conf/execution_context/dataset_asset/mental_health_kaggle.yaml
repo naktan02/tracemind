@@ -1,0 +1,51 @@
+# @package dataset
+
+name: mental_health_kaggle
+description: SZE GEE LIM Kaggle multi-source mental health dataset filtered to TraceMind 4-class labels
+output_root: data/datasets/szegeelim_mental_health
+output_paths:
+  raw_dir: data/datasets/szegeelim_mental_health/raw
+  labeled_query_set_dir: data/datasets/szegeelim_mental_health/mapped
+  split_dir: data/datasets/szegeelim_mental_health/splits
+  pipeline_run_dir: data/datasets/szegeelim_mental_health/pipeline_runs
+raw_train_csv: data/datasets/szegeelim_mental_health/raw/szegeelim_mental_health.csv
+raw_test_csv: null
+train_labeled_jsonl: data/datasets/szegeelim_mental_health/mapped/szegeelim_mental_health_4cat.v1.jsonl
+test_labeled_jsonl: data/datasets/ourafla_mental_health/mapped/ourafla_mental_health_text_classification_test.v1.jsonl
+split_name: train_split.v1
+train_jsonl: data/datasets/szegeelim_mental_health/splits/train_split.v1.train.jsonl
+validation_jsonl: data/datasets/szegeelim_mental_health/splits/train_split.v1.validation.jsonl
+test_jsonl: ${dataset.test_labeled_jsonl}
+prototype_input_jsonl: null
+query_dev_jsonl: null
+query_calibration_jsonl: null
+unlabeled_query_pool_jsonl: null
+prototype_expected_categories:
+  - anxiety
+  - depression
+  - normal
+  - suicidal
+stages:
+  - download
+  - map
+  - split
+sources:
+  train:
+    download:
+      provider: kaggle
+      callable_path: scripts.workflows.datasets.lib.download_sources.download_kaggle_source
+    dataset_id: szegeelim/mental-health
+    dataset_ref: szegeelim/mental-health
+    dataset_version_number: 1
+    download_url: https://www.kaggle.com/datasets/szegeelim/mental-health/download?datasetVersionNumber=1
+    data_file: Combined Data.csv
+    split: version1
+    output_filename: szegeelim_mental_health.csv
+    mapping_config: data/mappings/szegeelim_mental_health_to_4cat.v1.toml
+    reference_urls:
+      - https://www.kaggle.com/datasets/szegeelim/mental-health
+split:
+  source: train
+  split_name: ${dataset.split_name}
+  validation_ratio: 0.1
+  seed: 42

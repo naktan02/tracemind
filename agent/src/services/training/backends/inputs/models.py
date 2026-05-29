@@ -48,10 +48,3 @@ class StoredEventTrainingExampleBuildRequest:
     prototype_pack: PrototypePackPayload
     scoring_service: ScoringService
     adapter_state: SharedAdapterState | None = None
-
-
-__all__ = [
-    "StoredEventTrainingExampleBuildRequest",
-    "TrainingExampleBuildRequest",
-    "TrainingExampleSource",
-]

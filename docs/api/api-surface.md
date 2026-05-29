@@ -1,6 +1,6 @@
 # TraceMind API Surface
 
-이 문서는 2026-04-25 기준 FastAPI route 표면을 빠르게 찾기 위한 문서다.
+이 문서는 현재 FastAPI route 표면을 빠르게 찾기 위한 문서다.
 
 요청/응답 payload 필드의 최종 source of truth는 각 route의 Pydantic 모델과 `shared/src/contracts/*.py`다. 이 문서는 endpoint 위치와 책임 경계만 요약한다.
 
@@ -9,7 +9,7 @@
 | 앱 | import path | 기본 역할 |
 |---|---|---|
 | Agent API | `agent.src.api.main:app` | 로컬 수집, inference, query/local state, training participation, family/wellbeing output |
-| Main Server API | `main_server.src.api.main:app` | FL round orchestration, prototype publication, experiment workspace backend |
+| Main Server API | `main_server.src.api.main:app` | FL round orchestration, prototype publication |
 
 로컬 실행 예시:
 
@@ -25,7 +25,7 @@ uv run uvicorn agent.src.api.main:app --reload --port 8001
 | raw text는 agent local boundary에 남긴다 | 서버 API는 query buffer 원문을 읽지 않는다 |
 | shared contract는 코드가 source of truth다 | API 문서가 payload 필드를 복제해 정본이 되지 않는다 |
 | route는 orchestration edge다 | domain rule과 training/inference mechanism은 services/domain 계층에 둔다 |
-| CORS는 dev UI origin 중심이다 | production auth/security hardening 문서는 아직 별도 canonical 문서가 없다 |
+| CORS/auth는 local app 노출 경계에서 별도 확인한다 | production auth/security hardening 문서는 아직 별도 canonical 문서가 없다 |
 
 현재 route-level 인증 dependency는 명시적으로 두껍게 걸려 있지 않다. 외부 노출 전에는 API key, local-only binding, reverse proxy policy, family PIN/session 경계를 별도 security pass로 닫아야 한다.
 
@@ -56,12 +56,14 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | `IngestEventResponse` | `agent/src/api/ingest.py` |
 | `QueryEvent` | `shared/src/domain/entities/inference/events.py` |
 
-### Prototype Sync
+### Agent Sync
 
 | Method | Path | 역할 | Source |
 |---|---|---|---|
 | GET | `/api/v1/sync/prototypes/current` | agent local active prototype pack 조회 | `agent/src/api/sync.py` |
 | POST | `/api/v1/sync/prototypes/pull` | main server의 current prototype pack을 local로 pull | `agent/src/api/sync.py` |
+| GET | `/api/v1/sync/shared-adapters/current` | agent local active shared adapter state 조회 | `agent/src/api/sync.py` |
+| POST | `/api/v1/sync/shared-adapters/pull` | main server의 current shared adapter state를 local로 pull | `agent/src/api/sync.py` |
 
 ### Training
 
@@ -69,6 +71,11 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 |---|---|---|---|
 | POST | `/api/v1/training/run-current-task` | server active task를 읽어 local training 후 update upload | `agent/src/api/training.py` |
 | GET | `/api/v1/training/status` | server active task 존재 여부 조회 | `agent/src/api/training.py` |
+
+`run-current-task` route는 HTTP 요청/응답 변환만 맡고, active task 조회부터
+shared/prototype sync, example build, update upload까지의 실행 흐름은
+`agent/src/services/training/execution/agent_training_task_runner_service.py`가
+소유한다.
 
 주요 payload:
 
@@ -120,9 +127,12 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | Method | Path | 역할 | Source |
 |---|---|---|---|
 | GET | `/api/v1/fl/rounds/current` | 현재 active round 조회 | `main_server/src/api/fl_rounds.py` |
-| POST | `/api/v1/fl/rounds` | 새 round open | `main_server/src/api/fl_rounds.py` |
+| GET | `/api/v1/fl/rounds/active-manifest/current` | 서버 current model manifest 조회 | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds/active-manifest` | 초기/수동 model manifest 활성화 | `main_server/src/api/fl_rounds.py` |
+| GET | `/api/v1/fl/rounds/active-state/current` | 서버 current manifest와 shared adapter state 조회 | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds` | 서버 current manifest 기준 새 round open | `main_server/src/api/fl_rounds.py` |
 | GET | `/api/v1/fl/rounds/{round_id}` | 특정 round 조회 | `main_server/src/api/fl_rounds.py` |
-| POST | `/api/v1/fl/rounds/{round_id}/updates` | agent update envelope accept | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds/{round_id}/updates` | agent update submission accept | `main_server/src/api/fl_rounds.py` |
 | POST | `/api/v1/fl/rounds/{round_id}/finalize` | round finalize와 aggregation/publication | `main_server/src/api/fl_rounds.py` |
 
 주요 payload:
@@ -132,7 +142,9 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | `RoundOpenRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `RoundRecordPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `RoundFinalizeRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
-| `TrainingUpdateEnvelopePayload` | `shared/src/contracts/training_contracts.py` |
+| `ModelManifestPayload` | `shared/src/contracts/model_contracts.py` |
+| `CurrentSharedAdapterStatePayload` | `shared/src/contracts/adapter_contract_families/base.py` |
+| `TrainingUpdateSubmissionPayload` | `shared/src/contracts/training_contracts.py` |
 
 ### Prototype Packs
 
@@ -149,31 +161,6 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | `PrototypePackPayload` | `shared/src/contracts/prototype_contracts.py` |
 | `PrototypePackActivation*` | `shared/src/contracts/prototype_contracts.py` |
 
-### Experiment Workspace
-
-모든 path는 `/api/v1/experiments` prefix를 가진다.
-
-| Method | Path | 역할 | Source |
-|---|---|---|---|
-| GET | `/api/v1/experiments/catalog` | 현재 코드/설정 기준 read-only experiment catalog | `main_server/src/api/experiment_catalog_routes.py` |
-| POST | `/api/v1/experiments/compile` | workspace manifest를 Hydra/script preview로 compile | `main_server/src/api/experiment_catalog_routes.py` |
-| GET | `/api/v1/experiments/workspaces` | saved workspace 목록 조회 | `main_server/src/api/experiment_workspace_routes.py` |
-| POST | `/api/v1/experiments/workspaces` | workspace manifest compile 후 저장 | `main_server/src/api/experiment_workspace_routes.py` |
-| GET | `/api/v1/experiments/workspaces/{workspace_id}` | saved workspace 상세 조회 | `main_server/src/api/experiment_workspace_routes.py` |
-| DELETE | `/api/v1/experiments/workspaces/{workspace_id}` | saved workspace 삭제 | `main_server/src/api/experiment_workspace_routes.py` |
-| GET | `/api/v1/experiments/runs` | local experiment run 목록 조회 | `main_server/src/api/experiment_run_routes.py` |
-| POST | `/api/v1/experiments/runs` | local experiment run 시작 | `main_server/src/api/experiment_run_routes.py` |
-| GET | `/api/v1/experiments/runs/{run_id}` | experiment run 상태 조회 | `main_server/src/api/experiment_run_routes.py` |
-| GET | `/api/v1/experiments/runs/{run_id}/logs/{stream_name}` | stdout/stderr log 반환 | `main_server/src/api/experiment_run_routes.py` |
-
-주요 contract:
-
-| Contract | Source |
-|---|---|
-| `WorkspaceManifestPayload` | `shared/src/contracts/workspace_manifest_contracts.py` |
-| `ResolvedExperimentPlanPayload` | `shared/src/contracts/workspace_manifest_contracts.py` |
-| `ExperimentCatalogPayload` | `main_server/src/services/experiment_workspace/payloads.py` |
-
 ## 5. API 변경 시 갱신 기준
 
 | 변경 | 같이 확인할 것 |
@@ -182,4 +169,3 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | agent route 변경 | `agent/tests/unit/*_api.py`, `docs/api/api-surface.md`, relevant app consumer |
 | main_server route 변경 | `main_server/tests/unit/*_api.py`, root integration tests, `docs/api/api-surface.md` |
 | family/wellbeing route 변경 | `apps/family_extension`, generated types, `docs/family_extension_wellbeing_signal_mvp_plan.md` |
-| experiment workspace route 변경 | `apps/experiment_web`, generated types, `shared/src/contracts/workspace_manifest_contracts.py` |

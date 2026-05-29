@@ -1,0 +1,55 @@
+{
+  "defaults": {
+    "expected_seed": 42,
+    "expected_shard_policy_name": "dirichlet_label_skew",
+    "expected_payload_adapter_kind": "peft_classifier",
+    "expected_aggregation": "fedavg",
+    "expected_delta_format": "server_uploaded_artifact_ref",
+    "expected_run_control_output_dir": "runs/fl_ssl",
+    "expected_round_update_count_matches_client_count": true,
+    "expected_shared_update_count_matches_round_updates": true,
+    "expect_server_owned_update_artifacts": true,
+    "expect_no_agent_local_update_refs": true,
+    "expected_aggregate_snapshot_update_family": "peft_text_encoder"
+  },
+  "artifacts": [
+    {
+      "name": "fedmatch_alpha03_shared_client_reduced_5round",
+      "report": "runs/fl_ssl/fedmatch/fedmatch__peft_classifier__fedmatch_partitioned/labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/clients10_rounds5/20260526T120100Z/reports/fl_ssl_main_comparison.report.json",
+      "expectation": {
+        "expected_completed_rounds": 5,
+        "expected_round_budget": 5,
+        "expected_client_count": 10,
+        "expected_round_record_count": 5,
+        "expected_shard_alpha": 0.3,
+        "expected_split_id_contains": "labels_pc100_shared_client_seed",
+        "expected_labeled_exposure_policy": "shared_client_seed",
+        "expected_run_control_budget_name": "reduced",
+        "expected_fl_method_name": "fedmatch",
+        "expected_fl_method_descriptor_name": "fedmatch",
+        "expected_fl_method_execution_role": "method_owned",
+        "expected_federated_ssl_method": "fedmatch",
+        "expected_ssl_method_implementation_status": "partitioned_trainable_state_slice_v1",
+        "expected_ssl_method_scenario": "labels-at-client",
+        "expected_ssl_method_local_budget_policy": "iteration_capped",
+        "expected_ssl_method_parameter_override_status": "original",
+        "expected_server_update_policy": "fedmatch_partitioned",
+        "expected_update_partition_policy": "partitioned",
+        "expected_aggregation_weight_policy": "uniform",
+        "expected_peer_context_policy": "fixed_probe_output_knn",
+        "expected_local_ssl_policy": "fedmatch_agreement",
+        "expect_partitioned_update_artifact_refs": true,
+        "expected_communication_estimate_schema_version": "fl_ssl_posthoc_communication_cost.v1",
+        "expect_partitioned_sparse_s2c_estimates": true,
+        "expected_embedding_metadata_status": "recorded",
+        "expected_embedding_backend": "transformers_mxbai",
+        "expected_embedding_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "expected_embedding_device": "cuda",
+        "expected_embedding_local_files_only": true,
+        "expected_local_trainer_metadata_status": "recorded",
+        "expected_local_trainer_device": "cuda",
+        "expected_local_trainer_local_files_only": true
+      }
+    }
+  ]
+}

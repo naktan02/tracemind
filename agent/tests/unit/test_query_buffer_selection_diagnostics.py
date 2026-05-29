@@ -43,7 +43,7 @@ def _build_task(
         learning_rate=1e-2,
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
-            loss="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             confidence_threshold=confidence_threshold,
             margin_threshold=0.02,
             pseudo_label_algorithm_name="top1_confidence_only",
@@ -119,56 +119,69 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
     )
 
     summary = diagnostics.summary
-    assert summary.schema_version == QUERY_BUFFER_SELECTION_SUMMARY_SCHEMA_VERSION
-    assert summary.total_candidates == 3
-    assert summary.final_accepted_count == 1
-    assert summary.stage_counts == {
+    assert summary["schema_version"] == QUERY_BUFFER_SELECTION_SUMMARY_SCHEMA_VERSION
+    assert summary["total_candidates"] == 3
+    assert summary["final_accepted_count"] == 1
+    assert summary["stage_counts"] == {
         "accepted": 1,
         "dropped_by_cap": 1,
         "threshold_rejected": 1,
     }
-    assert summary.accepted_label_counts == {"anxiety": 1}
-    assert summary.pseudo_label_counts == {"anxiety": 2, "depression": 1}
-    assert summary.locale_counts == {"ko-KR": 3}
-    assert summary.model_revision_counts == {"rev_001": 3}
-    assert summary.confidence_threshold_counts == {"0.7": 3}
-    assert summary.max_examples_counts == {"1": 3}
-    assert summary.evidence_backend_name_counts == {"query_buffer_projection": 3}
-    assert summary.pseudo_label_algorithm_name_counts == {
-        "top1_confidence_only": 3
-    }
-    assert summary.confidence_stats.count == 3
-    assert summary.confidence_stats.maximum == pytest.approx(0.95)
+    assert summary["accepted_label_counts"] == {"anxiety": 1}
+    assert summary["pseudo_label_counts"] == {"anxiety": 2, "depression": 1}
+    assert summary["locale_counts"] == {"ko-KR": 3}
+    assert summary["model_revision_counts"] == {"rev_001": 3}
+    assert summary["confidence_threshold_counts"] == {"0.7": 3}
+    assert summary["max_examples_counts"] == {"1": 3}
+    assert summary["evidence_backend_name_counts"] == {"query_buffer_projection": 3}
+    assert summary["pseudo_label_algorithm_name_counts"] == {"top1_confidence_only": 3}
+    confidence_stats = summary["confidence_stats"]
+    assert isinstance(confidence_stats, dict)
+    assert confidence_stats["count"] == 3
+    assert confidence_stats["max"] == pytest.approx(0.95)
+    summary_payload = summary
+    confidence_stats_payload = summary_payload["confidence_stats"]
+    assert isinstance(confidence_stats_payload, dict)
+    assert confidence_stats_payload["max"] == pytest.approx(0.95)
 
-    trace_by_query_id = {
-        row.query_id: row for row in diagnostics.trace_rows
-    }
-    assert trace_by_query_id["q1"].schema_version == (
+    trace_by_query_id = {str(row["query_id"]): row for row in diagnostics.trace_rows}
+    assert trace_by_query_id["q1"]["schema_version"] == (
         QUERY_BUFFER_SELECTION_TRACE_SCHEMA_VERSION
     )
-    assert trace_by_query_id["q1"].selection_stage == "accepted"
-    assert trace_by_query_id["q1"].selected_by_cap is True
-    assert trace_by_query_id["q1"].threshold_accepted is True
-    assert trace_by_query_id["q1"].evidence_backend_name == (
+    assert trace_by_query_id["q1"]["selection_stage"] == "accepted"
+    assert trace_by_query_id["q1"]["selected_by_cap"] is True
+    assert trace_by_query_id["q1"]["threshold_accepted"] is True
+    assert trace_by_query_id["q1"]["evidence_backend_name"] == (
         "query_buffer_projection"
     )
-    assert trace_by_query_id["q1"].pseudo_label_algorithm_name == (
+    assert trace_by_query_id["q1"]["pseudo_label_algorithm_name"] == (
         "top1_confidence_only"
     )
-    assert trace_by_query_id["q1"].raw_scores == {
+    assert trace_by_query_id["q1"]["raw_scores"] == {
         "anxiety": 0.95,
         "depression": 0.2,
         "normal": 0.1,
     }
-    assert trace_by_query_id["q1"].query_buffer_metadata == {
+    assert trace_by_query_id["q1"]["query_buffer_metadata"] == {
         "scorer_backend_name": "prototype_similarity",
         "was_translated": False,
     }
-    assert trace_by_query_id["q2"].selection_stage == "dropped_by_cap"
-    assert trace_by_query_id["q2"].selected_by_cap is False
-    assert trace_by_query_id["q2"].pre_cap_rank == 2
-    assert trace_by_query_id["q3"].selection_stage == "threshold_rejected"
-    assert trace_by_query_id["q3"].threshold_accepted is False
+    q1_payload = trace_by_query_id["q1"]
+    assert q1_payload["occurred_at"] == pair_1[0].occurred_at.isoformat()
+    assert list(q1_payload["raw_scores"]) == [
+        "anxiety",
+        "depression",
+        "normal",
+    ]
+    assert list(q1_payload["query_buffer_metadata"]) == [
+        "scorer_backend_name",
+        "was_translated",
+    ]
+    assert trace_by_query_id["q2"]["selection_stage"] == "dropped_by_cap"
+    assert trace_by_query_id["q2"]["selected_by_cap"] is False
+    assert trace_by_query_id["q2"]["pre_cap_rank"] == 2
+    assert trace_by_query_id["q3"]["selection_stage"] == "threshold_rejected"
+    assert trace_by_query_id["q3"]["threshold_accepted"] is False
 
 
 def test_query_buffer_selection_diagnostics_service_requires_matching_record() -> None:

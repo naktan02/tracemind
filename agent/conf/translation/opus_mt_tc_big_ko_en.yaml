@@ -1,9 +1,0 @@
-_target_: src.infrastructure.model_adapters.translation.opus.OpusTranslationAdapter
-model_id: Helsinki-NLP/opus-mt-tc-big-ko-en
-revision: main
-source_lang: ko
-target_lang: en
-device: auto
-batch_size: 8
-max_new_tokens: 256
-cache_dir: null

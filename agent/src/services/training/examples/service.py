@@ -10,18 +10,12 @@ from agent.src.services.training.backends.inputs.base import (
 from agent.src.services.training.backends.inputs.models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
-    TrainingExampleSource,
 )
 from agent.src.services.training.backends.inputs.prototype_rescore import (
     PrototypeRescoringTrainingExampleBackend,
 )
-from agent.src.services.training.backends.inputs.registry import (
-    build_training_example_backend,
-    register_training_example_backend,
+from agent.src.services.training.backends.inputs.resolver import (
     resolve_training_example_backend,
-)
-from agent.src.services.training.backends.inputs.weak_strong_pair import (
-    WeakStrongPairTrainingExampleBackend,
 )
 from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
@@ -57,17 +51,3 @@ class TrainingExampleService:
         request: StoredEventTrainingExampleBuildRequest,
     ) -> tuple[EmbeddedTrainingExample, ...]:
         return self.backend.build_examples_from_stored_events(request)
-
-
-__all__ = [
-    "PrototypeRescoringTrainingExampleBackend",
-    "StoredEventTrainingExampleBuildRequest",
-    "TrainingExampleBackend",
-    "TrainingExampleBuildRequest",
-    "TrainingExampleService",
-    "TrainingExampleSource",
-    "WeakStrongPairTrainingExampleBackend",
-    "build_training_example_backend",
-    "register_training_example_backend",
-    "resolve_training_example_backend",
-]

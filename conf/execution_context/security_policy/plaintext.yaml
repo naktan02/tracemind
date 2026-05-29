@@ -1,0 +1,7 @@
+# @package _global_
+
+security_policy:
+  # 현재 simulation은 plaintext만 지원한다. secure aggregation/DP는 capability 축으로 추가한다.
+  name: plaintext
+  update_payload_visibility: per_client_plaintext
+  client_metric_visibility: per_client_plaintext

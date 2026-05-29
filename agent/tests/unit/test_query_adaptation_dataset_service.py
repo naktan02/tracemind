@@ -38,7 +38,7 @@ def _build_task() -> TrainingTask:
         learning_rate=1e-2,
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
-            loss="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             confidence_threshold=0.8,
             margin_threshold=0.02,
             pseudo_label_algorithm_name="top1_confidence_only",
@@ -128,13 +128,11 @@ def test_query_adaptation_dataset_service_builds_raw_text_examples() -> None:
         == "accepted"
     )
     assert (
-        dataset.examples[0].provenance.selection_context
-        .pseudo_label_algorithm_name
+        dataset.examples[0].provenance.selection_context.pseudo_label_algorithm_name
         == "top1_confidence_only"
     )
     assert (
-        dataset.examples[0].provenance.query_buffer_metadata["was_translated"]
-        is True
+        dataset.examples[0].provenance.query_buffer_metadata["was_translated"] is True
     )
     assert dataset.examples[0].label_source == "pseudo_label"
 
@@ -193,8 +191,9 @@ def test_query_adaptation_dataset_service_rejects_duplicate_record_key() -> None
         )
 
 
-def test_query_adaptation_dataset_service_rejects_manual_labels_in_pseudo_mode(
-) -> None:
+def test_query_adaptation_dataset_service_rejects_manual_labels_in_pseudo_mode() -> (
+    None
+):
     query_event, scored_event = _build_pair(
         query_id="q1",
         text="숨이 차요",
@@ -242,9 +241,7 @@ def test_query_adaptation_dataset_service_can_prefer_manual_labels_later() -> No
     )
 
     dataset = QueryAdaptationDatasetService(
-        config=QueryAdaptationDatasetConfig(
-            label_policy_name="prefer_manual_label"
-        )
+        config=QueryAdaptationDatasetConfig(label_policy_name="prefer_manual_label")
     ).build_dataset(
         selection_result=selection_result,
         records=(record,),

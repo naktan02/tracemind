@@ -201,10 +201,3 @@ def _row_to_message(row: sqlite3.Row) -> ChildSupportMessageRecord:
         scope_status=row["scope_status"],
         metadata=metadata,
     )
-
-
-__all__ = [
-    "CHILD_SUPPORT_MESSAGE_V1",
-    "ChildSupportConversationRepository",
-    "ChildSupportMessageRecord",
-]

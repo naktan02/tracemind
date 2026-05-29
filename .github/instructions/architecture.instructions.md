@@ -1,5 +1,5 @@
 ---
-applyTo: "shared/src/contracts/**/*.py,shared/src/domain/entities/**/*.py,agent/src/services/**/*.py,main-server/src/services/**/*.py,scripts/**/*.py,docs/**/*.md"
+applyTo: "shared/src/contracts/**/*.py,shared/src/domain/entities/**/*.py,agent/src/services/**/*.py,main_server/src/services/**/*.py,scripts/**/*.py,docs/**/*.md"
 ---
 
 Use contract-first design.

@@ -1,0 +1,6 @@
+# @package client_participation_policy
+
+name: fixed_count_random
+fraction: null
+count: 1
+min_clients: 1

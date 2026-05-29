@@ -42,12 +42,11 @@ def test_projection_service_replays_scored_events_into_snapshots(
     scored_event_repository = ScoredEventRepository(
         db_path=tmp_path / "scored_events.db"
     )
-    snapshot_repository = WellbeingSnapshotRepository(
-        db_path=tmp_path / "wellbeing.db"
-    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
     projection_service = WellbeingSignalProjectionService(
         scored_event_repository=scored_event_repository,
         snapshot_repository=snapshot_repository,
+        lookback_days=60,
     )
 
     scored_event_repository.save(
@@ -80,11 +79,14 @@ def test_projection_service_replays_scored_events_into_snapshots(
     assert snapshot_repository.list_summaries_since(
         cutoff=datetime(2026, 4, 20, tzinfo=timezone.utc)
     )
-    assert len(
-        snapshot_repository.list_summaries_since(
-            cutoff=datetime(2026, 4, 20, tzinfo=timezone.utc)
+    assert (
+        len(
+            snapshot_repository.list_summaries_since(
+                cutoff=datetime(2026, 4, 20, tzinfo=timezone.utc)
+            )
         )
-    ) == 3
+        == 3
+    )
 
 
 def test_wellbeing_services_refresh_projection_before_read(
@@ -93,12 +95,11 @@ def test_wellbeing_services_refresh_projection_before_read(
     scored_event_repository = ScoredEventRepository(
         db_path=tmp_path / "scored_events.db"
     )
-    snapshot_repository = WellbeingSnapshotRepository(
-        db_path=tmp_path / "wellbeing.db"
-    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
     projection_service = WellbeingSignalProjectionService(
         scored_event_repository=scored_event_repository,
         snapshot_repository=snapshot_repository,
+        lookback_days=60,
     )
     summary_service = WellbeingSummaryService(
         repository=snapshot_repository,

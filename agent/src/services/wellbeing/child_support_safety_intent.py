@@ -22,6 +22,3 @@ class ChildSupportSafetyIntent(StrEnum):
     CALMING_KEYWORD = "calming_keyword"
     HIGH_WELLBEING_SUMMARY = "high_wellbeing_summary"
     SUPPORTIVE = "supportive"
-
-
-__all__ = ["ChildSupportSafetyIntent"]

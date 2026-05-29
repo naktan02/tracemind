@@ -1,0 +1,290 @@
+"""Federated client split policy helpers."""
+
+from __future__ import annotations
+
+import random
+from collections import defaultdict
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from typing import TypeVar
+
+ItemT = TypeVar("ItemT")
+
+LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT = "client_local_split"
+LABELED_EXPOSURE_SHARED_CLIENT_SEED = "shared_client_seed"
+LABELED_EXPOSURE_SERVER_ONLY_SEED = "server_only_seed"
+LABELED_EXPOSURE_CLIENT_LOCAL_STORAGE_GROUP = "client_local_labeled"
+LABELED_EXPOSURE_SHARED_CLIENT_STORAGE_GROUP = "shared_client_labeled"
+LABELED_EXPOSURE_SERVER_ONLY_STORAGE_GROUP = "server_only_labeled"
+LABELED_EXPOSURE_CLIENT_LOCAL_SLUG = "client_local"
+LABELED_EXPOSURE_SHARED_CLIENT_SLUG = "shared_client"
+LABELED_EXPOSURE_SERVER_ONLY_SLUG = "server_only"
+LABELED_EXPOSURE_POLICY_NAMES = frozenset(
+    {
+        LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
+        LABELED_EXPOSURE_SHARED_CLIENT_SEED,
+        LABELED_EXPOSURE_SERVER_ONLY_SEED,
+    }
+)
+
+
+@dataclass(frozen=True, slots=True)
+class FederatedLabeledExposurePolicy:
+    """선택된 labeled rows가 server/client 어디에 보이는지 정하는 정책."""
+
+    name: str = LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object],
+    ) -> "FederatedLabeledExposurePolicy":
+        return cls(name=str(source.get("name", LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT)))
+
+    def __post_init__(self) -> None:
+        if self.name not in LABELED_EXPOSURE_POLICY_NAMES:
+            raise ValueError(
+                "labeled_exposure_policy.name must be one of "
+                f"{sorted(LABELED_EXPOSURE_POLICY_NAMES)}."
+            )
+
+    @property
+    def exposes_client_labeled_rows(self) -> bool:
+        return self.name != LABELED_EXPOSURE_SERVER_ONLY_SEED
+
+    @property
+    def shares_same_labeled_rows_across_clients(self) -> bool:
+        return self.name == LABELED_EXPOSURE_SHARED_CLIENT_SEED
+
+    @property
+    def storage_group_name(self) -> str:
+        if self.name == LABELED_EXPOSURE_SHARED_CLIENT_SEED:
+            return LABELED_EXPOSURE_SHARED_CLIENT_STORAGE_GROUP
+        if self.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+            return LABELED_EXPOSURE_SERVER_ONLY_STORAGE_GROUP
+        return LABELED_EXPOSURE_CLIENT_LOCAL_STORAGE_GROUP
+
+    @property
+    def compact_slug(self) -> str:
+        return compact_labeled_exposure_policy_slug(self.name)
+
+    def to_payload(self) -> dict[str, object]:
+        return {"name": self.name}
+
+
+def resolve_client_visible_labeled_rows(
+    *,
+    policy: FederatedLabeledExposurePolicy,
+    client_local_rows: Sequence[ItemT],
+    shared_seed_rows: Sequence[ItemT],
+) -> list[ItemT]:
+    """정책에 따라 한 client가 볼 labeled rows를 반환한다."""
+
+    if policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+        return []
+    if policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT:
+        return list(client_local_rows)
+    return list(shared_seed_rows)
+
+
+def resolve_bootstrap_labeled_rows(
+    *,
+    policy: FederatedLabeledExposurePolicy,
+    split_bootstrap_rows: Sequence[ItemT],
+    shared_seed_rows: Sequence[ItemT],
+) -> list[ItemT]:
+    """정책에 따라 server/bootstrap boundary가 볼 labeled rows를 반환한다."""
+
+    if policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+        return list(shared_seed_rows)
+    return list(split_bootstrap_rows)
+
+
+def compact_labeled_exposure_policy_slug(policy_name: str) -> str:
+    """labeled exposure policy의 path/report용 compact slug를 반환한다."""
+
+    policy = FederatedLabeledExposurePolicy(name=policy_name)
+    if policy.name == LABELED_EXPOSURE_SHARED_CLIENT_SEED:
+        return LABELED_EXPOSURE_SHARED_CLIENT_SLUG
+    if policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+        return LABELED_EXPOSURE_SERVER_ONLY_SLUG
+    return LABELED_EXPOSURE_CLIENT_LOCAL_SLUG
+
+
+@dataclass(frozen=True, slots=True)
+class FederatedLabeledPoolPolicy:
+    """FL materialized split에 포함할 labeled source pool 선택 정책."""
+
+    mode: str = "all"
+    count_per_class: int | None = None
+    fraction: float | None = None
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object],
+    ) -> "FederatedLabeledPoolPolicy":
+        raw_count = source.get("count_per_class")
+        raw_fraction = source.get("fraction")
+        return cls(
+            mode=str(source.get("mode", "all")),
+            count_per_class=None if raw_count is None else int(raw_count),
+            fraction=None if raw_fraction is None else float(raw_fraction),
+        )
+
+    def to_payload(self) -> dict[str, object]:
+        return {
+            "mode": self.mode,
+            "count_per_class": self.count_per_class,
+            "fraction": self.fraction,
+        }
+
+
+def select_labeled_pool_items(
+    items: Sequence[ItemT],
+    *,
+    policy: FederatedLabeledPoolPolicy,
+    seed: int,
+    label_getter: Callable[[ItemT], str],
+) -> list[ItemT]:
+    """source labeled pool에서 materialized FL split에 쓸 item을 선택한다."""
+
+    if policy.mode == "all":
+        if policy.count_per_class is not None or policy.fraction is not None:
+            raise ValueError(
+                "labeled_policy.count_per_class and labeled_policy.fraction must be "
+                "null when mode is all."
+            )
+        return list(items)
+    if policy.mode == "count_per_class":
+        if policy.fraction is not None:
+            raise ValueError(
+                "labeled_policy.fraction must be null when mode is count_per_class."
+            )
+        return _select_items_by_count_per_class(
+            items,
+            count_per_class=policy.count_per_class,
+            seed=seed,
+            label_getter=label_getter,
+        )
+    if policy.mode == "fraction":
+        if policy.count_per_class is not None:
+            raise ValueError(
+                "labeled_policy.count_per_class must be null when mode is fraction."
+            )
+        return _select_items_by_fraction(
+            items,
+            fraction=policy.fraction,
+            seed=seed,
+            label_getter=label_getter,
+        )
+    raise ValueError(
+        "fl_client_split_materialization.labeled_policy.mode must be one of "
+        "'all', 'count_per_class', or 'fraction'."
+    )
+
+
+def split_client_pool_items(
+    items: Sequence[ItemT],
+    *,
+    labeled_ratio: float,
+    seed: int,
+    label_getter: Callable[[ItemT], str],
+) -> tuple[list[ItemT], list[ItemT]]:
+    """client shard 내부 rows를 class별 labeled/unlabeled pool로 나눈다."""
+
+    rng = random.Random(seed)
+    labeled_items: list[ItemT] = []
+    unlabeled_items: list[ItemT] = []
+    items_by_label = _group_items_by_label(items, label_getter=label_getter)
+
+    for label in sorted(items_by_label):
+        bucket = list(items_by_label[label])
+        rng.shuffle(bucket)
+        labeled_count = _resolve_labeled_count(
+            bucket_size=len(bucket),
+            labeled_ratio=labeled_ratio,
+        )
+        labeled_items.extend(bucket[:labeled_count])
+        unlabeled_items.extend(bucket[labeled_count:])
+    return labeled_items, unlabeled_items
+
+
+def _select_items_by_count_per_class(
+    items: Sequence[ItemT],
+    *,
+    count_per_class: int | None,
+    seed: int,
+    label_getter: Callable[[ItemT], str],
+) -> list[ItemT]:
+    """class별 deterministic prefix로 labeled budget 간 nested subset을 보존한다."""
+
+    if count_per_class is None or count_per_class <= 0:
+        raise ValueError(
+            "labeled_policy.count_per_class must be positive when mode is "
+            "count_per_class."
+        )
+    rng = random.Random(seed)
+    selected_items: list[ItemT] = []
+    buckets = _group_items_by_label(items, label_getter=label_getter)
+    for label in sorted(buckets):
+        bucket = buckets[label]
+        if len(bucket) < count_per_class:
+            raise ValueError(
+                "labeled_policy.count_per_class exceeds source labeled rows for "
+                f"{label}: {count_per_class} > {len(bucket)}."
+            )
+        shuffled_bucket = list(bucket)
+        rng.shuffle(shuffled_bucket)
+        selected_items.extend(shuffled_bucket[:count_per_class])
+    rng.shuffle(selected_items)
+    return selected_items
+
+
+def _select_items_by_fraction(
+    items: Sequence[ItemT],
+    *,
+    fraction: float | None,
+    seed: int,
+    label_getter: Callable[[ItemT], str],
+) -> list[ItemT]:
+    if fraction is None or not 0.0 < fraction <= 1.0:
+        raise ValueError(
+            "labeled_policy.fraction must be between 0 and 1 when mode is fraction."
+        )
+    rng = random.Random(seed)
+    selected_items: list[ItemT] = []
+    for bucket in _group_items_by_label(items, label_getter=label_getter).values():
+        selected_count = int(round(len(bucket) * fraction))
+        if selected_count <= 0 and bucket:
+            selected_count = 1
+        selected_count = min(selected_count, len(bucket))
+        shuffled_bucket = list(bucket)
+        rng.shuffle(shuffled_bucket)
+        selected_items.extend(shuffled_bucket[:selected_count])
+    rng.shuffle(selected_items)
+    return selected_items
+
+
+def _resolve_labeled_count(*, bucket_size: int, labeled_ratio: float) -> int:
+    if bucket_size <= 0 or labeled_ratio <= 0.0:
+        return 0
+    if labeled_ratio >= 1.0:
+        return bucket_size
+    labeled_count = int(round(bucket_size * labeled_ratio))
+    if labeled_count <= 0 and bucket_size > 1:
+        labeled_count = 1
+    if labeled_count >= bucket_size:
+        labeled_count = bucket_size - 1
+    return labeled_count
+
+
+def _group_items_by_label(
+    items: Sequence[ItemT],
+    *,
+    label_getter: Callable[[ItemT], str],
+) -> dict[str, list[ItemT]]:
+    buckets: dict[str, list[ItemT]] = defaultdict(list)
+    for item in items:
+        buckets[label_getter(item)].append(item)
+    return buckets

@@ -11,24 +11,29 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
     StoredScoredEvent,
 )
 from agent.src.services.inference.scoring_service import ScoringService
+from agent.src.services.training.backends.inputs import (
+    registry as training_example_backend_registry,
+)
 from agent.src.services.training.backends.inputs.models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
     TrainingExampleSource,
 )
-from agent.src.services.training.backends.training.registry import (
-    register_shared_adapter_training_backend,
+from agent.src.services.training.backends.inputs.prototype_rescore import (
+    PrototypeRescoringTrainingExampleBackend,
+)
+from agent.src.services.training.backends.inputs.weak_strong_pair import (
+    WeakStrongPairTrainingExampleBackend,
 )
 from agent.src.services.training.examples.service import (
-    PrototypeRescoringTrainingExampleBackend,
     TrainingExampleService,
-    WeakStrongPairTrainingExampleBackend,
-    register_training_example_backend,
 )
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
-from shared.src.contracts.adapter_contracts import VectorAdapterState
+from methods.adaptation.local_update_registry import (
+    register_shared_adapter_training_backend,
+)
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.inference.events import ScoredEvent
 
@@ -39,6 +44,20 @@ class _StaticEmbeddingAdapter:
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         return [list(self._vectors[text]) for text in texts]
+
+
+@dataclass(slots=True)
+class _IdentitySharedAdapterState:
+    schema_version: str = "test_identity_state.v1"
+    adapter_kind: str = "test_identity"
+    model_id: str = "hash_debug"
+    model_revision: str = "main"
+    training_scope: str = "adapter_only"
+    updated_at: datetime = datetime(2026, 4, 2, tzinfo=timezone.utc)
+    embedding_dim: int = 2
+
+    def apply(self, embedding) -> list[float]:
+        return [float(value) for value in embedding]
 
 
 @dataclass(slots=True)
@@ -110,13 +129,7 @@ def test_training_example_service_builds_scored_examples_from_source_rows() -> N
             "calm calm": [0.0, 1.0],
         }
     )
-    adapter_state = VectorAdapterState.identity(
-        model_id="hash_debug",
-        model_revision="main",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
+    adapter_state = _IdentitySharedAdapterState()
 
     examples = service.build_examples(
         TrainingExampleBuildRequest(
@@ -145,19 +158,15 @@ def test_training_example_service_builds_scored_examples_from_source_rows() -> N
     assert examples[0].base_embedding == [1.0, 0.0]
     assert examples[0].embedding == [1.0, 0.0]
     assert examples[0].scored_event.category_scores["anxiety"] == 1.0
+    assert examples[0].metadata["raw_text"] == "panic panic"
+    assert examples[0].metadata["training_text"] == "panic panic"
     assert examples[1].scored_event.query_id == "q2"
     assert examples[1].scored_event.category_scores["normal"] == 1.0
 
 
 def test_training_example_service_returns_empty_tuple_for_empty_rows() -> None:
     service = TrainingExampleService()
-    adapter_state = VectorAdapterState.identity(
-        model_id="hash_debug",
-        model_revision="main",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
+    adapter_state = _IdentitySharedAdapterState()
 
     examples = service.build_examples(
         TrainingExampleBuildRequest(
@@ -236,13 +245,7 @@ def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
             "panic strong": [0.8, 0.2],
         }
     )
-    adapter_state = VectorAdapterState.identity(
-        model_id="hash_debug",
-        model_revision="main",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
+    adapter_state = _IdentitySharedAdapterState()
 
     examples = service.build_examples(
         TrainingExampleBuildRequest(
@@ -269,14 +272,13 @@ def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
     assert example.evidence_scored_event.query_id == "q_fix"
     assert example.update_scored_event.query_id == "q_fix"
     assert example.weak_embedding == [1.0, 0.0]
-    assert example.strong_embedding == pytest.approx(
-        [0.9701425001453318, 0.24253562503633294]
-    )
-    assert example.update_embedding == pytest.approx(
-        [0.9701425001453318, 0.24253562503633294]
-    )
+    assert example.strong_embedding == [0.8, 0.2]
+    assert example.update_embedding == [0.8, 0.2]
     assert example.metadata["selection_view"] == "weak"
     assert example.metadata["update_view"] == "strong"
+    assert example.metadata["raw_text"] == "panic panic"
+    assert example.metadata["training_text"] == "panic strong"
+    assert example.metadata["strong_text"] == "panic strong"
 
 
 def test_weak_strong_pair_backend_rejects_stored_event_rebuild() -> None:
@@ -314,7 +316,7 @@ class _ConstantTrainingExampleBackend:
 
 
 def test_training_example_service_selects_backend_from_objective_config() -> None:
-    register_training_example_backend(
+    training_example_backend_registry.register_training_example_backend(
         "constant_examples",
         factory=lambda _objective_config: _ConstantTrainingExampleBackend(),
         catalog_entry=_registry_catalog_entry(
@@ -325,7 +327,7 @@ def test_training_example_service_selects_backend_from_objective_config() -> Non
 
     service = TrainingExampleService.from_objective_config(
         TrainingObjectiveConfig(
-            training_backend_name="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             example_generation_backend_name="constant_examples",
         )
     )
@@ -338,13 +340,12 @@ def test_training_example_service_selects_backend_from_objective_config() -> Non
 def test_training_example_service_uses_profile_default_backend_when_omitted() -> None:
     service = TrainingExampleService.from_objective_config(
         TrainingObjectiveConfig(
-            training_backend_name=DEFAULT_TRAINING_PROFILE.training_backend_name,
+            training_backend_name=RUNTIME_FALLBACK_TRAINING_PROFILE.training_backend_name,
         )
     )
 
-    assert isinstance(service.backend, PrototypeRescoringTrainingExampleBackend)
     assert service.backend.backend_name == (
-        DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     )
 
 
@@ -373,9 +374,9 @@ def test_training_example_service_rejects_incompatible_backend_family() -> None:
             return {}
 
     @dataclass(slots=True)
-    class _DiagonalOnlyTrainingExampleBackend:
-        backend_name: str = "diagonal_only_training_examples"
-        supported_adapter_kinds: tuple[str, ...] = ("diagonal_scale",)
+    class _PeftOnlyTrainingExampleBackend:
+        backend_name: str = "peft_only_training_examples"
+        supported_adapter_kinds: tuple[str, ...] = ("peft_classifier",)
 
         def build_examples(self, request: TrainingExampleBuildRequest) -> tuple:
             del request
@@ -397,13 +398,13 @@ def test_training_example_service_rejects_incompatible_backend_family() -> None:
             supported_adapter_kinds=("test_shift",),
         ),
     )
-    register_training_example_backend(
-        "diagonal_only_training_examples",
-        factory=lambda _objective_config: _DiagonalOnlyTrainingExampleBackend(),
+    training_example_backend_registry.register_training_example_backend(
+        "peft_only_training_examples",
+        factory=lambda _objective_config: _PeftOnlyTrainingExampleBackend(),
         catalog_entry=_registry_catalog_entry(
-            item_name="diagonal_only_training_examples",
+            item_name="peft_only_training_examples",
             family_name="example_generation",
-            supported_adapter_kinds=("diagonal_scale",),
+            supported_adapter_kinds=("peft_classifier",),
         ),
     )
 
@@ -414,6 +415,6 @@ def test_training_example_service_rejects_incompatible_backend_family() -> None:
         TrainingExampleService.from_objective_config(
             TrainingObjectiveConfig(
                 training_backend_name="test_shift_example_training_backend",
-                example_generation_backend_name="diagonal_only_training_examples",
+                example_generation_backend_name="peft_only_training_examples",
             )
         )

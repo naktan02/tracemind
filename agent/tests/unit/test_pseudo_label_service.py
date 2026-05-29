@@ -39,7 +39,7 @@ def _build_task(
         learning_rate=1e-2,
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
-            loss="diagonal_scale_heuristic",
+            training_backend_name="peft_classifier_trainer",
             confidence_threshold=confidence_threshold,
             margin_threshold=0.02,
             evidence_backend_name=evidence_backend_name,
@@ -102,9 +102,7 @@ def test_selection_service_can_switch_policy_from_training_task() -> None:
                 category_scores={"anxiety": 0.62, "depression": 0.61, "normal": 0.1},
             ),
         ),
-        training_task=_build_task(
-            pseudo_label_algorithm_name="top1_confidence_only"
-        ),
+        training_task=_build_task(pseudo_label_algorithm_name="top1_confidence_only"),
     )
 
     candidate = result.candidates[0]

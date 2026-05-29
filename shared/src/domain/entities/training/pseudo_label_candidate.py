@@ -59,9 +59,7 @@ class PseudoLabelSelectionContext:
             self.selection_stage == PseudoLabelSelectionStage.ACCEPTED
             and not self.final_accepted
         ):
-            raise ValueError(
-                "selection_stage='accepted' requires final_accepted=True."
-            )
+            raise ValueError("selection_stage='accepted' requires final_accepted=True.")
 
     def to_compatibility_metadata(
         self,
@@ -83,9 +81,7 @@ class PseudoLabelSelectionContext:
         if self.max_examples is not None:
             metadata["max_examples"] = self.max_examples
         if self.pseudo_label_algorithm_name is not None:
-            metadata["pseudo_label_algorithm_name"] = (
-                self.pseudo_label_algorithm_name
-            )
+            metadata["pseudo_label_algorithm_name"] = self.pseudo_label_algorithm_name
         if self.evidence_backend_name is not None:
             metadata["evidence_backend_name"] = self.evidence_backend_name
         if self.evidence_confidence_kind is not None:

@@ -6,25 +6,28 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from main_server.src.services.federation.assets.prototypes.models import (
+from main_server.src.services.federation.prototypes.models import (
+    SERVER_REFERENCE_PROTOTYPE_SOURCE_KIND,
     PrototypeRebuildInputRecord,
-    ReferencePrototypeSourceRow,
+    ServerReferencePrototypeSourceRow,
 )
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 MAIN_SERVER_ROOT = Path(__file__).resolve().parents[3]
 
 
 class PrototypeRebuildInputRowPayload(BaseModel):
-    """canonical rebuild row payload."""
+    """server-owned reference rebuild row payload."""
 
     model_config = ConfigDict(extra="forbid")
 
     text: str
     category: str
+    source_kind: Literal["server_reference"] = SERVER_REFERENCE_PROTOTYPE_SOURCE_KIND
 
 
 class PrototypeRebuildEmbeddingSpecPayload(BaseModel):
@@ -131,6 +134,7 @@ def _record_to_payload(
             PrototypeRebuildInputRowPayload(
                 text=row.text,
                 category=row.category,
+                source_kind=row.source_kind,
             )
             for row in record.rows
         ],
@@ -165,9 +169,10 @@ def _record_from_payload(
             local_files_only=payload.embedding_spec.local_files_only,
         ),
         rows=tuple(
-            ReferencePrototypeSourceRow(
+            ServerReferencePrototypeSourceRow(
                 text=row.text,
                 category=row.category,
+                source_kind=row.source_kind,
             )
             for row in payload.rows
         ),

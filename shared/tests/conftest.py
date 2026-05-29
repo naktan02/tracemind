@@ -5,9 +5,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from shared.src.contracts.adapter_contracts import (
-    DiagonalScaleAdapterStatePayload,
-    DiagonalScaleAdapterUpdatePayload,
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
+    ClassifierHeadAdapterStatePayload,
+    ClassifierHeadAdapterUpdatePayload,
 )
 from shared.src.contracts.common_types import (
     TrainingScope,
@@ -29,7 +30,6 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicyPayload,
     TrainingTaskPayload,
     TrainingUpdateEnvelopePayload,
-    UpdatePayloadFormat,
 )
 
 FIXED_UTC_TIME = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -52,12 +52,9 @@ def make_model_manifest_payload(
             "published_at": fixed_utc_time,
             "artifact_kind": ArtifactKind.SHARED_ADAPTER_STATE,
             "artifact_ref": "/tmp/rev_001.json",
-            "prototype_version": "proto_001",
-            "training_scope": TrainingScope.ADAPTER_ONLY,
+            "training_scope": TrainingScope.HEAD_ONLY,
             "training_enabled": True,
-            "compatible_task_types": (
-                TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
-            ),
+            "compatible_task_types": (TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,),
         }
         return ModelManifestPayload(**(defaults | overrides))
 
@@ -77,34 +74,39 @@ def make_model_manifest(
 @pytest.fixture
 def make_adapter_state_payload(
     fixed_utc_time: datetime,
-) -> Callable[..., DiagonalScaleAdapterStatePayload]:
-    def _make(**overrides: object) -> DiagonalScaleAdapterStatePayload:
+) -> Callable[..., ClassifierHeadAdapterStatePayload]:
+    def _make(**overrides: object) -> ClassifierHeadAdapterStatePayload:
         defaults = {
             "model_id": "tracemind-embed",
             "model_revision": "rev_001",
-            "training_scope": TrainingScope.ADAPTER_ONLY,
-            "dimension_scales": [1.0, 0.95],
+            "training_scope": TrainingScope.HEAD_ONLY,
+            "label_weights": {"anxiety": [0.1, 0.2], "depression": [-0.1, -0.2]},
+            "label_biases": {"anxiety": 0.01, "depression": -0.01},
             "updated_at": fixed_utc_time,
         }
-        return DiagonalScaleAdapterStatePayload(**(defaults | overrides))
+        return ClassifierHeadAdapterStatePayload(**(defaults | overrides))
 
     return _make
 
 
 @pytest.fixture
-def make_adapter_update_payload() -> Callable[..., DiagonalScaleAdapterUpdatePayload]:
-    def _make(**overrides: object) -> DiagonalScaleAdapterUpdatePayload:
+def make_adapter_update_payload() -> Callable[..., ClassifierHeadAdapterUpdatePayload]:
+    def _make(**overrides: object) -> ClassifierHeadAdapterUpdatePayload:
         defaults = {
             "model_id": "tracemind-embed",
             "base_model_revision": "rev_001",
-            "training_scope": TrainingScope.ADAPTER_ONLY,
-            "dimension_deltas": [0.01, -0.02],
+            "training_scope": TrainingScope.HEAD_ONLY,
+            "label_weight_deltas": {
+                "anxiety": [0.01, -0.02],
+                "depression": [-0.01, 0.02],
+            },
+            "label_bias_deltas": {"anxiety": 0.01, "depression": -0.01},
             "example_count": 8,
             "mean_confidence": 0.84,
             "mean_margin": 0.12,
             "label_counts": {"anxiety": 5, "depression": 3},
         }
-        return DiagonalScaleAdapterUpdatePayload(**(defaults | overrides))
+        return ClassifierHeadAdapterUpdatePayload(**(defaults | overrides))
 
     return _make
 
@@ -118,7 +120,7 @@ def make_training_task_payload() -> Callable[..., TrainingTaskPayload]:
             "model_id": "tracemind-embed",
             "model_revision": "rev_001",
             "task_type": TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
-            "training_scope": TrainingScope.ADAPTER_ONLY,
+            "training_scope": TrainingScope.HEAD_ONLY,
             "local_epochs": 1,
             "batch_size": 8,
             "learning_rate": 1e-4,
@@ -146,7 +148,7 @@ def make_training_update_envelope_payload(
             "base_model_revision": "rev_001",
             "training_scope": TrainingScope.ADAPTER_ONLY,
             "payload_ref": "updates/update_001",
-            "payload_format": UpdatePayloadFormat.DIAGONAL_SCALE_UPDATE,
+            "payload_format": CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
             "example_count": 12,
             "client_metrics": {"mean_loss": 0.5},
             "created_at": fixed_utc_time,

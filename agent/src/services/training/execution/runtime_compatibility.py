@@ -4,30 +4,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent.src.services.inference.scoring_backends import build_scoring_backend
-from agent.src.services.training.acceptance_policies.base import (
-    PseudoLabelAcceptancePolicy,
-)
-from agent.src.services.training.acceptance_policies.registry import (
-    build_pseudo_label_acceptance_policy,
-)
-from agent.src.services.training.backends.evidence.registry import (
+from agent.src.services.inference.scoring_backends.registry import build_scoring_backend
+from agent.src.services.training.backends.evidence.resolver import (
     resolve_pseudo_label_evidence_backend,
 )
-from agent.src.services.training.backends.inputs.registry import (
+from agent.src.services.training.backends.inputs.resolver import (
     resolve_training_example_backend,
 )
-from agent.src.services.training.execution.privacy_guard_service import (
-    SharedAdapterPrivacyGuard,
-    build_shared_adapter_privacy_guard,
-)
-from agent.src.services.training.backends.training.base import (
+from methods.adaptation.local_update_backend import (
     SharedAdapterTrainingBackend,
 )
-from agent.src.services.training.backends.training.registry import (
+from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
 )
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.adaptation.privacy_guards.base import (
+    SharedAdapterPrivacyGuard,
+)
+from methods.adaptation.privacy_guards.registry import (
+    build_shared_adapter_privacy_guard,
+)
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
+from methods.ssl.hooks.acceptance import PseudoLabelAcceptancePolicySpec
+from methods.ssl.hooks.registry import build_pseudo_label_acceptance_policy
 from shared.src.contracts.training_contracts import TrainingTask
 
 ANY_ADAPTER_KIND = "*"
@@ -63,9 +61,10 @@ def validate_live_agent_stored_event_runtime(
         training_backend=resolved_training_backend,
     )
     scorer_backend_name = (
-        objective.scorer_backend_name or DEFAULT_TRAINING_PROFILE.scorer_backend_name
+        objective.scorer_backend_name
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
     )
-    scorer_backend = build_scoring_backend(
+    build_scoring_backend(
         scorer_backend_name,
         objective_config=objective,
         similarity_name=similarity_name,
@@ -82,11 +81,6 @@ def validate_live_agent_stored_event_runtime(
             "stored-event 재구성을 지원하지 않는 example backend="
             f"{training_example_backend.backend_name}"
         )
-    if scorer_backend.requires_shared_state:
-        unsupported_reasons.append(
-            "현재 live agent 경로에서 active shared_state fetch가 없는 scorer backend="
-            f"{scorer_backend.backend_name}"
-        )
     if unsupported_reasons:
         raise ValueError(
             "run-current-task does not support this runtime yet: "
@@ -100,11 +94,13 @@ def validate_local_training_runtime(
     *,
     similarity_name: str = "cosine",
     default_acceptance_policy_name: str = (
-        DEFAULT_TRAINING_PROFILE.acceptance_policy_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
     ),
-    default_privacy_guard_name: str = "noop",
+    default_privacy_guard_name: str = (
+        RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name
+    ),
     training_backend: SharedAdapterTrainingBackend | None = None,
-    acceptance_policy: PseudoLabelAcceptancePolicy | None = None,
+    acceptance_policy: PseudoLabelAcceptancePolicySpec | None = None,
     privacy_guard: SharedAdapterPrivacyGuard | None = None,
 ) -> LocalTrainingRuntimeCompatibility:
     """TrainingTask가 선택한 로컬 runtime 조합이 서로 호환되는지 검증한다."""
@@ -124,7 +120,8 @@ def validate_local_training_runtime(
         objective_config=objective,
     )
     scorer_backend_name = (
-        objective.scorer_backend_name or DEFAULT_TRAINING_PROFILE.scorer_backend_name
+        objective.scorer_backend_name
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
     )
     scorer_backend = build_scoring_backend(
         scorer_backend_name,
@@ -137,6 +134,17 @@ def validate_local_training_runtime(
     resolved_acceptance_policy = acceptance_policy or (
         build_pseudo_label_acceptance_policy(acceptance_policy_name)
     )
+    pseudo_label_algorithm_name = (
+        objective.pseudo_label_algorithm_name
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.pseudo_label_algorithm_name
+    )
+    if resolved_acceptance_policy.selection_hook_name != pseudo_label_algorithm_name:
+        raise ValueError(
+            "Incompatible acceptance policy: "
+            f"{resolved_acceptance_policy.policy_name} maps to "
+            f"{resolved_acceptance_policy.selection_hook_name}, but objective uses "
+            f"pseudo_label_algorithm_name={pseudo_label_algorithm_name}."
+        )
     privacy_guard_name = objective.privacy_guard_name or default_privacy_guard_name
     resolved_privacy_guard = privacy_guard or build_shared_adapter_privacy_guard(
         privacy_guard_name
@@ -198,10 +206,3 @@ def _require_adapter_kind_support(
         f"Incompatible {component_type}: {component_name} does not support "
         f"adapter_kind={adapter_kind}."
     )
-
-
-__all__ = [
-    "LocalTrainingRuntimeCompatibility",
-    "validate_live_agent_stored_event_runtime",
-    "validate_local_training_runtime",
-]

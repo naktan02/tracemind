@@ -4,45 +4,46 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from uuid import uuid4
 
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.training.execution.privacy_guard_service import (
-    NoOpSharedAdapterPrivacyGuard,
-    SharedAdapterPrivacyGuard,
-    build_shared_adapter_privacy_guard,
+from agent.src.services.training.examples.models import (
+    EmbeddedTrainingExample,
+)
+from agent.src.services.training.execution.local_update_executor import (
+    LocalUpdateExecutionRequest,
+    LocalUpdateExecutor,
+)
+from agent.src.services.training.execution.runtime_compatibility import (
+    validate_local_training_runtime,
 )
 from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
     PseudoLabelSelectionService,
 )
-from agent.src.services.training.execution.runtime_compatibility import (
-    validate_local_training_runtime,
-)
-from agent.src.services.training.backends.training.base import (
+from methods.adaptation.local_update_backend import (
     SharedAdapterTrainingBackend,
 )
-from agent.src.services.training.backends.training.diagonal_scale_heuristic import (
-    DiagonalScaleHeuristicTrainingBackend,
+from methods.adaptation.privacy_guards.base import (
+    SharedAdapterPrivacyGuard,
 )
-from agent.src.services.training.backends.training.registry import (
-    build_shared_adapter_training_backend,
+from methods.adaptation.privacy_guards.noop import (
+    NoOpSharedAdapterPrivacyGuard,
 )
-from agent.src.services.training.examples.models import (
-    EmbeddedTrainingExample,
+from shared.src.contracts.adapter_contract_families.base import (
+    SharedAdapterUpdatePayload,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
-    ClientMetricKeys,
     TrainingTask,
     TrainingUpdateEnvelope,
 )
-from shared.src.domain.entities.training.shared_adapter_update import (
-    SharedAdapterUpdate,
-)
 from shared.src.domain.services.clock import Clock, SystemUtcClock
+from shared.src.services.secure_update_codec import (
+    NoOpSecureUpdateCodec,
+    SecureUpdateCodec,
+)
 
 
 @dataclass(slots=True)
@@ -51,7 +52,7 @@ class LocalTrainingResult:
 
     selection_result: PseudoLabelSelectionResult
     update_envelope: TrainingUpdateEnvelope | None = None
-    update_payload: SharedAdapterUpdate | None = None
+    update_payload: SharedAdapterUpdatePayload | None = None
 
 
 @dataclass(slots=True)
@@ -77,11 +78,12 @@ class LocalTrainingService:
     repository: TrainingArtifactRepository = field(
         default_factory=TrainingArtifactRepository
     )
-    backend: SharedAdapterTrainingBackend = field(
-        default_factory=DiagonalScaleHeuristicTrainingBackend
-    )
+    backend: SharedAdapterTrainingBackend | None = None
     privacy_guard: SharedAdapterPrivacyGuard = field(
         default_factory=NoOpSharedAdapterPrivacyGuard
+    )
+    secure_update_codec: SecureUpdateCodec = field(
+        default_factory=NoOpSecureUpdateCodec
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
@@ -135,48 +137,22 @@ class LocalTrainingService:
         if len(accepted_examples) < minimum_examples:
             return LocalTrainingResult(selection_result=selection_result)
 
-        update_payload = backend.build_update(
-            training_task=request.training_task,
-            model_manifest=request.model_manifest,
-            accepted_examples=accepted_examples,
-            created_at=effective_created_at,
-        )
-        protected_update = privacy_guard.protect(
-            update=update_payload,
-            training_task=request.training_task,
-        )
-
-        update_id = f"update_{request.training_task.round_id}_{uuid4().hex[:12]}"
-        payload_path = self.repository.save_shared_adapter_update(
-            update_id,
-            backend.to_payload(protected_update.update),
-        )
-        update_envelope = TrainingUpdateEnvelope(
-            schema_version="training_update_envelope.v1",
-            update_id=update_id,
-            round_id=request.training_task.round_id,
-            task_id=request.training_task.task_id,
-            model_id=request.model_manifest.model_id,
-            base_model_revision=request.model_manifest.model_revision,
-            training_scope=request.training_task.training_scope,
-            payload_ref=str(payload_path),
-            payload_format=backend.payload_format,
-            example_count=len(accepted_examples),
-            client_metrics=self._build_client_metrics(
-                backend=backend,
-                update=protected_update.update,
+        update_result = self._build_update_executor().execute(
+            LocalUpdateExecutionRequest(
+                training_task=request.training_task,
+                model_manifest=request.model_manifest,
+                accepted_examples=accepted_examples,
                 selection_result=selection_result,
-                accepted_example_count=len(accepted_examples),
+                created_at=effective_created_at,
+                agent_id=request.agent_id,
             ),
-            created_at=effective_created_at,
-            clipped=protected_update.clipped,
-            dp_applied=protected_update.dp_applied,
-            agent_id=request.agent_id,
+            backend=backend,
+            privacy_guard=privacy_guard,
         )
         return LocalTrainingResult(
             selection_result=selection_result,
-            update_envelope=update_envelope,
-            update_payload=protected_update.update,
+            update_envelope=update_result.update_envelope,
+            update_payload=update_result.update_payload,
         )
 
     def _resolve_backend(
@@ -184,14 +160,8 @@ class LocalTrainingService:
         *,
         training_task: TrainingTask,
     ) -> SharedAdapterTrainingBackend:
-        backend_name = training_task.objective_config.training_backend_name
-        if backend_name == self.backend.backend_name and (
-            self.backend.matches_objective_config(training_task.objective_config)
-        ):
-            return self.backend
-        return build_shared_adapter_training_backend(
-            backend_name,
-            objective_config=training_task.objective_config,
+        return self._build_update_executor().resolve_backend(
+            training_task=training_task
         )
 
     def _resolve_privacy_guard(
@@ -199,25 +169,17 @@ class LocalTrainingService:
         *,
         training_task: TrainingTask,
     ) -> SharedAdapterPrivacyGuard:
-        guard_name = training_task.objective_config.privacy_guard_name
-        if guard_name is None or guard_name == self.privacy_guard.guard_name:
-            return self.privacy_guard
-        return build_shared_adapter_privacy_guard(guard_name)
+        return self._build_update_executor().resolve_privacy_guard(
+            training_task=training_task
+        )
 
-    @staticmethod
-    def _build_client_metrics(
-        *,
-        backend: SharedAdapterTrainingBackend,
-        update: SharedAdapterUpdate,
-        selection_result: PseudoLabelSelectionResult,
-        accepted_example_count: int,
-    ) -> dict[str, float]:
-        client_metrics = {
-            ClientMetricKeys.ACCEPTED_RATIO: selection_result.accepted_ratio,
-            ClientMetricKeys.SELECTED_EXAMPLES: float(accepted_example_count),
-        }
-        client_metrics.update(backend.build_client_metrics(update))
-        return client_metrics
+    def _build_update_executor(self) -> LocalUpdateExecutor:
+        return LocalUpdateExecutor(
+            repository=self.repository,
+            backend=self.backend,
+            privacy_guard=self.privacy_guard,
+            secure_update_codec=self.secure_update_codec,
+        )
 
     def run_task(
         self,

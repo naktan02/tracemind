@@ -1,0 +1,1 @@
+"""PrototypePack entrypoint configs."""

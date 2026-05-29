@@ -1,0 +1,8 @@
+# @package central_ssl_budget
+
+name: main
+output_root: runs
+train_batch_size: 12
+eval_batch_size: 32
+epochs: 5
+max_train_steps: 3000

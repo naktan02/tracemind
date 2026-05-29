@@ -41,6 +41,3 @@ class QueryBufferSelectionService:
             evidences=evidences,
             training_task=training_task,
         )
-
-
-__all__ = ["QueryBufferSelectionService"]

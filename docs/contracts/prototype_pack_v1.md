@@ -26,7 +26,7 @@
 
 v1 원칙:
 
-1. `main-server` 또는 별도 빌드 경로가 생성하고 배포한다.
+1. `main_server` 또는 별도 빌드 경로가 생성하고 배포한다.
 2. 로컬 `agent`는 이를 내려받아 bootstrap/comparison artifact로 사용한다.
 3. `LabeledQuerySet` 원문이나 예시 query는 포함하지 않는다.
 4. 어떤 임베딩 공간에서 생성됐는지 추적 가능한 메타데이터를 반드시 가진다.
@@ -36,7 +36,8 @@ v1 원칙:
 
 1. 라벨된 데이터셋은 prototype build뿐 아니라 supervised classifier seed와
    validation/calibration split source로도 직접 사용한다.
-2. main inference path의 category 판정은 `global classifier`가 맡는다.
+2. main inference path의 category 판정은 agent-local decision layer가 맡고,
+   prototype pack은 evidence/reference artifact다.
 3. `PrototypePack`은 classifier bootstrap, semantic reference, comparison/ablation
    artifact로 남는다.
 
@@ -78,10 +79,10 @@ v1 원칙:
 1. 입력 query 전처리
 2. 필요 시 번역
 3. 임베딩 생성
-4. main path에서는 global classifier로 category evidence 계산
+4. main path에서는 configured shared scoring state나 prototype scorer로 category evidence 계산
 5. comparison/ablation 또는 bootstrap 검증에서는 `PrototypePack` 기준 점수 계산
 
-### 중앙 `main-server`가 하는 일
+### 중앙 `main_server`가 하는 일
 
 1. 현재 활성 `PrototypePack` 버전 관리
 2. agent에 배포

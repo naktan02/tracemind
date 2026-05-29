@@ -14,7 +14,17 @@ from agent.src.api.main import app
 from agent.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
+from agent.src.infrastructure.repositories.shared_adapter_state_repository import (
+    SharedAdapterStateRepository,
+)
 from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
+from agent.src.services.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_peft_classifier_state_payload,
+)
+from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 
 
@@ -42,6 +52,27 @@ def _build_payload() -> PrototypePackPayload:
     )
 
 
+def _peft_state(*, model_revision: str):
+    return make_peft_classifier_state_payload(
+        model_id="model",
+        model_revision=model_revision,
+        backbone={
+            "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "tokenizer_revision": "main",
+            "pooling": "mean",
+            "max_length": 256,
+            "task_prefix": "",
+        },
+        peft_adapter_config={
+            "peft_adapter_name": "lora",
+            "parameters": {"rank": 8},
+        },
+        label_schema=["anxiety", "normal"],
+    )
+
+
 def test_sync_api_reads_current_local_pack(tmp_path: Path) -> None:
     repository = PrototypePackRepository(state_root=tmp_path / "prototype_packs")
     payload = _build_payload()
@@ -52,6 +83,26 @@ def test_sync_api_reads_current_local_pack(tmp_path: Path) -> None:
         runtime_service=PrototypeRuntimeService(repository=repository)
     )
     assert response.prototype_version == payload.prototype_version
+
+
+def test_sync_api_reads_current_local_shared_adapter_state(tmp_path: Path) -> None:
+    repository = SharedAdapterStateRepository(state_root=tmp_path / "shared_states")
+    repository.save_current(
+        manifest=make_embedding_manifest(
+            model_id="model",
+            model_revision="rev_001",
+            auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            artifact_ref="/server/state/rev_001.json",
+        ),
+        state=_peft_state(model_revision="rev_001"),
+    )
+
+    response = sync_api.get_current_local_shared_adapter_state(
+        runtime_service=SharedAdapterRuntimeService(repository=repository)
+    )
+
+    assert response.manifest.model_revision == "rev_001"
+    assert response.state.model_revision == "rev_001"
 
 
 def test_sync_api_maps_remote_errors_to_http_exceptions() -> None:
@@ -72,3 +123,5 @@ def test_sync_router_is_registered_on_agent_app() -> None:
 
     assert "/api/v1/sync/prototypes/current" in route_paths
     assert "/api/v1/sync/prototypes/pull" in route_paths
+    assert "/api/v1/sync/shared-adapters/current" in route_paths
+    assert "/api/v1/sync/shared-adapters/pull" in route_paths

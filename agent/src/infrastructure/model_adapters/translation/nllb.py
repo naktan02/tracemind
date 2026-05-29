@@ -57,8 +57,7 @@ class NllbTranslationAdapter:
         translations: list[str] = []
         for start_index in range(0, len(texts), self.batch_size):
             batch_texts = [
-                str(text)
-                for text in texts[start_index : start_index + self.batch_size]
+                str(text) for text in texts[start_index : start_index + self.batch_size]
             ]
             tokenizer.src_lang = self.source_lang
             encoded = tokenizer(
@@ -68,21 +67,21 @@ class NllbTranslationAdapter:
                 return_tensors="pt",
             )
             encoded = {
-                key: value.to(self._resolved_device)
-                for key, value in encoded.items()
+                key: value.to(self._resolved_device) for key, value in encoded.items()
             }
             generation_config = None
             if getattr(model, "generation_config", None) is not None:
                 generation_config = deepcopy(model.generation_config)
                 generation_config.max_length = None
+                generation_config.max_new_tokens = self.max_new_tokens
+                generation_config.forced_bos_token_id = forced_bos_token_id
             with torch.no_grad():
-                generate_kwargs = {
-                    **encoded,
-                    "forced_bos_token_id": forced_bos_token_id,
-                    "max_new_tokens": self.max_new_tokens,
-                }
+                generate_kwargs = {**encoded}
                 if generation_config is not None:
                     generate_kwargs["generation_config"] = generation_config
+                else:
+                    generate_kwargs["max_new_tokens"] = self.max_new_tokens
+                    generate_kwargs["forced_bos_token_id"] = forced_bos_token_id
                 generated = model.generate(
                     **generate_kwargs,
                 )

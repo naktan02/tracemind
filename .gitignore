@@ -35,6 +35,9 @@ hf_cache/
 *.onnx
 
 data/private/
+data/datasets/
+data/artifacts/
+data/cache/
 data/raw/
 data/interim/
 data/processed/
@@ -51,3 +54,6 @@ tmp/
 node_modules/
 dist/
 npm-debug.log*
+apps/experiment_dashboard/data/*.json
+apps/experiment_dashboard/data/artifacts/
+!apps/experiment_dashboard/data/.gitkeep

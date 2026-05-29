@@ -1,0 +1,264 @@
+"""Federated aggregation method metadata and strategy registry."""
+
+from __future__ import annotations
+
+import importlib
+import pkgutil
+from collections.abc import Iterable, Mapping
+
+from methods.adaptation.implementation_modules import (
+    adaptation_implementation_module_name,
+    adaptation_implementation_module_root,
+)
+from methods.federated.aggregation.base import (
+    AggregationConfigScalar,
+    FederatedAggregationMethodSpec,
+    FederatedAggregationStrategy,
+    FederatedAggregationStrategyFactory,
+)
+
+_AGGREGATION_PACKAGE = "methods.federated.aggregation"
+_ADAPTATION_PACKAGE = "methods.adaptation"
+_CLASSIFICATION_PACKAGE = "methods.classification"
+_SKIPPED_AGGREGATION_MODULE_PARTS = frozenset(
+    {
+        "base",
+        "builtin_loader",
+        "registry",
+    }
+)
+
+_FEDERATED_AGGREGATION_METHOD_REGISTRY: dict[
+    tuple[str, str],
+    FederatedAggregationMethodSpec,
+] = {}
+_FEDERATED_AGGREGATION_STRATEGY_REGISTRY: dict[
+    tuple[str, str],
+    tuple[FederatedAggregationStrategyFactory, FederatedAggregationMethodSpec],
+] = {}
+
+
+def register_federated_aggregation_strategy(
+    *,
+    adapter_kind: str,
+    method_name: str,
+    implementation_module: str,
+    core_function_name: str,
+    aliases: Iterable[str] = (),
+    metadata: Mapping[str, AggregationConfigScalar | None] | None = None,
+    factory: FederatedAggregationStrategyFactory,
+) -> None:
+    """strategy factory 옆에서 methods-owned aggregation 실행 surface를 등록한다."""
+
+    spec = FederatedAggregationMethodSpec(
+        adapter_kind=adapter_kind.strip().lower(),
+        method_name=method_name.strip().lower(),
+        implementation_module=implementation_module,
+        core_function_name=core_function_name,
+        aliases=tuple(alias.strip().lower() for alias in aliases),
+        metadata=dict(metadata or {}),
+    )
+    registered_names = tuple(name for name in (spec.method_name, *spec.aliases) if name)
+    if len(set(registered_names)) != len(registered_names):
+        raise ValueError(
+            "Federated aggregation strategy names must be unique per registration: "
+            f"adapter_kind={spec.adapter_kind}, names={registered_names}"
+        )
+    for name in registered_names:
+        normalized_name = name.strip().lower()
+        registry_key = (spec.adapter_kind, normalized_name)
+        if registry_key in _FEDERATED_AGGREGATION_STRATEGY_REGISTRY:
+            raise ValueError(
+                "Duplicate federated aggregation strategy registration: "
+                f"adapter_kind={spec.adapter_kind}, method_name={normalized_name}"
+            )
+        _FEDERATED_AGGREGATION_STRATEGY_REGISTRY[registry_key] = (factory, spec)
+        _FEDERATED_AGGREGATION_METHOD_REGISTRY[registry_key] = spec
+
+
+def get_federated_aggregation_method_spec(
+    *,
+    adapter_kind: str,
+    method_name: str,
+) -> FederatedAggregationMethodSpec:
+    """payload adapter kind와 method 이름에 맞는 method metadata를 반환한다."""
+
+    normalized_key = (adapter_kind.strip().lower(), method_name.strip().lower())
+    module_method_name = _adapter_method_module_name(
+        normalized_adapter_kind=normalized_key[0],
+        normalized_method_name=normalized_key[1],
+    )
+    _import_adapter_aggregation_module(
+        normalized_adapter_kind=normalized_key[0],
+        normalized_method_name=module_method_name,
+    )
+    spec = _FEDERATED_AGGREGATION_METHOD_REGISTRY.get(normalized_key)
+    if spec is None:
+        raise ValueError(
+            "Unsupported federated aggregation method: "
+            f"adapter_kind={adapter_kind}, method_name={method_name}"
+        )
+    return spec
+
+
+def build_federated_aggregation_strategy(
+    *,
+    adapter_kind: str,
+    method_name: str,
+    overrides: Mapping[str, AggregationConfigScalar] | None = None,
+) -> FederatedAggregationStrategy:
+    """payload adapter kind와 aggregation method 이름으로 strategy를 만든다."""
+
+    normalized_key = (adapter_kind.strip().lower(), method_name.strip().lower())
+    module_method_name = _adapter_method_module_name(
+        normalized_adapter_kind=normalized_key[0],
+        normalized_method_name=normalized_key[1],
+    )
+    _import_adapter_aggregation_module(
+        normalized_adapter_kind=normalized_key[0],
+        normalized_method_name=module_method_name,
+    )
+    registered_strategy = _FEDERATED_AGGREGATION_STRATEGY_REGISTRY.get(normalized_key)
+    if registered_strategy is not None:
+        factory, _spec = registered_strategy
+        return factory(overrides)
+    raise ValueError(
+        "Unsupported federated aggregation strategy: "
+        f"adapter_kind={adapter_kind}, method_name={method_name}"
+    )
+
+
+def list_federated_aggregation_method_specs(
+    *,
+    adapter_kind: str | None = None,
+) -> tuple[FederatedAggregationMethodSpec, ...]:
+    """등록된 method metadata를 중복 없이 반환한다."""
+
+    _import_aggregation_package_modules()
+    _import_adaptation_aggregation_modules()
+    _import_classification_aggregation_modules()
+    normalized_adapter_kind = (
+        adapter_kind.strip().lower() if adapter_kind is not None else None
+    )
+    specs: dict[tuple[str, str], FederatedAggregationMethodSpec] = {}
+    for registered_adapter_kind, _method_name in _FEDERATED_AGGREGATION_METHOD_REGISTRY:
+        if (
+            normalized_adapter_kind is not None
+            and registered_adapter_kind != normalized_adapter_kind
+        ):
+            continue
+        spec = _FEDERATED_AGGREGATION_METHOD_REGISTRY[
+            (registered_adapter_kind, _method_name)
+        ]
+        specs[(spec.adapter_kind, spec.method_name)] = spec
+    return tuple(
+        sorted(specs.values(), key=lambda spec: (spec.adapter_kind, spec.method_name))
+    )
+
+
+def _adapter_method_module_name(
+    *,
+    normalized_adapter_kind: str,
+    normalized_method_name: str,
+) -> str:
+    adapter_prefixed_name = f"{normalized_adapter_kind}_"
+    if normalized_method_name.startswith(adapter_prefixed_name):
+        return normalized_method_name.removeprefix(adapter_prefixed_name)
+    return normalized_method_name
+
+
+def _import_adapter_aggregation_module(
+    *,
+    normalized_adapter_kind: str,
+    normalized_method_name: str,
+) -> None:
+    module_name = adaptation_implementation_module_name(
+        payload_adapter_kind=normalized_adapter_kind,
+        submodule=f"aggregation.{normalized_method_name.replace('-', '_')}",
+    )
+    if _try_import_module(module_name):
+        return
+
+    _import_payload_adapter_aggregation_modules(normalized_adapter_kind)
+
+
+def _import_aggregation_package_modules() -> None:
+    package = importlib.import_module(_AGGREGATION_PACKAGE)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is None:
+        return
+
+    for module_info in pkgutil.walk_packages(
+        package_paths,
+        prefix=f"{_AGGREGATION_PACKAGE}.",
+    ):
+        relative_parts = module_info.name.removeprefix(
+            f"{_AGGREGATION_PACKAGE}."
+        ).split(".")
+        if any(part in _SKIPPED_AGGREGATION_MODULE_PARTS for part in relative_parts):
+            continue
+        importlib.import_module(module_info.name)
+
+
+def _import_adaptation_aggregation_modules() -> None:
+    package = importlib.import_module(_ADAPTATION_PACKAGE)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is None:
+        return
+
+    for module_info in pkgutil.walk_packages(
+        package_paths,
+        prefix=f"{_ADAPTATION_PACKAGE}.",
+    ):
+        relative_parts = module_info.name.removeprefix(f"{_ADAPTATION_PACKAGE}.").split(
+            "."
+        )
+        if len(relative_parts) >= 3 and relative_parts[-2] == "aggregation":
+            importlib.import_module(module_info.name)
+
+
+def _import_classification_aggregation_modules() -> None:
+    package = importlib.import_module(_CLASSIFICATION_PACKAGE)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is None:
+        return
+
+    for module_info in pkgutil.walk_packages(
+        package_paths,
+        prefix=f"{_CLASSIFICATION_PACKAGE}.",
+    ):
+        relative_parts = module_info.name.removeprefix(
+            f"{_CLASSIFICATION_PACKAGE}."
+        ).split(".")
+        if len(relative_parts) >= 3 and relative_parts[-2] == "aggregation":
+            importlib.import_module(module_info.name)
+
+
+def _import_payload_adapter_aggregation_modules(
+    normalized_adapter_kind: str,
+) -> None:
+    module_root = adaptation_implementation_module_root(normalized_adapter_kind)
+    if not _try_import_module(module_root):
+        return
+    package = importlib.import_module(module_root)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is None:
+        return
+
+    for module_info in pkgutil.walk_packages(
+        package_paths,
+        prefix=f"{module_root}.",
+    ):
+        relative_parts = module_info.name.removeprefix(f"{module_root}.").split(".")
+        if len(relative_parts) >= 2 and relative_parts[-2] == "aggregation":
+            importlib.import_module(module_info.name)
+
+
+def _try_import_module(module_name: str) -> bool:
+    try:
+        importlib.import_module(module_name)
+    except ModuleNotFoundError as error:
+        if error.name == module_name or module_name.startswith(f"{error.name}."):
+            return False
+        raise
+    return True

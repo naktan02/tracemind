@@ -1,0 +1,4 @@
+# @package prototype_builder
+
+_target_: methods.prototype.building.single.SinglePrototypeBuildStrategy
+name: single

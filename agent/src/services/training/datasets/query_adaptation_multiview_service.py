@@ -137,13 +137,3 @@ class QueryAdaptationMultiviewService:
                 )
             )
         return QueryAdaptationMultiviewDataset(examples=tuple(examples))
-
-
-__all__ = [
-    "IdentityQueryAdaptationMultiviewAugmenter",
-    "QueryAdaptationMultiviewAugmenter",
-    "QueryAdaptationMultiviewDataset",
-    "QueryAdaptationMultiviewExample",
-    "QueryAdaptationMultiviewService",
-    "QueryAdaptationMultiviewViews",
-]

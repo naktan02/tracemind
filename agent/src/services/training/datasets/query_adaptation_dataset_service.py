@@ -24,9 +24,7 @@ from shared.src.domain.entities.training.pseudo_label_candidate import (
 
 _T = TypeVar("_T")
 _MetadataScalar = str | int | float | bool
-_SUPPORTED_LABEL_POLICY_NAMES = frozenset(
-    {"pseudo_label_only", "prefer_manual_label"}
-)
+_SUPPORTED_LABEL_POLICY_NAMES = frozenset({"pseudo_label_only", "prefer_manual_label"})
 
 
 @dataclass(slots=True)
@@ -73,7 +71,7 @@ class QueryAdaptationDatasetProvenance:
 
 @dataclass(slots=True)
 class QueryAdaptationDatasetExample:
-    """LoRA/query 적응에 넘길 단일 raw-text pseudo-labeled row."""
+    """query-domain 적응에 넘길 단일 raw-text pseudo-labeled row."""
 
     source_row: TrainingExampleSource
     label: str
@@ -116,7 +114,7 @@ class QueryAdaptationDataset:
 
 @dataclass(slots=True)
 class QueryAdaptationDatasetService:
-    """selection 결과를 future LoRA/scaffold 입력셋으로 조립한다."""
+    """selection 결과를 query-domain adaptation 입력셋으로 조립한다."""
 
     config: QueryAdaptationDatasetConfig = field(
         default_factory=QueryAdaptationDatasetConfig
@@ -275,12 +273,3 @@ def _coerce_metadata_scalar(value: object) -> _MetadataScalar:
     if isinstance(value, str):
         return value
     return str(value)
-
-
-__all__ = [
-    "QueryAdaptationDataset",
-    "QueryAdaptationDatasetConfig",
-    "QueryAdaptationDatasetExample",
-    "QueryAdaptationDatasetProvenance",
-    "QueryAdaptationDatasetService",
-]

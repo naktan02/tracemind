@@ -82,12 +82,8 @@ class RuleBasedDecisionPolicy:
                 threshold=threshold,
             )
 
-            if (
-                self._level_rank(level) > self._level_rank(best_level)
-                or (
-                    level == best_level
-                    and (delta, score) > (best_delta, best_score)
-                )
+            if self._level_rank(level) > self._level_rank(best_level) or (
+                level == best_level and (delta, score) > (best_delta, best_score)
             ):
                 best_level = level
                 best_category = category
@@ -162,7 +158,11 @@ class RuleBasedDecisionPolicy:
         current: DecisionLevel,
         maximum: DecisionLevel,
     ) -> DecisionLevel:
-        return current if self._level_rank(current) <= self._level_rank(maximum) else maximum
+        return (
+            current
+            if self._level_rank(current) <= self._level_rank(maximum)
+            else maximum
+        )
 
     @staticmethod
     def _confidence_from_level(level: DecisionLevel) -> float:
@@ -187,8 +187,14 @@ class RuleBasedDecisionPolicy:
         if category is None:
             if warmup_complete:
                 return "No category crossed the personalized decision threshold."
-            return "Warm-up is not complete and no category crossed the watch threshold."
-        warmup_note = "" if warmup_complete else " Warm-up is incomplete, so escalation is capped."
+            return (
+                "Warm-up is not complete and no category crossed the watch threshold."
+            )
+        warmup_note = (
+            ""
+            if warmup_complete
+            else " Warm-up is incomplete, so escalation is capped."
+        )
         return (
             f"{category} reached {level.value} with score={score:.3f}, "
             f"delta={delta:.3f}, persistence={persistence:.0f}.{warmup_note}"

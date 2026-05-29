@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, Sequence
 
@@ -12,12 +12,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-from .diagonal_scale_defaults import (
-    AggregationConfigScalar,
-    DiagonalScaleFedAvgAggregationConfig,
-)
-
-AggregationConfig = DiagonalScaleFedAvgAggregationConfig
+AggregationConfigScalar = str | int | float | bool
 
 
 @dataclass(slots=True)
@@ -27,6 +22,7 @@ class AggregationResult:
     next_state: SharedAdapterState
     aggregated_metrics: dict[str, float]
     update_count: int
+    aggregated_artifacts: dict[str, dict[str, object]] = field(default_factory=dict)
 
 
 class SharedAdapterAggregationBackend(Protocol):
@@ -42,7 +38,7 @@ class SharedAdapterAggregationBackend(Protocol):
         next_model_revision: str,
         aggregated_at: datetime,
     ) -> AggregationResult:
-        """같은 adapter family의 update들을 새 전역 상태로 합친다."""
+        """같은 payload adapter의 update들을 새 전역 상태로 합친다."""
 
 
 AggregationBackendFactory = Callable[

@@ -1,0 +1,4 @@
+# @package peer_context_policy
+
+name: fixed_probe_output_knn
+parameter_source: method_descriptor

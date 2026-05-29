@@ -1,0 +1,23 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/embedding_adapter: mxbai
+  - /execution_context/runtime_env: gpu_online
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+prototype_pack: ""
+eval_sets:
+  validation: ${dataset.validation_jsonl}
+  test: ${dataset.test_labeled_jsonl}
+output_dir: runs/prototype_pack_eval
+respect_pack_embedding_identity: true
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

@@ -14,7 +14,7 @@ from agent.src.services.training.selection.query_buffer_selection_diagnostics im
 from agent.src.services.training.selection.query_buffer_selection_service import (
     QueryBufferSelectionService,
 )
-from scripts.query_buffer_selection_diagnostics import (
+from scripts.support.reporting.query_buffer_selection_diagnostics import (
     write_query_buffer_selection_diagnostics,
 )
 from shared.src.contracts.training_contracts import (
@@ -39,7 +39,7 @@ def _build_task() -> TrainingTask:
         learning_rate=1e-2,
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
-            loss="diagonal_scale_heuristic",
+            loss="peft_classifier_trainer",
             confidence_threshold=0.75,
             margin_threshold=0.02,
             pseudo_label_algorithm_name="top1_confidence_only",

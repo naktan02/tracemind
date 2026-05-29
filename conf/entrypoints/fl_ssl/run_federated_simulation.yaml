@@ -1,0 +1,132 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/query_data_source: default
+  - /execution_context/embedding_adapter: mxbai
+  - /execution_context/runtime_env: gpu_local
+  - /execution_context/simulation_diagnostics: default
+  - /execution_context/security_policy: plaintext
+  # model_architecture: backbone, peft, update_family, initial_checkpoint
+  - /strategy_axes/model_architecture/backbone: mxbai_encoder
+  - /strategy_axes/model_architecture/peft: default
+  - /strategy_axes/model_architecture/update_family: peft_text_encoder
+  - /run_controls/fl_ssl/budget: smoke
+  - /run_controls/fl_ssl/safety_and_sweeps: default
+  # fl_topology: FL split/topology와 공통 round capability 축
+  - /strategy_axes/fl_topology/shard_policy: label_dominant
+  - /strategy_axes/fl_topology/labeled_exposure: shared_client_seed
+  - /strategy_axes/fl_topology/client_participation: all_clients
+  - /strategy_axes/fl_topology/supervision_regime: client_labeled_and_unlabeled
+  - /strategy_axes/fl_topology/server_step: none
+  - /strategy_axes/fl_topology/server_update: fedavg_merged_delta
+  - /strategy_axes/fl_topology/peer_context: none
+  - /strategy_axes/fl_topology/update_partition: unified
+  - /strategy_axes/fl_topology/aggregation_weight: example_count
+  # ssl_objective: SSL 학습 목적 함수 축
+  - /strategy_axes/ssl_objective/consistency_method: fixmatch_usb_v1
+  - /strategy_axes/ssl_objective/multiview_source: materialized_rows
+  - /strategy_axes/ssl_objective/local_ssl_policy: query_ssl_method
+  - /strategy_axes/ssl_objective/local_update_profile: peft_pseudo_label_v1
+  # fssl_method: FL+SSL 결합 방법론
+  - /strategy_axes/fssl_method: null
+  - _self_
+  - /strategy_axes/fl_topology/materialized_split: null
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+
+train_jsonl: ${dataset.train_jsonl}
+validation_jsonl: ${dataset.validation_jsonl}
+test_jsonl: ${dataset.test_jsonl}
+published_model_id: tracemind-embed-sim
+seed: 42
+
+fl_data:
+  # 기본값은 기존 smoke/debug용 runtime split이다.
+  # 논문 비교는 materialize_fl_client_split 산출 manifest를 지정해서 고정 split을 쓴다.
+  source_mode: runtime_split_from_train
+  split_manifest: null
+
+fl_method:
+  # 상위 method가 client objective/server policy를 소유한다.
+  # composition_mode=manual이면 lower axes는 compose된 leaf 값에서 자동 파생된다.
+  composition_mode: manual
+
+client_pool_split:
+  labeled_ratio: 0.1
+  unlabeled_ratio: 0.9
+
+train_batch_size: ${training_task.batch_size}
+query_ssl_strong_view_policy: first_aug
+
+# `local_update_profile`은 agent local SSL update 정책을 소유한다.
+# server round의 update family는 strategy_axes/model_architecture/update_family가
+# 소유하고, v1 shared payload kind는 payload_adapter_kind로만 노출한다.
+round_runtime:
+  aggregation_backend_name: fedavg
+training_task:
+  local_epochs: 1
+  batch_size: 12
+  learning_rate: 0.0001
+  max_steps: 20
+  min_required_examples: ${federated_run_budget.min_required_examples}
+  gradient_clip_norm: 0.5
+  objective:
+    algorithm_profile_name: ${local_update_profile.algorithm_profile_name}
+    training_backend_name: ${local_update_profile.training_backend_name}
+    confidence_threshold: ${local_update_profile.confidence_threshold}
+    margin_threshold: ${local_update_profile.margin_threshold}
+    example_generation_backend_name: ${local_update_profile.example_generation_backend_name}
+    evidence_backend_name: ${local_update_profile.evidence_backend_name}
+    scorer_backend_name: ${local_update_profile.scorer_backend_name}
+    score_policy_name: ${local_update_profile.score_policy_name}
+    score_top_k: ${local_update_profile.score_top_k}
+    pseudo_label_algorithm_name: ${local_update_profile.pseudo_label_algorithm_name}
+    acceptance_policy_name: ${local_update_profile.acceptance_policy_name}
+    privacy_guard_name: ${local_update_profile.privacy_guard_name}
+    # Contract 경계에서는 dotted flat key로 정규화된다. YAML은 사람이 읽기 쉽도록
+    # owner scope별로 묶는다.
+    evidence_backend:
+      temperature: ${local_update_profile.evidence_backend_temperature}
+    query_ssl:
+      method_name: ${query_ssl_method.name}
+      algorithm_name: ${query_ssl_method.algorithm_name}
+      strong_view_policy: ${query_ssl_strong_view_policy}
+      unlabeled_batch_size: ${query_ssl_method.unlabeled_batch_size}
+  selection_policy:
+    max_examples: ${federated_run_budget.max_examples}
+
+validation:
+  similarity_name: cosine
+  scorer_backend_name: ${local_update_profile.validation_scorer_backend_name}
+  score_policy_name: ${local_update_profile.validation_score_policy_name}
+  score_top_k: ${local_update_profile.validation_score_top_k}
+  confidence_threshold: ${training_task.objective.confidence_threshold}
+  margin_threshold: ${training_task.objective.margin_threshold}
+
+report:
+  schema_version: federated_simulation_report.v1
+  track: fl_ssl_main_comparison
+  table_role: main_comparison
+  labeled_ratio: ${client_pool_split.labeled_ratio}
+  unlabeled_ratio: ${client_pool_split.unlabeled_ratio}
+  seed_count: 3
+  primary_metrics:
+    - macro_f1
+    - worst_client_macro_f1
+  secondary_metrics:
+    - loss
+    - weighted_f1
+    - balanced_accuracy
+    - worst_category_f1_value
+    - expected_calibration_error
+    - max_calibration_error
+    - communication_cost
+    - per_client_macro_f1_variance
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

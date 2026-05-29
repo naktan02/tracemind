@@ -183,6 +183,7 @@ def ingest_status(pipeline: PipelineDep) -> dict:
 
 def _new_id() -> str:
     import uuid
+
     return str(uuid.uuid4())
 
 

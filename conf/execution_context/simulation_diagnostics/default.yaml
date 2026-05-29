@@ -1,0 +1,33 @@
+# @package _global_
+
+diagnostics:
+  dump_dir_name: selection_dumps
+
+artifact_persistence:
+  # Simulation에서는 server-owned aggregation artifact가 canonical update source다.
+  # agent-local update 사본은 디버그용이므로 기본 저장하지 않는다.
+  persist_agent_local_updates: false
+
+diagnostic_view:
+  # 성능 평가는 validation set으로 수행한다. 이 view는 client-local pseudo-label
+  # diagnostics만 위한 작은 deterministic subset이다.
+  enabled: true
+  selection_policy: deterministic_random
+  max_rows: 512
+  seed_offset: 1309
+
+peer_probe:
+  # FedMatch fixed Gaussian probe에 대응하는 TraceMind fixed text probe다.
+  # 전체 validation set을 매 round/client마다 평가하지 않고 작은 deterministic subset만 쓴다.
+  enabled: true
+  selection_policy: label_balanced
+  max_rows: 128
+  seed_offset: 907
+
+final_projection:
+  # 학습/집계/최종 metric 이후에만 실행되는 진단 artifact다.
+  enabled: true
+  dataset_names:
+    - validation
+    - test
+  fail_on_error: false

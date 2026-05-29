@@ -1,0 +1,5 @@
+# @package round_runtime
+
+update_family_name: linear_head
+payload_adapter_kind: classifier_head
+initial_state_builder: methods.classification.linear_head.bootstrap.build_zero_classifier_head_state

@@ -7,13 +7,13 @@ from dataclasses import dataclass, field
 from agent.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
+from methods.prototype.projections import (
+    project_category_centroids_by_largest_cluster,
+    require_single_category_centroids,
+)
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     extract_category_prototypes,
-)
-from shared.src.services.prototypes.projections import (
-    project_category_centroids_by_largest_cluster,
-    require_single_category_centroids,
 )
 
 

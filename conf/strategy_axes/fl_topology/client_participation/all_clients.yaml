@@ -1,0 +1,6 @@
+# @package client_participation_policy
+
+name: all_clients
+fraction: null
+count: null
+min_clients: 1

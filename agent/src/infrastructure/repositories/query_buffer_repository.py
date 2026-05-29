@@ -267,17 +267,7 @@ def _row_to_record(row: tuple[Any, ...]) -> QueryBufferRecord:
         confidence=None if confidence is None else float(confidence),
         margin=None if margin is None else float(margin),
         runner_up_label=None if runner_up_label is None else str(runner_up_label),
-        runner_up_score=(
-            None if runner_up_score is None else float(runner_up_score)
-        ),
+        runner_up_score=(None if runner_up_score is None else float(runner_up_score)),
         confidence_kind=str(confidence_kind),
         metadata=json.loads(str(metadata_json)),
     )
-
-
-__all__ = [
-    "QUERY_BUFFER_RECORD_V1",
-    "QueryBufferRecord",
-    "QueryBufferRepository",
-    "build_query_buffer_record",
-]
