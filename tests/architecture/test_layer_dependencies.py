@@ -637,6 +637,41 @@ def test_legacy_fl_strategy_axis_group_is_removed() -> None:
     )
 
 
+def test_central_ssl_input_mode_strategy_axis_group_is_removed() -> None:
+    legacy_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "input_mode"
+
+    assert not legacy_root.exists(), (
+        "central SSL은 explicit consistency entrypoint가 workflow를 고르고, "
+        "input_mode를 public strategy axis로 다시 열지 않는다. "
+        "pseudo-label replay나 teacher bootstrap은 내부 helper/workflow로만 둔다."
+    )
+
+
+def test_central_ssl_entrypoint_does_not_compose_input_mode_strategy_axis() -> None:
+    path = (
+        CONF_SRC
+        / "entrypoints"
+        / "central"
+        / "ssl_control"
+        / "run_peft_ssl_control.yaml"
+    )
+    source = path.read_text(encoding="utf-8")
+
+    assert "strategy_axes/ssl_objective/input_mode" not in source, (
+        "central SSL root entrypoint는 consistency method와 scaffold 조합만 소유한다. "
+        "input_mode는 workflow/helper 내부 값으로 격리한다."
+    )
+
+
+def test_central_ssl_teacher_provider_strategy_axis_group_is_removed() -> None:
+    legacy_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "teacher_provider"
+
+    assert not legacy_root.exists(), (
+        "teacher source는 독립 teacher_provider strategy axis가 아니다. "
+        "중앙 SSL에서는 workflow 내부 compatibility 설정으로만 남긴다."
+    )
+
+
 def test_fl_local_ssl_policy_does_not_expose_method_local_fedmatch_leaf() -> None:
     forbidden_path = (
         CONF_SRC
@@ -648,8 +683,8 @@ def test_fl_local_ssl_policy_does_not_expose_method_local_fedmatch_leaf() -> Non
 
     assert not forbidden_path.exists(), (
         "fedmatch_agreement는 FedMatch method-local objective다. generic "
-        "local_ssl_policy Hydra leaf로 선택하지 말고 method_descriptor=fedmatch의 "
-        "method config에서 파생한다."
+        "local_ssl_policy Hydra leaf로 선택하지 말고 FedMatch public variant "
+        "descriptor에서 파생한다."
     )
 
 
@@ -665,7 +700,7 @@ def test_fl_server_update_policy_does_not_expose_method_local_fedmatch_leaf() ->
     assert not forbidden_path.exists(), (
         "fedmatch_partitioned는 FedMatch method-local server update policy다. "
         "generic server_update_policy Hydra leaf로 선택하지 말고 "
-        "method_descriptor=fedmatch의 method config에서 파생한다."
+        "FedMatch public variant descriptor에서 파생한다."
     )
 
 
@@ -2323,13 +2358,20 @@ def test_test_only_federated_ssl_fixture_stays_family_contract_agnostic() -> Non
 def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
     """method descriptor YAML만 먼저 생기는 placeholder config를 막는다."""
 
+    from methods.federated_ssl.method_module_resolution import (
+        resolve_federated_ssl_method_family_name,
+    )
+    from methods.federated_ssl.registry import (
+        resolve_federated_ssl_method_descriptor,
+        resolve_federated_ssl_method_descriptor_module,
+    )
+
     violations: list[str] = []
     method_package_root = METHODS_SRC / "federated_ssl"
     for config_path in sorted(CONF_FL_METHOD_DESCRIPTOR_SRC.glob("*.yaml")):
         method_name = config_path.stem
         payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
         declared_name = payload.get("name")
-        method_dir = method_package_root / method_name
 
         if declared_name != method_name:
             violations.append(
@@ -2388,6 +2430,27 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
                         "round_state_exchange YAML: "
                         f"{duplicated_round_state_keys}"
                     )
+        try:
+            descriptor = resolve_federated_ssl_method_descriptor(method_name)
+            descriptor_module = resolve_federated_ssl_method_descriptor_module(
+                method_name
+            )
+            implementation_family_name = resolve_federated_ssl_method_family_name(
+                method_name
+            )
+        except (ModuleNotFoundError, NotImplementedError, ValueError) as exc:
+            violations.append(
+                f"{_relative_repo_path(config_path)}: method descriptor is not wired: "
+                f"{exc}"
+            )
+            continue
+
+        if descriptor.name != method_name:
+            violations.append(
+                f"{_relative_repo_path(config_path)}: resolved descriptor name "
+                f"{descriptor.name!r} must match config method name {method_name!r}"
+            )
+        method_dir = method_package_root / implementation_family_name
         if not method_dir.is_dir():
             violations.append(
                 f"{_relative_repo_path(config_path)}: missing "
@@ -2407,7 +2470,16 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
                     f"{_relative_repo_path(config_path)}: missing "
                     f"{_relative_repo_path(required_file)}"
                 )
-        registry_wiring_shim = method_dir / f"{method_name}.py"
+        descriptor_path = Path(descriptor_module.__file__ or "")
+        if descriptor_path.name != "descriptor.py" or method_dir not in (
+            descriptor_path.parents
+        ):
+            violations.append(
+                f"{_relative_repo_path(config_path)}: descriptor module must be "
+                f"owned by {_relative_repo_path(method_dir)}; got "
+                f"{_relative_repo_path(descriptor_path)}"
+            )
+        registry_wiring_shim = method_dir / f"{implementation_family_name}.py"
         if registry_wiring_shim.exists():
             violations.append(
                 f"{_relative_repo_path(config_path)}: remove pass-through "
@@ -2504,6 +2576,26 @@ def test_fedmatch_descriptor_does_not_keep_recipe_pass_through() -> None:
         "FedMatch recipe metadata는 descriptor.py에서 바로 읽는다. descriptor.recipe를 "
         "다시 노출하는 pass-through recipe.py는 만들지 않는다.\n"
         f"recipe path={_relative_repo_path(recipe_path)}"
+    )
+
+
+def test_fedmatch_variants_do_not_become_sibling_method_packages() -> None:
+    variant_roots = (
+        METHODS_FEDERATED_SSL_SRC / "fedmatch_labels_at_client",
+        METHODS_FEDERATED_SSL_SRC / "fedmatch_labels_at_server",
+    )
+    existing_files = [
+        _relative_repo_path(path)
+        for root in variant_roots
+        if root.exists()
+        for path in _iter_python_files(root)
+    ]
+
+    assert not existing_files, (
+        "FedMatch labels-at-client/server는 public fssl_method leaf 이름이지 "
+        "독립 implementation family가 아니다. Python descriptor와 policy 의미는 "
+        "methods/federated_ssl/fedmatch/ 안에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in existing_files)}"
     )
 
 

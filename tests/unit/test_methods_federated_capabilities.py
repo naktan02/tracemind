@@ -469,6 +469,35 @@ def test_fedmatch_labels_at_client_helper_provider_requirement_reuses_family() -
     )
 
 
+def test_fedmatch_labels_at_server_server_seed_parameters_reuse_family() -> None:
+    first_round = resolve_method_supervised_seed_step_parameters(
+        method_name="fedmatch_labels_at_server",
+        effective_parameters={
+            "server_pretrain_epochs": 2,
+            "server_epochs": 1,
+            "server_batch_size": 3,
+        },
+        default_epochs=9,
+        default_batch_size=8,
+        round_index=1,
+    )
+    later_round = resolve_method_supervised_seed_step_parameters(
+        method_name="fedmatch_labels_at_server",
+        effective_parameters={
+            "server_pretrain_epochs": 2,
+            "server_epochs": 1,
+            "server_batch_size": 3,
+        },
+        default_epochs=9,
+        default_batch_size=8,
+        round_index=2,
+    )
+
+    assert first_round.epochs == 2
+    assert later_round.epochs == 1
+    assert first_round.batch_size == 3
+
+
 def test_manual_partitioned_server_update_waits_for_partition_producer() -> None:
     plan = FederatedSslCapabilityPlan.from_mappings(
         client_participation_policy={"name": "all_clients"},

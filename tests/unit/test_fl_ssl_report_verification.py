@@ -630,10 +630,10 @@ def test_verify_fedmatch_partitioned_report_requires_capabilities_and_partition_
             client_count=2,
             completed_rounds=1,
             round_budget=1,
-            fl_method_name="fedmatch",
-            fl_method_descriptor_name="fedmatch",
+            fl_method_name="fedmatch_labels_at_client",
+            fl_method_descriptor_name="fedmatch_labels_at_client",
             fl_method_execution_role="method_owned",
-            federated_ssl_method="fedmatch",
+            federated_ssl_method="fedmatch_labels_at_client",
             ssl_method_implementation_status="partitioned_trainable_state_slice_v1",
             ssl_method_scenario="labels-at-client",
             ssl_method_local_budget_policy="iteration_capped",
@@ -650,10 +650,10 @@ def test_verify_fedmatch_partitioned_report_requires_capabilities_and_partition_
     result = verify_federated_simulation_report_path(
         report_path,
         FederatedReportExpectation(
-            expected_fl_method_name="fedmatch",
-            expected_fl_method_descriptor_name="fedmatch",
+            expected_fl_method_name="fedmatch_labels_at_client",
+            expected_fl_method_descriptor_name="fedmatch_labels_at_client",
             expected_fl_method_execution_role="method_owned",
-            expected_federated_ssl_method="fedmatch",
+            expected_federated_ssl_method="fedmatch_labels_at_client",
             expected_ssl_method_implementation_status=(
                 "partitioned_trainable_state_slice_v1"
             ),
@@ -684,10 +684,10 @@ def test_verify_fedmatch_partitioned_report_rejects_primary_only_update_refs(
             client_count=1,
             completed_rounds=1,
             round_budget=1,
-            fl_method_name="fedmatch",
-            fl_method_descriptor_name="fedmatch",
+            fl_method_name="fedmatch_labels_at_client",
+            fl_method_descriptor_name="fedmatch_labels_at_client",
             fl_method_execution_role="method_owned",
-            federated_ssl_method="fedmatch",
+            federated_ssl_method="fedmatch_labels_at_client",
             server_update_policy="fedmatch_partitioned",
             update_partition_policy="partitioned",
             aggregation_weight_policy="uniform",
@@ -700,10 +700,10 @@ def test_verify_fedmatch_partitioned_report_rejects_primary_only_update_refs(
     result = verify_federated_simulation_report_path(
         report_path,
         FederatedReportExpectation(
-            expected_fl_method_name="fedmatch",
-            expected_fl_method_descriptor_name="fedmatch",
+            expected_fl_method_name="fedmatch_labels_at_client",
+            expected_fl_method_descriptor_name="fedmatch_labels_at_client",
             expected_fl_method_execution_role="method_owned",
-            expected_federated_ssl_method="fedmatch",
+            expected_federated_ssl_method="fedmatch_labels_at_client",
             expected_server_update_policy="fedmatch_partitioned",
             expected_update_partition_policy="partitioned",
             expected_aggregation_weight_policy="uniform",
@@ -730,18 +730,18 @@ def test_verify_fedmatch_partitioned_report_flags_capability_drift() -> None:
             client_count=2,
             completed_rounds=1,
             round_budget=1,
-            fl_method_name="fedmatch",
-            fl_method_descriptor_name="fedmatch",
+            fl_method_name="fedmatch_labels_at_client",
+            fl_method_descriptor_name="fedmatch_labels_at_client",
             fl_method_execution_role="manual_baseline",
-            federated_ssl_method="fedmatch",
+            federated_ssl_method="fedmatch_labels_at_client",
             server_update_policy="fedavg_merged_delta",
             update_partition_policy="unified",
         ),
         expectation=FederatedReportExpectation(
-            expected_fl_method_name="fedmatch",
-            expected_fl_method_descriptor_name="fedmatch",
+            expected_fl_method_name="fedmatch_labels_at_client",
+            expected_fl_method_descriptor_name="fedmatch_labels_at_client",
             expected_fl_method_execution_role="method_owned",
-            expected_federated_ssl_method="fedmatch",
+            expected_federated_ssl_method="fedmatch_labels_at_client",
             expected_server_update_policy="fedmatch_partitioned",
             expected_update_partition_policy="partitioned",
         ),
@@ -769,17 +769,17 @@ def test_verify_fedmatch_partitioned_report_flags_ssl_method_protocol_drift() ->
             client_count=2,
             completed_rounds=1,
             round_budget=1,
-            fl_method_name="fedmatch",
-            fl_method_descriptor_name="fedmatch",
+            fl_method_name="fedmatch_labels_at_client",
+            fl_method_descriptor_name="fedmatch_labels_at_client",
             fl_method_execution_role="method_owned",
-            federated_ssl_method="fedmatch",
+            federated_ssl_method="fedmatch_labels_at_client",
             ssl_method_implementation_status="metadata_only",
             ssl_method_scenario="labels-at-server",
             ssl_method_local_budget_policy="original_method",
             ssl_method_parameter_override_status="ablation",
         ),
         expectation=FederatedReportExpectation(
-            expected_federated_ssl_method="fedmatch",
+            expected_federated_ssl_method="fedmatch_labels_at_client",
             expected_ssl_method_implementation_status=(
                 "partitioned_trainable_state_slice_v1"
             ),
@@ -814,7 +814,7 @@ def test_verify_fedmatch_report_accepts_artifact_sparse_communication_cost() -> 
             client_count=2,
             completed_rounds=2,
             round_budget=2,
-            federated_ssl_method="fedmatch",
+            federated_ssl_method="fedmatch_labels_at_client",
         )
     )
 
@@ -822,7 +822,7 @@ def test_verify_fedmatch_report_accepts_artifact_sparse_communication_cost() -> 
         artifact="report.json",
         payload=payload,
         expectation=FederatedReportExpectation(
-            expected_federated_ssl_method="fedmatch",
+            expected_federated_ssl_method="fedmatch_labels_at_client",
             expected_communication_estimate_schema_version=(
                 communication_cost_estimates.COMMUNICATION_ESTIMATE_SCHEMA_VERSION
             ),
@@ -839,7 +839,7 @@ def test_verify_fedmatch_report_flags_missing_artifact_sparse_cost_fields() -> N
             client_count=2,
             completed_rounds=2,
             round_budget=2,
-            federated_ssl_method="fedmatch",
+            federated_ssl_method="fedmatch_labels_at_client",
         ),
         include_sparse_estimate=False,
         mirror_secondary=False,
@@ -849,7 +849,7 @@ def test_verify_fedmatch_report_flags_missing_artifact_sparse_cost_fields() -> N
         artifact="report.json",
         payload=payload,
         expectation=FederatedReportExpectation(
-            expected_federated_ssl_method="fedmatch",
+            expected_federated_ssl_method="fedmatch_labels_at_client",
             expected_communication_estimate_schema_version=(
                 communication_cost_estimates.COMMUNICATION_ESTIMATE_SCHEMA_VERSION
             ),
@@ -1266,10 +1266,10 @@ def test_verify_artifact_cli_accepts_federated_ssl_method_descriptor(
                 client_count=1,
                 completed_rounds=1,
                 round_budget=1,
-                fl_method_name="fedmatch",
-                fl_method_descriptor_name="fedmatch",
+                fl_method_name="fedmatch_labels_at_client",
+                fl_method_descriptor_name="fedmatch_labels_at_client",
                 fl_method_execution_role="method_owned",
-                federated_ssl_method="fedmatch",
+                federated_ssl_method="fedmatch_labels_at_client",
                 ssl_method_implementation_status=(
                     "partitioned_trainable_state_slice_v1"
                 ),
@@ -1286,13 +1286,13 @@ def test_verify_artifact_cli_accepts_federated_ssl_method_descriptor(
             "--report",
             str(report_path),
             "--expected-fl-method-name",
-            "fedmatch",
+            "fedmatch_labels_at_client",
             "--expected-fl-method-descriptor-name",
-            "fedmatch",
+            "fedmatch_labels_at_client",
             "--expected-fl-method-execution-role",
             "method_owned",
             "--expected-federated-ssl-method",
-            "fedmatch",
+            "fedmatch_labels_at_client",
             "--expected-ssl-method-implementation-status",
             "partitioned_trainable_state_slice_v1",
             "--expected-ssl-method-scenario",
@@ -1320,10 +1320,10 @@ def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
                 client_count=2,
                 completed_rounds=2,
                 round_budget=2,
-                fl_method_name="fedmatch",
-                fl_method_descriptor_name="fedmatch",
+                fl_method_name="fedmatch_labels_at_client",
+                fl_method_descriptor_name="fedmatch_labels_at_client",
                 fl_method_execution_role="method_owned",
-                federated_ssl_method="fedmatch",
+                federated_ssl_method="fedmatch_labels_at_client",
                 ssl_method_implementation_status=(
                     "partitioned_trainable_state_slice_v1"
                 ),
@@ -1368,10 +1368,14 @@ def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
                             "expected_round_record_count": 2,
                             "expected_labeled_exposure_policy": "shared_client_seed",
                             "expected_run_control_budget_name": "reduced",
-                            "expected_fl_method_name": "fedmatch",
-                            "expected_fl_method_descriptor_name": "fedmatch",
+                            "expected_fl_method_name": "fedmatch_labels_at_client",
+                            "expected_fl_method_descriptor_name": (
+                                "fedmatch_labels_at_client"
+                            ),
                             "expected_fl_method_execution_role": "method_owned",
-                            "expected_federated_ssl_method": "fedmatch",
+                            "expected_federated_ssl_method": (
+                                "fedmatch_labels_at_client"
+                            ),
                             "expected_ssl_method_implementation_status": (
                                 "partitioned_trainable_state_slice_v1"
                             ),

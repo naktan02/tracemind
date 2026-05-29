@@ -42,10 +42,20 @@ from methods.federated_ssl.capability_plan import (
 from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_ORIGINAL_COMMIT,
     FEDMATCH_ORIGINAL_REPOSITORY,
+    FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
+    FEDMATCH_SCENARIO_LABELS_AT_SERVER,
 )
 from shared.src.contracts.common_types import TrainingTaskType
 
 FEDMATCH_METHOD_NAME = "fedmatch"
+FEDMATCH_LABELS_AT_CLIENT_METHOD_NAME = "fedmatch_labels_at_client"
+FEDMATCH_LABELS_AT_SERVER_METHOD_NAME = "fedmatch_labels_at_server"
+METHOD_IMPLEMENTATION_FAMILY = FEDMATCH_METHOD_NAME
+PUBLIC_METHOD_OWNED_CANONICAL = False
+METHOD_OWNED_VARIANT_RECOMMENDATIONS = (
+    FEDMATCH_LABELS_AT_CLIENT_METHOD_NAME,
+    FEDMATCH_LABELS_AT_SERVER_METHOD_NAME,
+)
 
 descriptor = FederatedSslMethodDescriptor(
     name=FEDMATCH_METHOD_NAME,
@@ -163,3 +173,131 @@ NOTES = (
     "wired in the simulation slice with artifact communication estimates, not "
     "measured network packets.",
 )
+
+
+labels_at_client_descriptor = FederatedSslMethodDescriptor(
+    name=FEDMATCH_LABELS_AT_CLIENT_METHOD_NAME,
+    display_name="FedMatch (labels-at-client)",
+    implementation_status=descriptor.implementation_status,
+    method_role=descriptor.method_role,
+    required_views=descriptor.required_views,
+    local_step=descriptor.local_step,
+    server_step=descriptor.server_step,
+    round_state_exchange=descriptor.round_state_exchange,
+    runtime_capabilities=descriptor.runtime_capabilities,
+    recipe=FederatedSslMethodRecipe(
+        method_name=FEDMATCH_LABELS_AT_CLIENT_METHOD_NAME,
+        supported_local_update_profile_names=(
+            descriptor.recipe.supported_local_update_profile_names
+        ),
+        supported_runtime_pairs=descriptor.recipe.supported_runtime_pairs,
+    ),
+    required_capabilities=FederatedSslRequiredCapabilities(
+        labeled_exposure_policy_names=(LABELED_EXPOSURE_SHARED_CLIENT_SEED,),
+        local_supervision_regime_names=(
+            LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
+        ),
+        server_step_policy_names=(SERVER_STEP_NONE,),
+        server_update_policy_names=(SERVER_UPDATE_FEDMATCH_PARTITIONED,),
+        peer_context_policy_names=(PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,),
+        update_partition_policy_names=(UPDATE_PARTITION_PARTITIONED,),
+        local_ssl_policy_names=(LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,),
+        aggregation_weight_policy_names=(AGGREGATION_WEIGHT_UNIFORM,),
+        query_multiview_source_names=(QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS,),
+        client_participation_policy_names=(
+            PARTICIPATION_ALL_CLIENTS,
+            PARTICIPATION_FRACTION_RANDOM,
+        ),
+    ),
+)
+
+labels_at_server_descriptor = FederatedSslMethodDescriptor(
+    name=FEDMATCH_LABELS_AT_SERVER_METHOD_NAME,
+    display_name="FedMatch (labels-at-server)",
+    implementation_status=descriptor.implementation_status,
+    method_role=descriptor.method_role,
+    required_views=descriptor.required_views,
+    local_step=descriptor.local_step,
+    server_step=descriptor.server_step,
+    round_state_exchange=descriptor.round_state_exchange,
+    runtime_capabilities=descriptor.runtime_capabilities,
+    recipe=FederatedSslMethodRecipe(
+        method_name=FEDMATCH_LABELS_AT_SERVER_METHOD_NAME,
+        supported_local_update_profile_names=(
+            descriptor.recipe.supported_local_update_profile_names
+        ),
+        supported_runtime_pairs=descriptor.recipe.supported_runtime_pairs,
+    ),
+    required_capabilities=FederatedSslRequiredCapabilities(
+        labeled_exposure_policy_names=(LABELED_EXPOSURE_SERVER_ONLY_SEED,),
+        local_supervision_regime_names=(LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,),
+        server_step_policy_names=(SERVER_STEP_SUPERVISED_SEED,),
+        server_update_policy_names=(SERVER_UPDATE_FEDMATCH_PARTITIONED,),
+        peer_context_policy_names=(PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,),
+        update_partition_policy_names=(UPDATE_PARTITION_PARTITIONED,),
+        local_ssl_policy_names=(LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,),
+        aggregation_weight_policy_names=(AGGREGATION_WEIGHT_UNIFORM,),
+        query_multiview_source_names=(QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS,),
+        client_participation_policy_names=(
+            PARTICIPATION_ALL_CLIENTS,
+            PARTICIPATION_FRACTION_RANDOM,
+        ),
+    ),
+)
+
+descriptors = (
+    descriptor,
+    labels_at_client_descriptor,
+    labels_at_server_descriptor,
+)
+
+METHOD_CONFIG_SURFACE_BY_METHOD_NAME = {
+    FEDMATCH_LABELS_AT_CLIENT_METHOD_NAME: {
+        "PUBLIC_METHOD_OWNED_CANONICAL": True,
+        "DEFAULT_LOCAL_SSL_POLICY_NAME": LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+        "DEFAULT_SERVER_UPDATE_POLICY_NAME": SERVER_UPDATE_FEDMATCH_PARTITIONED,
+        "DEFAULT_SERVER_STEP_POLICY_NAME": SERVER_STEP_NONE,
+        "DEFAULT_PEER_CONTEXT_POLICY_NAME": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
+        "ORIGINAL_SOURCE_METADATA": dict(ORIGINAL_SOURCE_METADATA),
+        "TRACE_MAPPING_METADATA": {
+            **TRACE_MAPPING_METADATA,
+            "scenario": FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
+            "server_step_policy": SERVER_STEP_NONE,
+            "peer_context_policy": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
+        },
+        "REPORT_TAGS": (
+            "fl_ssl_main_comparison",
+            FEDMATCH_METHOD_NAME,
+            FEDMATCH_LABELS_AT_CLIENT_METHOD_NAME,
+        ),
+        "NOTES": (
+            *NOTES,
+            "이 variant는 labels-at-client canonical FedMatch 조합을 "
+            "method-owned descriptor 하나로 닫는다.",
+        ),
+    },
+    FEDMATCH_LABELS_AT_SERVER_METHOD_NAME: {
+        "PUBLIC_METHOD_OWNED_CANONICAL": True,
+        "DEFAULT_LOCAL_SSL_POLICY_NAME": LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+        "DEFAULT_SERVER_UPDATE_POLICY_NAME": SERVER_UPDATE_FEDMATCH_PARTITIONED,
+        "DEFAULT_SERVER_STEP_POLICY_NAME": SERVER_STEP_SUPERVISED_SEED,
+        "DEFAULT_PEER_CONTEXT_POLICY_NAME": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
+        "ORIGINAL_SOURCE_METADATA": dict(ORIGINAL_SOURCE_METADATA),
+        "TRACE_MAPPING_METADATA": {
+            **TRACE_MAPPING_METADATA,
+            "scenario": FEDMATCH_SCENARIO_LABELS_AT_SERVER,
+            "server_step_policy": SERVER_STEP_SUPERVISED_SEED,
+            "peer_context_policy": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
+        },
+        "REPORT_TAGS": (
+            "fl_ssl_main_comparison",
+            FEDMATCH_METHOD_NAME,
+            FEDMATCH_LABELS_AT_SERVER_METHOD_NAME,
+        ),
+        "NOTES": (
+            *NOTES,
+            "이 variant는 labels-at-server canonical FedMatch 조합을 "
+            "method-owned descriptor 하나로 닫는다.",
+        ),
+    },
+}

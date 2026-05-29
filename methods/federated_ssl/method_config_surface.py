@@ -9,7 +9,10 @@ from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.method_parameters import (
     build_federated_ssl_method_parameter_snapshot,
 )
-from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from methods.federated_ssl.registry import (
+    resolve_federated_ssl_method_descriptor,
+    resolve_federated_ssl_method_descriptor_module,
+)
 
 DEFAULT_METHOD_SCHEMA_VERSION = "federated_ssl_method.v1"
 DEFAULT_LOCAL_BUDGET_POLICY = "iteration_capped"
@@ -36,16 +39,28 @@ def build_federated_ssl_method_config_surface(
         "display_name": descriptor.display_name or descriptor.name,
         "method_role": descriptor.method_role,
         "implementation_status": descriptor.implementation_status,
-        "original_source": _module_mapping(method_module, "ORIGINAL_SOURCE_METADATA"),
+        "original_source": _module_mapping(
+            method_module,
+            descriptor.name,
+            "ORIGINAL_SOURCE_METADATA",
+        ),
         "local_budget_policy": str(
             method_config.get("local_budget_policy", DEFAULT_LOCAL_BUDGET_POLICY)
         ),
-        "trace_mapping": _module_mapping(method_module, "TRACE_MAPPING_METADATA"),
+        "trace_mapping": _module_mapping(
+            method_module,
+            descriptor.name,
+            "TRACE_MAPPING_METADATA",
+        ),
         "client_step": _client_step_mapping(descriptor),
         "server_step": _server_step_mapping(descriptor),
         "round_state_exchange": _round_state_exchange_mapping(descriptor),
-        "report_tags": _module_sequence(method_module, "REPORT_TAGS"),
-        "notes": _module_sequence(method_module, "NOTES"),
+        "report_tags": _module_sequence(
+            method_module,
+            descriptor.name,
+            "REPORT_TAGS",
+        ),
+        "notes": _module_sequence(method_module, descriptor.name, "NOTES"),
         **parameter_snapshot.to_mapping(),
     }
 
@@ -56,7 +71,12 @@ def default_method_local_ssl_policy_name(
     """method descriptor module이 선언한 기본 local SSL policy 이름을 읽는다."""
 
     method_module = _import_method_descriptor_module(method_descriptor.name)
-    value = getattr(method_module, "DEFAULT_LOCAL_SSL_POLICY_NAME", None)
+    value = _method_surface_value(
+        method_module,
+        method_descriptor.name,
+        "DEFAULT_LOCAL_SSL_POLICY_NAME",
+        None,
+    )
     if value is not None:
         text = str(value).strip()
         return text or None
@@ -72,7 +92,12 @@ def default_method_server_update_policy_name(
     """method descriptor module이 선언한 기본 server update policy 이름을 읽는다."""
 
     method_module = _import_method_descriptor_module(method_descriptor.name)
-    value = getattr(method_module, "DEFAULT_SERVER_UPDATE_POLICY_NAME", None)
+    value = _method_surface_value(
+        method_module,
+        method_descriptor.name,
+        "DEFAULT_SERVER_UPDATE_POLICY_NAME",
+        None,
+    )
     if value is not None:
         text = str(value).strip()
         return text or None
@@ -88,7 +113,12 @@ def default_method_server_step_policy_name(
     """method descriptor module이 선언한 기본 server step policy 이름을 읽는다."""
 
     method_module = _import_method_descriptor_module(method_descriptor.name)
-    value = getattr(method_module, "DEFAULT_SERVER_STEP_POLICY_NAME", None)
+    value = _method_surface_value(
+        method_module,
+        method_descriptor.name,
+        "DEFAULT_SERVER_STEP_POLICY_NAME",
+        None,
+    )
     if value is not None:
         text = str(value).strip()
         return text or None
@@ -104,11 +134,38 @@ def default_method_peer_context_policy_name(
     """method descriptor module이 선언한 기본 peer context policy 이름을 읽는다."""
 
     method_module = _import_method_descriptor_module(method_descriptor.name)
-    value = getattr(method_module, "DEFAULT_PEER_CONTEXT_POLICY_NAME", None)
+    value = _method_surface_value(
+        method_module,
+        method_descriptor.name,
+        "DEFAULT_PEER_CONTEXT_POLICY_NAME",
+        None,
+    )
     if value is not None:
         text = str(value).strip()
         return text or None
     names = method_descriptor.required_capabilities.peer_context_policy_names
+    if len(names) == 1:
+        return names[0]
+    return None
+
+
+def default_method_labeled_exposure_policy_name(
+    method_descriptor: FederatedSslMethodDescriptor,
+) -> str | None:
+    """method descriptor가 선언한 기본 labeled exposure policy 이름을 읽는다."""
+
+    names = method_descriptor.required_capabilities.labeled_exposure_policy_names
+    if len(names) == 1:
+        return names[0]
+    return None
+
+
+def default_method_local_supervision_regime_name(
+    method_descriptor: FederatedSslMethodDescriptor,
+) -> str | None:
+    """method descriptor가 선언한 기본 local supervision regime 이름을 읽는다."""
+
+    names = method_descriptor.required_capabilities.local_supervision_regime_names
     if len(names) == 1:
         return names[0]
     return None
@@ -134,6 +191,46 @@ def default_method_aggregation_weight_policy_name(
     if len(names) == 1:
         return names[0]
     return None
+
+
+def is_public_method_owned_canonical(
+    method_descriptor: FederatedSslMethodDescriptor,
+) -> bool:
+    """descriptor가 public canonical method-owned surface인지 반환한다."""
+
+    try:
+        method_module = _import_method_descriptor_module(method_descriptor.name)
+    except ModuleNotFoundError:
+        return True
+    value = _method_surface_value(
+        method_module,
+        method_descriptor.name,
+        "PUBLIC_METHOD_OWNED_CANONICAL",
+        True,
+    )
+    return bool(value)
+
+
+def recommended_method_owned_variants(
+    method_descriptor: FederatedSslMethodDescriptor,
+) -> tuple[str, ...]:
+    """generic descriptor가 public surface 대신 안내할 canonical variant 목록."""
+
+    try:
+        method_module = _import_method_descriptor_module(method_descriptor.name)
+    except ModuleNotFoundError:
+        return ()
+    raw_value = _method_surface_value(
+        method_module,
+        method_descriptor.name,
+        "METHOD_OWNED_VARIANT_RECOMMENDATIONS",
+        (),
+    )
+    if raw_value is None:
+        return ()
+    if isinstance(raw_value, str):
+        return (raw_value,)
+    return tuple(str(item) for item in raw_value)
 
 
 def _client_step_mapping(
@@ -182,12 +279,36 @@ def _round_state_exchange_mapping(
 
 
 def _import_method_descriptor_module(method_name: str) -> object:
-    module_name = f"methods.federated_ssl.{method_name}.descriptor"
-    return import_module(module_name)
+    method_package = f"methods.federated_ssl.{method_name}"
+    module_name = f"{method_package}.descriptor"
+    try:
+        return import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name not in {method_package, module_name}:
+            raise
+        return resolve_federated_ssl_method_descriptor_module(method_name)
 
 
-def _module_mapping(module: object, attribute_name: str) -> dict[str, object]:
-    value = getattr(module, attribute_name, {})
+def _method_surface_value(
+    module: object,
+    method_name: str,
+    attribute_name: str,
+    default: object,
+) -> object:
+    surface_by_name = getattr(module, "METHOD_CONFIG_SURFACE_BY_METHOD_NAME", {})
+    if isinstance(surface_by_name, Mapping):
+        surface = surface_by_name.get(method_name, {})
+        if isinstance(surface, Mapping) and attribute_name in surface:
+            return surface[attribute_name]
+    return getattr(module, attribute_name, default)
+
+
+def _module_mapping(
+    module: object,
+    method_name: str,
+    attribute_name: str,
+) -> dict[str, object]:
+    value = _method_surface_value(module, method_name, attribute_name, {})
     if value is None:
         return {}
     if not isinstance(value, Mapping):
@@ -195,8 +316,12 @@ def _module_mapping(module: object, attribute_name: str) -> dict[str, object]:
     return dict(value)
 
 
-def _module_sequence(module: object, attribute_name: str) -> list[str]:
-    value = getattr(module, attribute_name, ())
+def _module_sequence(
+    module: object,
+    method_name: str,
+    attribute_name: str,
+) -> list[str]:
+    value = _method_surface_value(module, method_name, attribute_name, ())
     if value is None:
         return []
     if isinstance(value, str):

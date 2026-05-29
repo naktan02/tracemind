@@ -26,7 +26,7 @@
 | Trainable update family | `strategy_axes/model_architecture/update_family`, `round_runtime.update_family_name` | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*` |
 | FL split/topology policy | `strategy_axes/fl_topology/shard_policy`, `labeled_exposure`, `materialized_split` | `methods/federated/*`, split materialization |
 | FL round capability | `strategy_axes/fl_topology/server_step`, `server_update`, `peer_context`, `update_partition`, `aggregation_weight` | `methods/federated_ssl/*` + selected update family runtime |
-| FL SSL method descriptor | `strategy_axes/fssl_method` | `methods/federated_ssl/<method>/` |
+| FL SSL method descriptor | `strategy_axes/fssl_method` | `methods/federated_ssl/<method family>/` |
 | FL local update profile | `strategy_axes/ssl_objective/local_update_profile` | `methods/federated_ssl/local_update_profile.py`, Query SSL/PEFT runtime |
 | Prototype build/scoring | `strategy_axes/prototype/*`, prototype analysis config | `methods/prototype/*` |
 | Report/evaluation metric | report builder config, evaluator selection | `methods/evaluation/*` |
@@ -45,6 +45,13 @@
   `fssl_method=fedmatch_labels_at_client`처럼 variant 이름으로
   `peer_context`, `server_step`, `local_ssl_policy`, `server_update`,
   `update_partition`, `aggregation_weight`를 descriptor default로 닫는다.
+- labels-at-server 경로도 `fssl_method=fedmatch_labels_at_server` variant로
+  분리해 `server_only_seed + client_unlabeled_only + supervised_seed_step`
+  의미를 lower-axis 밖으로 올린다.
+- 두 FedMatch variant의 public 선택 leaf는 `conf/strategy_axes/fssl_method/`에
+  있지만, implementation family와 policy source of truth는
+  `methods/federated_ssl/fedmatch/`다. generic `fedmatch` leaf는
+  compatibility/ablation 입력으로만 남긴다.
 - `server_step_policy`와 `server_update_policy`는 다른 축이다. server-side seed step
   여부와 submitted update 해석 방식을 섞지 않는다.
 - `fl_topology`는 이름보다 범위가 넓다. 현재는 FL data topology와 round capability

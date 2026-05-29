@@ -101,9 +101,10 @@ aggregation한다. FedMatch method-owned 실행에서는 descriptor가 파생한
 client sparse projection 이후 제출된 PEFT encoder partition delta를 평균하는
 simulation slice다.
 `fedmatch_agreement`는 원본 FedMatch agreement objective 의미다. generic
-`local_ssl_policy` leaf로 고르지 않고 `method_descriptor=fedmatch`의 method config에서
-파생한다. 이 기본 선택과 `fedmatch_partitioned` server update policy는
-`descriptor.py`의 method-owned metadata가 소유한다.
+`local_ssl_policy` leaf로 고르지 않고
+`fssl_method=fedmatch_labels_at_client` 또는 `fedmatch_labels_at_server` variant
+descriptor에서 파생한다. 이 기본 선택과 `fedmatch_partitioned` server update
+policy는 `descriptor.py`의 method-owned metadata가 소유한다.
 `server_step_policy=supervised_seed_step`은 round open 전에 server bootstrap rows로
 PEFT encoder active state를 한 번 더 발행한 뒤 client round를 시작한다.
 

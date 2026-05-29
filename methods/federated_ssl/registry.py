@@ -53,7 +53,7 @@ def resolve_federated_ssl_method_descriptor(
 ) -> FederatedSslMethodDescriptor:
     """method 이름을 FL SSL descriptor로 해석한다."""
 
-    if not _import_federated_ssl_method_module(name):
+    if _import_federated_ssl_method_module(name) is None:
         load_builtin_federated_ssl_methods()
     descriptor = _FEDERATED_SSL_METHOD_DESCRIPTORS.resolve(name)
     if descriptor is None:
@@ -63,6 +63,24 @@ def resolve_federated_ssl_method_descriptor(
             f"the descriptor first: {name}"
         )
     return descriptor
+
+
+def resolve_federated_ssl_method_descriptor_module(name: str) -> ModuleType:
+    """method descriptor를 선언한 built-in module을 반환한다."""
+
+    module = _import_federated_ssl_method_module(name)
+    if module is not None:
+        return module
+
+    load_builtin_federated_ssl_methods()
+    normalized_name = name.strip().lower().replace("-", "_")
+    for module in _iter_federated_ssl_method_modules():
+        if _module_declares_descriptor_name(module, normalized_name):
+            return module
+
+    raise ModuleNotFoundError(
+        f"Federated SSL method descriptor module is not wired: {name}"
+    )
 
 
 def list_federated_ssl_method_descriptors(
@@ -85,7 +103,7 @@ def list_federated_ssl_method_descriptors(
     )
 
 
-def _import_federated_ssl_method_module(method_name: str) -> bool:
+def _import_federated_ssl_method_module(method_name: str) -> ModuleType | None:
     normalized_name = method_name.strip().lower().replace("-", "_")
     method_package = f"{_FEDERATED_SSL_PACKAGE}.{normalized_name}"
     module_name = f"{method_package}.descriptor"
@@ -94,29 +112,58 @@ def _import_federated_ssl_method_module(method_name: str) -> bool:
     except ModuleNotFoundError as error:
         if error.name not in {method_package, module_name}:
             raise
-        return False
+        return None
     _register_descriptor_from_module(module)
-    return True
+    return module
 
 
 def _register_descriptor_from_module(module: ModuleType) -> None:
-    descriptor = getattr(module, "descriptor", None)
-    if descriptor is None:
-        return
-    if not isinstance(descriptor, FederatedSslMethodDescriptor):
-        raise TypeError(
-            f"{module.__name__}.descriptor must be FederatedSslMethodDescriptor."
-        )
-    _FEDERATED_SSL_METHOD_DESCRIPTORS.register(descriptor.name, item=descriptor)
+    descriptors = _module_descriptors(module)
+    for descriptor in descriptors:
+        _FEDERATED_SSL_METHOD_DESCRIPTORS.register(descriptor.name, item=descriptor)
 
 
 def _import_federated_ssl_method_modules() -> None:
+    for module in _iter_federated_ssl_method_modules():
+        _register_descriptor_from_module(module)
+
+
+def _iter_federated_ssl_method_modules() -> tuple[ModuleType, ...]:
     package = importlib.import_module(_FEDERATED_SSL_PACKAGE)
     package_paths = getattr(package, "__path__", None)
     if package_paths is None:
-        return
+        return ()
 
+    modules: list[ModuleType] = []
     for module_info in pkgutil.iter_modules(package_paths):
         if not module_info.ispkg:
             continue
-        _import_federated_ssl_method_module(module_info.name)
+        module = _import_federated_ssl_method_module(module_info.name)
+        if module is not None:
+            modules.append(module)
+    return tuple(modules)
+
+
+def _module_descriptors(
+    module: ModuleType,
+) -> tuple[FederatedSslMethodDescriptor, ...]:
+    raw_descriptors = getattr(module, "descriptors", None)
+    if raw_descriptors is None:
+        descriptor = getattr(module, "descriptor", None)
+        raw_descriptors = () if descriptor is None else (descriptor,)
+
+    descriptors: list[FederatedSslMethodDescriptor] = []
+    for descriptor in raw_descriptors:
+        if not isinstance(descriptor, FederatedSslMethodDescriptor):
+            raise TypeError(
+                f"{module.__name__}.descriptors must contain "
+                "FederatedSslMethodDescriptor."
+            )
+        descriptors.append(descriptor)
+    return tuple(descriptors)
+
+
+def _module_declares_descriptor_name(module: ModuleType, method_name: str) -> bool:
+    return any(
+        descriptor.name == method_name for descriptor in _module_descriptors(module)
+    )

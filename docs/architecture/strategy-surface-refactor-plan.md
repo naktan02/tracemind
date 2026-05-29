@@ -56,6 +56,34 @@
 | 12 | `local_ssl_policy` | `conf/strategy_axes/ssl_objective/local_ssl_policy/*` | method-owned에서 실제로는 descriptor가 덮거나 제한하는 가짜 선택지가 된다 | manual baseline 전용 축. method-owned에서는 public surface에서 제거 | 높음 |
 | 13 | `consistency_method` | `conf/strategy_axes/ssl_objective/consistency_method/*` | 중앙 SSL에선 핵심 method 축이지만 FSSL method-owned에선 중복될 수 있다 | central SSL과 manual baseline에서는 유지. FSSL method-owned에서는 hidden 또는 ignored | 중간 |
 
+## 현재 상태와 권장 순서
+
+2026-05-29 기준으로 FedMatch method-owned surface는 variant 중심으로 정리됐다.
+`fedmatch_labels_at_client`와 `fedmatch_labels_at_server`가 public method-owned 선택
+이름이고, 구현과 policy 의미는 `methods/federated_ssl/fedmatch/`가 소유한다.
+generic `fedmatch` leaf는 compatibility/ablation 입력으로만 남긴다.
+
+| 원래 번호 | 축 | 상태 | 권장 순서 | 다음 작업 |
+|---:|---|---|---:|---|
+| 1 | `input_mode` | 미진행 | 1 | 중앙 SSL public strategy axis에서 제거하고 workflow/helper 입력으로 내린다. |
+| 5 | `teacher_*`, `teacher_bootstrap` | 부분 완료 | 2 | `teacher_provider` strategy axis는 제거하고, 남은 top-level bootstrap scalar를 workflow-local config로 더 내린다. |
+| 3 | `pseudo_label_selection` | 미진행 | 3 | teacher bootstrap/replay 내부 policy 또는 explicit ablation metadata로 강등한다. |
+| 11 | `local_update_profile` | 부분 완료 | 4 | method-owned에서 public override가 남는지 감사하고 descriptor/scaffold compatibility로 닫는다. |
+| 13 | `consistency_method` | 보류/미진행 | 5 | central SSL/manual baseline에는 유지하고 FSSL method-owned에서는 hidden/ignored 규칙을 고정한다. |
+| 6 | `update_partition` | FedMatch 범위 완료 | 6 | manual baseline/ablation 전용 guard를 유지한다. |
+| 7 | `aggregation_weight` | FedMatch 범위 완료 | 7 | method-owned에서 새 method가 public override를 되살리지 않게 한다. |
+| 8 | `peer_context` | FedMatch 범위 완료 | 8 | common capability로 유지하되 method recipe 조각 선택으로 노출하지 않는다. |
+| 9 | `server_step` | FedMatch 범위 완료 | 9 | labels-at-server 같은 scenario 의미는 variant descriptor에서 파생한다. |
+| 10 | `server_update` | FedMatch 범위 완료 | 10 | method-local server update leaf를 generic Hydra leaf로 만들지 않는다. |
+| 12 | `local_ssl_policy` | FedMatch 범위 완료 | 11 | `fedmatch_agreement` 같은 method-local objective를 generic leaf로 만들지 않는다. |
+| 4 | `augmentation_source` | 보류 | 12 | 공통 USB input materialization이면 유지하고, 특정 method 전용이면 method recipe로 내린다. |
+| 2 | `trainable_surface` | 보류 | 13 | 실제 surface가 두 개 이상 구현/검증될 때 scaffold axis 유지 여부를 재판정한다. |
+
+실행 묶음은 `1, 5, 3` 중앙 SSL workflow 강등을 먼저 끝내고, 그 뒤 README/compose/
+report expectation을 맞춘 다음 `11, 13`의 FSSL 잔여 노출을 감사한다. 마지막으로
+`4, 2` scaffold/input materialization 축을 재판정하고, 기존 config/run 참조가 사라진
+뒤 generic `fedmatch` compatibility leaf 제거 여부를 결정한다.
+
 ## 축별 목표 구조
 
 ### 중앙 SSL
@@ -154,13 +182,19 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
 
 완료 기준:
 
-- `method_owned + fssl_method=fedmatch` 실행 예시에서 lower-axis override가 필요 없다.
+- `method_owned` canonical FedMatch 실행 예시가
+  `fedmatch_labels_at_client` 또는 `fedmatch_labels_at_server`만 사용하고,
+  lower-axis override가 필요 없다.
 - 진행 메모:
   - canonical labels-at-client 경로는 `fssl_method=fedmatch_labels_at_client`로
     승격해 `peer_context`, `server_step`, `local_ssl_policy`, `server_update`,
     `update_partition`, `aggregation_weight`를 descriptor default로 닫는다.
-  - generic `fedmatch` leaf는 compatibility/ablation 경로로만 남기고, public README
-    예시는 variant를 기준으로 갱신한다.
+  - labels-at-server 경로도 `fssl_method=fedmatch_labels_at_server`로 분리해
+    `server_only_seed + client_unlabeled_only + supervised_seed_step` 의미를
+    method variant가 소유하게 한다.
+  - FedMatch variant descriptor와 report expectation은 variant 기준으로 갱신됐다.
+  - generic `fedmatch` leaf는 compatibility/ablation 경로로만 남기고,
+    `method_owned` public 실행에서는 canonical variant 사용을 요구한다.
 
 ### Phase 3. method variant surface 정리
 
@@ -210,7 +244,8 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
 ## 현재 우선순위
 
 1. 중앙 SSL의 `input_mode`, `teacher_*`, `pseudo_label_selection` 강등
-2. FSSL `method_owned`에서 lower-axis hidden/derived화
-3. FedMatch 계열 변형을 method variant 이름으로 다루는 규칙 정착
-4. 마지막에 scaffold axis (`trainable_surface`, `augmentation_source`,
-   `consistency_method`)의 잔여 공개 표면 재판정
+2. central SSL README, Hydra compose, report expectation을 새 public surface로 갱신
+3. FSSL method-owned의 잔여 `local_update_profile`, `consistency_method` 노출 감사
+4. `augmentation_source`, `trainable_surface`를 scaffold/input materialization 축으로
+   유지할지 재판정
+5. 기존 generic `fedmatch` 참조가 사라진 뒤 compatibility leaf 제거 여부 결정

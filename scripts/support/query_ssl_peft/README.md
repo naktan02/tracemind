@@ -11,7 +11,7 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
   - `supervised.py`: frozen backbone + PEFT text encoder + linear head supervised baseline.
   - `pseudo_label.py`: pseudo-label replay/self-training helper.
   - `bootstrap_teacher.py`: teacher bootstrap source 기반 pseudo-label 생성/재생 helper.
-  - `teacher_source.py`: `teacher_bootstrap` input mode의 checkpoint artifact source adapter.
+  - `teacher_source.py`: teacher bootstrap workflow가 쓰는 checkpoint artifact source adapter.
   - `consistency.py`: USB PseudoLabel, FixMatch 등 Query SSL runner.
   - `query_adaptation.py`: agent-local query adaptation dataset runner wrapper.
 - `runtime_context.py`
@@ -47,9 +47,9 @@ Hydra entrypoint를 실행한다.
 올린다. cross-boundary contract/domain은 `shared/`, runtime bridge는
 `scripts/runtime_adapters/`에 둔다.
 
-`scripts`는 teacher를 별도 실험 stage나 strategy axis로 소유하지 않는다. 중앙
-entrypoint는 Hydra가 선택한 method/input mode를 실행하고, teacher는
-`teacher_bootstrap` 같은 input mode의 source 설정으로만 드러난다. 이 패키지 안에
+`scripts`는 teacher를 별도 실험 stage나 public strategy axis로 소유하지 않는다.
+중앙 entrypoint는 consistency-family workflow를 직접 실행하고, teacher bootstrap은
+내부 helper/workflow와 compatibility source 설정으로만 드러난다. 이 패키지 안에
 남은 provider 구현은 fixed classifier seed 제거 과정의 compatibility 표면으로만
 취급한다.
 

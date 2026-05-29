@@ -14,6 +14,10 @@ from methods.federated_ssl.base import (
     ROUND_STATE_EXCHANGE_NONE,
     FederatedSslMethodDescriptor,
 )
+from methods.federated_ssl.method_config_surface import (
+    is_public_method_owned_canonical,
+    recommended_method_owned_variants,
+)
 
 COMPOSITION_MODE_METHOD_OWNED = "method_owned"
 COMPOSITION_MODE_MANUAL = "manual"
@@ -349,6 +353,19 @@ class FederatedSslExecutionPlan:
             raise ValueError(
                 "fl_method.manual_axes must stay empty when composition_mode is "
                 f"{COMPOSITION_MODE_METHOD_OWNED!r}."
+            )
+        if not is_public_method_owned_canonical(method_descriptor):
+            recommended_variants = recommended_method_owned_variants(method_descriptor)
+            recommendation_text = (
+                ""
+                if not recommended_variants
+                else " Use one of "
+                + ", ".join(repr(name) for name in recommended_variants)
+                + " instead."
+            )
+            raise ValueError(
+                "method-owned public surface no longer accepts generic method "
+                f"{method_descriptor.name!r}.{recommendation_text}"
             )
 
     def _require_manual_axes_are_explicit(self) -> None:

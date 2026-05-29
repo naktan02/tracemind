@@ -25,7 +25,9 @@ from methods.federated_ssl.local_update_profile import (
 from methods.federated_ssl.method_config_surface import (
     build_federated_ssl_method_config_surface,
     default_method_aggregation_weight_policy_name,
+    default_method_labeled_exposure_policy_name,
     default_method_local_ssl_policy_name,
+    default_method_local_supervision_regime_name,
     default_method_peer_context_policy_name,
     default_method_server_step_policy_name,
     default_method_server_update_policy_name,
@@ -132,12 +134,17 @@ def build_simulation_request_from_config(
     client_pool_split_config = FederatedClientPoolSplitConfig(
         **to_plain_dict(cfg.client_pool_split)
     )
+    labeled_exposure_policy_mapping = _resolve_labeled_exposure_policy_mapping(
+        cfg=cfg,
+        execution_plan=execution_plan,
+    )
     fl_data_source = resolve_fl_data_source(
         cfg=cfg,
         client_count=int(cfg.federated_run_budget.client_count),
         bootstrap_ratio=float(cfg.federated_run_budget.bootstrap_ratio),
         seed=actual_seed,
         shard_policy=shard_policy,
+        labeled_exposure_policy_mapping=labeled_exposure_policy_mapping,
     )
     capability_plan = _build_capability_plan(
         cfg=cfg,
@@ -262,9 +269,15 @@ def _build_capability_plan(
         ),
         labeled_exposure_policy=(
             labeled_exposure_policy
-            or optional_plain_dict(cfg, "labeled_exposure_policy")
+            or _resolve_labeled_exposure_policy_mapping(
+                cfg=cfg,
+                execution_plan=resolved_execution_plan,
+            )
         ),
-        local_supervision_regime=optional_plain_dict(cfg, "local_supervision_regime"),
+        local_supervision_regime=_resolve_local_supervision_regime_mapping(
+            cfg=cfg,
+            execution_plan=resolved_execution_plan,
+        ),
         server_step_policy=_resolve_server_step_policy_mapping(
             cfg=cfg,
             execution_plan=resolved_execution_plan,
@@ -324,6 +337,64 @@ def _resolve_local_ssl_policy_mapping(
         "name": local_ssl_policy_names[0],
         "parameter_source": "method_descriptor",
     }
+
+
+def _resolve_labeled_exposure_policy_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned labeled exposure는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "labeled_exposure_policy")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "labeled_exposure_policy")
+
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    default_policy_name = default_method_labeled_exposure_policy_name(descriptor)
+    if default_policy_name is not None:
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
+
+    names = descriptor.required_capabilities.labeled_exposure_policy_names
+    if not names:
+        return optional_plain_dict(cfg, "labeled_exposure_policy")
+    if len(names) != 1:
+        raise ValueError(
+            "method-owned labeled_exposure_policy derivation requires exactly one "
+            "descriptor.required_capabilities.labeled_exposure_policy_names entry: "
+            f"method={descriptor.name}, values={list(names)!r}."
+        )
+    return {"name": names[0], "parameter_source": "method_descriptor"}
+
+
+def _resolve_local_supervision_regime_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned local supervision regime는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "local_supervision_regime")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "local_supervision_regime")
+
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    default_policy_name = default_method_local_supervision_regime_name(descriptor)
+    if default_policy_name is not None:
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
+
+    names = descriptor.required_capabilities.local_supervision_regime_names
+    if not names:
+        return optional_plain_dict(cfg, "local_supervision_regime")
+    if len(names) != 1:
+        raise ValueError(
+            "method-owned local_supervision_regime derivation requires exactly one "
+            "descriptor.required_capabilities.local_supervision_regime_names entry: "
+            f"method={descriptor.name}, values={list(names)!r}."
+        )
+    return {"name": names[0], "parameter_source": "method_descriptor"}
 
 
 def _resolve_server_update_policy_mapping(

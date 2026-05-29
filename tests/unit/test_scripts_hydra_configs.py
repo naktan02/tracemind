@@ -27,6 +27,7 @@ from scripts.experiments.fl_ssl.federated_simulation.config_request import (
     _build_capability_plan,
     _build_execution_plan,
     _build_ssl_method_config,
+    _resolve_labeled_exposure_policy_mapping,
     _resolve_local_update_profile,
     _with_inferred_manual_axes,
 )
@@ -926,7 +927,7 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch",
+                "strategy_axes/fssl_method=fedmatch_labels_at_client",
                 "fl_method.composition_mode=method_owned",
             ],
         )
@@ -987,7 +988,10 @@ def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm()
 
     capability_plan = _build_capability_plan(
         cfg=cfg,
-        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+        labeled_exposure_policy=_resolve_labeled_exposure_policy_mapping(
+            cfg=cfg,
+            execution_plan=_build_execution_plan(cfg),
+        ),
     )
 
     assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
@@ -1009,7 +1013,10 @@ def test_method_owned_fedmatch_labels_at_client_derives_method_capabilities(
 
     capability_plan = _build_capability_plan(
         cfg=cfg,
-        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+        labeled_exposure_policy=_resolve_labeled_exposure_policy_mapping(
+            cfg=cfg,
+            execution_plan=_build_execution_plan(cfg),
+        ),
     )
 
     assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
@@ -1018,6 +1025,33 @@ def test_method_owned_fedmatch_labels_at_client_derives_method_capabilities(
     assert capability_plan.update_partition_policy_name == "partitioned"
     assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
     assert capability_plan.server_step_policy_name == "none"
+
+
+def test_method_owned_fedmatch_labels_at_server_derives_method_capabilities() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fssl_method=fedmatch_labels_at_server",
+                "fl_method.composition_mode=method_owned",
+            ],
+        )
+
+    capability_plan = _build_capability_plan(
+        cfg=cfg,
+        labeled_exposure_policy=_resolve_labeled_exposure_policy_mapping(
+            cfg=cfg,
+            execution_plan=_build_execution_plan(cfg),
+        ),
+    )
+
+    assert capability_plan.local_ssl_policy_name == "fedmatch_agreement"
+    assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
+    assert capability_plan.update_partition_policy_name == "partitioned"
+    assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
+    assert capability_plan.server_step_policy_name == "supervised_seed_step"
+    assert capability_plan.labeled_exposure_policy_name == "server_only_seed"
+    assert capability_plan.local_supervision_regime_name == "client_unlabeled_only"
 
 
 def test_federated_simulation_update_family_declares_server_step_executor() -> None:
@@ -1051,7 +1085,10 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
 
     capability_plan = _build_capability_plan(
         cfg=cfg,
-        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+        labeled_exposure_policy=_resolve_labeled_exposure_policy_mapping(
+            cfg=cfg,
+            execution_plan=_build_execution_plan(cfg),
+        ),
     )
 
     assert cfg.federated_run_budget.name == "reduced"
@@ -1080,10 +1117,8 @@ def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> Non
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch",
+                "strategy_axes/fssl_method=fedmatch_labels_at_client",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
                 "+ssl_method.parameter_overrides.confidence_threshold=0.85",
                 "+ssl_method.parameter_overrides.num_helpers=4",
             ],
@@ -1115,10 +1150,8 @@ def test_fedmatch_local_budget_policy_can_select_original_method() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch",
+                "strategy_axes/fssl_method=fedmatch_labels_at_client",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
                 "ssl_method.local_budget_policy=original_method",
             ],
         )
@@ -1131,6 +1164,23 @@ def test_fedmatch_local_budget_policy_can_select_original_method() -> None:
 
     assert ssl_method_config.local_budget_policy == "original_method"
     assert ssl_method_config.parameter_override_status == "original"
+
+
+def test_method_owned_generic_fedmatch_is_rejected_in_public_surface() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fssl_method=fedmatch",
+                "fl_method.composition_mode=method_owned",
+            ],
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="fedmatch_labels_at_client.*fedmatch_labels_at_server",
+    ):
+        _build_execution_plan(cfg)
 
 
 @pytest.mark.parametrize(
