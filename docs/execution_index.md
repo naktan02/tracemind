@@ -63,24 +63,23 @@ central fixed embedding + classifier seed
 
 ## Fast Code Paths
 
-Seed / central SSL:
+Central SSL:
 
 1. relevant `conf/**`
 2. `docs/architecture/target-method-runtime-structure.md`
 3. `docs/contracts/query_buffer_v1.md`
 4. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
-5. `scripts/experiments/central/fixed_classifier_seed/README.md`
-6. `scripts/experiments/central/ssl_control/README.md`
-7. `scripts/experiments/central/fixed_classifier_seed/train_softmax_classifier.py`
-8. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
-9. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
-10. `scripts/support/query_ssl_peft/*`
-11. `methods/adaptation/peft_text_encoder/*`
-12. `methods/evaluation/*`
-13. `methods/adaptation/query_text_views/*`
-14. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
-15. `methods/ssl/*`
-16. `methods/adaptation/*`
+5. `scripts/experiments/central/ssl_control/README.md`
+6. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
+7. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
+8. `scripts/support/query_ssl_peft/*`
+9. `methods/ssl/hooks/teacher.py` (teacher source hook 변경 시)
+10. `methods/adaptation/peft_text_encoder/*`
+11. `methods/evaluation/*`
+12. `methods/adaptation/query_text_views/*`
+13. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
+14. `methods/ssl/*`
+15. `methods/adaptation/*`
 
 Agent runtime:
 

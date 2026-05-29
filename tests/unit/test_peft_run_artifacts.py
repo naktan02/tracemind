@@ -80,7 +80,13 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
         categories=["alpha", "beta"],
         eval_set_map={"validation": tmp_path / "validation.jsonl"},
         training_device="cpu",
-        backbone_summary={"name": "dummy-backbone"},
+        backbone_summary={
+            "name": "dummy-backbone",
+            "trainable_surface": {
+                "name": "peft_text_encoder",
+                "trainable_state": "peft_adapter_and_classifier_head",
+            },
+        },
         history=[{"epoch": 1, "loss": 0.5}],
         best_selection_report={"macro_f1": 0.75},
         results={"test": {"accuracy": 0.8}},
@@ -110,6 +116,10 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
         "track": "central_ssl",
         "budget_name": "smoke",
         "output_root": "runs/_smoke",
+    }
+    assert manifest["trainable_surface"] == {
+        "name": "peft_text_encoder",
+        "trainable_state": "peft_adapter_and_classifier_head",
     }
     assert manifest["ssl_algorithm"] == "fixmatch"
     assert report["schema_version"] == "central_peft_classifier_eval.v1"

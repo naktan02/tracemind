@@ -4,6 +4,7 @@ defaults:
   - /execution_context/dataset_asset: ourafla
   - /execution_context/runtime_env: gpu_online
   - /strategy_axes/model_architecture/backbone: mxbai_encoder
+  - /strategy_axes/model_architecture/trainable_surface: peft_text_encoder
   - /strategy_axes/model_architecture/peft: default
   - /run_controls/central_ssl/budget: main
   - /execution_context/query_data_source: default

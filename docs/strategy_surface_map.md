@@ -21,6 +21,7 @@
 | Dataset/source/view | `execution_context/*`, `query_data_selection.*` | dataset scripts, shared row contract |
 | Central SSL method | `strategy_axes/ssl_objective/consistency_method` | `methods/ssl/algorithms/*` |
 | SSL input mode | `strategy_axes/ssl_objective/input_mode` | config-declared runner callable |
+| Central trainable surface | `strategy_axes/model_architecture/trainable_surface` | `methods/adaptation/*` trainer |
 | PEFT adapter mechanism | `strategy_axes/model_architecture/peft` | `methods/adaptation/peft_adapters/*` |
 | Trainable update family | `strategy_axes/model_architecture/update_family`, `round_runtime.update_family_name` | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*` |
 | FL split/topology policy | `strategy_axes/fl_topology/shard_policy`, `labeled_exposure`, `materialized_split` | `methods/federated/*`, split materialization |
@@ -46,6 +47,44 @@
   leaf를 함께 담는 group이고, method identity는 `fssl_method`, local update recipe는
   `ssl_objective/local_update_profile`로 분리한다.
 - `security_policy`는 method identity가 아니라 runtime capability 축이다.
+
+## method 내부로 들어가야 하는 축 점검
+
+중앙 SSL/FSSL 실행 표면은 method 선택을 우선한다. method를 골랐는데 다시 teacher,
+peer, server step 같은 method recipe 조각을 고르는 구조는 축이 새는 신호로 본다.
+
+Central SSL:
+
+- `strategy_axes/ssl_objective/consistency_method`는 중앙 SSL method 선택 축이므로 유지한다.
+- `strategy_axes/ssl_objective/input_mode`는 현재 runner workflow 선택이다. 이 중
+  `teacher_bootstrap`은 transitional pseudo-label materialization workflow이며,
+  teacher 종류를 별도 축으로 열지 않는다. 장기적으로는 `bootstrap_pseudolabel` 같은
+  method/recipe로 승격하거나 `pseudo_label_replay`의 사전 materialization workflow로
+  낮춘다.
+- `pseudo_label_selection`은 teacher bootstrap artifact를 만들 때 쓰는 selection
+  policy다. 중앙 method 비교의 독립 축으로 쓰지 않고, method recipe 기본값이나
+  explicit ablation metadata로만 남긴다.
+- `augmentation_source`와 `query_ssl_strong_view_policy`는 USB 계열 input view
+  materialization/runtime 입력으로 유지할 수 있다. 특정 method만 의미를 소유하면
+  method config로 내린다.
+- teacher source, checkpoint type, prototype/PEFT/EMA teacher 여부는 user-facing
+  strategy axis로 만들지 않는다. 필요하면 method/recipe 내부 요구사항과 artifact
+  provenance로 기록한다.
+
+FL SSL:
+
+- `strategy_axes/fssl_method`가 method-owned 실행의 주 선택 축이다.
+- `server_step`, `server_update`, `peer_context`, `update_partition`,
+  `local_ssl_policy`, `aggregation_weight`는 capability mechanism leaf로만 남긴다.
+  `composition_mode=method_owned`에서는 descriptor가 요구/기본값을 파생하고, 사용자는
+  method recipe 조각을 직접 고르지 않는다.
+- 위 capability leaf를 사람이 직접 고르는 것은 `composition_mode=manual` baseline이나
+  명시적 ablation에서만 허용한다. method 이름이 들어간 leaf는 만들지 않는다.
+- `shard_policy`, `materialized_split`, `labeled_exposure`, `supervision_regime`,
+  `client_participation`은 데이터/실험 조건 축이다. 단, 특정 method가 요구하는 regime은
+  descriptor compatibility validator가 제한한다.
+- `update_family`, PEFT mechanism, backbone은 trainable state/scaffold 축이다. method가
+  요구할 수는 있지만 method identity 자체로 합치지 않는다.
 
 ## 확장 절차
 

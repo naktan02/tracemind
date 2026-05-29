@@ -32,6 +32,8 @@ document_interpretation:
 
 path_specific_instructions:
   - shared/AGENTS.md
+  - methods/AGENTS.md
+  - conf/AGENTS.md
   - agent/AGENTS.md
   - main_server/AGENTS.md
   - scripts/AGENTS.md
@@ -112,6 +114,8 @@ task_routes:
   strategy_addition:
     read_order:
       - AGENTS.md
+      - methods/AGENTS.md
+      - conf/AGENTS.md
       - docs/architecture/target-method-runtime-structure.md
       - docs/strategy_surface_map.md
       - docs/contracts/strategy_addition_playbook.md
@@ -144,6 +148,7 @@ task_routes:
     read_order:
       - AGENTS.md
       - scripts/AGENTS.md
+      - conf/AGENTS.md
       - relevant script entrypoint
       - relevant conf config group
     conditional_read:

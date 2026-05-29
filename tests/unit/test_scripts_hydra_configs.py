@@ -90,7 +90,6 @@ def test_trainable_state_update_family_leafs_are_executable_surfaces() -> None:
         "entrypoints/prototype_analysis/prototype_threshold_sweep",
         "entrypoints/fl_ssl/materialize_fl_client_split",
         "entrypoints/fl_ssl/run_federated_simulation",
-        "entrypoints/central/fixed_classifier_seed/train_softmax_classifier",
         "entrypoints/central/ssl_control/run_peft_supervised_control",
         "entrypoints/central/ssl_control/run_peft_ssl_control",
     ],
@@ -501,6 +500,34 @@ def test_run_peft_ssl_control_supports_pseudo_label_replay_mode() -> None:
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
+
+
+def test_run_peft_ssl_control_supports_teacher_bootstrap_mode() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/input_mode=teacher_bootstrap",
+                "strategy_axes/ssl_objective/pseudo_label_selection=fixed_confidence_095",
+                "query_data_selection.labeled=szegeelim_general4",
+                "query_data_selection.unlabeled=ourafla_reddit",
+            ],
+        )
+
+    assert cfg.ssl_input_mode == "teacher_bootstrap"
+    assert cfg.central_ssl_runner.mode == "teacher_bootstrap"
+    assert (
+        cfg.central_ssl_runner.callable_path
+        == "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
+        "run_teacher_bootstrap_peft_student"
+    )
+    assert "teacher_bootstrap_source_kind" not in cfg
+    assert "teacher_artifact_kind" not in cfg
+    assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
+    assert cfg.teacher_train_jsonl == cfg.query_source.train_jsonl
+    assert cfg.teacher_unlabeled_jsonl == cfg.query_source.unlabeled_jsonl
+    assert cfg.query_data_selection.labeled == "szegeelim_general4"
+    assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
 
 
 def test_threshold_sweep_supports_short_leaf_override() -> None:
@@ -1439,6 +1466,11 @@ def test_run_peft_supervised_control_defaults_to_gpu_online_scaffold() -> None:
     assert cfg.runtime.device == "cuda"
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
+    assert cfg.trainable_surface.name == "peft_text_encoder"
+    assert (
+        cfg.trainable_surface.trainable_state
+        == "peft_adapter_and_classifier_head"
+    )
     assert cfg.peft_adapter.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
     assert cfg.output_dir == "runs/run_peft_supervised_control"
@@ -1455,6 +1487,8 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is True
     assert cfg.ssl_input_mode == "consistency"
+    assert "teacher_provider" not in cfg
+    assert cfg.trainable_surface.name == "peft_text_encoder"
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
     assert (

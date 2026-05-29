@@ -119,22 +119,22 @@ def build_optimizer(
     classifier_learning_rate: float,
     weight_decay: float,
 ) -> torch.optim.Optimizer:
-    """PEFT adapter 파라미터와 linear head 파라미터를 분리해 optimizer를 만든다."""
+    """encoder-side trainable params와 classifier head params를 분리한다."""
 
     classifier_params = []
-    lora_params = []
+    encoder_params = []
     for name, parameter in model.named_parameters():
         if not parameter.requires_grad:
             continue
         if name.startswith("classifier"):
             classifier_params.append(parameter)
         else:
-            lora_params.append(parameter)
+            encoder_params.append(parameter)
 
     return torch.optim.AdamW(
         [
             {
-                "params": lora_params,
+                "params": encoder_params,
                 "lr": learning_rate,
                 "weight_decay": weight_decay,
             },

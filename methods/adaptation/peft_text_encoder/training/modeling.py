@@ -22,6 +22,8 @@ from methods.adaptation.peft_text_encoder.resource_cache import (
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 
+_SUPPORTED_TRAINABLE_SURFACES = frozenset({"peft_text_encoder"})
+
 
 def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any, Any]:
     """실험 extra가 설치돼 있을 때만 transformer/peft stack을 연다."""
@@ -102,6 +104,43 @@ def count_parameters(model: nn.Module) -> dict[str, int]:
         if parameter.requires_grad:
             trainable += size
     return {"total": total, "trainable": trainable}
+
+
+def build_trainable_surface_manifest(cfg: Any) -> dict[str, object]:
+    """Hydra trainable_surface 축을 중앙 trainer manifest로 정규화한다."""
+
+    surface_cfg = getattr(cfg, "trainable_surface", None)
+    if surface_cfg is None:
+        raise ValueError(
+            "trainable_surface config is required. Select "
+            "strategy_axes/model_architecture/trainable_surface=<surface>."
+        )
+    surface_name = _required_str(
+        getattr(surface_cfg, "name", ""),
+        field_name="trainable_surface.name",
+    )
+    if surface_name not in _SUPPORTED_TRAINABLE_SURFACES:
+        raise ValueError(
+            "Unsupported trainable_surface.name for PEFT text encoder trainer: "
+            f"{surface_name!r}. Supported: {sorted(_SUPPORTED_TRAINABLE_SURFACES)}."
+        )
+    return {
+        "name": surface_name,
+        "model_artifact_kind": _required_str(
+            getattr(surface_cfg, "model_artifact_kind", ""),
+            field_name="trainable_surface.model_artifact_kind",
+        ),
+        "trainable_state": _required_str(
+            getattr(surface_cfg, "trainable_state", ""),
+            field_name="trainable_surface.trainable_state",
+        ),
+        "requires_peft_adapter": bool(
+            getattr(surface_cfg, "requires_peft_adapter", False)
+        ),
+        "supports_initial_adapter": bool(
+            getattr(surface_cfg, "supports_initial_adapter", False)
+        ),
+    }
 
 
 def build_peft_text_encoder_with_linear_head_from_config(
@@ -255,6 +294,7 @@ def build_model(
 ) -> tuple[PeftTextEncoderWithLinearHead, Any, dict[str, Any]]:
     """Hydra config 기준으로 PEFT text encoder/head scaffold를 조립한다."""
 
+    trainable_surface_manifest = build_trainable_surface_manifest(cfg)
     AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, PeftModel = (
         require_transformer_stack()
     )
@@ -330,6 +370,7 @@ def build_model(
         "pooling": str(cfg.paper_backbone.pooling),
         "max_length": int(cfg.paper_backbone.max_length),
         "task_prefix": str(cfg.paper_backbone.task_prefix),
+        "trainable_surface": trainable_surface_manifest,
         "peft_adapter_config": {
             **(
                 peft_adapter_builder.build_summary(cfg=cfg)
@@ -344,6 +385,13 @@ def build_model(
         "parameter_counts": count_parameters(model),
     }
     return model, tokenizer, summary
+
+
+def _required_str(value: object, *, field_name: str) -> str:
+    normalized = str(value or "").strip()
+    if not normalized:
+        raise ValueError(f"{field_name} must not be empty.")
+    return normalized
 
 
 def _loaded_checkpoint_peft_adapter_summary(cfg: Any) -> dict[str, object]:

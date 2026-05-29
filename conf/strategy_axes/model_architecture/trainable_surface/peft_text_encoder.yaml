@@ -1,0 +1,7 @@
+# @package trainable_surface
+
+name: peft_text_encoder
+model_artifact_kind: peft_text_encoder_with_linear_head
+trainable_state: peft_adapter_and_classifier_head
+requires_peft_adapter: true
+supports_initial_adapter: true

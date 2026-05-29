@@ -7,8 +7,9 @@
 3. 작업 경로의 `AGENTS.md`를 읽는다.
 4. 관련 contract, Hydra config, code, test를 확인한다.
 
-Path-specific instructions: `shared/`, `agent/`, `main_server/`, `scripts/`,
-`tests/`, `docs/`, `apps/`, `apps/family_extension/`.
+Path-specific instructions: `shared/`, `methods/`, `conf/`, `agent/`,
+`main_server/`, `scripts/`, `tests/`, `docs/`, `apps/`,
+`apps/family_extension/`.
 
 ## Working Rules
 

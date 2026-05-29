@@ -37,6 +37,10 @@ conf/
 - `adapter_family_name`, `lora_classifier`, `diagonal_scale`은 active config 입력이 아니다.
 - PEFT adapter mechanism은 `strategy_axes/model_architecture/peft`가 고르고,
   compose 후 namespace는 `cfg.peft_adapter`다.
+- 중앙 SSL의 학습 가능한 모델 표면은
+  `strategy_axes/model_architecture/trainable_surface`가 고르고, 현재 구현된
+  surface는 `peft_text_encoder`다. LoRA 여부는 surface 이름이 아니라 PEFT adapter
+  mechanism 축에서 결정한다.
 - `strategy_axes/fl_topology`는 client split/topology leaf와 공통 round capability
   leaf를 함께 둔다. method identity나 local SSL update recipe는 여기에 두지 않는다.
 

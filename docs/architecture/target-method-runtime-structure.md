@@ -78,7 +78,7 @@ conf/
     {fl_ssl,central_ssl,prototype_analysis}/run.yaml
   strategy_axes/
     ssl_objective/{consistency_method,input_mode,local_update_profile,pseudo_label_selection}/
-    model_architecture/{backbone,peft,update_family,initial_checkpoint}/
+    model_architecture/{backbone,trainable_surface,peft,update_family,initial_checkpoint}/
     prototype/build_strategy/
     fssl_method/
     fl_topology/
@@ -146,6 +146,16 @@ write_outputs(result, context)
 이 흐름에 method/update-family 분기가 들어가면 해당 분기는 `methods`나 runtime
 Adapter 뒤로 옮긴다.
 
+6. 중앙 SSL의 teacher는 독립 실행 stage나 별도 strategy axis가 아니다.
+   방법론 또는 workflow recipe가 teacher 사용 여부를 내부에서 결정한다. 현재
+   transitional `teacher_bootstrap` input mode는 checkpoint artifact에서 pseudo-label
+   replay input을 materialize하는 recipe이고, fixed embedding classifier는 그 recipe의
+   내부 artifact kind로 manifest에만 남긴다. prototype, PEFT checkpoint, EMA teacher,
+   external pseudo-label source는 별도 user-facing teacher selector가 아니라 새
+   method/recipe 또는 method descriptor 내부 요구사항으로 추가한다. scripts는 teacher
+   구현 family를 새 axis로 노출하지 않고, artifact materialization, Hydra cfg 해석,
+   output write 같은 실행 glue만 맡는다.
+
 ## 해석 Guard
 
 - compact tree에 없는 helper 파일을 만들 수 있다. 단, 새 파일은 가장 가까운 owner
@@ -171,6 +181,10 @@ Adapter 뒤로 옮긴다.
   mechanism만 runtime capability axis로 승격한다.
 - `scripts`는 새 method나 update family를 알기 위해 수정하지 않는다. runner 수정이
   필요하면 먼저 execution plan Interface가 충분히 깊은지 점검한다.
+- `fixed_classifier_seed`는 active 실행 축이 아니다. classifier/prototype/PEFT 같은
+  teacher source는 method/recipe 내부 요구사항과 checkpoint/artifact reference로
+  표현하고, 별도 entrypoint/config stage나 user-facing teacher selector로 되살리지
+  않는다.
 - 현행 문서나 old artifact의 `lora_classifier`, `adapter_family_name`은 historical
   이름이다. 새 구조 설계, 새 실행 config, report/result reader에서는
   `peft_text_encoder`, `payload_adapter_kind`, `update_family_name`,

@@ -18,6 +18,12 @@ sweep, visualization, exploratory-only logic만 둔다.
 - production/runtime에서 재사용되어야 하는 알고리즘 코어는 `methods`로 올린다.
   공통 contract/domain은 `shared`, runtime adapter는 `agent`/`main_server`에 둔다.
 - 실행 설정의 source of truth는 `conf/` Hydra config group이다.
+- `scripts`는 method, trainable surface, teacher 구현 이름으로 분기하지
+  않는다. entrypoint는 `conf`가 고른 축을 canonical request로 넘기고, 구현 의미는
+  `methods`의 descriptor/hook/runner contract가 소유한다.
+- `scripts/support/**/teacher_providers` 같은 provider family 폴더를 새로 늘리지
+  않는다. teacher source는 method/recipe 내부 hook이고, scripts는 필요한 경우 source를 호출하는
+  orchestration/IO adapter까지만 둔다.
 - `execution_context/dataset_asset`, `execution_context/embedding_adapter`,
   `execution_context/runtime_env` selector를 기본 실행 축으로 본다.
 - 스크립트용 preset을 Python helper 파일에 다시 복제하지 않는다.
