@@ -19,11 +19,11 @@ def test_teacher_pseudo_label_artifact_writer_writes_trace_and_summaries(
         {"query_id": "q2", "predicted_label": "anxiety", "confidence": 0.72},
     ]
     prediction_summary = {
-        "schema_version": "fixed_classifier_teacher_summary.v1",
+        "schema_version": "teacher_prediction_summary.v1",
         "accepted_count": 1,
     }
     bootstrap_summary = {
-        "schema_version": "fixed_classifier_peft_bootstrap.v1",
+        "schema_version": "teacher_bootstrap.v1",
         "bootstrap_version": "bootstrap_v1",
     }
 

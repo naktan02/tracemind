@@ -135,7 +135,7 @@ Server 테스트는 round state, aggregation policy, publication side effect가 
 |---|---|
 | `tests/unit/test_scripts_hydra_configs.py` | Hydra config group drift |
 | `tests/unit/test_script_entrypoint_imports.py` | script entrypoint import |
-| `tests/unit/test_fixed_classifier_runner.py` | fixed classifier seed runner |
+| `tests/unit/test_fixed_classifier_runner.py` | fixed embedding classifier bootstrap artifact runner |
 | `tests/unit/test_peft_supervised_runner.py` | PEFT supervised runner |
 | `tests/unit/test_peft_fixmatch_runner.py` | FixMatch runner |
 | `tests/unit/test_methods_ssl_hooks.py` | reusable SSL pseudo-labeling/masking/selection hooks |

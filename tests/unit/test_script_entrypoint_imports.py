@@ -16,7 +16,6 @@ import pytest
         "scripts.experiments.fl_ssl.run_federated_simulation",
         "scripts.experiments.fl_ssl.run_federated_seed_sweep",
         "scripts.experiments.fl_ssl.run_federated_client_count_sweep",
-        "scripts.experiments.central.fixed_classifier_seed.train_softmax_classifier",
         "scripts.experiments.central.ssl_control.run_peft_supervised_control",
         "scripts.experiments.central.ssl_control.run_peft_ssl_control",
         "scripts.workflows.datasets.run_dataset_pipeline",

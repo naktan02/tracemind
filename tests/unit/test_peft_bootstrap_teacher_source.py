@@ -6,8 +6,9 @@ from types import SimpleNamespace
 
 from omegaconf import OmegaConf
 
-from scripts.support.query_ssl_peft.runners.teacher_classifier import (
-    resolve_teacher_classifier,
+from methods.ssl.hooks.teacher import TeacherPreparationContext
+from scripts.support.query_ssl_peft.runners.teacher_source import (
+    resolve_teacher_bootstrap_source,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
@@ -58,7 +59,7 @@ def _row(query_id: str, label: str, text: str) -> LabeledQueryRow:
     )
 
 
-def test_resolve_teacher_classifier_trains_and_writes_artifacts(
+def test_fixed_embedding_classifier_provider_trains_and_writes_artifacts(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -70,7 +71,7 @@ def test_resolve_teacher_classifier_trains_and_writes_artifacts(
     )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.teacher_classifier.instantiate",
+        "scripts.support.query_ssl_peft.runners.teacher_source.instantiate",
         lambda _spec: SimpleNamespace(device="cpu"),
     )
 
@@ -90,30 +91,32 @@ def test_resolve_teacher_classifier_trains_and_writes_artifacts(
         }
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.teacher_classifier."
-        "train_fixed_embedding_classifier",
+        "scripts.support.query_ssl_peft.runners.teacher_source."
+        "_train_fixed_embedding_classifier",
         _fake_train_fixed_embedding_classifier,
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.teacher_classifier."
-        "write_fixed_classifier_artifacts",
+        "scripts.support.query_ssl_peft.runners.teacher_source."
+        "_write_fixed_classifier_artifacts",
         _fake_write_fixed_classifier_artifacts,
     )
 
-    resolved = resolve_teacher_classifier(
-        cfg=cfg,
-        run_id="bootstrap_v1",
-        generated_at=datetime(2026, 4, 14, 1, 0, tzinfo=timezone.utc),
-        seed_rows=[_row("s1", "anxiety", "seed")],
-        seed_jsonl_ref="in_memory/teacher_seed_rows.jsonl",
+    provider = resolve_teacher_bootstrap_source(cfg)
+    resolved = provider.prepare(
+        TeacherPreparationContext(
+            run_id="bootstrap_v1",
+            generated_at=datetime(2026, 4, 14, 1, 0, tzinfo=timezone.utc),
+            seed_rows=(_row("s1", "anxiety", "seed"),),
+            seed_jsonl_ref="in_memory/teacher_seed_rows.jsonl",
+        )
     )
 
-    assert resolved.trained.categories == [
+    assert resolved.categories == (
         "anxiety",
         "depression",
         "normal",
         "suicidal",
-    ]
+    )
     assert resolved.outputs["output_dir"] == "runs/fake_teacher"
     assert captured["train_kwargs"]["selection_set_name"] == "validation"
     assert set(captured["train_kwargs"]["eval_rows_by_name"]) == {"validation"}
@@ -124,7 +127,7 @@ def test_resolve_teacher_classifier_trains_and_writes_artifacts(
     )
 
 
-def test_resolve_teacher_classifier_reuses_manifest(
+def test_fixed_embedding_classifier_provider_reuses_manifest(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -144,17 +147,19 @@ def test_resolve_teacher_classifier_reuses_manifest(
         )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.teacher_classifier."
-        "load_fixed_classifier_artifacts",
+        "scripts.support.query_ssl_peft.runners.teacher_source."
+        "_load_fixed_classifier_artifacts",
         _fake_load_fixed_classifier_artifacts,
     )
 
-    resolved = resolve_teacher_classifier(
-        cfg=cfg,
-        run_id="bootstrap_v1",
-        generated_at=datetime(2026, 4, 14, 1, 0, tzinfo=timezone.utc),
-        seed_rows=[_row("s1", "anxiety", "seed")],
-        seed_jsonl_ref="in_memory/teacher_seed_rows.jsonl",
+    provider = resolve_teacher_bootstrap_source(cfg)
+    resolved = provider.prepare(
+        TeacherPreparationContext(
+            run_id="bootstrap_v1",
+            generated_at=datetime(2026, 4, 14, 1, 0, tzinfo=timezone.utc),
+            seed_rows=(_row("s1", "anxiety", "seed"),),
+            seed_jsonl_ref="in_memory/teacher_seed_rows.jsonl",
+        )
     )
 
     assert captured["load_kwargs"] == {
@@ -167,3 +172,4 @@ def test_resolve_teacher_classifier_reuses_manifest(
     assert (
         resolved.outputs["reused_teacher_manifest"] == cfg.teacher_reuse_manifest_path
     )
+

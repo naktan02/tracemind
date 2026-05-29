@@ -185,15 +185,9 @@ uv run python scripts/workflows/datasets/materialize_query_ssl_views.py \
   execution_context/query_view=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
 ```
 
-Fixed classifier seed:
-
-```bash
-uv run python scripts/experiments/central/fixed_classifier_seed/train_softmax_classifier.py
-```
-
-이 단계는 PEFT SSL objective가 아니라 고정 임베딩 classifier 기준점이다.
-`canonical_fixed_classifier_seed`는 bootstrap이나 warm-start ablation에서 명시적으로
-선택하고, 중앙 SSL method 비교 기본값은 `initial_checkpoint=none`이다.
+Teacher bootstrap은 별도 seed entrypoint가 아니라 중앙 SSL
+`input_mode=teacher_bootstrap` 내부 source 설정으로 조립한다. 중앙 SSL method 비교
+기본값은 `initial_checkpoint=none`이다.
 
 PEFT supervised baseline:
 

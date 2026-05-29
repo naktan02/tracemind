@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 from omegaconf import OmegaConf
 
-from scripts.experiments.central.fixed_classifier_seed.common import (
+from scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.common import (
     prepare_fixed_classifier_run_context,
 )
-from scripts.experiments.central.fixed_classifier_seed.runner import (
+from scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.runner import (
     run_fixed_embedding_classifier,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
@@ -73,7 +73,7 @@ def test_prepare_fixed_classifier_run_context_normalizes_overrides(
         [_row("t1", "depression", "테스트")],
     )
     monkeypatch.setattr(
-        "scripts.experiments.central.fixed_classifier_seed.common.instantiate",
+        "scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.common.instantiate",
         lambda _spec: SimpleNamespace(
             backend="transformers_mxbai",
             model_id="mixedbread-ai/mxbai-embed-large-v1",
@@ -129,7 +129,7 @@ def test_run_fixed_embedding_classifier_wires_prepared_context_and_artifacts(
     )
 
     monkeypatch.setattr(
-        "scripts.experiments.central.fixed_classifier_seed.runner."
+        "scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.runner."
         "prepare_fixed_classifier_run_context",
         lambda **_kwargs: prepared_context,
     )
@@ -161,11 +161,11 @@ def test_run_fixed_embedding_classifier_wires_prepared_context_and_artifacts(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.central.fixed_classifier_seed.runner.train_fixed_embedding_classifier",
+        "scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.runner.train_fixed_embedding_classifier",
         _fake_train_fixed_embedding_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.central.fixed_classifier_seed.runner.write_fixed_classifier_artifacts",
+        "scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.runner.write_fixed_classifier_artifacts",
         _fake_write_fixed_classifier_artifacts,
     )
 

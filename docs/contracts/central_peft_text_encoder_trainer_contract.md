@@ -43,25 +43,24 @@ Reddit Labeled Data
 query가 충분히 쌓인 뒤 그 query 분포에 맞춰 표현과 경계를 함께 조정하는
 두 번째 단계 contract다.
 
-## fixed classifier seed가 필요한 이유
+## teacher source 경계
 
-`fixed_classifier_seed`는 실행해서 artifact를 만드는 첫 단계 고정 임베딩
-classifier 기준점이다. PEFT SSL method 자체는 아니며, 중앙 SSL run이 매번
-자동으로 다시 학습하는 내부 sub-step도 아니다. 필요한 이유는 네 가지다.
+고정 임베딩 classifier는 더 이상 독립 실행 stage나 중앙 SSL의 숨은 선행 단계가
+아니다. unlabeled pool에 pseudo-label 후보를 만들 필요가 있을 때만
+`teacher_bootstrap` input mode의 source 설정으로 선택한다.
 
-1. label order, category, classifier head provenance를 고정해 이후 중앙/FL 비교의
-   시작점을 흔들리지 않게 한다.
-2. PEFT text encoder checkpoint가 아직 없을 때 fixed embedding classifier를 teacher로
-   써서 unlabeled pool의 pseudo-label 후보를 만들 수 있다.
-3. `canonical_fixed_classifier_seed` warm-start ablation을 열 때 같은 seed artifact에서
-   출발했는지 산출물 metadata로 검증할 수 있다.
-4. PEFT adaptation이 단순 fixed embedding classifier보다 나아졌는지 비교할
-   reference metric을 제공한다.
+1. label order, category, classifier head provenance는 teacher output manifest와
+   student run manifest에 남긴다.
+2. PEFT text encoder checkpoint가 아직 없을 때 `checkpoint_artifact` source와
+   `fixed_embedding_classifier` artifact kind를 써서 pseudo-label 후보를 만들 수 있다.
+   이후 같은 표면에 prototype, PEFT checkpoint, EMA teacher를 추가할 수 있어야 한다.
+3. warm-start ablation은 특정 seed entrypoint가 아니라 initial checkpoint manifest를
+   명시해 재현한다.
+4. PEFT adaptation이 단순 fixed embedding classifier보다 나아졌는지 비교하는 reference
+   metric은 teacher artifact나 별도 supervised baseline report로 남긴다.
 
-따라서 central SSL method 비교의 기본 initial checkpoint는 `none`이고,
-`canonical_fixed_classifier_seed`는 bootstrap, continual adaptation, warm-start ablation에서
-명시적으로 선택하는 입력이다. 현재 canonical seed artifact는
-`clf_2026_04_11_143138`이다.
+따라서 central SSL method 비교의 기본 initial checkpoint는 `none`이고, teacher는
+bootstrap/pseudo-label source를 명시할 때만 연결한다.
 
 ## canonical scaffold
 
@@ -81,7 +80,9 @@ Query Buffer (raw text)
 핵심 원칙:
 
 1. backbone 본체 가중치는 고정한다.
-2. trainable parameter는 PEFT adapter module과 classifier head로 제한한다.
+2. 학습 가능한 모델 표면은 `strategy_axes/model_architecture/trainable_surface`가
+   소유한다. 현재 구현된 중앙 surface는 `peft_text_encoder`이고, trainable
+   parameter는 PEFT adapter module과 classifier head로 제한한다.
 3. 중앙 canonical protocol에서는 initial seed labeled split으로 checkpoint를 한 번 만든 뒤,
    이후 비교는 same checkpoint에서 출발해 new accepted query-derived rows only로 계속 적응한다.
 4. 같은 비교표 안에서는 backbone, tokenizer, label schema, PEFT adapter spec, initial checkpoint를 고정한다.
@@ -114,7 +115,8 @@ Query Buffer (raw text)
 - 첫 teacher-bootstrap pseudo-label 진입은 `fixed embedding + classifier` teacher가 unlabeled pool에
   pseudo-label을 붙이고, `PEFT text encoder` student가 이를 학습하는 bootstrap으로
   시작할 수 있다.
-- first-stage bootstrap/adaptation에서 PEFT seed artifact가 아직 없으면 canonical fixed classifier seed manifest로 classifier head를 warm-start할 수 있다.
+- first-stage bootstrap/adaptation에서 PEFT seed artifact가 아직 없으면 bootstrap
+  recipe가 만든 pseudo-label artifact로 student를 시작할 수 있다.
 - `FixMatch`는 USB core를 기준으로 weak view에서 pseudo-label/mask를 만들고,
   strong view에 consistency CE를 적용하는 별도 비교축으로 둔다.
 - NLP strict USB baseline에서는 `FixMatch` unlabeled input을
@@ -151,13 +153,14 @@ Query Buffer (raw text)
 
 1. backbone model id / revision
 2. tokenizer
-3. LoRA target modules
-4. LoRA rank / alpha / dropout
-5. classifier head 형태
-6. initial seed checkpoint
-7. query selection rule
-8. adaptation cadence / update budget
-9. adaptation objective 세부 하이퍼파라미터
+3. trainable surface
+4. PEFT adapter mechanism과 target modules
+5. PEFT rank / alpha / dropout
+6. classifier head 형태
+7. initial seed checkpoint
+8. query selection rule
+9. adaptation cadence / update budget
+10. adaptation objective 세부 하이퍼파라미터
 
 이 중 하나라도 바뀌면 방법론 비교가 아니라 scaffold 비교가 된다.
 
@@ -168,7 +171,8 @@ Query Buffer (raw text)
 1. seed baseline reference
 2. initial seed checkpoint reference
 3. backbone reference
-4. PEFT adapter mechanism config snapshot
+4. trainable surface snapshot
+5. PEFT adapter mechanism config snapshot
 5. PEFT adapter checkpoint
 6. classifier head checkpoint
 7. label schema snapshot
@@ -201,13 +205,13 @@ Query Buffer (raw text)
 기본 scaffold 고정값:
 
 1. backbone/tokenizer: `strategy_axes/model_architecture/backbone=mxbai_encoder`
-2. PEFT adapter config: 기본 mechanism은 `lora`, `rank=8`, `alpha=16`, `dropout=0.1`, `target_modules=all-linear`
-3. initial checkpoint: 중앙 Query SSL method 비교 기본값은 `none`이다. 기존
-   `canonical_fixed_classifier_seed` warm-start는 continual adaptation 또는
-   ablation run에서 명시적으로 선택한다.
-4. train budget: USB처럼 `max_train_steps` 총 optimizer update 수를 고정한다.
+2. trainable surface: 현재 구현값은 `trainable_surface=peft_text_encoder`다.
+3. PEFT adapter config: 기본 mechanism은 `lora`, `rank=8`, `alpha=16`, `dropout=0.1`, `target_modules=all-linear`
+4. initial checkpoint: 중앙 Query SSL method 비교 기본값은 `none`이다. warm-start는
+   checkpoint manifest를 명시하는 ablation run에서만 선택한다.
+5. train budget: USB처럼 `max_train_steps` 총 optimizer update 수를 고정한다.
    `epochs`는 selection 평가/history cadence이며 전체 unlabeled pool replay 횟수가 아니다.
-5. label schema, split, seed, metric은 FL SSL main comparison 규약을 따른다.
+6. label schema, split, seed, metric은 FL SSL main comparison 규약을 따른다.
 
 위 값을 바꾸는 run은 method 비교가 아니라 scaffold 비교 또는 ablation로 기록한다.
 

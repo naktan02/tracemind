@@ -1,4 +1,4 @@
-"""Fixed classifier teacher -> PEFT student bootstrap runner."""
+"""Teacher bootstrap pseudo-label materialization runner."""
 
 from __future__ import annotations
 
@@ -8,9 +8,7 @@ from pathlib import Path
 
 from omegaconf import DictConfig
 
-from scripts.experiments.central.fixed_classifier_seed.prediction import (
-    predict_fixed_classifier_rows,
-)
+from methods.ssl.hooks.teacher import TeacherPreparationContext
 from scripts.support.query_ssl_peft.config.pseudo_label_algorithm import (
     resolve_pseudo_label_algorithm,
 )
@@ -23,18 +21,18 @@ from scripts.support.query_ssl_peft.io.teacher_pseudo_label_builder import (
 from scripts.support.query_ssl_peft.runners.pseudo_label import (
     run_pseudo_label_self_training,
 )
-from scripts.support.query_ssl_peft.runners.teacher_classifier import (
-    resolve_teacher_classifier,
+from scripts.support.query_ssl_peft.runners.teacher_source import (
+    resolve_teacher_bootstrap_source,
 )
 from scripts.support.query_ssl_peft.runners.teacher_split import (
     resolve_teacher_and_unlabeled_rows,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
-BOOTSTRAP_SUMMARY_SCHEMA_VERSION = "fixed_classifier_peft_bootstrap.v1"
+BOOTSTRAP_SUMMARY_SCHEMA_VERSION = "teacher_bootstrap.v1"
 
 
-def run_fixed_classifier_teacher_peft_student_bootstrap(
+def run_teacher_bootstrap_peft_student(
     *,
     cfg: DictConfig,
     teacher_seed_rows: Sequence[LabeledQueryRow] | None = None,
@@ -42,7 +40,7 @@ def run_fixed_classifier_teacher_peft_student_bootstrap(
     export_root: str | Path | None = None,
     generated_at: datetime | None = None,
 ) -> dict[str, str]:
-    """초기 teacher는 fixed classifier, student는 PEFT text encoder로 연결한다."""
+    """초기 teacher source와 PEFT text encoder student를 연결한다."""
 
     effective_generated_at = generated_at or datetime.now(tz=timezone.utc)
     run_id = _resolve_run_id(cfg=cfg, generated_at=effective_generated_at)
@@ -62,21 +60,19 @@ def run_fixed_classifier_teacher_peft_student_bootstrap(
         teacher_unlabeled_rows=teacher_unlabeled_rows,
     )
 
-    teacher_classifier = resolve_teacher_classifier(
-        cfg=cfg,
-        run_id=run_id,
-        generated_at=effective_generated_at,
-        seed_rows=teacher_rows.seed_rows,
-        seed_jsonl_ref=teacher_rows.seed_jsonl_ref,
+    teacher_source = resolve_teacher_bootstrap_source(cfg)
+    teacher = teacher_source.prepare(
+        TeacherPreparationContext(
+            run_id=run_id,
+            generated_at=effective_generated_at,
+            seed_rows=tuple(teacher_rows.seed_rows),
+            seed_jsonl_ref=teacher_rows.seed_jsonl_ref,
+        )
     )
-    trained_teacher = teacher_classifier.trained
-    teacher_outputs = teacher_classifier.outputs
 
-    predictions = predict_fixed_classifier_rows(
-        trained=trained_teacher,
+    predictions = teacher_source.predict_rows(
+        teacher=teacher,
         rows=teacher_rows.unlabeled_rows,
-        embed_chunk_size=int(cfg.teacher_embed_chunk_size),
-        eval_batch_size=int(cfg.teacher_eval_batch_size),
     )
     teacher_export = TeacherPseudoLabelBuilder().build_export(
         rows=teacher_rows.unlabeled_rows,
@@ -106,7 +102,7 @@ def run_fixed_classifier_teacher_peft_student_bootstrap(
         seed_train_rows=teacher_rows.seed_rows,
         pseudo_label_rows=pseudo_label_rows,
         generated_at=effective_generated_at,
-        categories_override=tuple(trained_teacher.categories),
+        categories_override=teacher.categories,
     )
 
     bootstrap_summary = {
@@ -117,7 +113,12 @@ def run_fixed_classifier_teacher_peft_student_bootstrap(
         "teacher_unlabeled_jsonl": teacher_rows.unlabeled_jsonl_ref,
         "teacher_seed_row_count": len(teacher_rows.seed_rows),
         "teacher_unlabeled_row_count": len(teacher_rows.unlabeled_rows),
-        "teacher_outputs": teacher_outputs,
+        "teacher_bootstrap_source_kind": teacher.source_kind,
+        "teacher_artifact_kind": teacher.outputs.get(
+            "teacher_artifact_kind",
+            "fixed_embedding_classifier",
+        ),
+        "teacher_outputs": teacher.outputs,
         "prediction_trace_jsonl": str(prediction_artifacts.prediction_trace_jsonl),
         "prediction_summary_json": str(prediction_artifacts.prediction_summary_json),
         "student_outputs": student_outputs,
@@ -136,7 +137,7 @@ def run_fixed_classifier_teacher_peft_student_bootstrap(
         "bootstrap_summary": str(bootstrap_summary_path),
         "prediction_trace_jsonl": str(prediction_artifacts.prediction_trace_jsonl),
         "prediction_summary_json": str(prediction_artifacts.prediction_summary_json),
-        **teacher_outputs,
+        **teacher.outputs,
         **student_outputs,
     }
     if teacher_rows.split_artifacts is not None:

@@ -16,7 +16,7 @@
 ## 구조
 
 - `central/`
-  - 중앙 fixed classifier seed와 pooled/offline SSL control stage를 둔다.
+  - 중앙 pooled/offline SSL control entrypoint를 둔다.
 - `fl_ssl/`
   - client split, round loop, aggregation, per-client metric 같은 FL SSL orchestration을 둔다.
 - `prototype_analysis/`
@@ -43,11 +43,6 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
     aggregation backend를 직접 고른다.
   - `strategy_axes/fssl_method`는 method identity/report metadata를
     소유하고, 실제 runtime 구현이 완료된 method만 열어야 한다.
-- `central/fixed_classifier_seed/train_softmax_classifier.py`
-  - 고정 임베딩 위 linear classifier baseline.
-  - 이후 PEFT SSL control에서 label schema, seed reference, teacher bootstrap,
-    warm-start ablation 기준으로만 참조한다. 중앙 SSL method 비교의 기본
-    initial checkpoint는 `none`이다.
 - `central/ssl_control/run_peft_supervised_control.py`
   - query-domain 적응 단계의 `frozen backbone + PEFT text encoder + linear head` canonical supervised baseline entrypoint.
 - `central/ssl_control/run_peft_ssl_control.py`
@@ -63,6 +58,9 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
     `strategy_axes/ssl_objective/augmentation_source`,
     `query_ssl_strong_view_policy`,
     `strategy_axes/model_architecture/initial_checkpoint` selector다.
+  - teacher bootstrap은 별도 seed entrypoint가 아니라
+    `input_mode=teacher_bootstrap`의 source 설정과
+    `scripts/support/query_ssl_peft/runners/bootstrap_teacher.py`로 조립한다.
 - `scripts/support/query_ssl_peft/`
   - `runners/{supervised,consistency,pseudo_label,query_adaptation}.py`가 query-domain
     PEFT text encoder scaffold를 실행한다.
@@ -99,14 +97,12 @@ federated simulation:
 1. `fl_ssl/run_federated_simulation.py`
 2. `fl_ssl/federated_simulation/README.md`
 
-seed / adaptation classifier:
+central PEFT / SSL control:
 
-1. `central/fixed_classifier_seed/train_softmax_classifier.py`
-2. `central/fixed_classifier_seed/README.md`
-3. `central/ssl_control/run_peft_supervised_control.py`
-4. `central/ssl_control/run_peft_ssl_control.py`
-5. `../support/query_ssl_peft/runners/supervised.py`
-6. 필요하면 `../support/query_ssl_peft/runners/{consistency,query_adaptation,bootstrap_teacher,pseudo_label}.py`
+1. `central/ssl_control/run_peft_supervised_control.py`
+2. `central/ssl_control/run_peft_ssl_control.py`
+3. `../support/query_ssl_peft/runners/supervised.py`
+4. 필요하면 `../support/query_ssl_peft/runners/{consistency,query_adaptation,bootstrap_teacher,pseudo_label}.py`
 
 중앙 PEFT/SSL warm-start와 method별 실행 명령은
 `central/ssl_control/README.md`와 각 entrypoint의 `--cfg job` preview를 기준으로 본다.

@@ -7,10 +7,10 @@ import pytest
 import torch
 from torch import nn
 
-from scripts.experiments.central.fixed_classifier_seed.models import (
+from scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.models import (
     TrainedFixedClassifier,
 )
-from scripts.experiments.central.fixed_classifier_seed.prediction import (
+from scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.prediction import (
     predict_fixed_classifier_rows,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

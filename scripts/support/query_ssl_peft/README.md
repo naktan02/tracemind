@@ -10,7 +10,8 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
 - `runners/`
   - `supervised.py`: frozen backbone + PEFT text encoder + linear head supervised baseline.
   - `pseudo_label.py`: pseudo-label replay/self-training helper.
-  - `bootstrap_teacher.py`: fixed classifier teacher 기반 pseudo-label 생성/재생 helper.
+  - `bootstrap_teacher.py`: teacher bootstrap source 기반 pseudo-label 생성/재생 helper.
+  - `teacher_source.py`: `teacher_bootstrap` input mode의 checkpoint artifact source adapter.
   - `consistency.py`: USB PseudoLabel, FixMatch 등 Query SSL runner.
   - `query_adaptation.py`: agent-local query adaptation dataset runner wrapper.
 - `runtime_context.py`
@@ -21,9 +22,13 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
   - `model_artifact_exporter.py`: adapter/tokenizer/classifier 파일 export.
   - `manifest_builder.py`: manifest/report payload 조립.
   - `artifact_writer.py`: manifest/report JSON 쓰기.
-  - `teacher_pseudo_label_builder.py`: fixed-classifier teacher prediction을 pseudo-label row와 diagnostics payload로 변환.
+  - `teacher_pseudo_label_builder.py`: teacher prediction을 pseudo-label row와 diagnostics payload로 변환.
   - `teacher_pseudo_label_artifact_writer.py`: teacher prediction trace/summary JSON artifact 저장.
   - query adaptation dataset export.
+- `teacher_providers/`
+  - `fixed_embedding_classifier/`: 기존 fixed embedding classifier teacher 구현을
+    임시로 감싼 migration 위치다. 새 provider family는 여기 늘리지 않고,
+    재사용 가능한 provider 의미와 prediction core는 `methods/` owner 아래로 옮긴다.
 - `config/`
   - Hydra initial checkpoint와 pseudo-label algorithm preset 해석.
 - `query_ssl/`
@@ -41,6 +46,12 @@ Hydra entrypoint를 실행한다.
 공통으로 재사용될 알고리즘 core는 이 패키지 안에서 키우지 않고 `methods/`로
 올린다. cross-boundary contract/domain은 `shared/`, runtime bridge는
 `scripts/runtime_adapters/`에 둔다.
+
+`scripts`는 teacher를 별도 실험 stage나 strategy axis로 소유하지 않는다. 중앙
+entrypoint는 Hydra가 선택한 method/input mode를 실행하고, teacher는
+`teacher_bootstrap` 같은 input mode의 source 설정으로만 드러난다. 이 패키지 안에
+남은 provider 구현은 fixed classifier seed 제거 과정의 compatibility 표면으로만
+취급한다.
 
 새 Query SSL 알고리즘은 원칙적으로 `run_peft_ssl_control.py`를 재사용하고
 `strategy_axes/ssl_objective/consistency_method` Hydra config만 추가/교체한다.

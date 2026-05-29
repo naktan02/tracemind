@@ -50,6 +50,9 @@ def build_query_peft_run_manifest(
         "best_selection_report": best_selection_report,
         "history": history,
     }
+    trainable_surface = backbone_summary.get("trainable_surface")
+    if isinstance(trainable_surface, Mapping):
+        manifest["trainable_surface"] = dict(trainable_surface)
     run_control = _build_run_control_manifest(cfg)
     if run_control is not None:
         manifest["run_control"] = run_control

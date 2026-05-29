@@ -10,15 +10,14 @@ from typing import Any, cast
 import torch
 from torch import nn
 
-from scripts.experiments.central.fixed_classifier_seed.models import (
-    TrainedFixedClassifier,
-)
 from scripts.runtime_adapters.embedding_runtime import (
     create_embedding_adapter,
     resolve_runtime_device_name,
 )
 from scripts.support.artifacts.run_artifacts import build_run_dir
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
+
+from .models import TrainedFixedClassifier
 
 
 def write_fixed_classifier_artifacts(

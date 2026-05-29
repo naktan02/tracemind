@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from scripts.experiments.central.fixed_classifier_seed.training import (
+from scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.training import (
     build_label_index,
     labels_to_tensor,
     train_classifier_head,

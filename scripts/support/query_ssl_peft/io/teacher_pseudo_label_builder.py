@@ -1,4 +1,4 @@
-"""Fixed-classifier teacher prediction을 pseudo-label payload로 변환한다."""
+"""Teacher prediction을 pseudo-label payload로 변환한다."""
 
 from __future__ import annotations
 
@@ -9,17 +9,15 @@ from datetime import datetime
 from typing import Any
 
 from methods.ssl.hooks.registry import build_pseudo_label_selection_hook
-from scripts.experiments.central.fixed_classifier_seed.models import (
-    FixedClassifierPrediction,
-)
+from methods.ssl.hooks.teacher import TeacherPrediction
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PSEUDO_LABEL_EVIDENCE_V1,
     PseudoLabelEvidence,
 )
 
-TEACHER_PREDICTION_TRACE_SCHEMA_VERSION = "fixed_classifier_teacher_trace.v1"
-TEACHER_PREDICTION_SUMMARY_SCHEMA_VERSION = "fixed_classifier_teacher_summary.v1"
+TEACHER_PREDICTION_TRACE_SCHEMA_VERSION = "teacher_prediction_trace.v1"
+TEACHER_PREDICTION_SUMMARY_SCHEMA_VERSION = "teacher_prediction_summary.v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +36,7 @@ class TeacherPseudoLabelBuilder:
         self,
         *,
         rows: Sequence[LabeledQueryRow],
-        predictions: Sequence[FixedClassifierPrediction],
+        predictions: Sequence[TeacherPrediction],
         pseudo_label_algorithm,
         generated_at: datetime,
         run_id: str,
@@ -81,7 +79,7 @@ class TeacherPseudoLabelBuilder:
                         raw_label=decision.label,
                         mapped_label_4=decision.label,
                         locale=str(row["locale"]),
-                        annotation_source="fixed_classifier_teacher_bootstrap",
+                        annotation_source="teacher_bootstrap",
                         approved_by=None,
                         created_at=generated_at.isoformat(),
                     )
@@ -143,7 +141,7 @@ class TeacherPseudoLabelBuilder:
 def _build_teacher_evidence(
     *,
     row: LabeledQueryRow,
-    prediction: FixedClassifierPrediction,
+    prediction: TeacherPrediction,
     generated_at: datetime,
     run_id: str,
 ) -> PseudoLabelEvidence:

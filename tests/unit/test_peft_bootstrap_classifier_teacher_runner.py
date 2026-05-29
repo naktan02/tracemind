@@ -7,8 +7,9 @@ from types import SimpleNamespace
 
 from omegaconf import OmegaConf
 
+from methods.ssl.hooks.teacher import PreparedTeacher, TeacherPreparationContext
 from scripts.support.query_ssl_peft.runners.bootstrap_teacher import (
-    run_fixed_classifier_teacher_peft_student_bootstrap,
+    run_teacher_bootstrap_peft_student,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
@@ -102,18 +103,70 @@ def _row(query_id: str, label: str, text: str) -> LabeledQueryRow:
     )
 
 
-def _fake_teacher_classifier() -> SimpleNamespace:
-    return SimpleNamespace(
-        trained=SimpleNamespace(
-            categories=["anxiety", "depression", "normal", "suicidal"]
-        ),
-        outputs={
-            "output_dir": "runs/fake_teacher",
-            "model_path": "data/processed/classifier_heads/fake_teacher.pt",
-            "manifest": "data/processed/classifier_heads/fake_teacher.manifest.json",
-            "report_json": "runs/fake_teacher/reports/report.json",
-        },
+class _FakeTeacherSource:
+    source_kind = "checkpoint_artifact"
+
+    def __init__(self, predictions) -> None:
+        self.predictions = predictions
+        self.prepare_context = None
+
+    def prepare(self, context: TeacherPreparationContext) -> PreparedTeacher:
+        self.prepare_context = context
+        return PreparedTeacher(
+            source_kind=self.source_kind,
+            model=SimpleNamespace(),
+            categories=("anxiety", "depression", "normal", "suicidal"),
+            outputs={
+                "output_dir": "runs/fake_teacher",
+                "model_path": "data/processed/classifier_heads/fake_teacher.pt",
+                "manifest": (
+                    "data/processed/classifier_heads/fake_teacher.manifest.json"
+                ),
+                "report_json": "runs/fake_teacher/reports/report.json",
+                "teacher_bootstrap_source_kind": self.source_kind,
+                "teacher_artifact_kind": "fixed_embedding_classifier",
+            },
+        )
+
+    def predict_rows(self, *, teacher, rows):
+        if callable(self.predictions):
+            return self.predictions(rows)
+        return self.predictions
+
+
+def _fake_reused_teacher_source(manifest_path: str) -> _FakeTeacherSource:
+    provider = _FakeTeacherSource(
+        [
+            SimpleNamespace(
+                query_id="u1",
+                predicted_label="depression",
+                confidence=0.91,
+                margin=0.22,
+                runner_up_label="suicidal",
+                runner_up_score=0.69,
+                raw_scores={
+                    "anxiety": 0.02,
+                    "depression": 0.91,
+                    "normal": 0.01,
+                    "suicidal": 0.69,
+                },
+            )
+        ]
     )
+    original_prepare = provider.prepare
+
+    def _prepare(context: TeacherPreparationContext) -> PreparedTeacher:
+        teacher = original_prepare(context)
+        teacher.outputs.update(
+            {
+                "manifest": manifest_path,
+                "reused_teacher_manifest": manifest_path,
+            }
+        )
+        return teacher
+
+    provider.prepare = _prepare
+    return provider
 
 
 def test_bootstrap_runner_trains_teacher_then_runs_peft_student(
@@ -123,15 +176,8 @@ def test_bootstrap_runner_trains_teacher_then_runs_peft_student(
     cfg = _build_cfg()
     captured: dict[str, object] = {}
 
-    monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
-        "resolve_teacher_classifier",
-        lambda **_kwargs: _fake_teacher_classifier(),
-    )
-    monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
-        "predict_fixed_classifier_rows",
-        lambda **_kwargs: [
+    fake_provider = _FakeTeacherSource(
+        [
             SimpleNamespace(
                 query_id="u1",
                 predicted_label="depression",
@@ -160,7 +206,12 @@ def test_bootstrap_runner_trains_teacher_then_runs_peft_student(
                     "suicidal": 0.05,
                 },
             ),
-        ],
+        ]
+    )
+    monkeypatch.setattr(
+        "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
+        "resolve_teacher_bootstrap_source",
+        lambda _cfg: fake_provider,
     )
 
     def _fake_student_runner(
@@ -195,7 +246,7 @@ def test_bootstrap_runner_trains_teacher_then_runs_peft_student(
         _fake_student_runner,
     )
 
-    outputs = run_fixed_classifier_teacher_peft_student_bootstrap(
+    outputs = run_teacher_bootstrap_peft_student(
         cfg=cfg,
         teacher_seed_rows=[_row("s1", "anxiety", "불안해")],
         teacher_unlabeled_rows=[
@@ -253,15 +304,8 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
         ],
     )
 
-    monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
-        "resolve_teacher_classifier",
-        lambda **_kwargs: _fake_teacher_classifier(),
-    )
-    monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
-        "predict_fixed_classifier_rows",
-        lambda **kwargs: [
+    fake_provider = _FakeTeacherSource(
+        lambda rows: [
             SimpleNamespace(
                 query_id=row["query_id"],
                 predicted_label=row["mapped_label_4"],
@@ -278,8 +322,13 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
                     "suicidal": 0.05,
                 },
             )
-            for row in kwargs["rows"]
+            for row in rows
         ],
+    )
+    monkeypatch.setattr(
+        "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
+        "resolve_teacher_bootstrap_source",
+        lambda _cfg: fake_provider,
     )
     monkeypatch.setattr(
         "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
@@ -290,7 +339,7 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
         },
     )
 
-    outputs = run_fixed_classifier_teacher_peft_student_bootstrap(
+    outputs = run_teacher_bootstrap_peft_student(
         cfg=cfg,
         export_root=tmp_path / "exports",
         generated_at=datetime(2026, 4, 14, 1, 0, tzinfo=timezone.utc),
@@ -311,40 +360,11 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
     )
     captured: dict[str, object] = {}
 
+    fake_provider = _fake_reused_teacher_source(cfg.teacher_reuse_manifest_path)
     monkeypatch.setattr(
         "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
-        "resolve_teacher_classifier",
-        lambda **_kwargs: SimpleNamespace(
-            trained=SimpleNamespace(
-                categories=["anxiety", "depression", "normal", "suicidal"]
-            ),
-            outputs={
-                "model_path": "data/processed/classifier_heads/canonical.pt",
-                "manifest": "data/processed/classifier_heads/canonical.manifest.json",
-                "report_json": "runs/train_classifier/canonical/reports/report.json",
-                "reused_teacher_manifest": cfg.teacher_reuse_manifest_path,
-            },
-        ),
-    )
-    monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
-        "predict_fixed_classifier_rows",
-        lambda **_kwargs: [
-            SimpleNamespace(
-                query_id="u1",
-                predicted_label="depression",
-                confidence=0.91,
-                margin=0.22,
-                runner_up_label="suicidal",
-                runner_up_score=0.69,
-                raw_scores={
-                    "anxiety": 0.02,
-                    "depression": 0.91,
-                    "normal": 0.01,
-                    "suicidal": 0.69,
-                },
-            )
-        ],
+        "resolve_teacher_bootstrap_source",
+        lambda _cfg: fake_provider,
     )
 
     def _fake_student_runner(**kwargs) -> dict[str, str]:
@@ -360,7 +380,7 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
         _fake_student_runner,
     )
 
-    outputs = run_fixed_classifier_teacher_peft_student_bootstrap(
+    outputs = run_teacher_bootstrap_peft_student(
         cfg=cfg,
         teacher_seed_rows=[_row("s1", "anxiety", "불안해")],
         teacher_unlabeled_rows=[_row("u1", "depression", "우울해")],

@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from scripts.experiments.central.fixed_classifier_seed.evaluation import (
+from scripts.support.query_ssl_peft.teacher_providers.fixed_embedding_classifier.evaluation import (
     evaluate_classifier,
     print_evaluation_report,
 )
