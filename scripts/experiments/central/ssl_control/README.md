@@ -59,6 +59,16 @@ consistency-family central SSL entrypoint다. pseudo-label replay나 teacher boo
 독립 public 실험 entrypoint가 아니다. 기존 scripts teacher bootstrap helper는
 제거했고, 새 teacher source가 필요하면 method hook/recipe로 정의한다.
 
+사용자가 고르는 public surface는 아래로 제한한다.
+
+- `strategy_axes/ssl_objective/consistency_method`
+- `strategy_axes/model_architecture/{backbone,trainable_surface,peft,initial_checkpoint}`
+- `execution_context/{dataset_asset,query_data_source,query_view,runtime_env}`
+- `run_controls/central_ssl/budget`
+
+`input_mode`, `teacher_provider`, `pseudo_label_selection`은 central SSL public
+Hydra group이 아니다.
+
 ```bash
 uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
   strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1

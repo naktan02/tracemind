@@ -200,8 +200,7 @@ USB PseudoLabel baseline:
 
 ```bash
 uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1 \
-  output_dir=runs/run_peft_ssl_control_pseudolabel
+  strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1
 ```
 
 FixMatch baseline:
@@ -211,6 +210,8 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py
 ```
 
 중앙 SSL의 labeled/unlabeled source는 `query_data_selection.*`으로 바꾼다.
+`input_mode`, `teacher_provider`, `pseudo_label_selection`은 central SSL public
+Hydra group이 아니다.
 
 ```bash
 uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \

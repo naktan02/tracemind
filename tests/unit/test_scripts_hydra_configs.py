@@ -1495,6 +1495,8 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is True
     assert "teacher_provider" not in cfg
+    assert "pseudo_label_algorithm" not in cfg
+    assert "ssl_input_mode" not in cfg
     assert cfg.trainable_surface.name == "peft_text_encoder"
     assert cfg.group_by_query_ssl_method is True
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"

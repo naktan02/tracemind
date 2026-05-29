@@ -27,9 +27,14 @@ PEFT_ADAPTER_PARAMETERS_JSON = (
 
 def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> None:
     report_path = _write_report(tmp_path)
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    manifest = payload["manifest"]
 
     records = load_result_index_records(report_path)
 
+    assert "ssl_input_mode" not in manifest
+    assert "pseudo_label_algorithm" not in manifest
+    assert "teacher_provider" not in manifest
     assert records.run.run_id == "peft_fixmatch_2026_05_13_143419"
     assert records.run.track == "central_peft_ssl"
     assert records.run.method_family == "peft_classifier"
