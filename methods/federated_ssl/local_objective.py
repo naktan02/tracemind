@@ -10,6 +10,10 @@ from typing import Protocol
 
 from torch import Tensor
 
+from methods.federated_ssl.method_module_resolution import (
+    resolve_federated_ssl_method_family_name,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class FederatedSslLocalObjectiveSpec:
@@ -103,10 +107,8 @@ def requires_method_helper_probability_provider(
 
 
 def _import_method_runtime_requirements_module(method_name: str) -> ModuleType | None:
-    normalized_method_name = method_name.strip().lower().replace("-", "_")
-    if not normalized_method_name:
-        raise ValueError("method_name must not be empty.")
-    module_name = f"methods.federated_ssl.{normalized_method_name}.runtime_requirements"
+    family_name = resolve_federated_ssl_method_family_name(method_name)
+    module_name = f"methods.federated_ssl.{family_name}.runtime_requirements"
     try:
         return import_module(module_name)
     except ModuleNotFoundError as exc:

@@ -18,11 +18,11 @@ defaults:
   - /strategy_axes/fl_topology/labeled_exposure: shared_client_seed
   - /strategy_axes/fl_topology/client_participation: all_clients
   - /strategy_axes/fl_topology/supervision_regime: client_labeled_and_unlabeled
-  - /strategy_axes/fl_topology/server_step: none
+  - /strategy_axes/fl_topology/server_step: null
+  - /strategy_axes/fl_topology/peer_context: null
+  - /strategy_axes/fl_topology/update_partition: null
+  - /strategy_axes/fl_topology/aggregation_weight: null
   - /strategy_axes/fl_topology/server_update: fedavg_merged_delta
-  - /strategy_axes/fl_topology/peer_context: none
-  - /strategy_axes/fl_topology/update_partition: unified
-  - /strategy_axes/fl_topology/aggregation_weight: example_count
   # ssl_objective: SSL 학습 목적 함수 축
   - /strategy_axes/ssl_objective/consistency_method: fixmatch_usb_v1
   - /strategy_axes/ssl_objective/multiview_source: materialized_rows
@@ -50,6 +50,9 @@ fl_data:
 fl_method:
   # 상위 method가 client objective/server policy를 소유한다.
   # composition_mode=manual이면 lower axes는 compose된 leaf 값에서 자동 파생된다.
+  # server_step, peer_context, update_partition, aggregation_weight는 기본 leaf를
+  # compose하지 않는다. 필요할 때만 override로 채우고, method-owned에서는
+  # descriptor/capability default가 우선한다.
   composition_mode: manual
 
 client_pool_split:

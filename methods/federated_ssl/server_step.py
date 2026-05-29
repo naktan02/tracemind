@@ -7,6 +7,10 @@ from dataclasses import dataclass, field
 from importlib import import_module
 from types import ModuleType
 
+from methods.federated_ssl.method_module_resolution import (
+    resolve_federated_ssl_method_family_name,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class FederatedSslServerStepPolicy:
@@ -66,12 +70,8 @@ def resolve_method_supervised_seed_step_parameters(
 
 
 def _import_method_server_step_parameters_module(method_name: str) -> ModuleType:
-    normalized_method_name = method_name.strip().lower().replace("-", "_")
-    if not normalized_method_name:
-        raise ValueError("method_name must not be empty.")
-    module_name = (
-        f"methods.federated_ssl.{normalized_method_name}.server_step_parameters"
-    )
+    family_name = resolve_federated_ssl_method_family_name(method_name)
+    module_name = f"methods.federated_ssl.{family_name}.server_step_parameters"
     try:
         return import_module(module_name)
     except ModuleNotFoundError as exc:

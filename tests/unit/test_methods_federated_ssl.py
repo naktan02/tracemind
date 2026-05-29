@@ -134,7 +134,10 @@ def test_federated_ssl_descriptor_registry_has_no_manual_baseline_builtin() -> N
 
     descriptors = list_federated_ssl_method_descriptors()
 
-    assert [descriptor.name for descriptor in descriptors] == ["fedmatch"]
+    assert [descriptor.name for descriptor in descriptors] == [
+        "fedmatch",
+        "fedmatch_labels_at_client",
+    ]
 
 
 def test_fedmatch_descriptor_prefers_peft_encoder_recipe_surface() -> None:
@@ -294,7 +297,10 @@ def test_federated_ssl_registry_supports_test_only_method_extension(
 def test_builtin_federated_ssl_registry_excludes_test_only_extension() -> None:
     descriptors = list_federated_ssl_method_descriptors()
 
-    assert [descriptor.name for descriptor in descriptors] == ["fedmatch"]
+    assert [descriptor.name for descriptor in descriptors] == [
+        "fedmatch",
+        "fedmatch_labels_at_client",
+    ]
     assert "dummy_metric_weighted_ssl" not in {
         descriptor.name for descriptor in descriptors
     }

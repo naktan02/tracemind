@@ -430,6 +430,25 @@ def test_fedmatch_server_seed_parameters_resolve_by_method_convention() -> None:
     assert first_round.batch_size == 3
 
 
+def test_fedmatch_labels_at_client_server_seed_parameters_reuse_fedmatch_family() -> (
+    None
+):
+    first_round = resolve_method_supervised_seed_step_parameters(
+        method_name="fedmatch_labels_at_client",
+        effective_parameters={
+            "server_pretrain_epochs": 2,
+            "server_epochs": 1,
+            "server_batch_size": 3,
+        },
+        default_epochs=9,
+        default_batch_size=8,
+        round_index=1,
+    )
+
+    assert first_round.epochs == 2
+    assert first_round.batch_size == 3
+
+
 def test_fedmatch_helper_provider_requirement_resolves_by_method_convention() -> None:
     assert requires_method_helper_probability_provider(
         method_name="fedmatch",
@@ -438,6 +457,15 @@ def test_fedmatch_helper_provider_requirement_resolves_by_method_convention() ->
     assert not requires_method_helper_probability_provider(
         method_name="fedmatch",
         local_ssl_policy_name=LOCAL_SSL_POLICY_FIXMATCH,
+    )
+
+
+def test_fedmatch_labels_at_client_helper_provider_requirement_reuses_family() -> (
+    None
+):
+    assert requires_method_helper_probability_provider(
+        method_name="fedmatch_labels_at_client",
+        local_ssl_policy_name=LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     )
 
 

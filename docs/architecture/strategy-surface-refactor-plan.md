@@ -155,6 +155,12 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
 완료 기준:
 
 - `method_owned + fssl_method=fedmatch` 실행 예시에서 lower-axis override가 필요 없다.
+- 진행 메모:
+  - canonical labels-at-client 경로는 `fssl_method=fedmatch_labels_at_client`로
+    승격해 `peer_context`, `server_step`, `local_ssl_policy`, `server_update`,
+    `update_partition`, `aggregation_weight`를 descriptor default로 닫는다.
+  - generic `fedmatch` leaf는 compatibility/ablation 경로로만 남기고, public README
+    예시는 variant를 기준으로 갱신한다.
 
 ### Phase 3. method variant surface 정리
 

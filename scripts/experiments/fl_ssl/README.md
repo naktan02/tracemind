@@ -67,15 +67,14 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 
 Method-owned 실행은 method descriptor와 capability leaf를 함께 고른다. 원본 상세값은
 YAML에 복제하지 않고 method package에서 report protocol로 주입한다.
+`local_update_profile` 같은 local recipe는 method-owned에서 별도 override하지 않는다.
+canonical FedMatch main-comparison 경로는 `fedmatch_labels_at_client` variant를 쓴다.
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=reduced \
   fl_method.composition_mode=method_owned \
-  strategy_axes/fssl_method=fedmatch \
-  strategy_axes/fl_topology/update_partition=partitioned \
-  strategy_axes/fl_topology/aggregation_weight=uniform \
-  strategy_axes/fl_topology/peer_context=fixed_probe_output_knn
+  strategy_axes/fssl_method=fedmatch_labels_at_client
 ```
 
 ## Sweep

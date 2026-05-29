@@ -41,6 +41,10 @@
 - FedMatch 같은 method-owned 실행은 descriptor가 local objective와 server policy
   요구사항을 파생한다. `fedmatch_agreement`는 generic config leaf가 아니라
   FedMatch method-local objective다.
+- canonical FedMatch main-comparison은
+  `fssl_method=fedmatch_labels_at_client`처럼 variant 이름으로
+  `peer_context`, `server_step`, `local_ssl_policy`, `server_update`,
+  `update_partition`, `aggregation_weight`를 descriptor default로 닫는다.
 - `server_step_policy`와 `server_update_policy`는 다른 축이다. server-side seed step
   여부와 submitted update 해석 방식을 섞지 않는다.
 - `fl_topology`는 이름보다 범위가 넓다. 현재는 FL data topology와 round capability

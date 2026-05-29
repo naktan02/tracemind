@@ -23,6 +23,9 @@ from methods.federated_ssl.capability_plan import (
 )
 from methods.federated_ssl.execution_plan import COMPOSITION_MODE_MANUAL
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
+from methods.federated_ssl.method_module_resolution import (
+    resolve_federated_ssl_method_family_name,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -362,10 +365,8 @@ def _validate_method_owned_capability_semantics(
 
 
 def _import_method_compatibility_module(method_name: str) -> ModuleType | None:
-    module_name = (
-        f"methods.federated_ssl.{method_name.strip().lower().replace('-', '_')}"
-        ".compatibility"
-    )
+    family_name = resolve_federated_ssl_method_family_name(method_name)
+    module_name = f"methods.federated_ssl.{family_name}.compatibility"
     try:
         return import_module(module_name)
     except ModuleNotFoundError as exc:

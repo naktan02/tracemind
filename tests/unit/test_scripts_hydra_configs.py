@@ -27,6 +27,7 @@ from scripts.experiments.fl_ssl.federated_simulation.config_request import (
     _build_capability_plan,
     _build_execution_plan,
     _build_ssl_method_config,
+    _resolve_local_update_profile,
     _with_inferred_manual_axes,
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
@@ -617,10 +618,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.labeled_exposure_policy.name == "shared_client_seed"
     assert cfg.client_participation_policy.name == "all_clients"
     assert cfg.local_supervision_regime.name == "client_labeled_and_unlabeled"
-    assert cfg.server_step_policy.name == "none"
-    assert cfg.peer_context_policy.name == "none"
-    assert cfg.update_partition_policy.name == "unified"
-    assert cfg.aggregation_weight_policy.name == "example_count"
+    assert "server_step_policy" not in cfg
+    assert "peer_context_policy" not in cfg
+    assert "update_partition_policy" not in cfg
+    assert "aggregation_weight_policy" not in cfg
     assert cfg.query_multiview_source.name == "materialized_rows"
 
 
@@ -900,6 +901,26 @@ def test_federated_simulation_method_recipe_axes_are_composable(
             )
 
 
+def test_method_owned_fedmatch_labels_at_client_keeps_single_local_profile(
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fssl_method=fedmatch_labels_at_client",
+                "fl_method.composition_mode=method_owned",
+            ],
+        )
+
+    execution_plan = _build_execution_plan(cfg)
+    local_update_profile = _resolve_local_update_profile(
+        cfg=cfg,
+        execution_plan=execution_plan,
+    )
+
+    assert local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
+
+
 def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
@@ -907,8 +928,6 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
             overrides=[
                 "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
             ],
         )
 
@@ -976,16 +995,14 @@ def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm()
     assert capability_plan.server_update_policy_name == "fedavg_merged_delta"
 
 
-def test_federated_simulation_method_owned_fedmatch_uses_method_local_policy() -> None:
+def test_method_owned_fedmatch_labels_at_client_derives_method_capabilities(
+) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch",
+                "strategy_axes/fssl_method=fedmatch_labels_at_client",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
-                "strategy_axes/fl_topology/peer_context=fixed_probe_output_knn",
                 "strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1",
             ],
         )
@@ -1000,6 +1017,7 @@ def test_federated_simulation_method_owned_fedmatch_uses_method_local_policy() -
     assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
     assert capability_plan.update_partition_policy_name == "partitioned"
     assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
+    assert capability_plan.server_step_policy_name == "none"
 
 
 def test_federated_simulation_update_family_declares_server_step_executor() -> None:
@@ -1026,11 +1044,8 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
                 "run_controls/fl_ssl/budget=reduced",
-                "strategy_axes/fssl_method=fedmatch",
+                "strategy_axes/fssl_method=fedmatch_labels_at_client",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
-                "strategy_axes/fl_topology/peer_context=fixed_probe_output_knn",
             ],
         )
 

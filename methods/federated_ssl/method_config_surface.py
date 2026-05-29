@@ -82,6 +82,60 @@ def default_method_server_update_policy_name(
     return None
 
 
+def default_method_server_step_policy_name(
+    method_descriptor: FederatedSslMethodDescriptor,
+) -> str | None:
+    """method descriptor module이 선언한 기본 server step policy 이름을 읽는다."""
+
+    method_module = _import_method_descriptor_module(method_descriptor.name)
+    value = getattr(method_module, "DEFAULT_SERVER_STEP_POLICY_NAME", None)
+    if value is not None:
+        text = str(value).strip()
+        return text or None
+    names = method_descriptor.required_capabilities.server_step_policy_names
+    if len(names) == 1:
+        return names[0]
+    return None
+
+
+def default_method_peer_context_policy_name(
+    method_descriptor: FederatedSslMethodDescriptor,
+) -> str | None:
+    """method descriptor module이 선언한 기본 peer context policy 이름을 읽는다."""
+
+    method_module = _import_method_descriptor_module(method_descriptor.name)
+    value = getattr(method_module, "DEFAULT_PEER_CONTEXT_POLICY_NAME", None)
+    if value is not None:
+        text = str(value).strip()
+        return text or None
+    names = method_descriptor.required_capabilities.peer_context_policy_names
+    if len(names) == 1:
+        return names[0]
+    return None
+
+
+def default_method_update_partition_policy_name(
+    method_descriptor: FederatedSslMethodDescriptor,
+) -> str | None:
+    """method descriptor가 선언한 기본 update partition policy 이름을 읽는다."""
+
+    names = method_descriptor.required_capabilities.update_partition_policy_names
+    if len(names) == 1:
+        return names[0]
+    return None
+
+
+def default_method_aggregation_weight_policy_name(
+    method_descriptor: FederatedSslMethodDescriptor,
+) -> str | None:
+    """method descriptor가 선언한 기본 aggregation weight policy 이름을 읽는다."""
+
+    names = method_descriptor.required_capabilities.aggregation_weight_policy_names
+    if len(names) == 1:
+        return names[0]
+    return None
+
+
 def _client_step_mapping(
     descriptor: FederatedSslMethodDescriptor,
 ) -> dict[str, object]:

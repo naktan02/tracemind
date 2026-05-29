@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from importlib import import_module
 from typing import Mapping
 
+from methods.federated_ssl.method_module_resolution import (
+    resolve_federated_ssl_method_family_name,
+)
+
 ORIGINAL_PARAMETER_MAPPING_FUNCTION = "original_parameter_mapping"
 DEFAULT_ORIGINAL_SCENARIO_NAME = "DEFAULT_ORIGINAL_SCENARIO"
 
@@ -119,7 +123,8 @@ def _resolve_scenario(
 
 
 def _import_original_spec_module(method_name: str) -> object:
-    module_name = f"methods.federated_ssl.{method_name}.original_spec"
+    family_name = resolve_federated_ssl_method_family_name(method_name)
+    module_name = f"methods.federated_ssl.{family_name}.original_spec"
     try:
         return import_module(module_name)
     except ModuleNotFoundError as exc:
