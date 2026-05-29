@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from scripts.artifacts.run_artifacts import build_run_dir
+from scripts.support.artifacts.run_artifacts import build_run_dir
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     load_labeled_query_rows,

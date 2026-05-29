@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from scripts.experiments.fixed_classifier.training import (
+from scripts.experiments.central.fixed_classifier_seed.training import (
     build_label_index,
     labels_to_tensor,
     train_classifier_head,

@@ -14,9 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONF_SRC = REPO_ROOT / "conf"
 SHARED_SRC = REPO_ROOT / "shared" / "src"
 METHODS_SRC = REPO_ROOT / "methods"
-CONF_FL_METHOD_DESCRIPTOR_SRC = (
-    REPO_ROOT / "conf" / "strategy_axes" / "fssl_method"
-)
+CONF_FL_METHOD_DESCRIPTOR_SRC = REPO_ROOT / "conf" / "strategy_axes" / "fssl_method"
 CONF_FL_UPDATE_PARTITION_POLICY_SRC = (
     REPO_ROOT / "conf" / "strategy_axes" / "fl_topology" / "update_partition"
 )
@@ -31,8 +29,8 @@ SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
-QUERY_PEFT_SSL_SRC = SCRIPTS_SRC / "experiments" / "query_peft_ssl"
-QUERY_PEFT_SSL_IO_SRC = QUERY_PEFT_SSL_SRC / "io"
+QUERY_SSL_PEFT_SRC = SCRIPTS_SRC / "support" / "query_ssl_peft"
+QUERY_SSL_PEFT_IO_SRC = QUERY_SSL_PEFT_SRC / "io"
 PROTOTYPE_STRATEGY_SRC = (
     SCRIPTS_SRC / "experiments" / "prototype_analysis" / "prototype_strategy"
 )
@@ -330,13 +328,13 @@ def test_prototype_builder_core_stays_in_methods_layer() -> None:
 def test_prototype_projection_and_evaluation_core_stays_in_methods_layer() -> None:
     forbidden_paths = (
         SHARED_SRC / "services" / "prototypes" / "projections.py",
-        SCRIPTS_SRC / "prototypes" / "evaluation.py",
+        SCRIPTS_SRC / "workflows" / "prototype_pack" / "evaluation.py",
     )
     existing_paths = [
         _relative_repo_path(path) for path in forbidden_paths if path.exists()
     ]
     distance_report_script = (
-        SCRIPTS_SRC / "prototypes" / "report_prototype_distances.py"
+        SCRIPTS_SRC / "workflows" / "prototype_pack" / "report_prototype_distances.py"
     )
     distance_report_source = distance_report_script.read_text(encoding="utf-8")
     forbidden_script_snippets = (
@@ -469,12 +467,8 @@ def test_query_text_views_stays_input_glue_only() -> None:
 
 
 def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
-    legacy_script_path = (
-        QUERY_PEFT_SSL_SRC / "query_ssl" / "augmentation.py"
-    )
-    view_preparation_path = (
-        QUERY_PEFT_SSL_SRC / "query_ssl" / "view_preparation.py"
-    )
+    legacy_script_path = QUERY_SSL_PEFT_SRC / "query_ssl" / "augmentation.py"
+    view_preparation_path = QUERY_SSL_PEFT_SRC / "query_ssl" / "view_preparation.py"
     source = view_preparation_path.read_text(encoding="utf-8")
     forbidden_snippets = (
         'view_builder_name == "usb_multiview"',
@@ -493,7 +487,7 @@ def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
         "runtime callable 주입만 맡긴다."
     )
     assert not violations, (
-        "query_peft_ssl script adapter는 USB view builder나 augmentation source "
+        "query_ssl_peft script adapter는 USB view builder나 augmentation source "
         "정책을 직접 분기하지 않는다.\n"
         f"violations={violations}"
     )
@@ -501,12 +495,13 @@ def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
 
 def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
     router_path = (
-        SCRIPTS_SRC / "experiments" / "central_ssl_control" / "ssl_mode_router.py"
+        SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "ssl_mode_router.py"
     )
     entrypoint_config = (
         CONF_SRC
         / "entrypoints"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "run_peft_ssl_control.yaml"
     )
     source = router_path.read_text(encoding="utf-8")
@@ -543,9 +538,9 @@ def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
 
 
 def test_dataset_pipeline_download_sources_are_config_declared() -> None:
-    source = (SCRIPTS_SRC / "datasets" / "run_dataset_pipeline.py").read_text(
-        encoding="utf-8"
-    )
+    source = (
+        SCRIPTS_SRC / "workflows" / "datasets" / "run_dataset_pipeline.py"
+    ).read_text(encoding="utf-8")
     forbidden_snippets = (
         'source_kind == "huggingface"',
         'source_kind == "kaggle"',
@@ -564,9 +559,9 @@ def test_dataset_pipeline_download_sources_are_config_declared() -> None:
 
 
 def test_dataset_pipeline_prototype_input_ref_is_structured() -> None:
-    source = (SCRIPTS_SRC / "datasets" / "run_dataset_pipeline.py").read_text(
-        encoding="utf-8"
-    )
+    source = (
+        SCRIPTS_SRC / "workflows" / "datasets" / "run_dataset_pipeline.py"
+    ).read_text(encoding="utf-8")
     forbidden_snippets = (
         'prototype_source == "split_train"',
         'prototype_source.startswith("mapped:")',
@@ -583,7 +578,7 @@ def test_dataset_pipeline_prototype_input_ref_is_structured() -> None:
 
 
 def test_query_peft_artifact_paths_do_not_branch_on_ssl_input_mode_names() -> None:
-    path = QUERY_PEFT_SSL_IO_SRC / "artifact_paths.py"
+    path = QUERY_SSL_PEFT_IO_SRC / "artifact_paths.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         'ssl_input_mode != "consistency"',
@@ -848,9 +843,9 @@ def test_fl_run_layout_does_not_own_labeled_exposure_policy_slug_map() -> None:
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "def _compact_labeled_exposure_slug(",
-        'policy_name == LABELED_EXPOSURE_SHARED_CLIENT_SEED',
-        'policy_name == LABELED_EXPOSURE_SERVER_ONLY_SEED',
-        'policy_name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT',
+        "policy_name == LABELED_EXPOSURE_SHARED_CLIENT_SEED",
+        "policy_name == LABELED_EXPOSURE_SERVER_ONLY_SEED",
+        "policy_name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
@@ -872,10 +867,10 @@ def test_fl_simulation_does_not_own_labeled_exposure_row_policy() -> None:
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "materialize_fl_client_split.py",
     )
     forbidden_snippets = (
-        'labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED',
-        'labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT',
-        'resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED',
-        'resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT',
+        "labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED",
+        "labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT",
+        "resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED",
+        "resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
@@ -975,7 +970,7 @@ def test_fl_report_protocol_records_payload_adapter_kind() -> None:
             ('"payload_adapter_kind": round_runtime_config.payload_adapter_kind',),
         ),
         (
-            SCRIPTS_SRC / "experiments" / "result_index" / "fl_ssl_report_loader.py",
+            SCRIPTS_SRC / "workflows" / "result_index" / "fl_ssl_report_loader.py",
             ('round_runtime.get("payload_adapter_kind")',),
         ),
     )
@@ -997,15 +992,15 @@ def test_fl_report_protocol_records_payload_adapter_kind() -> None:
 def test_result_index_uses_payload_adapter_kind_as_canonical_field() -> None:
     required_by_path = (
         (
-            SCRIPTS_SRC / "experiments" / "result_index" / "models.py",
+            SCRIPTS_SRC / "workflows" / "result_index" / "models.py",
             ("payload_adapter_kind: str | None",),
         ),
         (
-            SCRIPTS_SRC / "experiments" / "result_index" / "schema.py",
+            SCRIPTS_SRC / "workflows" / "result_index" / "schema.py",
             ("payload_adapter_kind text",),
         ),
         (
-            SCRIPTS_SRC / "experiments" / "result_index" / "dashboard_export.py",
+            SCRIPTS_SRC / "workflows" / "result_index" / "dashboard_export.py",
             ('"payload_adapter_kinds"',),
         ),
         (
@@ -1015,15 +1010,15 @@ def test_result_index_uses_payload_adapter_kind_as_canonical_field() -> None:
     )
     forbidden_by_path = (
         (
-            SCRIPTS_SRC / "experiments" / "result_index" / "models.py",
+            SCRIPTS_SRC / "workflows" / "result_index" / "models.py",
             ("payload_adapter_name: str | None",),
         ),
         (
-            SCRIPTS_SRC / "experiments" / "result_index" / "schema.py",
+            SCRIPTS_SRC / "workflows" / "result_index" / "schema.py",
             ("payload_adapter_name text",),
         ),
         (
-            SCRIPTS_SRC / "experiments" / "result_index" / "dashboard_export.py",
+            SCRIPTS_SRC / "workflows" / "result_index" / "dashboard_export.py",
             ('"adapter_families"',),
         ),
     )
@@ -1390,7 +1385,7 @@ def test_partitioned_peft_execution_primitive_uses_adapter_linear_head_names() -
     )
 
 
-def test_scripts_use_query_peft_ssl_harness_package_path() -> None:
+def test_scripts_use_query_ssl_peft_runtime_support_package_path() -> None:
     legacy_root = SCRIPTS_SRC / "experiments" / "query_lora_ssl"
     checked_roots = (SCRIPTS_SRC, REPO_ROOT / "tests")
     forbidden_snippets = (
@@ -1407,9 +1402,9 @@ def test_scripts_use_query_peft_ssl_harness_package_path() -> None:
     ]
 
     assert (
-        QUERY_PEFT_SSL_SRC.is_dir() and not legacy_root.exists() and not violations
+        QUERY_SSL_PEFT_SRC.is_dir() and not legacy_root.exists() and not violations
     ), (
-        "중앙 Query SSL harness package 경로는 query_peft_ssl을 사용한다. "
+        "중앙 Query SSL runtime support package 경로는 query_ssl_peft를 사용한다. "
         "LoRA는 PEFT adapter mechanism 또는 v1 artifact/contract 이름으로만 "
         "남기고, scripts package boundary 이름으로 재도입하지 않는다.\n"
         f"legacy_exists={legacy_root.exists()}\n"
@@ -1421,60 +1416,72 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
     expected_paths = (
         SCRIPTS_SRC
         / "experiments"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "run_peft_ssl_control.py",
         SCRIPTS_SRC
         / "experiments"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "run_peft_supervised_control.py",
         CONF_SRC
         / "entrypoints"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "run_peft_ssl_control.yaml",
         CONF_SRC
         / "entrypoints"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "run_peft_supervised_control.yaml",
     )
     legacy_paths = (
         SCRIPTS_SRC
         / "experiments"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "train_lora_ssl_classifier.py",
         SCRIPTS_SRC
         / "experiments"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "train_lora_supervised_classifier.py",
         CONF_SRC
         / "entrypoints"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "train_lora_ssl_classifier.yaml",
         CONF_SRC
         / "entrypoints"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "train_lora_supervised_classifier.yaml",
         SCRIPTS_SRC
         / "experiments"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "train_peft_ssl_classifier.py",
         SCRIPTS_SRC
         / "experiments"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "train_peft_supervised_classifier.py",
         CONF_SRC
         / "entrypoints"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "train_peft_ssl_classifier.yaml",
         CONF_SRC
         / "entrypoints"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "train_peft_supervised_classifier.yaml",
     )
     checked_paths = (
         SCRIPTS_SRC / "README.md",
         SCRIPTS_SRC / "experiments" / "README.md",
-        SCRIPTS_SRC / "experiments" / "central_ssl_control" / "README.md",
-        SCRIPTS_SRC / "experiments" / "query_peft_ssl" / "README.md",
+        SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "README.md",
+        SCRIPTS_SRC / "support" / "query_ssl_peft" / "README.md",
     )
     forbidden_snippets = (
         "train_lora_ssl_classifier",
@@ -1510,11 +1517,13 @@ def test_central_peft_entrypoints_do_not_write_lora_named_artifact_roots() -> No
     checked_paths = (
         CONF_SRC
         / "entrypoints"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "run_peft_ssl_control.yaml",
         CONF_SRC
         / "entrypoints"
-        / "central_ssl_control"
+        / "central"
+        / "ssl_control"
         / "run_peft_supervised_control.yaml",
     )
     forbidden_snippets = (
@@ -1537,7 +1546,7 @@ def test_central_peft_entrypoints_do_not_write_lora_named_artifact_roots() -> No
     )
 
 
-def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
+def test_query_ssl_peft_runtime_support_uses_peft_helper_names() -> None:
     forbidden_snippets = (
         "query_" + "lora",
         "Query" + "Lora",
@@ -1555,13 +1564,13 @@ def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
-        for path in _iter_python_files(QUERY_PEFT_SSL_SRC)
+        for path in _iter_python_files(QUERY_SSL_PEFT_SRC)
         for snippet in forbidden_snippets
         if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
-        "query_peft_ssl harness 내부 helper/type 이름은 PEFT 기준을 사용한다. "
+        "query_ssl_peft runtime support 내부 helper/type 이름은 PEFT 기준을 사용한다. "
         "LoRA는 adapter mechanism이나 old-run artifact/entrypoint compatibility "
         "표면에만 남긴다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
@@ -1570,10 +1579,10 @@ def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
 
 def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
     checked_paths = (
-        SCRIPTS_SRC / "experiments" / "result_index" / "schema.py",
-        SCRIPTS_SRC / "experiments" / "result_index" / "models.py",
-        SCRIPTS_SRC / "experiments" / "result_index" / "fl_ssl_report_loader.py",
-        SCRIPTS_SRC / "experiments" / "result_index" / "dashboard_export.py",
+        SCRIPTS_SRC / "workflows" / "result_index" / "schema.py",
+        SCRIPTS_SRC / "workflows" / "result_index" / "models.py",
+        SCRIPTS_SRC / "workflows" / "result_index" / "fl_ssl_report_loader.py",
+        SCRIPTS_SRC / "workflows" / "result_index" / "dashboard_export.py",
     )
     forbidden_snippets = (
         "LoRA-classifier",
@@ -1783,9 +1792,9 @@ def test_federated_ssl_client_diagnostics_use_method_discovery() -> None:
 
 def test_round_state_exchange_names_are_contract_owned() -> None:
     base_source = (METHODS_FEDERATED_SSL_SRC / "base.py").read_text(encoding="utf-8")
-    execution_plan_source = (
-        METHODS_FEDERATED_SSL_SRC / "execution_plan.py"
-    ).read_text(encoding="utf-8")
+    execution_plan_source = (METHODS_FEDERATED_SSL_SRC / "execution_plan.py").read_text(
+        encoding="utf-8"
+    )
     executor_source = (
         MAIN_SERVER_SRC
         / "services"
@@ -1867,11 +1876,7 @@ def test_runtime_fallback_profile_does_not_import_adapter_implementation() -> No
 
 def test_agent_runtime_compatibility_does_not_hardcode_privacy_guard_default() -> None:
     path = (
-        AGENT_SRC
-        / "services"
-        / "training"
-        / "execution"
-        / "runtime_compatibility.py"
+        AGENT_SRC / "services" / "training" / "execution" / "runtime_compatibility.py"
     )
     source = path.read_text(encoding="utf-8")
 
@@ -2061,7 +2066,9 @@ def test_fl_scripts_legacy_payload_names_stay_in_compatibility_files() -> None:
         ),
         Path("scripts/experiments/fl_ssl/federated_simulation/models.py"),
         Path("scripts/runtime_adapters/federated_agent/base_state_materialization.py"),
-        Path("scripts/runtime_adapters/federated_agent/generic_client_runtime_bridge.py"),
+        Path(
+            "scripts/runtime_adapters/federated_agent/generic_client_runtime_bridge.py"
+        ),
     }
     actual_paths: set[Path] = set()
     for root in roots:
@@ -2870,13 +2877,9 @@ def test_active_surface_and_runbook_docs_stay_concise() -> None:
         REPO_ROOT / "docs" / "experiment_results.md",
         REPO_ROOT / "docs" / "strategy_surface_map.md",
         REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md",
-        SCRIPTS_SRC / "experiments" / "central_ssl_control" / "README.md",
+        SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "README.md",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md",
-        SCRIPTS_SRC
-        / "experiments"
-        / "fl_ssl"
-        / "federated_simulation"
-        / "README.md",
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
     )
     max_lines_by_path = {
         CONF_SRC / "README.md": 160,
@@ -2885,7 +2888,7 @@ def test_active_surface_and_runbook_docs_stay_concise() -> None:
         REPO_ROOT / "docs" / "experiment_results.md": 100,
         REPO_ROOT / "docs" / "strategy_surface_map.md": 120,
         REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md": 120,
-        SCRIPTS_SRC / "experiments" / "central_ssl_control" / "README.md": 100,
+        SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "README.md": 100,
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md": 160,
         SCRIPTS_SRC
         / "experiments"
@@ -2900,8 +2903,7 @@ def test_active_surface_and_runbook_docs_stay_concise() -> None:
             max_lines_by_path[path],
         )
         for path in checked_paths
-        if len(path.read_text(encoding="utf-8").splitlines())
-        > max_lines_by_path[path]
+        if len(path.read_text(encoding="utf-8").splitlines()) > max_lines_by_path[path]
     ]
 
     assert not violations, (
@@ -3345,12 +3347,12 @@ def test_lora_classifier_update_package_does_not_keep_one_use_helper_files() -> 
 
 
 def test_query_peft_run_artifacts_do_not_keep_writer_exporter_monolith() -> None:
-    orchestrator_path = QUERY_PEFT_SSL_IO_SRC / "artifacts.py"
+    orchestrator_path = QUERY_SSL_PEFT_IO_SRC / "artifacts.py"
     expected_responsibility_files = (
-        QUERY_PEFT_SSL_IO_SRC / "artifact_paths.py",
-        QUERY_PEFT_SSL_IO_SRC / "artifact_writer.py",
-        QUERY_PEFT_SSL_IO_SRC / "manifest_builder.py",
-        QUERY_PEFT_SSL_IO_SRC / "model_artifact_exporter.py",
+        QUERY_SSL_PEFT_IO_SRC / "artifact_paths.py",
+        QUERY_SSL_PEFT_IO_SRC / "artifact_writer.py",
+        QUERY_SSL_PEFT_IO_SRC / "manifest_builder.py",
+        QUERY_SSL_PEFT_IO_SRC / "model_artifact_exporter.py",
     )
     source = orchestrator_path.read_text(encoding="utf-8")
     forbidden_snippets = (
@@ -3379,9 +3381,9 @@ def test_query_peft_run_artifacts_do_not_keep_writer_exporter_monolith() -> None
 
 
 def test_query_peft_teacher_pseudo_label_does_not_keep_exporter_monolith() -> None:
-    legacy_exporter_path = QUERY_PEFT_SSL_IO_SRC / "teacher_pseudo_label_exporter.py"
-    builder_path = QUERY_PEFT_SSL_IO_SRC / "teacher_pseudo_label_builder.py"
-    writer_path = QUERY_PEFT_SSL_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
+    legacy_exporter_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_exporter.py"
+    builder_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_builder.py"
+    writer_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
     builder_source = builder_path.read_text(encoding="utf-8")
     builder_forbidden_snippets = (
         "json.dumps(",
@@ -3484,7 +3486,7 @@ def test_scripts_reporting_does_not_wrap_shared_classification_report() -> None:
 
     assert not facade_path.exists(), (
         "classification report canonical utility는 shared domain service가 소유한다. "
-        "scripts/reporting에는 단순 re-export wrapper를 두지 않는다.\n"
+        "scripts/support/reporting에는 단순 re-export wrapper를 두지 않는다.\n"
         f"facade path={_relative_repo_path(facade_path)}"
     )
 

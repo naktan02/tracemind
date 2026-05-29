@@ -8,10 +8,10 @@ from omegaconf import OmegaConf
 
 def test_run_peft_supervised_control_entrypoint_imports_direct_runner() -> None:
     entrypoint = importlib.import_module(
-        "scripts.experiments.central_ssl_control.run_peft_supervised_control"
+        "scripts.experiments.central.ssl_control.run_peft_supervised_control"
     )
     runner = importlib.import_module(
-        "scripts.experiments.query_peft_ssl.runners.supervised"
+        "scripts.support.query_ssl_peft.runners.supervised"
     )
 
     assert (
@@ -21,10 +21,10 @@ def test_run_peft_supervised_control_entrypoint_imports_direct_runner() -> None:
 
 def test_run_peft_ssl_control_entrypoint_imports_mode_router() -> None:
     entrypoint = importlib.import_module(
-        "scripts.experiments.central_ssl_control.run_peft_ssl_control"
+        "scripts.experiments.central.ssl_control.run_peft_ssl_control"
     )
     router = importlib.import_module(
-        "scripts.experiments.central_ssl_control.ssl_mode_router"
+        "scripts.experiments.central.ssl_control.ssl_mode_router"
     )
 
     assert entrypoint.run_central_ssl_mode is router.run_central_ssl_mode
@@ -32,7 +32,7 @@ def test_run_peft_ssl_control_entrypoint_imports_mode_router() -> None:
 
 def test_central_ssl_mode_router_uses_config_declared_runner(monkeypatch) -> None:
     router = importlib.import_module(
-        "scripts.experiments.central_ssl_control.ssl_mode_router"
+        "scripts.experiments.central.ssl_control.ssl_mode_router"
     )
 
     captured: dict[str, object] = {}
@@ -62,7 +62,7 @@ def test_central_ssl_mode_router_uses_config_declared_runner(monkeypatch) -> Non
 
 def test_central_ssl_mode_router_rejects_scalar_mode_override_without_group() -> None:
     router = importlib.import_module(
-        "scripts.experiments.central_ssl_control.ssl_mode_router"
+        "scripts.experiments.central.ssl_control.ssl_mode_router"
     )
     cfg = OmegaConf.create(
         {
@@ -79,7 +79,7 @@ def test_central_ssl_mode_router_rejects_scalar_mode_override_without_group() ->
 
 
 def test_query_peft_package_keeps_concrete_helpers_out_of_package_surface() -> None:
-    package = importlib.import_module("scripts.experiments.query_peft_ssl")
+    package = importlib.import_module("scripts.support.query_ssl_peft")
 
     assert not hasattr(package, "run_supervised_peft_baseline")
     assert not hasattr(package, "run_query_adaptation_supervised_baseline")

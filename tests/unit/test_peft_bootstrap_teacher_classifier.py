@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from omegaconf import OmegaConf
 
-from scripts.experiments.query_peft_ssl.runners.teacher_classifier import (
+from scripts.support.query_ssl_peft.runners.teacher_classifier import (
     resolve_teacher_classifier,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
@@ -70,7 +70,7 @@ def test_resolve_teacher_classifier_trains_and_writes_artifacts(
     )
 
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.runners.teacher_classifier.instantiate",
+        "scripts.support.query_ssl_peft.runners.teacher_classifier.instantiate",
         lambda _spec: SimpleNamespace(device="cpu"),
     )
 
@@ -90,12 +90,12 @@ def test_resolve_teacher_classifier_trains_and_writes_artifacts(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.runners.teacher_classifier."
+        "scripts.support.query_ssl_peft.runners.teacher_classifier."
         "train_fixed_embedding_classifier",
         _fake_train_fixed_embedding_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.runners.teacher_classifier."
+        "scripts.support.query_ssl_peft.runners.teacher_classifier."
         "write_fixed_classifier_artifacts",
         _fake_write_fixed_classifier_artifacts,
     )
@@ -144,7 +144,7 @@ def test_resolve_teacher_classifier_reuses_manifest(
         )
 
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.runners.teacher_classifier."
+        "scripts.support.query_ssl_peft.runners.teacher_classifier."
         "load_fixed_classifier_artifacts",
         _fake_load_fixed_classifier_artifacts,
     )

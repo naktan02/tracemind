@@ -1,0 +1,148 @@
+"""Query PEFT run artifact path tests."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+from hydra import compose, initialize_config_module
+from omegaconf import OmegaConf
+
+from scripts.support.query_ssl_peft.io.artifact_paths import (
+    build_query_peft_run_artifact_paths,
+)
+
+
+def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
+    cfg = OmegaConf.create(
+        {
+            "ssl_input_mode": "consistency",
+            "central_ssl_runner": {
+                "mode": "consistency",
+                "group_by_query_ssl_method": True,
+            },
+            "output_dir": (
+                "runs/run_peft_ssl_control/consistency/"
+                "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
+            ),
+            "adapter_output_dir": "data/processed/peft_adapters",
+            "classifier_output_dir": "data/processed/peft_classifier_heads",
+            "query_ssl_method": {
+                "name": "fixmatch_usb_v1",
+            },
+        }
+    )
+
+    paths = build_query_peft_run_artifact_paths(
+        cfg=cfg,
+        trainer_version="peft_fixmatch_2026_05_10_155954",
+        created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
+    )
+
+    assert str(paths.output_dir) == (
+        "runs/run_peft_ssl_control/consistency/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
+        "fixmatch_usb_v1/peft_fixmatch_2026_05_10_155954"
+    )
+    assert str(paths.report_path) == (
+        "runs/run_peft_ssl_control/"
+        "consistency/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
+        "fixmatch_usb_v1/"
+        "peft_fixmatch_2026_05_10_155954/"
+        "reports/report.json"
+    )
+
+
+def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> None:
+    cfg = OmegaConf.create(
+        {
+            "ssl_input_mode": "pseudo_label_replay",
+            "central_ssl_runner": {
+                "mode": "pseudo_label_replay",
+                "group_by_query_ssl_method": False,
+            },
+            "output_dir": (
+                "runs/run_peft_ssl_control/pseudo_label_replay/"
+                "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
+            ),
+            "adapter_output_dir": "data/processed/peft_adapters",
+            "classifier_output_dir": "data/processed/peft_classifier_heads",
+            "query_ssl_method": {
+                "name": "fixmatch_usb_v1",
+            },
+        }
+    )
+
+    paths = build_query_peft_run_artifact_paths(
+        cfg=cfg,
+        trainer_version="peft_replay_2026_05_10_155954",
+        created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
+    )
+
+    assert str(paths.output_dir) == (
+        "runs/run_peft_ssl_control/pseudo_label_replay/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
+        "peft_replay_2026_05_10_155954"
+    )
+
+
+def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=["run_controls/central_ssl/budget=smoke"],
+        )
+
+    paths = build_query_peft_run_artifact_paths(
+        cfg=cfg,
+        trainer_version="peft_smoke_2026_05_10_155954",
+        created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
+    )
+
+    assert str(paths.output_dir) == (
+        "runs/_smoke/run_peft_ssl_control/consistency/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit/"
+        "fixmatch_usb_v1/peft_smoke_2026_05_10_155954"
+    )
+    assert str(paths.report_path).startswith("runs/_smoke/run_peft_ssl_control/")
+
+
+def test_non_query_ssl_run_output_dir_keeps_flat_run_id() -> None:
+    cfg = OmegaConf.create(
+        {
+            "output_dir": "runs/run_peft_supervised_control",
+            "adapter_output_dir": "data/processed/peft_adapters",
+            "classifier_output_dir": "data/processed/peft_classifier_heads",
+        }
+    )
+
+    paths = build_query_peft_run_artifact_paths(
+        cfg=cfg,
+        trainer_version="peft_clf_2026_05_10_155954",
+        created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
+    )
+
+    assert str(paths.output_dir) == (
+        "runs/run_peft_supervised_control/peft_clf_2026_05_10_155954"
+    )
+
+
+def test_supervised_smoke_budget_paths_stay_under_smoke_root() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=("entrypoints/central/ssl_control/run_peft_supervised_control"),
+            overrides=["run_controls/central_ssl/budget=smoke"],
+        )
+
+    paths = build_query_peft_run_artifact_paths(
+        cfg=cfg,
+        trainer_version="peft_supervised_smoke_2026_05_10_155954",
+        created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
+    )
+
+    assert str(paths.output_dir) == (
+        "runs/_smoke/run_peft_supervised_control/"
+        "peft_supervised_smoke_2026_05_10_155954"
+    )
+    assert str(paths.report_path).startswith("runs/_smoke/run_peft_supervised_control/")

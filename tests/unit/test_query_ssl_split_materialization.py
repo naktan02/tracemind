@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.datasets.lib.query_ssl_split import (
+from scripts.workflows.datasets.lib.query_ssl_split import (
     QUERY_SSL_SPLIT_SCHEMA_VERSION,
     materialize_class_balanced_query_ssl_split,
 )

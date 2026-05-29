@@ -7,8 +7,10 @@ import pytest
 import torch
 from torch import nn
 
-from scripts.experiments.fixed_classifier.models import TrainedFixedClassifier
-from scripts.experiments.fixed_classifier.prediction import (
+from scripts.experiments.central.fixed_classifier_seed.models import (
+    TrainedFixedClassifier,
+)
+from scripts.experiments.central.fixed_classifier_seed.prediction import (
     predict_fixed_classifier_rows,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

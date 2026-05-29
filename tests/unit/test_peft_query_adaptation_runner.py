@@ -13,7 +13,7 @@ from agent.src.services.training.datasets.query_adaptation_dataset_service impor
     QueryAdaptationDatasetExample,
     QueryAdaptationDatasetProvenance,
 )
-from scripts.experiments.query_peft_ssl.runners.query_adaptation import (
+from scripts.support.query_ssl_peft.runners.query_adaptation import (
     prepare_query_adaptation_supervised_run,
     run_query_adaptation_supervised_baseline,
 )
@@ -138,7 +138,7 @@ def test_run_query_adaptation_supervised_baseline_calls_existing_runner(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.runners.query_adaptation."
+        "scripts.support.query_ssl_peft.runners.query_adaptation."
         "run_supervised_peft_baseline",
         _fake_runner,
     )

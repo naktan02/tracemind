@@ -43,6 +43,26 @@ Reddit Labeled Data
 query가 충분히 쌓인 뒤 그 query 분포에 맞춰 표현과 경계를 함께 조정하는
 두 번째 단계 contract다.
 
+## fixed classifier seed가 필요한 이유
+
+`fixed_classifier_seed`는 실행해서 artifact를 만드는 첫 단계 고정 임베딩
+classifier 기준점이다. PEFT SSL method 자체는 아니며, 중앙 SSL run이 매번
+자동으로 다시 학습하는 내부 sub-step도 아니다. 필요한 이유는 네 가지다.
+
+1. label order, category, classifier head provenance를 고정해 이후 중앙/FL 비교의
+   시작점을 흔들리지 않게 한다.
+2. PEFT text encoder checkpoint가 아직 없을 때 fixed embedding classifier를 teacher로
+   써서 unlabeled pool의 pseudo-label 후보를 만들 수 있다.
+3. `canonical_fixed_classifier_seed` warm-start ablation을 열 때 같은 seed artifact에서
+   출발했는지 산출물 metadata로 검증할 수 있다.
+4. PEFT adaptation이 단순 fixed embedding classifier보다 나아졌는지 비교할
+   reference metric을 제공한다.
+
+따라서 central SSL method 비교의 기본 initial checkpoint는 `none`이고,
+`canonical_fixed_classifier_seed`는 bootstrap, continual adaptation, warm-start ablation에서
+명시적으로 선택하는 입력이다. 현재 canonical seed artifact는
+`clf_2026_04_11_143138`이다.
+
 ## canonical scaffold
 
 query-domain 적응 단계의 기본 scaffold는 아래로 고정한다.

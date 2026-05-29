@@ -284,7 +284,7 @@ async function init() {
     elements.loadState.className = "notice warning";
     elements.loadState.innerHTML = `
       <strong>dashboard data를 찾지 못했습니다.</strong>
-      <span>먼저 result index export를 실행하세요: <code>uv run python -m scripts.experiments.result_index.ingest --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json</code></span>
+      <span>먼저 result index export를 실행하세요: <code>uv run python -m scripts.workflows.result_index.ingest --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json</code></span>
     `;
   }
 }

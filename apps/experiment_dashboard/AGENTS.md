@@ -5,7 +5,7 @@
 `apps/experiment_dashboard`는 실험 결과 index를 읽는 research/developer UI다.
 
 - 실험 metric 의미와 schema source of truth를 소유하지 않는다.
-- `scripts/experiments/result_index`가 export한 정적 JSON bundle을 소비한다.
+- `scripts/workflows/result_index`가 export한 정적 JSON bundle을 소비한다.
 - product UI, family extension, agent/main_server runtime과 섞지 않는다.
 
 ## 규칙

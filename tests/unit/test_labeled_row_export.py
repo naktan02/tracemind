@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from scripts.experiments.query_peft_ssl.io.labeled_row_export import (
+from scripts.support.query_ssl_peft.io.labeled_row_export import (
     write_labeled_row_export,
 )
 from shared.src.contracts.labeled_query_row_contracts import (

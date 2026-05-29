@@ -16,12 +16,12 @@ import pytest
         "scripts.experiments.fl_ssl.run_federated_simulation",
         "scripts.experiments.fl_ssl.run_federated_seed_sweep",
         "scripts.experiments.fl_ssl.run_federated_client_count_sweep",
-        "scripts.experiments.central_classifier_seed.train_softmax_classifier",
-        "scripts.experiments.central_ssl_control.run_peft_supervised_control",
-        "scripts.experiments.central_ssl_control.run_peft_ssl_control",
-        "scripts.datasets.run_dataset_pipeline",
-        "scripts.datasets.materialize_query_ssl_split",
-        "scripts.datasets.materialize_query_ssl_views",
+        "scripts.experiments.central.fixed_classifier_seed.train_softmax_classifier",
+        "scripts.experiments.central.ssl_control.run_peft_supervised_control",
+        "scripts.experiments.central.ssl_control.run_peft_ssl_control",
+        "scripts.workflows.datasets.run_dataset_pipeline",
+        "scripts.workflows.datasets.materialize_query_ssl_split",
+        "scripts.workflows.datasets.materialize_query_ssl_views",
     ],
 )
 def test_experiment_entrypoints_import_without_symbol_errors(

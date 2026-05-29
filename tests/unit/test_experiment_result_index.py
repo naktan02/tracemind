@@ -8,13 +8,13 @@ from pathlib import Path
 
 import pytest
 
-from scripts.experiments.result_index.dashboard_export import write_dashboard_bundle
-from scripts.experiments.result_index.ingest import ingest_reports
-from scripts.experiments.result_index.report_loader import (
+from scripts.workflows.result_index.dashboard_export import write_dashboard_bundle
+from scripts.workflows.result_index.ingest import ingest_reports
+from scripts.workflows.result_index.report_loader import (
     discover_report_paths,
     load_result_index_records,
 )
-from scripts.experiments.result_index.sqlite_store import (
+from scripts.workflows.result_index.sqlite_store import (
     initialize_database,
     write_result_index_records,
 )

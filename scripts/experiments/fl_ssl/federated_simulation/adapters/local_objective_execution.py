@@ -10,7 +10,6 @@ from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )
-from scripts.configured_callable import load_configured_callable
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
@@ -20,6 +19,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
+from scripts.support.configured_callable import load_configured_callable
 
 LocalObjectiveExecutor = Callable[..., ClientRoundExecution | None]
 

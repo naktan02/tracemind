@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from omegaconf import OmegaConf
 
-from scripts.experiments.query_peft_ssl.runners.supervised import (
+from scripts.support.query_ssl_peft.runners.supervised import (
     run_supervised_peft_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
@@ -113,7 +113,7 @@ def test_run_supervised_peft_baseline_wires_common_context_and_artifacts(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.build_query_peft_model",
+        "scripts.support.query_ssl_peft.runtime_context.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -121,11 +121,11 @@ def test_run_supervised_peft_baseline_wires_common_context_and_artifacts(
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.runners.supervised.train_query_peft_classifier",
+        "scripts.support.query_ssl_peft.runners.supervised.train_query_peft_classifier",
         _fake_train_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.evaluate_query_peft_classifier",
+        "scripts.support.query_ssl_peft.runtime_context.evaluate_query_peft_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -138,7 +138,7 @@ def test_run_supervised_peft_baseline_wires_common_context_and_artifacts(
         },
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.runners.supervised.write_run_artifacts",
+        "scripts.support.query_ssl_peft.runners.supervised.write_run_artifacts",
         _fake_write_run_artifacts,
     )
 

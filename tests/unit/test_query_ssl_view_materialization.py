@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.datasets.lib.query_ssl_views import (
+from scripts.workflows.datasets.lib.query_ssl_views import (
     QUERY_SSL_VIEWS_SCHEMA_VERSION,
     materialize_query_ssl_backtranslation_views,
 )

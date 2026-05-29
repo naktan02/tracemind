@@ -1,1 +1,1 @@
-"""Prototype analysis experiment entrypoints and harnesses."""
+"""Prototype analysis experiment entrypoints and support helpers."""

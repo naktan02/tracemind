@@ -28,7 +28,7 @@ sources:
   train:
     download:
       provider: huggingface
-      callable_path: scripts.datasets.lib.download_sources.download_huggingface_source
+      callable_path: scripts.workflows.datasets.lib.download_sources.download_huggingface_source
     dataset_id: av9ash/CSSR-S_labelled_suicidewatch_posts_reddit
     split: train
     data_file: labeled_rSuicidewatch_posts.csv

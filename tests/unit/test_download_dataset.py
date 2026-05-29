@@ -6,7 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
-from scripts.datasets.lib.download import (
+from scripts.workflows.datasets.lib.download import (
     build_default_output_path,
     download_kaggle_dataset_file_to_csv,
 )
@@ -36,7 +36,7 @@ def test_download_kaggle_dataset_file_extracts_configured_csv(
         return archive_buffer.getvalue()
 
     monkeypatch.setattr(
-        "scripts.datasets.lib.download._download_url_bytes",
+        "scripts.workflows.datasets.lib.download._download_url_bytes",
         _fake_download,
     )
 

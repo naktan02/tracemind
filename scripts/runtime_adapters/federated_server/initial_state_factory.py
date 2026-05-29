@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from scripts.configured_callable import load_configured_callable
+from scripts.support.configured_callable import load_configured_callable
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 

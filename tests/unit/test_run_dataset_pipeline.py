@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from hydra import compose, initialize_config_module
 
-from scripts.datasets.run_dataset_pipeline import (
+from scripts.workflows.datasets.run_dataset_pipeline import (
     resolve_pipeline_output_dir,
     resolve_prototype_input_jsonl,
     supported_dataset_aliases,
@@ -32,7 +32,7 @@ def test_hydra_dataset_group_contains_pipeline_metadata() -> None:
     assert cfg.dataset.sources.train.data_file == "mental_heath_unbanlanced.csv"
     assert (
         cfg.dataset.sources.train.download.callable_path
-        == "scripts.datasets.lib.download_sources.download_huggingface_source"
+        == "scripts.workflows.datasets.lib.download_sources.download_huggingface_source"
     )
 
 

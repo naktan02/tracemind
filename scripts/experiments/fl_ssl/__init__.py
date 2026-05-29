@@ -1,1 +1,1 @@
-"""Federated SSL experiment entrypoints and harnesses."""
+"""Federated SSL experiment entrypoints and support helpers."""

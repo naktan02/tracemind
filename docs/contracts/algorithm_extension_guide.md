@@ -7,7 +7,7 @@
 
 - 계산 core는 `methods/`에 둔다.
 - 실행 조합과 파라미터는 `conf/`에 둔다.
-- scripts는 Hydra entrypoint와 실험 harness만 담당한다.
+- scripts는 Hydra entrypoint와 실험 runtime support만 담당한다.
 - agent/main_server는 production/runtime adapter로 선택된 core를 호출한다.
 - shared는 contract, domain entity, canonical payload 해석만 담당한다.
 - 새 method/algorithm 추가 때문에 agent/main_server에 method-specific 파일을 만들지
@@ -28,7 +28,7 @@
 |---|---|---|---|---|
 | SSL objective | `methods/ssl/*` | `scripts/experiments/*`, agent runtime 필요 시 adapter | `conf/strategy_axes/ssl_objective/*` | `tests/unit`, `tests/integration` |
 | Pseudo-label selection | `methods/ssl/hooks/*` | agent acceptance/selection adapter, scripts control runner | `conf/strategy_axes/ssl_objective/pseudo_label_selection/*` | selection unit, central control smoke |
-| Query SSL adaptation | `methods/adaptation/query_text_views/*` | scripts central SSL runners | `conf/entrypoints/central_ssl_control/*` | trainer smoke, artifact metadata |
+| Query SSL adaptation | `methods/adaptation/query_text_views/*` | scripts central SSL runners | `conf/entrypoints/central/ssl_control/*` | trainer smoke, artifact metadata |
 | PEFT adapter | `methods/adaptation/*` | scripts trainer, future agent adapter | `conf/strategy_axes/model_architecture/peft/*` | adapter builder unit |
 | Prototype building | `methods/prototype/building/*` | scripts prototype CLI, main_server publication adapter | `conf/strategy_axes/prototype/*` | builder unit, publication integration |
 | Prototype scoring/evidence | `methods/prototype/scoring/*`, `methods/prototype/evidence/*` | agent scoring/evidence backends, scripts analysis | training objective config | scoring/evidence unit |

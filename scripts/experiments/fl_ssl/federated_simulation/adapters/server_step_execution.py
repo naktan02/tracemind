@@ -9,7 +9,6 @@ from methods.federated_ssl.capability_plan import (
     SERVER_STEP_NONE,
     FederatedSslCapabilityPlan,
 )
-from scripts.configured_callable import load_configured_callable
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
@@ -17,6 +16,7 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
+from scripts.support.configured_callable import load_configured_callable
 
 
 def require_supported_server_step(

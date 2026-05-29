@@ -14,7 +14,7 @@ from agent.src.services.training.selection.query_buffer_selection_diagnostics im
 from agent.src.services.training.selection.query_buffer_selection_service import (
     QueryBufferSelectionService,
 )
-from scripts.reporting.query_buffer_selection_diagnostics import (
+from scripts.support.reporting.query_buffer_selection_diagnostics import (
     write_query_buffer_selection_diagnostics,
 )
 from shared.src.contracts.training_contracts import (

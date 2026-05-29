@@ -34,7 +34,7 @@ sources:
   train:
     download:
       provider: huggingface
-      callable_path: scripts.datasets.lib.download_sources.download_huggingface_source
+      callable_path: scripts.workflows.datasets.lib.download_sources.download_huggingface_source
     dataset_id: ourafla/Mental-Health_Text-Classification_Dataset
     split: train
     data_file: mental_heath_unbanlanced.csv
@@ -45,7 +45,7 @@ sources:
   test:
     download:
       provider: huggingface
-      callable_path: scripts.datasets.lib.download_sources.download_huggingface_source
+      callable_path: scripts.workflows.datasets.lib.download_sources.download_huggingface_source
     dataset_id: ourafla/Mental-Health_Text-Classification_Dataset
     split: test
     data_file: mental_health_combined_test.csv

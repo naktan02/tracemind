@@ -153,7 +153,7 @@ cd apps/family_extension && npm run build
 Experiment dashboard:
 
 ```bash
-uv run python -m scripts.experiments.result_index.ingest \
+uv run python -m scripts.workflows.result_index.ingest \
   --runs-root runs \
   --db data/processed/experiment_index/experiment_results.sqlite \
   --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json
@@ -172,35 +172,39 @@ node --check apps/experiment_dashboard/src/app.js
 Dataset pipeline:
 
 ```bash
-uv run python scripts/datasets/run_dataset_pipeline.py
+uv run python scripts/workflows/datasets/run_dataset_pipeline.py
 ```
 
 Query SSL split/view materialization:
 
 ```bash
-uv run python scripts/datasets/materialize_query_ssl_split.py \
+uv run python scripts/workflows/datasets/materialize_query_ssl_split.py \
   execution_context/dataset_asset=mental_health_kaggle
 
-uv run python scripts/datasets/materialize_query_ssl_views.py \
+uv run python scripts/workflows/datasets/materialize_query_ssl_views.py \
   execution_context/query_view=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
 ```
 
 Fixed classifier seed:
 
 ```bash
-uv run python scripts/experiments/central_classifier_seed/train_softmax_classifier.py
+uv run python scripts/experiments/central/fixed_classifier_seed/train_softmax_classifier.py
 ```
+
+이 단계는 PEFT SSL objective가 아니라 고정 임베딩 classifier 기준점이다.
+`canonical_fixed_classifier_seed`는 bootstrap이나 warm-start ablation에서 명시적으로
+선택하고, 중앙 SSL method 비교 기본값은 `initial_checkpoint=none`이다.
 
 PEFT supervised baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/run_peft_supervised_control.py
+uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py
 ```
 
 USB PseudoLabel baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
+uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
   strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1 \
   output_dir=runs/run_peft_ssl_control_pseudolabel
 ```
@@ -208,7 +212,17 @@ uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
 FixMatch baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py
+uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py
+```
+
+중앙 SSL의 labeled/unlabeled source는 `query_data_selection.*`으로 바꾼다.
+
+```bash
+uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
+  query_data_selection.labeled=szegeelim_general4 \
+  query_data_selection.unlabeled=ourafla_reddit \
+  query_data_selection.validation=ourafla_reddit \
+  query_data_selection.test=ourafla_reddit
 ```
 
 중앙 SSL smoke/test 실행은 `run_controls/central_ssl/budget=smoke`를 사용한다.
@@ -303,7 +317,7 @@ GPU/mxbai 실행 결과만 사용한다.
 Hydra 설정 preview:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py --cfg job
+uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py --cfg job
 ```
 
 ## 7. Runtime Profiles

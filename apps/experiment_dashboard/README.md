@@ -6,7 +6,7 @@
 정적 파일 서버로 열면 된다.
 
 ```bash
-uv run python -m scripts.experiments.result_index.ingest \
+uv run python -m scripts.workflows.result_index.ingest \
   --runs-root runs \
   --db data/processed/experiment_index/experiment_results.sqlite \
   --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json
@@ -20,7 +20,7 @@ python -m http.server 5175 -d apps/experiment_dashboard
 `--reset`을 붙인다.
 
 ```bash
-uv run python -m scripts.experiments.result_index.ingest \
+uv run python -m scripts.workflows.result_index.ingest \
   --runs-root runs \
   --reset \
   --db data/processed/experiment_index/experiment_results.sqlite \

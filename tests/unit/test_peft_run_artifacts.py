@@ -11,7 +11,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from scripts.experiments.query_peft_ssl.io.artifacts import write_run_artifacts
+from scripts.support.query_ssl_peft.io.artifacts import write_run_artifacts
 
 
 class _DummySaver:

@@ -28,7 +28,6 @@ from methods.federated_ssl.method_config_surface import (
     default_method_server_update_policy_name,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
-from scripts.configured_callable import load_configured_callable
 from scripts.experiments.fl_ssl.federated_simulation.config_utils import (
     optional_plain_dict,
     to_plain_dict,
@@ -58,6 +57,7 @@ from scripts.runtime_adapters.federated_server.round_request_mapper import (
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
+from scripts.support.configured_callable import load_configured_callable
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,

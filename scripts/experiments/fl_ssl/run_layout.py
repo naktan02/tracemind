@@ -16,7 +16,7 @@ from methods.federated_ssl.method_config_surface import (
     default_method_server_update_policy_name,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
-from scripts.configured_callable import load_configured_callable
+from scripts.support.configured_callable import load_configured_callable
 
 
 def build_fl_ssl_run_dir(
@@ -220,6 +220,7 @@ def _build_configured_update_family_slug(
     if not normalized_slug:
         raise ValueError("round_runtime.composition_slug_builder returned empty slug.")
     return normalized_slug
+
 
 def _resolve_labeled_exposure_slug(cfg: DictConfig) -> str | None:
     configured = _select(cfg, "labeled_exposure_policy.name", default=None)

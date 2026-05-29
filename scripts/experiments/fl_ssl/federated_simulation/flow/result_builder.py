@@ -6,7 +6,6 @@ import gc
 import time
 from typing import Any
 
-from scripts.configured_callable import load_configured_callable
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )
@@ -20,6 +19,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRoundSummary,
     SimulationRunRequest,
 )
+from scripts.support.configured_callable import load_configured_callable
 
 from ..io.final_projection import build_final_projection_artifacts
 from ..io.simulation_report_builder import SimulationReportBuilder

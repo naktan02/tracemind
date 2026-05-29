@@ -80,7 +80,7 @@ def test_fl_simulation_client_training_has_no_payload_adapter_literals() -> None
 
 
 def test_fl_simulation_config_callable_loading_is_centralized() -> None:
-    callable_loader_path = SCRIPTS_SRC / "configured_callable.py"
+    callable_loader_path = SCRIPTS_SRC / "support" / "configured_callable.py"
     checked_paths = (
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py",
         SCRIPTS_SRC
@@ -119,8 +119,8 @@ def test_fl_simulation_config_callable_loading_is_centralized() -> None:
         / "io"
         / "final_projection.py",
         SCRIPTS_SRC
-        / "experiments"
-        / "query_peft_ssl"
+        / "support"
+        / "query_ssl_peft"
         / "query_ssl"
         / "view_preparation.py",
         SCRIPTS_SRC
@@ -141,8 +141,8 @@ def test_fl_simulation_config_callable_loading_is_centralized() -> None:
     )
     assert not violations, (
         "FL simulation adapter들은 config-declared callable을 실행만 하고, "
-        "fully-qualified path 파싱과 import 규칙은 scripts/configured_callable.py에 "
-        "모은다.\n"
+        "fully-qualified path 파싱과 import 규칙은 "
+        "scripts/support/configured_callable.py에 모은다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
@@ -151,14 +151,14 @@ def test_server_step_policy_leaf_does_not_own_update_family_executor() -> None:
     policy_path = (
         CONF_SRC
         / "strategy_axes"
-        / "fl"
-        / "server_step_policy"
+        / "fl_topology"
+        / "server_step"
         / "supervised_seed_step.yaml"
     )
     update_family_path = (
         CONF_SRC
         / "strategy_axes"
-        / "trainable_state"
+        / "model_architecture"
         / "update_family"
         / "peft_text_encoder.yaml"
     )
@@ -172,8 +172,8 @@ def test_server_step_policy_leaf_does_not_own_update_family_executor() -> None:
     )
     assert "server_step_executors:" in update_family_source, (
         "update family leaf가 server step policy 이름을 runtime executor로 매핑해야 "
-        "prototype/linear 등 다음 trainable_state를 추가할 때 server_step_policy를 "
-        "수정하지 않는다.\n"
+        "prototype/linear 등 다음 model_architecture/update_family를 추가할 때 "
+        "server_step_policy를 수정하지 않는다.\n"
         f"path={_relative_repo_path(update_family_path)}"
     )
 
@@ -185,7 +185,7 @@ def test_fl_entrypoint_does_not_embed_update_family_objective_payload_scope() ->
     update_family_path = (
         CONF_SRC
         / "strategy_axes"
-        / "trainable_state"
+        / "model_architecture"
         / "update_family"
         / "peft_text_encoder.yaml"
     )
@@ -214,9 +214,7 @@ def test_fl_aggregation_weight_policy_meaning_stays_in_methods() -> None:
         'policy.name == "accepted_count"',
         'policy.name == "example_count"',
     )
-    violations = [
-        snippet for snippet in forbidden_snippets if snippet in script_source
-    ]
+    violations = [snippet for snippet in forbidden_snippets if snippet in script_source]
 
     assert "def aggregation_weight_for_diagnostics(" in methods_source
     assert "def aggregation_weight_basis_label(" in methods_source
@@ -378,7 +376,9 @@ def test_scripts_runtime_adapters_do_not_keep_federated_server_facade() -> None:
 
 def test_federated_server_peft_runtime_adapter_keeps_method_core_in_methods() -> None:
     generic_server_bridge_path = (
-        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server" / "generic_server_runtime_bridge.py"
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "generic_server_runtime_bridge.py"
     )
     method_runtime_paths = (
         REPO_ROOT
@@ -409,7 +409,9 @@ def test_federated_server_peft_runtime_adapter_keeps_method_core_in_methods() ->
     source = generic_server_bridge_path.read_text(encoding="utf-8")
     for snippet in forbidden_snippets:
         if snippet in source:
-            violations.append((_relative_repo_path(generic_server_bridge_path), snippet))
+            violations.append(
+                (_relative_repo_path(generic_server_bridge_path), snippet)
+            )
     missing_method_paths = [
         _relative_repo_path(path) for path in method_runtime_paths if not path.exists()
     ]
@@ -459,7 +461,7 @@ def test_fl_simulation_model_revision_policy_is_centralized() -> None:
         / "io"
         / "communication_cost_estimates.py",
     )
-    forbidden_snippets = ("sim_rev_0000", "f\"sim_rev_", "f'sim_rev_")
+    forbidden_snippets = ("sim_rev_0000", 'f"sim_rev_', "f'sim_rev_")
     violations: list[tuple[Path, str]] = []
     for path in checked_paths:
         source = path.read_text(encoding="utf-8")
@@ -557,7 +559,8 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         "둔다. generic local_training.py에 update-family별 분기를 누적하지 않는다."
     )
     assert not peft_encoder_local_training_path.exists(), (
-        "PEFT encoder local training 파일은 dynamic loader/bridge 구조로 통합되어 더 이상 존재하지 않는다."
+        "PEFT encoder local training 파일은 dynamic loader/bridge 구조로 통합되어 "
+        "더 이상 존재하지 않는다."
     )
     assert not any(path.exists() for path in forbidden_paths), (
         "training example backend별 row shape 요구사항은 methods/query_text_views가 "
@@ -589,10 +592,12 @@ def test_federated_agent_peft_round_files_do_not_own_update_submission() -> None
     query_ssl_round_path = package_root / "peft_encoder_query_ssl_client_round.py"
 
     assert not method_owned_round_path.exists(), (
-        "family-specific client round 파일은 generic bridge 구조 도입으로 더 이상 존재하지 않는다."
+        "family-specific client round 파일은 generic bridge 구조 도입으로 "
+        "더 이상 존재하지 않는다."
     )
     assert not query_ssl_round_path.exists(), (
-        "family-specific client round 파일은 generic bridge 구조 도입으로 더 이상 존재하지 않는다."
+        "family-specific client round 파일은 generic bridge 구조 도입으로 "
+        "더 이상 존재하지 않는다."
     )
 
 
@@ -600,5 +605,6 @@ def test_peft_local_training_bridge_delegates_runtime_io_helpers() -> None:
     package_root = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent"
     local_training_path = package_root / "peft_encoder_local_training.py"
     assert not local_training_path.exists(), (
-        "PEFT encoder local training bridge 파일은 generic bridge로 통합되어 더 이상 존재하지 않는다."
+        "PEFT encoder local training bridge 파일은 generic bridge로 통합되어 "
+        "더 이상 존재하지 않는다."
     )

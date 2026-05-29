@@ -10,14 +10,14 @@ adapter는 `agent/`와 `main_server/`가 소유한다.
 
 ## 경계
 
-- `scripts/datasets/`: dataset asset 생성 CLI.
-- `scripts/prototypes/`: prototype pack 생성, 평가, publication 보조 CLI.
-- `scripts/experiments/`: track별 실험 entrypoint와 실험 전용 harness.
+- `scripts/workflows/datasets/`: dataset asset 생성 CLI.
+- `scripts/workflows/prototype_pack/`: prototype pack 생성, 평가, publication 보조 CLI.
+- `scripts/experiments/`: track별 실험 entrypoint와 실험 전용 runtime support.
 - `scripts/experiments/fl_ssl/`: FL SSL split, simulation, sweep entrypoint.
-- `scripts/experiments/query_peft_ssl/`: query-domain PEFT SSL harness와 IO.
-- `scripts/experiments/result_index/`: `runs` report를 index/dashboard JSON으로 정규화.
+- `scripts/support/query_ssl_peft/`: query-domain PEFT SSL runtime support와 IO.
+- `scripts/workflows/result_index/`: `runs` report를 index/dashboard JSON으로 정규화.
 - `scripts/runtime_adapters/`: scripts가 agent/main_server runtime을 재사용할 때 쓰는 bridge.
-- `scripts/reporting/`, `scripts/artifacts/`, `scripts/codegen/`: 보조 entrypoint/helper.
+- `scripts/support/reporting/`, `scripts/support/artifacts/`, `scripts/codegen/`: 보조 entrypoint/helper.
 
 ## 불변 규칙
 
@@ -57,7 +57,7 @@ uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
 중앙 PEFT SSL control smoke:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
+uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
   run_controls/central_ssl/budget=smoke
 ```
 
@@ -67,4 +67,4 @@ uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
 2. `docs/execution_index.md`에서 필요한 active 문서만 읽는다.
 3. 관련 `conf/entrypoints/**`와 `conf/strategy_axes/**`를 compose한다.
 4. script entrypoint는 orchestration만 확인하고 core 의미는 `methods/`에서 본다.
-5. 결과 해석은 report artifact와 `scripts/experiments/result_index/` schema를 기준으로 한다.
+5. 결과 해석은 report artifact와 `scripts/workflows/result_index/` schema를 기준으로 한다.

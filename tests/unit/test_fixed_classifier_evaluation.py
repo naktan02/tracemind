@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from scripts.experiments.fixed_classifier.evaluation import (
+from scripts.experiments.central.fixed_classifier_seed.evaluation import (
     evaluate_classifier,
     print_evaluation_report,
 )

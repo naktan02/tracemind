@@ -3,5 +3,5 @@
 ssl_input_mode: consistency
 central_ssl_runner:
   mode: consistency
-  callable_path: scripts.experiments.query_peft_ssl.runners.consistency.run_query_ssl_peft_baseline
+  callable_path: scripts.support.query_ssl_peft.runners.consistency.run_query_ssl_peft_baseline
   group_by_query_ssl_method: true
