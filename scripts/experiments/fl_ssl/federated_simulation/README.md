@@ -57,4 +57,9 @@
 - `strategy_axes/ssl_objective/local_update_profile`: local update backend,
   scoring/evidence, privacy guard recipe
 
+`local_update_profile`과 `consistency_method`는 manual baseline/ablation에서는
+의미 있는 lower axis다. `method_owned` 실행에서는 descriptor/capability plan이
+local objective와 method protocol을 소유하므로, FedMatch request는 Query SSL
+objective payload를 싣지 않는다.
+
 상세 실행 명령은 상위 `scripts/experiments/fl_ssl/README.md`를 먼저 본다.

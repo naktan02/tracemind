@@ -9,6 +9,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICIES_FROM_QUERY_SSL
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     validate_federated_ssl_local_ssl_policy_alignment,
@@ -85,12 +86,17 @@ def build_simulation_request_from_config(
         cfg=cfg,
         execution_plan=execution_plan,
     )
+    uses_query_ssl_objective = _uses_query_ssl_objective_payload(
+        cfg=cfg,
+        execution_plan=execution_plan,
+    )
     round_runtime_payloads = _build_round_runtime_payloads(cfg.round_runtime)
     training_task_config = _build_training_task_config(
         cfg.training_task,
         task_type=_resolve_training_task_type(cfg=cfg, execution_plan=execution_plan),
         local_update_profile=local_update_profile,
         round_runtime=cfg.round_runtime,
+        include_query_ssl_objective=uses_query_ssl_objective,
     )
     round_runtime_config = FederatedRoundRuntimeConfig(
         payload_adapter_kind=_resolve_round_payload_adapter_kind(cfg.round_runtime),
@@ -151,13 +157,21 @@ def build_simulation_request_from_config(
         labeled_exposure_policy=fl_data_source.data_source_config.labeled_exposure_policy,
         execution_plan=execution_plan,
     )
-    query_ssl_objective_config = FederatedQuerySslObjectiveConfig.from_mapping(
-        to_plain_dict(cfg.query_ssl_method),
-        strong_view_policy=str(cfg.query_ssl_strong_view_policy),
+    query_ssl_objective_config = (
+        FederatedQuerySslObjectiveConfig.from_mapping(
+            to_plain_dict(cfg.query_ssl_method),
+            strong_view_policy=str(cfg.query_ssl_strong_view_policy),
+        )
+        if uses_query_ssl_objective
+        else None
     )
     validate_federated_ssl_local_ssl_policy_alignment(
         capability_plan=capability_plan,
-        query_ssl_algorithm_name=query_ssl_objective_config.algorithm_name,
+        query_ssl_algorithm_name=(
+            None
+            if query_ssl_objective_config is None
+            else query_ssl_objective_config.algorithm_name
+        ),
     )
     return SimulationRunRequest(
         train_rows=fl_data_source.train_rows,
@@ -248,6 +262,23 @@ def _resolve_local_update_profile(
             f"got={local_update_profile.algorithm_profile_name!r}."
         )
     return local_update_profile
+
+
+def _uses_query_ssl_objective_payload(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> bool:
+    """Query SSL objective payload가 실제 local SSL policy 의미인지 판단한다."""
+
+    local_ssl_policy = _resolve_local_ssl_policy_mapping(
+        cfg=cfg,
+        execution_plan=execution_plan,
+    )
+    if local_ssl_policy is None:
+        return False
+    policy_name = str(local_ssl_policy.get("name", "") or "").strip().lower()
+    return policy_name in LOCAL_SSL_POLICIES_FROM_QUERY_SSL
 
 
 def _build_capability_plan(
@@ -592,11 +623,14 @@ def _build_training_task_config(
     task_type: str,
     local_update_profile: LocalUpdateProfile,
     round_runtime: DictConfig,
+    include_query_ssl_objective: bool,
 ) -> FederatedTrainingTaskConfig:
     objective_config = _merge_round_runtime_objective_payload(
         objective_config=to_plain_dict(cfg.objective),
         round_runtime=round_runtime,
     )
+    if not include_query_ssl_objective:
+        objective_config = _without_query_ssl_objective_payload(objective_config)
     selection_policy = to_plain_dict(cfg.selection_policy)
     training_objective = TrainingObjectiveConfig.from_mapping(objective_config)
     require_training_objective_matches_local_update_profile(
@@ -616,6 +650,18 @@ def _build_training_task_config(
         objective_config=training_objective,
         selection_policy=TrainingSelectionPolicy.from_mapping(selection_policy),
     )
+
+
+def _without_query_ssl_objective_payload(
+    objective_config: dict[str, object],
+) -> dict[str, object]:
+    """method-owned local objective가 쓰지 않는 Query SSL payload를 제거한다."""
+
+    return {
+        key: value
+        for key, value in objective_config.items()
+        if key != "query_ssl" and not str(key).startswith("query_ssl.")
+    }
 
 
 def _merge_round_runtime_objective_payload(

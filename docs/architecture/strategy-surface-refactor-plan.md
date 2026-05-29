@@ -58,7 +58,7 @@
 
 ## 현재 상태와 권장 순서
 
-2026-05-29 기준으로 FedMatch method-owned surface는 variant 중심으로 정리됐다.
+2026-05-30 기준으로 FedMatch method-owned surface는 variant 중심으로 정리됐다.
 `fedmatch_labels_at_client`와 `fedmatch_labels_at_server`가 public method-owned 선택
 이름이고, 구현과 policy 의미는 `methods/federated_ssl/fedmatch/`가 소유한다.
 generic `fedmatch` leaf는 compatibility/ablation 입력으로만 남긴다.
@@ -68,8 +68,8 @@ generic `fedmatch` leaf는 compatibility/ablation 입력으로만 남긴다.
 | 1 | `input_mode` | 완료 | - | 중앙 SSL public strategy axis와 `ssl_input_mode` manifest 표식을 제거했다. |
 | 5 | `teacher_*`, `teacher_bootstrap` | 완료 | - | `teacher_provider` strategy axis와 scripts teacher bootstrap subtree를 제거했다. teacher pseudo-label export 의미는 `methods/ssl/teacher_pseudo_label.py`가 소유한다. |
 | 3 | `pseudo_label_selection` | 완료 | - | public Hydra group을 제거했고, pseudo-label replay row 의미는 `methods/ssl/pseudo_label_replay.py`로 이동했다. |
-| 11 | `local_update_profile` | 부분 완료 | 4 | method-owned에서 public override가 남는지 감사하고 descriptor/scaffold compatibility로 닫는다. |
-| 13 | `consistency_method` | 보류/미진행 | 5 | central SSL/manual baseline에는 유지하고 FSSL method-owned에서는 hidden/ignored 규칙을 고정한다. |
+| 11 | `local_update_profile` | 완료 | - | manual baseline에는 유지하고, method-owned에서는 descriptor recipe의 supported profile과 다르면 실패한다. |
+| 13 | `consistency_method` | 완료 | - | central SSL/manual baseline에는 유지하고, FSSL method-owned request/report protocol에서는 Query SSL objective payload로 싣지 않는다. |
 | 6 | `update_partition` | FedMatch 범위 완료 | 6 | manual baseline/ablation 전용 guard를 유지한다. |
 | 7 | `aggregation_weight` | FedMatch 범위 완료 | 7 | method-owned에서 새 method가 public override를 되살리지 않게 한다. |
 | 8 | `peer_context` | FedMatch 범위 완료 | 8 | common capability로 유지하되 method recipe 조각 선택으로 노출하지 않는다. |
@@ -79,8 +79,8 @@ generic `fedmatch` leaf는 compatibility/ablation 입력으로만 남긴다.
 | 4 | `augmentation_source` | 보류 | 12 | 공통 USB input materialization이면 유지하고, 특정 method 전용이면 method recipe로 내린다. |
 | 2 | `trainable_surface` | 보류 | 13 | 실제 surface가 두 개 이상 구현/검증될 때 scaffold axis 유지 여부를 재판정한다. |
 
-실행 묶음은 README/compose/report expectation을 새 surface에 맞춘 다음
-`11, 13`의 FSSL 잔여 노출을 감사한다. 마지막으로
+실행 묶음은 README/compose/report expectation을 새 surface에 맞췄고,
+`11, 13`의 FSSL 잔여 노출은 guard로 닫았다. 마지막으로
 `4, 2` scaffold/input materialization 축을 재판정하고, 기존 config/run 참조가 사라진
 뒤 generic `fedmatch` compatibility leaf 제거 여부를 결정한다.
 
@@ -199,6 +199,9 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
     `server_only_seed + client_unlabeled_only + supervised_seed_step` 의미를
     method variant가 소유하게 한다.
   - FedMatch variant descriptor와 report expectation은 variant 기준으로 갱신됐다.
+  - method-owned `local_update_profile`은 descriptor recipe의 단일 supported profile로
+    검증하고, FedMatch의 `fedmatch_agreement` local SSL policy는 Query SSL
+    `consistency_method` payload를 request/report protocol에 싣지 않는다.
   - generic `fedmatch` leaf는 compatibility/ablation 경로로만 남기고,
     `method_owned` public 실행에서는 canonical variant 사용을 요구한다.
 

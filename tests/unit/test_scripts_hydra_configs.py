@@ -30,6 +30,7 @@ from scripts.experiments.fl_ssl.federated_simulation.config_request import (
     _resolve_labeled_exposure_policy_mapping,
     _resolve_local_update_profile,
     _with_inferred_manual_axes,
+    build_simulation_request_from_config,
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_federated_training_backend_adapter_kind,
@@ -1025,6 +1026,30 @@ def test_method_owned_fedmatch_labels_at_client_derives_method_capabilities(
     assert capability_plan.update_partition_policy_name == "partitioned"
     assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
     assert capability_plan.server_step_policy_name == "none"
+
+
+def test_method_owned_fedmatch_ignores_query_ssl_lower_axis_objective_payload(
+    tmp_path: Path,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fssl_method=fedmatch_labels_at_client",
+                "fl_method.composition_mode=method_owned",
+                "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
+            ],
+        )
+
+    request = build_simulation_request_from_config(cfg, output_dir=tmp_path)
+
+    assert request.query_ssl_objective_config is None
+    assert request.capability_plan is not None
+    assert request.capability_plan.local_ssl_policy_name == "fedmatch_agreement"
+    objective = request.training_task_config.objective_config.to_mapping()
+    assert "query_ssl.algorithm_name" not in objective
+    assert "query_ssl.method_name" not in objective
+    assert objective["algorithm_profile_name"] == "peft_pseudo_label_v1"
 
 
 def test_method_owned_fedmatch_labels_at_server_derives_method_capabilities() -> None:

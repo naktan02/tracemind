@@ -76,19 +76,18 @@ central fixed embedding + classifier seed
 - 중앙 SSL `input_mode` strategy axis와 `ssl_input_mode` manifest 표식은 제거했다.
 - 중앙 SSL `pseudo_label_selection` strategy group은 제거했고, pseudo-label replay row
   의미는 `methods/ssl/pseudo_label_replay.py`가 소유한다.
+- FSSL method-owned FedMatch는 `local_update_profile`을 descriptor recipe와
+  맞지 않으면 실패시키고, `fedmatch_agreement` 실행에서는 Query SSL
+  `consistency_method` objective payload를 request/report protocol에 싣지 않는다.
 - result-index와 dashboard reader는 current `peft_adapter_*`,
   `payload_adapter_kind`, `update_family_name` field를 기준으로 읽고,
   mechanism별 PEFT option은 `peft_adapter_parameters_json` snapshot으로 보존한다.
 
 ## Next Priorities
 
-1. 중앙 SSL README, Hydra compose test, report expectation이 강등된 surface와
-   맞는지 갱신한다.
-2. FSSL method-owned에서 남은 `local_update_profile`, `consistency_method` 노출을
-   감사하고 manual baseline/ablation 전용 규칙을 guard로 고정한다.
-3. `augmentation_source`, `trainable_surface`가 독립 scaffold/input materialization
+1. `augmentation_source`, `trainable_surface`가 독립 scaffold/input materialization
    축으로 유지될 조건을 재판정한다.
-4. generic `fedmatch` compatibility leaf는 기존 config/run 참조가 사라진 뒤 제거
+2. generic `fedmatch` compatibility leaf는 기존 config/run 참조가 사라진 뒤 제거
    여부를 결정한다. `data`, `runs`, historical artifact cache는 건드리지 않는다.
 
 ## Validation Criteria
