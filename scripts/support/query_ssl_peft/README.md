@@ -56,7 +56,7 @@ compatibility workflow와 fixed-classifier fallback은 scripts surface에서 제
 | 분류 | 대상 | 판단 |
 |---|---|---|
 | `methods 이동 완료` | `methods/ssl/teacher_pseudo_label.py` | pseudo-label acceptance preset 해석과 teacher prediction -> pseudo-label export 의미를 `methods` owner로 이동했다. |
-| `methods 이동` | `runners/pseudo_label_inputs.py` | pseudo-label replay 입력 정규화가 단순 파일 입출력보다 학습 row 의미에 가깝다. |
+| `methods 이동 완료` | `methods/ssl/pseudo_label_replay.py` | pseudo-label replay row 결합/검증 의미를 `methods` owner로 이동했다. 파일 source와 dataset 변환은 runner가 맡는다. |
 | `methods 이동 검토` | `query_ssl/common.py`, `query_ssl/view_preparation.py` | Query SSL method 공통 준비 로직이 scripts helper를 넘어 method scaffolding이면 `methods/ssl` 또는 adaptation helper로 승격한다. |
 | `scripts 유지` | `runners/consistency.py` | central SSL canonical experiment runner다. 다만 method 분기 없이 thin orchestration만 유지한다. |
 | `scripts 유지` | `runners/supervised.py` | central supervised control entrypoint가 호출하는 thin runner다. |
@@ -70,5 +70,4 @@ compatibility workflow와 fixed-classifier fallback은 scripts surface에서 제
 
 권장 순서:
 
-1. `pseudo_label_inputs.py`를 `methods` owner로 옮길지 작은 contract로 먼저 자른다.
-2. central canonical path에 남길 최소 scripts surface를 `consistency.py`, `supervised.py`, artifact IO로 한정한다.
+1. central canonical path에 남길 최소 scripts surface를 `consistency.py`, `supervised.py`, artifact IO로 한정한다.

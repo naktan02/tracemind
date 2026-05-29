@@ -71,8 +71,8 @@ Central SSL:
   scripts helper에서도 제거했고, teacher 종류를 별도 축으로 열지 않는다.
   장기적으로 필요하면 이름 있는 method/recipe나 사전 materialization workflow로
   다시 정의한다.
-- `pseudo_label_selection`은 teacher/pseudo-label artifact를 만들 때 쓰는 selection
-  policy다. 중앙 method 비교의 독립 축으로 쓰지 않고, method recipe 기본값이나
+- `pseudo_label_selection` public Hydra group은 제거했다. teacher/pseudo-label artifact
+  selection policy는 중앙 method 비교의 독립 축으로 쓰지 않고, method recipe 기본값이나
   explicit ablation metadata로만 남긴다.
 - `augmentation_source`와 `query_ssl_strong_view_policy`는 USB 계열 input view
   materialization/runtime 입력으로 유지할 수 있다. 특정 method만 의미를 소유하면

@@ -666,12 +666,62 @@ def test_central_ssl_entrypoint_does_not_compose_input_mode_strategy_axis() -> N
     )
 
 
+def test_query_peft_support_does_not_emit_ssl_input_mode_manifest_field() -> None:
+    search_roots = (
+        QUERY_SSL_PEFT_SRC,
+        SCRIPTS_SRC / "experiments" / "central" / "ssl_control",
+        CONF_SRC / "entrypoints" / "central" / "ssl_control",
+    )
+    violations = [
+        _relative_repo_path(path)
+        for root in search_roots
+        for path in root.rglob("*")
+        if path.is_file()
+        and path.suffix in {".py", ".yaml", ".md"}
+        and "ssl_input_mode" in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "`ssl_input_mode`는 제거된 input_mode strategy axis의 legacy manifest 표식이다. "
+        "workflow-specific metadata는 `pseudo_label_replay`처럼 이름 있는 payload로 "
+        "남긴다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_central_ssl_teacher_provider_strategy_axis_group_is_removed() -> None:
     legacy_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "teacher_provider"
 
     assert not legacy_root.exists(), (
         "teacher source는 독립 teacher_provider strategy axis가 아니다. "
         "중앙 SSL에서는 method hook/recipe가 teacher source 의미를 소유한다."
+    )
+
+
+def test_central_ssl_pseudo_label_selection_strategy_axis_group_is_removed() -> None:
+    legacy_root = (
+        CONF_SRC / "strategy_axes" / "ssl_objective" / "pseudo_label_selection"
+    )
+
+    assert not legacy_root.exists(), (
+        "pseudo_label_selection은 중앙 SSL public strategy axis가 아니다. "
+        "selection hook은 methods/ssl/hooks가 소유하고, recipe 기본값이나 "
+        "ablation metadata로만 연결한다."
+    )
+
+
+def test_query_peft_pseudo_label_replay_row_semantics_live_in_methods() -> None:
+    legacy_path = QUERY_SSL_PEFT_SRC / "runners" / "pseudo_label_inputs.py"
+    owner_path = METHODS_SSL_SRC / "pseudo_label_replay.py"
+
+    assert not legacy_path.exists(), (
+        "pseudo-label replay row 결합/overlap 검증 의미는 scripts runner helper가 "
+        "아니라 methods/ssl owner에 둔다.\n"
+        f"legacy path={_relative_repo_path(legacy_path)}"
+    )
+    assert owner_path.exists(), (
+        "pseudo-label replay row 의미 owner 파일이 필요하다.\n"
+        f"missing path={_relative_repo_path(owner_path)}"
     )
 
 

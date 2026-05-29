@@ -10,20 +10,24 @@ from typing import Any
 
 from omegaconf import DictConfig
 
+from methods.ssl.pseudo_label_replay import build_pseudo_label_replay_rows
 from methods.ssl.teacher_pseudo_label import (
     build_pseudo_label_algorithm_manifest,
+)
+from scripts.support.query_ssl_peft.io.query_adaptation import (
+    build_labeled_rows_from_query_adaptation_dataset,
 )
 from scripts.support.query_ssl_peft.io.labeled_row_export import (
     LabeledRowExportArtifacts,
     write_labeled_row_export,
 )
-from scripts.support.query_ssl_peft.runners.pseudo_label_inputs import (
-    resolve_pseudo_label_training_rows,
-)
 from scripts.support.query_ssl_peft.runners.supervised import (
     run_supervised_peft_baseline,
 )
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import (
+    LabeledQueryRow,
+    load_labeled_query_rows,
+)
 
 
 @dataclass(slots=True)
@@ -56,7 +60,6 @@ class PreparedPseudoLabelSelfTrainingRun:
     @property
     def manifest_overrides(self) -> dict[str, Any]:
         manifest = {
-            "ssl_input_mode": "pseudo_label_replay",
             "pseudo_label_replay": {
                 "training_mode": "supervised_replay",
                 "label_source": "offline_pseudo_label_artifact",
@@ -159,14 +162,21 @@ def prepare_pseudo_label_self_training_run(
     export_dir = resolved_export_root / run_id
     export_dir.mkdir(parents=True, exist_ok=True)
 
-    resolved_rows = resolve_pseudo_label_training_rows(
+    effective_seed_train_rows = _resolve_seed_train_rows(
+        cfg=cfg,
+        seed_train_rows=seed_train_rows,
+        include_seed_train_rows=include_seed_train_rows,
+        train_jsonl_ref=train_jsonl_ref,
+    )
+    effective_pseudo_label_rows = _resolve_pseudo_label_rows(
         cfg=cfg,
         pseudo_label_jsonl=pseudo_label_jsonl,
         pseudo_label_rows=pseudo_label_rows,
         pseudo_label_dataset=pseudo_label_dataset,
-        seed_train_rows=seed_train_rows,
-        include_seed_train_rows=include_seed_train_rows,
-        train_jsonl_ref=train_jsonl_ref,
+    )
+    resolved_rows = build_pseudo_label_replay_rows(
+        seed_train_rows=effective_seed_train_rows,
+        pseudo_label_rows=effective_pseudo_label_rows,
     )
     pseudo_label_artifacts = write_labeled_row_export(
         rows=resolved_rows.pseudo_label_rows,
@@ -191,6 +201,59 @@ def prepare_pseudo_label_self_training_run(
         pseudo_label_rows=resolved_rows.pseudo_label_rows,
         combined_train_artifacts=combined_train_artifacts,
         pseudo_label_artifacts=pseudo_label_artifacts,
+    )
+
+
+def _resolve_seed_train_rows(
+    *,
+    cfg: DictConfig,
+    seed_train_rows: Sequence[LabeledQueryRow] | None,
+    include_seed_train_rows: bool | None,
+    train_jsonl_ref: str | Path | None,
+) -> list[LabeledQueryRow]:
+    effective_include_seed_rows = (
+        bool(getattr(cfg, "include_seed_train_rows", True))
+        if include_seed_train_rows is None
+        else bool(include_seed_train_rows)
+    )
+    if not effective_include_seed_rows:
+        return []
+    if seed_train_rows is not None:
+        return list(seed_train_rows)
+    return load_labeled_query_rows(
+        Path(str(cfg.train_jsonl if train_jsonl_ref is None else train_jsonl_ref))
+    )
+
+
+def _resolve_pseudo_label_rows(
+    *,
+    cfg: DictConfig,
+    pseudo_label_jsonl: str | Path | None,
+    pseudo_label_rows: Sequence[LabeledQueryRow] | None,
+    pseudo_label_dataset: Any | None,
+) -> list[LabeledQueryRow]:
+    provided_sources = sum(
+        source is not None
+        for source in (pseudo_label_jsonl, pseudo_label_rows, pseudo_label_dataset)
+    )
+    if provided_sources > 1:
+        raise ValueError(
+            "Provide only one of pseudo_label_jsonl, pseudo_label_rows, or "
+            "pseudo_label_dataset."
+        )
+    if pseudo_label_dataset is None:
+        if pseudo_label_rows is not None:
+            return list(pseudo_label_rows)
+        effective_path = pseudo_label_jsonl or getattr(cfg, "pseudo_label_jsonl", None)
+        if effective_path is None:
+            raise ValueError(
+                "pseudo_label_jsonl is required when pseudo_label_rows/dataset is not "
+                "provided."
+            )
+        return load_labeled_query_rows(Path(str(effective_path)))
+    return build_labeled_rows_from_query_adaptation_dataset(
+        pseudo_label_dataset,
+        annotation_source="pseudo_label_self_training",
     )
 
 

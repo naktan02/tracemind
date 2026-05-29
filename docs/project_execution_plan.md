@@ -73,21 +73,22 @@ central fixed embedding + classifier seed
   scripts runtime adapter는 runtime bridge만 맡는다.
 - `scripts/support/query_ssl_peft`의 teacher bootstrap compatibility subtree와
   fixed embedding classifier helper는 scripts canonical surface에서 제거했다.
+- 중앙 SSL `input_mode` strategy axis와 `ssl_input_mode` manifest 표식은 제거했다.
+- 중앙 SSL `pseudo_label_selection` strategy group은 제거했고, pseudo-label replay row
+  의미는 `methods/ssl/pseudo_label_replay.py`가 소유한다.
 - result-index와 dashboard reader는 current `peft_adapter_*`,
   `payload_adapter_kind`, `update_family_name` field를 기준으로 읽고,
   mechanism별 PEFT option은 `peft_adapter_parameters_json` snapshot으로 보존한다.
 
 ## Next Priorities
 
-1. 중앙 SSL에서 `input_mode`, `teacher_*`, `pseudo_label_selection`을 public
-   strategy axis가 아니라 workflow/helper 내부 값으로 강등한다.
-2. 중앙 SSL README, Hydra compose test, report expectation이 강등된 surface와
+1. 중앙 SSL README, Hydra compose test, report expectation이 강등된 surface와
    맞는지 갱신한다.
-3. FSSL method-owned에서 남은 `local_update_profile`, `consistency_method` 노출을
+2. FSSL method-owned에서 남은 `local_update_profile`, `consistency_method` 노출을
    감사하고 manual baseline/ablation 전용 규칙을 guard로 고정한다.
-4. `augmentation_source`, `trainable_surface`가 독립 scaffold/input materialization
+3. `augmentation_source`, `trainable_surface`가 독립 scaffold/input materialization
    축으로 유지될 조건을 재판정한다.
-5. generic `fedmatch` compatibility leaf는 기존 config/run 참조가 사라진 뒤 제거
+4. generic `fedmatch` compatibility leaf는 기존 config/run 참조가 사라진 뒤 제거
    여부를 결정한다. `data`, `runs`, historical artifact cache는 건드리지 않는다.
 
 ## Validation Criteria

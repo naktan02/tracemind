@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
 from omegaconf import OmegaConf
 
 from agent.src.services.training.backends.inputs.models import (
@@ -159,6 +160,19 @@ def test_prepare_pseudo_label_self_training_run_can_opt_in_seed_replay(
     assert prepared.combined_train_rows[1]["query_id"] == "pl_q1"
 
 
+def test_prepare_pseudo_label_self_training_run_rejects_multiple_sources(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ValueError, match="Provide only one"):
+        prepare_pseudo_label_self_training_run(
+            cfg=_build_cfg(),
+            pseudo_label_jsonl=tmp_path / "pseudo_label.jsonl",
+            pseudo_label_dataset=_build_pseudo_label_dataset(),
+            export_root=tmp_path,
+            generated_at=datetime(2026, 4, 12, 13, 0, tzinfo=timezone.utc),
+        )
+
+
 def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows(
     tmp_path: Path,
     monkeypatch,
@@ -207,7 +221,6 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
     assert len(train_rows) == 1
     assert train_rows[0]["raw_label_scheme"] == "pseudo_label"
     assert extra_manifest["pseudo_label_row_count"] == 1
-    assert extra_manifest["ssl_input_mode"] == "pseudo_label_replay"
     assert extra_manifest["pseudo_label_replay"] == {
         "training_mode": "supervised_replay",
         "label_source": "offline_pseudo_label_artifact",

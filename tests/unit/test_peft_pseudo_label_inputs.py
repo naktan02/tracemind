@@ -1,27 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-from omegaconf import OmegaConf
 
-from scripts.support.query_ssl_peft.runners.pseudo_label_inputs import (
-    resolve_pseudo_label_training_rows,
-)
-from shared.src.contracts.labeled_query_row_contracts import (
-    LabeledQueryRow,
-    dump_labeled_query_rows,
-)
-
-
-def _cfg(tmp_path: Path) -> object:
-    return OmegaConf.create(
-        {
-            "train_jsonl": str(tmp_path / "seed_train.jsonl"),
-            "pseudo_label_jsonl": None,
-            "include_seed_train_rows": True,
-        }
-    )
+from methods.ssl.pseudo_label_replay import build_pseudo_label_replay_rows
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 def _row(
@@ -43,28 +25,10 @@ def _row(
     )
 
 
-def test_resolve_pseudo_label_training_rows_combines_seed_and_pseudo_jsonl(
-    tmp_path: Path,
-) -> None:
-    cfg = _cfg(tmp_path)
-    pseudo_label_path = tmp_path / "pseudo_label.jsonl"
-    dump_labeled_query_rows(
-        Path(str(cfg.train_jsonl)),
-        [_row("seed_q1", "anxiety", raw_label_scheme="manual_label")],
-    )
-    dump_labeled_query_rows(
-        pseudo_label_path,
-        [_row("pseudo_q1", "depression")],
-    )
-
-    resolved = resolve_pseudo_label_training_rows(
-        cfg=cfg,
-        pseudo_label_jsonl=pseudo_label_path,
-        pseudo_label_rows=None,
-        pseudo_label_dataset=None,
-        seed_train_rows=None,
-        include_seed_train_rows=None,
-        train_jsonl_ref=None,
+def test_build_pseudo_label_replay_rows_combines_seed_and_pseudo_rows() -> None:
+    resolved = build_pseudo_label_replay_rows(
+        seed_train_rows=[_row("seed_q1", "anxiety", raw_label_scheme="manual_label")],
+        pseudo_label_rows=[_row("pseudo_q1", "depression")],
     )
 
     assert [row["query_id"] for row in resolved.seed_train_rows] == ["seed_q1"]
@@ -75,57 +39,22 @@ def test_resolve_pseudo_label_training_rows_combines_seed_and_pseudo_jsonl(
     ]
 
 
-def test_resolve_pseudo_label_training_rows_rejects_multiple_sources(
-    tmp_path: Path,
-) -> None:
-    cfg = _cfg(tmp_path)
-
-    with pytest.raises(ValueError, match="Provide only one"):
-        resolve_pseudo_label_training_rows(
-            cfg=cfg,
-            pseudo_label_jsonl=tmp_path / "pseudo_label.jsonl",
-            pseudo_label_rows=[_row("pseudo_q1", "depression")],
-            pseudo_label_dataset=None,
-            seed_train_rows=[],
-            include_seed_train_rows=False,
-            train_jsonl_ref=None,
-        )
-
-
-def test_resolve_pseudo_label_training_rows_rejects_duplicate_query_ids(
-    tmp_path: Path,
-) -> None:
-    cfg = _cfg(tmp_path)
-
+def test_build_pseudo_label_replay_rows_rejects_duplicate_query_ids() -> None:
     with pytest.raises(ValueError, match="pseudo_label_rows"):
-        resolve_pseudo_label_training_rows(
-            cfg=cfg,
-            pseudo_label_jsonl=None,
+        build_pseudo_label_replay_rows(
+            seed_train_rows=[],
             pseudo_label_rows=[
                 _row("pseudo_q1", "depression"),
                 _row("pseudo_q1", "depression"),
             ],
-            pseudo_label_dataset=None,
-            seed_train_rows=[],
-            include_seed_train_rows=False,
-            train_jsonl_ref=None,
         )
 
 
-def test_resolve_pseudo_label_training_rows_rejects_seed_overlap(
-    tmp_path: Path,
-) -> None:
-    cfg = _cfg(tmp_path)
-
+def test_build_pseudo_label_replay_rows_rejects_seed_overlap() -> None:
     with pytest.raises(ValueError, match="disjoint query_id"):
-        resolve_pseudo_label_training_rows(
-            cfg=cfg,
-            pseudo_label_jsonl=None,
-            pseudo_label_rows=[_row("same_q", "depression")],
-            pseudo_label_dataset=None,
+        build_pseudo_label_replay_rows(
             seed_train_rows=[
                 _row("same_q", "anxiety", raw_label_scheme="manual_label")
             ],
-            include_seed_train_rows=True,
-            train_jsonl_ref=None,
+            pseudo_label_rows=[_row("same_q", "depression")],
         )

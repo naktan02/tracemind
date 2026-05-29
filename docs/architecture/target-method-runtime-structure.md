@@ -77,7 +77,7 @@ conf/
   entrypoints/
     {fl_ssl,central_ssl,prototype_analysis}/run.yaml
   strategy_axes/
-    ssl_objective/{consistency_method,local_update_profile,pseudo_label_selection}/
+    ssl_objective/{consistency_method,local_update_profile}/
     model_architecture/{backbone,trainable_surface,peft,update_family,initial_checkpoint}/
     prototype/build_strategy/
     fssl_method/
