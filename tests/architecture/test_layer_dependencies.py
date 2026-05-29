@@ -30,6 +30,7 @@ FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
 QUERY_SSL_PEFT_SRC = SCRIPTS_SRC / "support" / "query_ssl_peft"
+QUERY_SSL_PEFT_CONFIG_SRC = QUERY_SSL_PEFT_SRC / "config"
 QUERY_SSL_PEFT_IO_SRC = QUERY_SSL_PEFT_SRC / "io"
 PROTOTYPE_STRATEGY_SRC = (
     SCRIPTS_SRC / "experiments" / "prototype_analysis" / "prototype_strategy"
@@ -52,6 +53,7 @@ PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
 PROTOTYPE_SRC = REPO_ROOT / "methods" / "prototype"
 PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
+METHODS_SSL_SRC = METHODS_SRC / "ssl"
 PEFT_TEXT_ENCODER_SRC = METHODS_SRC / "adaptation" / "peft_text_encoder"
 PEFT_TEXT_ENCODER_AGGREGATION_SRC = PEFT_TEXT_ENCODER_SRC / "aggregation"
 LINEAR_HEAD_CLASSIFICATION_SRC = METHODS_SRC / "classification" / "linear_head"
@@ -643,7 +645,8 @@ def test_central_ssl_input_mode_strategy_axis_group_is_removed() -> None:
     assert not legacy_root.exists(), (
         "central SSL은 explicit consistency entrypoint가 workflow를 고르고, "
         "input_mode를 public strategy axis로 다시 열지 않는다. "
-        "pseudo-label replay나 teacher bootstrap은 내부 helper/workflow로만 둔다."
+        "pseudo-label replay는 별도 workflow로만 두고 teacher bootstrap helper는 "
+        "scripts에 되살리지 않는다."
     )
 
 
@@ -668,7 +671,17 @@ def test_central_ssl_teacher_provider_strategy_axis_group_is_removed() -> None:
 
     assert not legacy_root.exists(), (
         "teacher source는 독립 teacher_provider strategy axis가 아니다. "
-        "중앙 SSL에서는 workflow 내부 compatibility 설정으로만 남긴다."
+        "중앙 SSL에서는 method hook/recipe가 teacher source 의미를 소유한다."
+    )
+
+
+def test_query_peft_teacher_bootstrap_compatibility_tree_is_removed() -> None:
+    legacy_root = QUERY_SSL_PEFT_SRC / "compatibility" / "teacher_bootstrap"
+
+    assert not legacy_root.exists(), (
+        "teacher_bootstrap은 scripts owner가 아닌 fixed-classifier compatibility debt였다. "
+        "새 teacher source가 필요하면 methods/ssl hook 또는 method recipe로 추가한다.\n"
+        f"legacy path={_relative_repo_path(legacy_root)}"
     )
 
 
@@ -3464,9 +3477,11 @@ def test_query_peft_run_artifacts_do_not_keep_writer_exporter_monolith() -> None
 
 def test_query_peft_teacher_pseudo_label_does_not_keep_exporter_monolith() -> None:
     legacy_exporter_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_exporter.py"
-    builder_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_builder.py"
+    legacy_builder_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_builder.py"
+    legacy_algorithm_path = QUERY_SSL_PEFT_CONFIG_SRC / "pseudo_label_algorithm.py"
+    methods_builder_path = METHODS_SSL_SRC / "teacher_pseudo_label.py"
     writer_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
-    builder_source = builder_path.read_text(encoding="utf-8")
+    builder_source = methods_builder_path.read_text(encoding="utf-8")
     builder_forbidden_snippets = (
         "json.dumps(",
         ".write_text(",
@@ -3481,6 +3496,20 @@ def test_query_peft_teacher_pseudo_label_does_not_keep_exporter_monolith() -> No
         "teacher pseudo-label 경로는 builder/writer를 직접 조합한다. "
         "단순 compatibility exporter facade를 다시 만들지 않는다.\n"
         f"legacy path={_relative_repo_path(legacy_exporter_path)}"
+    )
+    assert not legacy_builder_path.exists(), (
+        "teacher prediction -> pseudo-label export 의미는 scripts IO owner가 아니라 "
+        "methods/ssl이 소유한다.\n"
+        f"legacy path={_relative_repo_path(legacy_builder_path)}"
+    )
+    assert not legacy_algorithm_path.exists(), (
+        "pseudo-label acceptance preset 해석은 scripts config helper가 아니라 "
+        "methods/ssl owner가 소유한다.\n"
+        f"legacy path={_relative_repo_path(legacy_algorithm_path)}"
+    )
+    assert methods_builder_path.exists(), (
+        "teacher pseudo-label selection/export 의미는 methods/ssl owner 파일에 둔다. "
+        f"missing path={_relative_repo_path(methods_builder_path)}"
     )
     assert writer_path.exists(), (
         "teacher pseudo-label artifact 저장은 전용 writer가 맡는다. "

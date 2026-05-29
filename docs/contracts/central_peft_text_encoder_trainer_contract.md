@@ -46,14 +46,14 @@ query가 충분히 쌓인 뒤 그 query 분포에 맞춰 표현과 경계를 함
 ## teacher source 경계
 
 고정 임베딩 classifier는 더 이상 독립 실행 stage나 중앙 SSL의 숨은 선행 단계가
-아니다. unlabeled pool에 pseudo-label 후보를 만들 필요가 있을 때만
-teacher bootstrap helper 내부 source 설정으로 선택한다.
+아니다. unlabeled pool에 pseudo-label 후보를 만들 필요가 있으면 method recipe의
+teacher hook이나 명시된 checkpoint artifact로 연결한다.
 
 1. label order, category, classifier head provenance는 teacher output manifest와
    student run manifest에 남긴다.
-2. PEFT text encoder checkpoint가 아직 없을 때 `checkpoint_artifact` source와
-   `fixed_embedding_classifier` artifact kind를 써서 pseudo-label 후보를 만들 수 있다.
-   이후 같은 표면에 prototype, PEFT checkpoint, EMA teacher를 추가할 수 있어야 한다.
+2. PEFT text encoder checkpoint가 아직 없으면 먼저 supervised seed/control
+   artifact를 명시하거나, 새 teacher source를 `methods` owner의 hook으로 추가한다.
+   `scripts`는 fixed embedding classifier fallback을 소유하지 않는다.
 3. warm-start ablation은 특정 seed entrypoint가 아니라 initial checkpoint manifest를
    명시해 재현한다.
 4. PEFT adaptation이 단순 fixed embedding classifier보다 나아졌는지 비교하는 reference
@@ -61,6 +61,11 @@ teacher bootstrap helper 내부 source 설정으로 선택한다.
 
 따라서 central SSL method 비교의 기본 initial checkpoint는 `none`이고, teacher는
 bootstrap/pseudo-label source를 명시할 때만 연결한다.
+
+`fixed_embedding_classifier`는 canonical central SSL method나 별도 active stage가
+아니다. 기존 scripts teacher bootstrap compatibility workflow는 제거했다. 현재
+teacher prediction -> pseudo-label export 의미와 pseudo-label acceptance preset
+해석은 `methods/ssl/teacher_pseudo_label.py`가 소유한다.
 
 ## canonical scaffold
 

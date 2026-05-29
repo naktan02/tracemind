@@ -56,7 +56,8 @@ uv run python scripts/experiments/central/ssl_control/run_peft_supervised_contro
 
 `run_peft_ssl_control.py`는 `unlabeled_jsonl`과 precomputed weak/strong view를 읽는
 consistency-family central SSL entrypoint다. pseudo-label replay나 teacher bootstrap은
-독립 public 실험 entrypoint가 아니라 내부 helper/workflow와 method hook로만 남긴다.
+독립 public 실험 entrypoint가 아니다. 기존 scripts teacher bootstrap helper는
+제거했고, 새 teacher source가 필요하면 method hook/recipe로 정의한다.
 
 ```bash
 uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \

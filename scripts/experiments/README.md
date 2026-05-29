@@ -95,7 +95,7 @@ central PEFT / SSL control:
 1. `central/ssl_control/run_peft_supervised_control.py`
 2. `central/ssl_control/run_peft_ssl_control.py`
 3. `../support/query_ssl_peft/runners/supervised.py`
-4. 필요하면 `../support/query_ssl_peft/runners/{consistency,query_adaptation,bootstrap_teacher,pseudo_label}.py`
+4. 필요하면 `../support/query_ssl_peft/runners/{consistency,query_adaptation,pseudo_label}.py`
 
 중앙 PEFT/SSL warm-start와 method별 실행 명령은
 `central/ssl_control/README.md`와 각 entrypoint의 `--cfg job` preview를 기준으로 본다.

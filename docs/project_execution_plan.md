@@ -71,6 +71,8 @@ central fixed embedding + classifier seed
 - PEFT supervised seed step과 final projection core는
   `methods/adaptation/peft_text_encoder/simulation_runtime/`가 소유하고,
   scripts runtime adapter는 runtime bridge만 맡는다.
+- `scripts/support/query_ssl_peft`의 teacher bootstrap compatibility subtree와
+  fixed embedding classifier helper는 scripts canonical surface에서 제거했다.
 - result-index와 dashboard reader는 current `peft_adapter_*`,
   `payload_adapter_kind`, `update_family_name` field를 기준으로 읽고,
   mechanism별 PEFT option은 `peft_adapter_parameters_json` snapshot으로 보존한다.

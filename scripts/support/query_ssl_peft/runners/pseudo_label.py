@@ -10,7 +10,7 @@ from typing import Any
 
 from omegaconf import DictConfig
 
-from scripts.support.query_ssl_peft.config.pseudo_label_algorithm import (
+from methods.ssl.teacher_pseudo_label import (
     build_pseudo_label_algorithm_manifest,
 )
 from scripts.support.query_ssl_peft.io.labeled_row_export import (

@@ -185,9 +185,10 @@ uv run python scripts/workflows/datasets/materialize_query_ssl_views.py \
   execution_context/query_view=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
 ```
 
-Teacher bootstrap은 public central SSL experiment entrypoint가 아니라 내부 helper/
-compatibility workflow로만 남긴다. 중앙 SSL method 비교 기본값은
-`initial_checkpoint=none`이다.
+Teacher bootstrap은 public central SSL experiment entrypoint가 아니며 scripts
+compatibility workflow에서도 제거했다. 중앙 SSL method 비교 기본값은
+`initial_checkpoint=none`이다. 새 teacher source가 필요하면 method hook/recipe로
+정의한다.
 
 PEFT supervised baseline:
 
