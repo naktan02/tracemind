@@ -383,7 +383,10 @@ def _resolve_labeled_exposure_policy_mapping(
         return optional_plain_dict(cfg, "labeled_exposure_policy")
 
     descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
-    default_policy_name = default_method_labeled_exposure_policy_name(descriptor)
+    default_policy_name = default_method_labeled_exposure_policy_name(
+        descriptor,
+        method_config=_ssl_method_config_mapping(cfg),
+    )
     if default_policy_name is not None:
         return {"name": default_policy_name, "parameter_source": "method_descriptor"}
 
@@ -412,7 +415,10 @@ def _resolve_local_supervision_regime_mapping(
         return optional_plain_dict(cfg, "local_supervision_regime")
 
     descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
-    default_policy_name = default_method_local_supervision_regime_name(descriptor)
+    default_policy_name = default_method_local_supervision_regime_name(
+        descriptor,
+        method_config=_ssl_method_config_mapping(cfg),
+    )
     if default_policy_name is not None:
         return {"name": default_policy_name, "parameter_source": "method_descriptor"}
 
@@ -480,7 +486,10 @@ def _resolve_server_step_policy_mapping(
         return optional_plain_dict(cfg, "server_step_policy")
 
     descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
-    default_policy_name = default_method_server_step_policy_name(descriptor)
+    default_policy_name = default_method_server_step_policy_name(
+        descriptor,
+        method_config=_ssl_method_config_mapping(cfg),
+    )
     if default_policy_name is not None:
         return {"name": default_policy_name, "parameter_source": "method_descriptor"}
 
@@ -510,7 +519,10 @@ def _resolve_peer_context_policy_mapping(
         return optional_plain_dict(cfg, "peer_context_policy")
 
     descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
-    default_policy_name = default_method_peer_context_policy_name(descriptor)
+    default_policy_name = default_method_peer_context_policy_name(
+        descriptor,
+        method_config=_ssl_method_config_mapping(cfg),
+    )
     if default_policy_name is not None:
         return {"name": default_policy_name, "parameter_source": "method_descriptor"}
 
@@ -591,6 +603,13 @@ def _optional_config_str(cfg: DictConfig, key: str) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _ssl_method_config_mapping(cfg: DictConfig) -> dict[str, object] | None:
+    ssl_method = cfg.get("ssl_method")
+    if ssl_method is None:
+        return None
+    return to_plain_dict(ssl_method)
 
 
 def _resolve_round_payload_adapter_kind(round_runtime: DictConfig) -> str:

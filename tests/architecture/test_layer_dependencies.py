@@ -682,7 +682,8 @@ def test_query_peft_support_does_not_emit_ssl_input_mode_manifest_field() -> Non
     ]
 
     assert not violations, (
-        "`ssl_input_mode`는 제거된 input_mode strategy axis의 legacy manifest 표식이다. "
+        "`ssl_input_mode`는 제거된 input_mode strategy axis의 legacy manifest "
+        "표식이다. "
         "workflow-specific metadata는 `pseudo_label_replay`처럼 이름 있는 payload로 "
         "남긴다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
@@ -729,7 +730,8 @@ def test_query_peft_teacher_bootstrap_compatibility_tree_is_removed() -> None:
     legacy_root = QUERY_SSL_PEFT_SRC / "compatibility" / "teacher_bootstrap"
 
     assert not legacy_root.exists(), (
-        "teacher_bootstrap은 scripts owner가 아닌 fixed-classifier compatibility debt였다. "
+        "teacher_bootstrap은 scripts owner가 아닌 fixed-classifier compatibility "
+        "debt였다. "
         "새 teacher source가 필요하면 methods/ssl hook 또는 method recipe로 추가한다.\n"
         f"legacy path={_relative_repo_path(legacy_root)}"
     )
@@ -746,8 +748,8 @@ def test_fl_local_ssl_policy_does_not_expose_method_local_fedmatch_leaf() -> Non
 
     assert not forbidden_path.exists(), (
         "fedmatch_agreement는 FedMatch method-local objective다. generic "
-        "local_ssl_policy Hydra leaf로 선택하지 말고 FedMatch public variant "
-        "descriptor에서 파생한다."
+        "local_ssl_policy Hydra leaf로 선택하지 말고 FedMatch descriptor와 "
+        "scenario default에서 파생한다."
     )
 
 
@@ -763,7 +765,7 @@ def test_fl_server_update_policy_does_not_expose_method_local_fedmatch_leaf() ->
     assert not forbidden_path.exists(), (
         "fedmatch_partitioned는 FedMatch method-local server update policy다. "
         "generic server_update_policy Hydra leaf로 선택하지 말고 "
-        "FedMatch public variant descriptor에서 파생한다."
+        "FedMatch descriptor와 scenario default에서 파생한다."
     )
 
 
@@ -2642,22 +2644,23 @@ def test_fedmatch_descriptor_does_not_keep_recipe_pass_through() -> None:
     )
 
 
-def test_fedmatch_variants_do_not_become_sibling_method_packages() -> None:
-    variant_roots = (
+def test_fedmatch_scenarios_do_not_become_sibling_method_packages() -> None:
+    scenario_roots = (
         METHODS_FEDERATED_SSL_SRC / "fedmatch_labels_at_client",
         METHODS_FEDERATED_SSL_SRC / "fedmatch_labels_at_server",
     )
     existing_files = [
         _relative_repo_path(path)
-        for root in variant_roots
+        for root in scenario_roots
         if root.exists()
         for path in _iter_python_files(root)
     ]
 
     assert not existing_files, (
-        "FedMatch labels-at-client/server는 public fssl_method leaf 이름이지 "
-        "독립 implementation family가 아니다. Python descriptor와 policy 의미는 "
-        "methods/federated_ssl/fedmatch/ 안에 둔다.\n"
+        "FedMatch labels-at-client/server는 public fssl_method leaf나 독립 "
+        "implementation family가 아니다. Python descriptor와 policy 의미는 "
+        "methods/federated_ssl/fedmatch/ 안에 두고, 실행 선택은 "
+        "ssl_method.scenario로 표현한다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_files)}"
     )
 

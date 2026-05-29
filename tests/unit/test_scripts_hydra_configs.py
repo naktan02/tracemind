@@ -900,13 +900,12 @@ def test_federated_simulation_method_recipe_axes_are_composable(
             )
 
 
-def test_method_owned_fedmatch_labels_at_client_keeps_single_local_profile(
-) -> None:
+def test_method_owned_fedmatch_keeps_single_local_profile() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch_labels_at_client",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
             ],
         )
@@ -925,7 +924,7 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch_labels_at_client",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
             ],
         )
@@ -997,13 +996,13 @@ def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm()
     assert capability_plan.server_update_policy_name == "fedavg_merged_delta"
 
 
-def test_method_owned_fedmatch_labels_at_client_derives_method_capabilities(
+def test_method_owned_fedmatch_labels_at_client_scenario_derives_capabilities(
 ) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch_labels_at_client",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
                 "strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1",
             ],
@@ -1032,7 +1031,7 @@ def test_method_owned_fedmatch_ignores_query_ssl_lower_axis_objective_payload(
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch_labels_at_client",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
                 "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
             ],
@@ -1054,7 +1053,8 @@ def test_method_owned_fedmatch_labels_at_server_derives_method_capabilities() ->
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch_labels_at_server",
+                "strategy_axes/fssl_method=fedmatch",
+                "ssl_method.scenario=labels-at-server",
                 "fl_method.composition_mode=method_owned",
             ],
         )
@@ -1100,7 +1100,7 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
                 "run_controls/fl_ssl/budget=reduced",
-                "strategy_axes/fssl_method=fedmatch_labels_at_client",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
             ],
         )
@@ -1139,7 +1139,7 @@ def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> Non
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch_labels_at_client",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
                 "+ssl_method.parameter_overrides.confidence_threshold=0.85",
                 "+ssl_method.parameter_overrides.num_helpers=4",
@@ -1172,7 +1172,7 @@ def test_fedmatch_local_budget_policy_can_select_original_method() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fssl_method=fedmatch_labels_at_client",
+                "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
                 "ssl_method.local_budget_policy=original_method",
             ],
@@ -1188,21 +1188,23 @@ def test_fedmatch_local_budget_policy_can_select_original_method() -> None:
     assert ssl_method_config.parameter_override_status == "original"
 
 
-def test_method_owned_generic_fedmatch_is_rejected_in_public_surface() -> None:
+def test_fedmatch_leaf_is_public_method_identity_with_scenario_axis() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
                 "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
+                "ssl_method.scenario=labels-at-server",
             ],
         )
 
-    with pytest.raises(
-        ValueError,
-        match="fedmatch_labels_at_client.*fedmatch_labels_at_server",
-    ):
-        _build_execution_plan(cfg)
+    execution_plan = _build_execution_plan(cfg)
+    ssl_method_config = _build_ssl_method_config(cfg, execution_plan=execution_plan)
+
+    assert execution_plan.descriptor_name == "fedmatch"
+    assert ssl_method_config is not None
+    assert ssl_method_config.scenario == "labels-at-server"
 
 
 @pytest.mark.parametrize(

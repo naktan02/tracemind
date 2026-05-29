@@ -112,11 +112,10 @@ scripts/
    `trainable_state` 축으로 다룬다.
 
 3. `fedmatch_agreement` 같은 method-local objective는 generic config axis leaf로
-   노출하지 않는다. `conf`에서는
-   `fssl_method=fedmatch_labels_at_client` 또는
-   `fssl_method=fedmatch_labels_at_server` 같은 public variant만 고르고,
-   `methods/federated_ssl/fedmatch/`가 agreement vote, sigma/psi, helper 요구사항과
-   variant descriptor를 소유한다.
+   노출하지 않는다. `conf`에서는 `fssl_method=fedmatch`로 method identity를 고르고,
+   `ssl_method.scenario=labels-at-client` 또는 `labels-at-server`로 label 위치를
+   고른다. `methods/federated_ssl/fedmatch/`가 agreement vote, sigma/psi, helper
+   요구사항과 scenario별 policy default를 소유한다.
 
 4. `fixed_probe_output_knn`, `server_step_policy`, `security_policy`처럼 여러 method가
    공유할 수 있는 mechanism은 runtime capability axis에 둘 수 있다. 반대로
@@ -225,7 +224,7 @@ Adapter 뒤로 옮긴다.
 - `methods/federated_ssl/execution_plan.py`가 method descriptor, update family,
   runtime capability 요구사항을 typed plan으로 resolve한다.
 - Compatibility validator는 scripts 실행 중간이 아니라 bootstrap 전에 실패하게 한다.
-- 테스트는 FedMatch public variant descriptor가 `fedmatch_agreement`를 내부
+- 테스트는 FedMatch descriptor와 scenario default가 `fedmatch_agreement`를 내부
   요구사항으로 파생하지만 generic `local_ssl_policy` override로 노출하지 않는 것을
   검증한다.
 

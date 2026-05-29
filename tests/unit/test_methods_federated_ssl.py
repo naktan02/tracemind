@@ -136,8 +136,6 @@ def test_federated_ssl_descriptor_registry_has_no_manual_baseline_builtin() -> N
 
     assert [descriptor.name for descriptor in descriptors] == [
         "fedmatch",
-        "fedmatch_labels_at_client",
-        "fedmatch_labels_at_server",
     ]
 
 
@@ -300,8 +298,6 @@ def test_builtin_federated_ssl_registry_excludes_test_only_extension() -> None:
 
     assert [descriptor.name for descriptor in descriptors] == [
         "fedmatch",
-        "fedmatch_labels_at_client",
-        "fedmatch_labels_at_server",
     ]
     assert "dummy_metric_weighted_ssl" not in {
         descriptor.name for descriptor in descriptors

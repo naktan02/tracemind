@@ -51,17 +51,17 @@
 | 7 | `aggregation_weight` | `conf/strategy_axes/fl_topology/aggregation_weight/*` | method-owned server policy의 일부가 public override로 남아 있다 | manual baseline 전용 축으로 제한. method-owned에서는 method server policy가 파생 | 높음 |
 | 8 | `peer_context` | `conf/strategy_axes/fl_topology/peer_context/*` | helper context 사용 여부가 method recipe 일부인데 public surface에 남아 있다 | manual baseline 전용 축 또는 method-owned hidden capability | 높음 |
 | 9 | `server_step` | `conf/strategy_axes/fl_topology/server_step/*` | labels-at-server / bootstrap semantics가 method scenario와 분리돼 있다 | manual baseline 전용 축 또는 method-owned scenario 파생값 | 높음 |
-| 10 | `server_update` | `conf/strategy_axes/fl_topology/server_update/*` | method-owned server update semantics가 lower-axis로 노출돼 있다 | manual baseline 전용 축. method-owned는 descriptor default/variant가 소유 | 높음 |
-| 11 | `local_update_profile` | `conf/strategy_axes/ssl_objective/local_update_profile/*` | method-owned에서 지원 조합이 사실상 고정인데 독립 축처럼 보인다 | manual baseline은 유지, method-owned는 method variant/scaffold compatibility로 흡수 | 높음 |
+| 10 | `server_update` | `conf/strategy_axes/fl_topology/server_update/*` | method-owned server update semantics가 lower-axis로 노출돼 있다 | manual baseline 전용 축. method-owned는 descriptor/scenario default가 소유 | 높음 |
+| 11 | `local_update_profile` | `conf/strategy_axes/ssl_objective/local_update_profile/*` | method-owned에서 지원 조합이 사실상 고정인데 독립 축처럼 보인다 | manual baseline은 유지, method-owned는 method/scaffold compatibility로 흡수 | 높음 |
 | 12 | `local_ssl_policy` | `conf/strategy_axes/ssl_objective/local_ssl_policy/*` | method-owned에서 실제로는 descriptor가 덮거나 제한하는 가짜 선택지가 된다 | manual baseline 전용 축. method-owned에서는 public surface에서 제거 | 높음 |
 | 13 | `consistency_method` | `conf/strategy_axes/ssl_objective/consistency_method/*` | 중앙 SSL에선 핵심 method 축이지만 FSSL method-owned에선 중복될 수 있다 | central SSL과 manual baseline에서는 유지. FSSL method-owned에서는 hidden 또는 ignored | 중간 |
 
 ## 현재 상태와 권장 순서
 
-2026-05-30 기준으로 FedMatch method-owned surface는 variant 중심으로 정리됐다.
-`fedmatch_labels_at_client`와 `fedmatch_labels_at_server`가 public method-owned 선택
-이름이고, 구현과 policy 의미는 `methods/federated_ssl/fedmatch/`가 소유한다.
-generic `fedmatch` leaf는 compatibility/ablation 입력으로만 남긴다.
+2026-05-30 기준으로 FedMatch method-owned surface는 method identity와 scenario를
+분리한다. Public method 선택은 `fssl_method=fedmatch` 하나이고,
+`ssl_method.scenario`가 `labels-at-client`와 `labels-at-server`를 고른다. 구현과
+policy 의미는 `methods/federated_ssl/fedmatch/`가 소유한다.
 
 | 원래 번호 | 축 | 상태 | 권장 순서 | 다음 작업 |
 |---:|---|---|---:|---|
@@ -73,7 +73,7 @@ generic `fedmatch` leaf는 compatibility/ablation 입력으로만 남긴다.
 | 6 | `update_partition` | FedMatch 범위 완료 | 6 | manual baseline/ablation 전용 guard를 유지한다. |
 | 7 | `aggregation_weight` | FedMatch 범위 완료 | 7 | method-owned에서 새 method가 public override를 되살리지 않게 한다. |
 | 8 | `peer_context` | FedMatch 범위 완료 | 8 | common capability로 유지하되 method recipe 조각 선택으로 노출하지 않는다. |
-| 9 | `server_step` | FedMatch 범위 완료 | 9 | labels-at-server 같은 scenario 의미는 variant descriptor에서 파생한다. |
+| 9 | `server_step` | FedMatch 범위 완료 | 9 | labels-at-server 같은 scenario 의미는 FedMatch scenario default에서 파생한다. |
 | 10 | `server_update` | FedMatch 범위 완료 | 10 | method-local server update leaf를 generic Hydra leaf로 만들지 않는다. |
 | 12 | `local_ssl_policy` | FedMatch 범위 완료 | 11 | `fedmatch_agreement` 같은 method-local objective를 generic leaf로 만들지 않는다. |
 | 4 | `augmentation_source` | 완료 | - | public Hydra group을 제거했고, 중앙 SSL entrypoint의 precomputed USB candidate reader 설정으로 내렸다. |
@@ -81,8 +81,8 @@ generic `fedmatch` leaf는 compatibility/ablation 입력으로만 남긴다.
 
 실행 묶음은 README/compose/report expectation을 새 surface에 맞췄고,
 `11, 13`의 FSSL 잔여 노출은 guard로 닫았다. 마지막으로
-`2` scaffold 축은 유지로 닫았다. 다음은 기존 config/run 참조가 사라진 뒤 generic
-`fedmatch` compatibility leaf 제거 여부를 결정한다.
+`2` scaffold 축은 유지로 닫았고, FedMatch labels 위치는 별도 method leaf가 아니라
+`ssl_method.scenario`로 정리했다.
 
 ## 축별 목표 구조
 
@@ -130,9 +130,10 @@ supervision/client participation, scaffold axis만 고르게 만든다.
 `consistency_method`는 숨기고 descriptor, method config surface, scenario preset이
 파생한다.
 
-## method variant 규칙
+## method/scenario 규칙
 
-아래 중 하나라도 바뀌면 lower-axis override보다 새 method/variant 이름으로
+아래 중 하나라도 바뀌면 lower-axis override보다 새 method 이름이나 method-owned
+scenario로
 분리하는 쪽을 기본으로 한다.
 
 - pseudo-label 생성 규칙의 핵심 의미
@@ -141,8 +142,7 @@ supervision/client participation, scaffold axis만 고르게 만든다.
 - partition 해석
 - server-client coupling semantics
 
-예: `fedmatch`, `fedmatch_fixmatch_local`, `fedmatch_no_helper`,
-`fedmatch_labels_at_server`
+예: `fedmatch`, `fedmatch_fixmatch_local`, `fedmatch_no_helper`
 
 반대로 같은 method 안 override로 남길 수 있는 값은 helper 수, refresh interval,
 threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
@@ -188,29 +188,27 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
 
 완료 기준:
 
-- `method_owned` canonical FedMatch 실행 예시가
-  `fedmatch_labels_at_client` 또는 `fedmatch_labels_at_server`만 사용하고,
-  lower-axis override가 필요 없다.
+- `method_owned` canonical FedMatch 실행 예시가 `fssl_method=fedmatch`와
+  `ssl_method.scenario`만 사용하고, lower-axis override가 필요 없다.
 - 진행 메모:
-  - canonical labels-at-client 경로는 `fssl_method=fedmatch_labels_at_client`로
-    승격해 `peer_context`, `server_step`, `local_ssl_policy`, `server_update`,
-    `update_partition`, `aggregation_weight`를 descriptor default로 닫는다.
-  - labels-at-server 경로도 `fssl_method=fedmatch_labels_at_server`로 분리해
-    `server_only_seed + client_unlabeled_only + supervised_seed_step` 의미를
-    method variant가 소유하게 한다.
-  - FedMatch variant descriptor와 report expectation은 variant 기준으로 갱신됐다.
+  - canonical labels-at-client 경로는 `fssl_method=fedmatch`의 기본
+    `ssl_method.scenario=labels-at-client`로 표현한다.
+  - labels-at-server 경로는 `ssl_method.scenario=labels-at-server`로 표현하고,
+    `server_only_seed + client_unlabeled_only + supervised_seed_step` 의미는
+    FedMatch scenario default가 소유한다.
+  - FedMatch report expectation은 method identity와 scenario 기준으로 갱신한다.
   - method-owned `local_update_profile`은 descriptor recipe의 단일 supported profile로
     검증하고, FedMatch의 `fedmatch_agreement` local SSL policy는 Query SSL
     `consistency_method` payload를 request/report protocol에 싣지 않는다.
-  - generic `fedmatch` leaf는 compatibility/ablation 경로로만 남기고,
-    `method_owned` public 실행에서는 canonical variant 사용을 요구한다.
+  - `fedmatch_labels_at_client/server` public leaf는 제거한다.
 
-### Phase 3. method variant surface 정리
+### Phase 3. method scenario surface 정리
 
 1. FedMatch 계열에서 local objective나 helper semantics를 바꾸는 실험은
-   `local_ssl_policy` override가 아니라 method variant 이름으로 승격한다.
+   `local_ssl_policy` override가 아니라 FedMatch scenario 또는 새 method 이름으로
+   명확히 분리한다.
 2. method config surface는 parameter override와 scenario만 노출한다.
-3. 보고서에는 manual baseline과 method-owned variant를 명확히 구분해 남긴다.
+3. 보고서에는 manual baseline과 method-owned scenario를 명확히 구분해 남긴다.
 
 완료 기준:
 
@@ -242,7 +240,7 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
    - `scripts`가 method 이름이나 teacher 구현 이름으로 분기하지 않는지
    - method-owned path가 lower-axis public config에 다시 의존하지 않는지
 3. report verification
-   - manual baseline과 method-owned variant가 report에서 구분되는지
+   - manual baseline과 method-owned scenario가 report에서 구분되는지
 4. code-adjacent README sync
    - central SSL / FL SSL 실행 예시가 새 public surface와 맞는지
 
@@ -255,4 +253,5 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
 
 ## 현재 우선순위
 
-1. 기존 generic `fedmatch` 참조가 사라진 뒤 compatibility leaf 제거 여부 결정
+1. 다음 논문 실행 단계로 넘어가기 전에 FL SSL canonical scenario smoke/main run
+   조건을 확인한다.

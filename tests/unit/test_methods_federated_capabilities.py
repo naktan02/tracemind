@@ -430,11 +430,9 @@ def test_fedmatch_server_seed_parameters_resolve_by_method_convention() -> None:
     assert first_round.batch_size == 3
 
 
-def test_fedmatch_labels_at_client_server_seed_parameters_reuse_fedmatch_family() -> (
-    None
-):
+def test_fedmatch_server_seed_parameters_use_method_family() -> None:
     first_round = resolve_method_supervised_seed_step_parameters(
-        method_name="fedmatch_labels_at_client",
+        method_name="fedmatch",
         effective_parameters={
             "server_pretrain_epochs": 2,
             "server_epochs": 1,
@@ -460,18 +458,9 @@ def test_fedmatch_helper_provider_requirement_resolves_by_method_convention() ->
     )
 
 
-def test_fedmatch_labels_at_client_helper_provider_requirement_reuses_family() -> (
-    None
-):
-    assert requires_method_helper_probability_provider(
-        method_name="fedmatch_labels_at_client",
-        local_ssl_policy_name=LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
-    )
-
-
-def test_fedmatch_labels_at_server_server_seed_parameters_reuse_family() -> None:
+def test_fedmatch_server_seed_parameters_support_original_values() -> None:
     first_round = resolve_method_supervised_seed_step_parameters(
-        method_name="fedmatch_labels_at_server",
+        method_name="fedmatch",
         effective_parameters={
             "server_pretrain_epochs": 2,
             "server_epochs": 1,
@@ -482,7 +471,7 @@ def test_fedmatch_labels_at_server_server_seed_parameters_reuse_family() -> None
         round_index=1,
     )
     later_round = resolve_method_supervised_seed_step_parameters(
-        method_name="fedmatch_labels_at_server",
+        method_name="fedmatch",
         effective_parameters={
             "server_pretrain_epochs": 2,
             "server_epochs": 1,

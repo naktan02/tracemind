@@ -109,9 +109,17 @@ def default_method_server_update_policy_name(
 
 def default_method_server_step_policy_name(
     method_descriptor: FederatedSslMethodDescriptor,
+    method_config: Mapping[str, object] | None = None,
 ) -> str | None:
     """method descriptor module이 선언한 기본 server step policy 이름을 읽는다."""
 
+    scenario_value = _scenario_default_value(
+        method_descriptor=method_descriptor,
+        method_config=method_config,
+        attribute_name="DEFAULT_SERVER_STEP_POLICY_BY_SCENARIO",
+    )
+    if scenario_value is not None:
+        return scenario_value
     method_module = _import_method_descriptor_module(method_descriptor.name)
     value = _method_surface_value(
         method_module,
@@ -130,9 +138,17 @@ def default_method_server_step_policy_name(
 
 def default_method_peer_context_policy_name(
     method_descriptor: FederatedSslMethodDescriptor,
+    method_config: Mapping[str, object] | None = None,
 ) -> str | None:
     """method descriptor module이 선언한 기본 peer context policy 이름을 읽는다."""
 
+    scenario_value = _scenario_default_value(
+        method_descriptor=method_descriptor,
+        method_config=method_config,
+        attribute_name="DEFAULT_PEER_CONTEXT_POLICY_BY_SCENARIO",
+    )
+    if scenario_value is not None:
+        return scenario_value
     method_module = _import_method_descriptor_module(method_descriptor.name)
     value = _method_surface_value(
         method_module,
@@ -151,9 +167,17 @@ def default_method_peer_context_policy_name(
 
 def default_method_labeled_exposure_policy_name(
     method_descriptor: FederatedSslMethodDescriptor,
+    method_config: Mapping[str, object] | None = None,
 ) -> str | None:
     """method descriptor가 선언한 기본 labeled exposure policy 이름을 읽는다."""
 
+    scenario_value = _scenario_default_value(
+        method_descriptor=method_descriptor,
+        method_config=method_config,
+        attribute_name="DEFAULT_LABELED_EXPOSURE_POLICY_BY_SCENARIO",
+    )
+    if scenario_value is not None:
+        return scenario_value
     names = method_descriptor.required_capabilities.labeled_exposure_policy_names
     if len(names) == 1:
         return names[0]
@@ -162,9 +186,17 @@ def default_method_labeled_exposure_policy_name(
 
 def default_method_local_supervision_regime_name(
     method_descriptor: FederatedSslMethodDescriptor,
+    method_config: Mapping[str, object] | None = None,
 ) -> str | None:
     """method descriptor가 선언한 기본 local supervision regime 이름을 읽는다."""
 
+    scenario_value = _scenario_default_value(
+        method_descriptor=method_descriptor,
+        method_config=method_config,
+        attribute_name="DEFAULT_LOCAL_SUPERVISION_REGIME_BY_SCENARIO",
+    )
+    if scenario_value is not None:
+        return scenario_value
     names = method_descriptor.required_capabilities.local_supervision_regime_names
     if len(names) == 1:
         return names[0]
@@ -301,6 +333,39 @@ def _method_surface_value(
         if isinstance(surface, Mapping) and attribute_name in surface:
             return surface[attribute_name]
     return getattr(module, attribute_name, default)
+
+
+def _scenario_default_value(
+    *,
+    method_descriptor: FederatedSslMethodDescriptor,
+    method_config: Mapping[str, object] | None,
+    attribute_name: str,
+) -> str | None:
+    if method_config is None:
+        return None
+    raw_scenario = method_config.get("scenario")
+    if raw_scenario is None:
+        return None
+    scenario = str(raw_scenario).strip().lower().replace("_", "-")
+    if not scenario:
+        return None
+
+    method_module = _import_method_descriptor_module(method_descriptor.name)
+    raw_mapping = _method_surface_value(
+        method_module,
+        method_descriptor.name,
+        attribute_name,
+        {},
+    )
+    if not isinstance(raw_mapping, Mapping):
+        return None
+
+    for key, value in raw_mapping.items():
+        normalized_key = str(key).strip().lower().replace("_", "-")
+        if normalized_key == scenario:
+            text = str(value).strip()
+            return text or None
+    return None
 
 
 def _module_mapping(

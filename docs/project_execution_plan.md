@@ -84,14 +84,16 @@ central fixed embedding + classifier seed
 - `trainable_surface`는 중앙 PEFT trainer manifest와 artifact kind를 설명하는
   scaffold/provenance 축으로 유지한다. 새 surface leaf는 실제 구현/검증 전까지
   추가하지 않는다.
+- FedMatch public Hydra leaf는 `fssl_method=fedmatch` 하나로 유지하고,
+  labels 위치는 `ssl_method.scenario`가 소유한다.
 - result-index와 dashboard reader는 current `peft_adapter_*`,
   `payload_adapter_kind`, `update_family_name` field를 기준으로 읽고,
   mechanism별 PEFT option은 `peft_adapter_parameters_json` snapshot으로 보존한다.
 
 ## Next Priorities
 
-1. generic `fedmatch` compatibility leaf는 기존 config/run 참조가 사라진 뒤 제거
-   여부를 결정한다. `data`, `runs`, historical artifact cache는 건드리지 않는다.
+1. FL SSL canonical FedMatch scenario smoke/main run 조건을 확인한다. `data`, `runs`,
+   historical artifact cache는 건드리지 않는다.
 
 ## Validation Criteria
 

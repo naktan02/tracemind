@@ -41,17 +41,16 @@
 - FedMatch 같은 method-owned 실행은 descriptor가 local objective와 server policy
   요구사항을 파생한다. `fedmatch_agreement`는 generic config leaf가 아니라
   FedMatch method-local objective다.
-- canonical FedMatch main-comparison은
-  `fssl_method=fedmatch_labels_at_client`처럼 variant 이름으로
-  `peer_context`, `server_step`, `local_ssl_policy`, `server_update`,
-  `update_partition`, `aggregation_weight`를 descriptor default로 닫는다.
-- labels-at-server 경로도 `fssl_method=fedmatch_labels_at_server` variant로
-  분리해 `server_only_seed + client_unlabeled_only + supervised_seed_step`
-  의미를 lower-axis 밖으로 올린다.
-- 두 FedMatch variant의 public 선택 leaf는 `conf/strategy_axes/fssl_method/`에
-  있지만, implementation family와 policy source of truth는
-  `methods/federated_ssl/fedmatch/`다. generic `fedmatch` leaf는
-  compatibility/ablation 입력으로만 남긴다.
+- canonical FedMatch main-comparison은 `fssl_method=fedmatch`를 고르고
+  `ssl_method.scenario=labels-at-client` 또는 `labels-at-server`로 label 위치를
+  고른다. `peer_context`, `server_step`, `local_ssl_policy`, `server_update`,
+  `update_partition`, `aggregation_weight`는 FedMatch descriptor와 scenario default가
+  파생한다.
+- labels-at-server scenario는 `server_only_seed + client_unlabeled_only +
+  supervised_seed_step` 의미를 lower-axis 밖으로 올린다.
+- FedMatch public 선택 leaf는 `conf/strategy_axes/fssl_method/fedmatch.yaml` 하나이고,
+  implementation family와 policy source of truth는
+  `methods/federated_ssl/fedmatch/`다.
 - `server_step_policy`와 `server_update_policy`는 다른 축이다. server-side seed step
   여부와 submitted update 해석 방식을 섞지 않는다.
 - `fl_topology`는 이름보다 범위가 넓다. 현재는 FL data topology와 round capability

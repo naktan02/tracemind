@@ -162,11 +162,13 @@ FedMatch 원본에서 보존한 기본값:
   `l1_thres=1e-5`, `delta_thres=1e-5`
 
 위 값의 source of truth는 `methods/federated_ssl/fedmatch/original_spec.py`다.
-`conf/strategy_axes/fssl_method/fedmatch.yaml`은 `scenario`,
-`use_original_parameters`, `parameter_overrides`만 실행 표면으로 노출한다.
-trace/report wiring metadata와 client/server step 의미는
-`methods/federated_ssl/fedmatch/descriptor.py`에서 파생하고, runner가 report protocol에
-`original_parameters`, `effective_parameters`, `parameter_override_status`를 주입한다.
+Public Hydra 선택은 `fssl_method=fedmatch` 하나이고, labels 위치는
+`ssl_method.scenario=labels-at-client|labels-at-server`가 소유한다.
+`use_original_parameters`, `parameter_overrides`도 같은 FedMatch leaf의 실행 표면으로
+노출한다. trace/report wiring metadata와 client/server step 의미는
+`methods/federated_ssl/fedmatch/descriptor.py`에서 scenario default로 파생하고,
+runner가 report protocol에 `original_parameters`, `effective_parameters`,
+`parameter_override_status`를 주입한다.
 
 ## Open Selection Gate
 

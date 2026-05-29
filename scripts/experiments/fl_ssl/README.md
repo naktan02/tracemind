@@ -69,20 +69,22 @@ Method-owned 실행은 method descriptor와 capability leaf를 함께 고른다.
 YAML에 복제하지 않고 method package에서 report protocol로 주입한다.
 `local_update_profile` 같은 local recipe와 `consistency_method` 같은 Query SSL
 lower axis는 method-owned에서 별도 override하지 않는다. canonical FedMatch
-main-comparison 경로는 variant를 쓴다.
+main-comparison 경로는 method identity와 scenario를 분리한다.
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=reduced \
   fl_method.composition_mode=method_owned \
-  strategy_axes/fssl_method=fedmatch_labels_at_client
+  strategy_axes/fssl_method=fedmatch \
+  ssl_method.scenario=labels-at-client
 ```
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=reduced \
   fl_method.composition_mode=method_owned \
-  strategy_axes/fssl_method=fedmatch_labels_at_server
+  strategy_axes/fssl_method=fedmatch \
+  ssl_method.scenario=labels-at-server
 ```
 
 ## Sweep
