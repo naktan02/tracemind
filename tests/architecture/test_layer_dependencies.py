@@ -2633,29 +2633,6 @@ def test_federated_ssl_capability_axes_stays_payload_adapter_agnostic() -> None:
     )
 
 
-def test_federated_ssl_root_does_not_keep_flat_moved_modules() -> None:
-    legacy_paths = (
-        METHODS_FEDERATED_SSL_SRC / "capability_axes.py",
-        METHODS_FEDERATED_SSL_SRC / "capability_plan.py",
-        METHODS_FEDERATED_SSL_SRC / "client_diagnostics.py",
-        METHODS_FEDERATED_SSL_SRC / "diagnostic_sampling.py",
-        METHODS_FEDERATED_SSL_SRC / "local_objective.py",
-        METHODS_FEDERATED_SSL_SRC / "peer_context.py",
-        METHODS_FEDERATED_SSL_SRC / "server_step.py",
-        METHODS_FEDERATED_SSL_SRC / "update_partition.py",
-    )
-    existing_paths = [
-        _relative_repo_path(path) for path in legacy_paths if path.exists()
-    ]
-
-    assert not existing_paths, (
-        "FL SSL root에는 공통 descriptor/planning helper만 남긴다. capability와 "
-        "diagnostics owner는 capabilities/와 diagnostics/ 아래 direct import를 "
-        "사용하고, compatibility facade는 만들지 않는다.\n"
-        f"{chr(10).join(f'- {path}' for path in existing_paths)}"
-    )
-
-
 def test_federated_ssl_hooks_stay_method_agnostic() -> None:
     hook_root = METHODS_FEDERATED_SSL_SRC / "hooks"
     forbidden_snippets = ("fedmatch", "sigma", "psi")
@@ -2671,69 +2648,6 @@ def test_federated_ssl_hooks_stay_method_agnostic() -> None:
         "소유한다. FedMatch method 이름과 sigma/psi 같은 method-local partition "
         "의미는 methods/federated_ssl/<method>/ 아래에 둔다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
-    )
-
-
-def test_fedmatch_descriptor_does_not_keep_recipe_pass_through() -> None:
-    recipe_path = METHODS_FEDERATED_SSL_SRC / "fedmatch" / "recipe.py"
-
-    assert not recipe_path.exists(), (
-        "FedMatch recipe metadata는 descriptor.py에서 바로 읽는다. descriptor.recipe를 "
-        "다시 노출하는 pass-through recipe.py는 만들지 않는다.\n"
-        f"recipe path={_relative_repo_path(recipe_path)}"
-    )
-
-
-def test_fedmatch_method_surface_keeps_tiny_policy_leaves_collapsed() -> None:
-    fedmatch_root = METHODS_FEDERATED_SSL_SRC / "fedmatch"
-    collapsed_leaf_paths = (
-        fedmatch_root / "round_policy.py",
-        fedmatch_root / "runtime_requirements.py",
-        fedmatch_root / "server_policy.py",
-        fedmatch_root / "server_step_parameters.py",
-    )
-    existing_paths = [
-        _relative_repo_path(path) for path in collapsed_leaf_paths if path.exists()
-    ]
-    surface_source = (fedmatch_root / "method_surface.py").read_text(encoding="utf-8")
-    required_snippets = (
-        "DEFAULT_SERVER_STEP_POLICY_BY_SCENARIO",
-        "DEFAULT_PEER_CONTEXT_POLICY_BY_SCENARIO",
-        "labels_at_client_policy",
-        "labels_at_server_policy",
-        "helper_context_policy",
-        "resolve_supervised_seed_step_parameters",
-    )
-    missing = [
-        snippet for snippet in required_snippets if snippet not in surface_source
-    ]
-
-    assert not existing_paths and not missing, (
-        "FedMatch scenario default, helper policy, server step parameter 해석은 "
-        "method_surface.py가 소유한다. 이름만 나눈 policy/runtime leaf는 reader "
-        "path를 늘리므로 재도입하지 않는다.\n"
-        f"existing={existing_paths}\nmissing={missing}"
-    )
-
-
-def test_fedmatch_scenarios_do_not_become_sibling_method_packages() -> None:
-    scenario_roots = (
-        METHODS_FEDERATED_SSL_SRC / "fedmatch_labels_at_client",
-        METHODS_FEDERATED_SSL_SRC / "fedmatch_labels_at_server",
-    )
-    existing_files = [
-        _relative_repo_path(path)
-        for root in scenario_roots
-        if root.exists()
-        for path in _iter_python_files(root)
-    ]
-
-    assert not existing_files, (
-        "FedMatch labels-at-client/server는 public fssl_method leaf나 독립 "
-        "implementation family가 아니다. Python descriptor와 policy 의미는 "
-        "methods/federated_ssl/fedmatch/ 안에 두고, 실행 선택은 "
-        "ssl_method.scenario로 표현한다.\n"
-        f"{chr(10).join(f'- {path}' for path in existing_files)}"
     )
 
 

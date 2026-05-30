@@ -80,7 +80,7 @@ def run_method_owned_peft_encoder_training_core(
 ) -> QuerySslPeftEncoderClientTrainingResult:
     """FedMatch descriptor가 호출하는 PEFT text encoder local runtime."""
 
-    partitioned_runtime_plan = build_fedmatch_partitioned_runtime_plan(
+    runtime_plan = build_fedmatch_partitioned_runtime_plan(
         scenario_name=ssl_method_config.scenario,
         effective_parameters=ssl_method_config.effective_parameters,
     )
@@ -97,7 +97,7 @@ def run_method_owned_peft_encoder_training_core(
         training_task=training_task,
         model_manifest=model_manifest,
         ssl_method_config=ssl_method_config,
-        partitioned_runtime_plan=partitioned_runtime_plan,
+        partitioned_runtime_plan=runtime_plan,
         local_ssl_policy_name=local_ssl_policy_name,
         query_ssl_config=query_ssl_config,
         strong_view_policy=strong_view_policy,

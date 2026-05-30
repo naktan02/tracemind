@@ -20,7 +20,6 @@ from methods.federated_ssl.fedmatch.original_spec import (
 )
 from methods.federated_ssl.hooks.partitioned_update import (
     FederatedSslPartitionedUpdateHook,
-    FederatedSslUpdatePartitionPolicy,
 )
 from methods.federated_ssl.local_supervision import (
     FederatedSslLocalSupervisionRegime,
@@ -29,6 +28,8 @@ from methods.federated_ssl.local_supervision import (
 
 FEDMATCH_SIGMA_PARTITION = "sigma"
 FEDMATCH_PSI_PARTITION = "psi"
+FEDMATCH_PARTITION_NAMES = (FEDMATCH_SIGMA_PARTITION, FEDMATCH_PSI_PARTITION)
+FEDMATCH_PARTITION_POLICY_NAME = "sigma_psi"
 FEDMATCH_PUBLISHED_STATE_EXPRESSION = "sigma_plus_psi"
 
 
@@ -87,18 +88,6 @@ trace_parameter_mapping = FedMatchTraceParameterMapping(
     labels_at_server_upload_partitions=(FEDMATCH_PSI_PARTITION,),
 )
 
-parameter_routing_policy = FederatedSslUpdatePartitionPolicy(
-    policy_name="sigma_psi",
-    partition_names=(FEDMATCH_SIGMA_PARTITION, FEDMATCH_PSI_PARTITION),
-    parameters={
-        "supervised_loss_partition": FEDMATCH_SIGMA_PARTITION,
-        "unsupervised_loss_partition": FEDMATCH_PSI_PARTITION,
-        "published_state": FEDMATCH_PUBLISHED_STATE_EXPRESSION,
-        "trace_trainable_scope": trace_parameter_mapping.trace_trainable_scope,
-        "frozen_scope": trace_parameter_mapping.frozen_scope,
-    },
-)
-
 
 def build_fedmatch_partitioned_runtime_plan(
     *,
@@ -142,13 +131,13 @@ def build_fedmatch_partitioned_update_hook(
     upload_partitions = upload_partitions_for_scenario(scenario_name=scenario_name)
     return FederatedSslPartitionedUpdateHook(
         hook_name="partitioned_update",
-        partition_names=parameter_routing_policy.partition_names,
+        partition_names=FEDMATCH_PARTITION_NAMES,
         upload_partitions=upload_partitions,
         aggregate_partitions=upload_partitions,
         l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
         published_state_expression=FEDMATCH_PUBLISHED_STATE_EXPRESSION,
         parameters={
-            "policy_name": parameter_routing_policy.policy_name,
+            "policy_name": FEDMATCH_PARTITION_POLICY_NAME,
             "supervised_partition": FEDMATCH_SIGMA_PARTITION,
             "unsupervised_partition": FEDMATCH_PSI_PARTITION,
             "trace_trainable_scope": trace_parameter_mapping.trace_trainable_scope,

@@ -2,21 +2,19 @@
 
 `fedmatch/`는 FedMatch 논문 method 의미를 소유한다.
 
-- `original_spec.py`: 원본 repository/commit과 config.py 기반 hyperparameter snapshot
-- `descriptor.py`: method identity, required views, runtime capability surface,
-  method-owned local runtime entrypoint
-- `method_surface.py`: scenario default, report metadata, helper/server policy
-  metadata, method-local runtime requirement, supervised seed step parameter 해석
-- `local_objective.py`: sigma/psi loss routing metadata, confidence filter,
-  agreement pseudo-label vote helper, tensor-level supervised/unsupervised loss core
-- `compatibility.py`: FedMatch 전용 capability 조합 검증
-- `helper_selection.py`: 원본 KDTree helper selection을 TraceMind fixed-probe
-  vector nearest-neighbor로 보존한 core
-- `partitioning.py`: 원본 full parameter sigma/psi를 frozen-backbone 위
-  trainable adapter/head partition scope로 매핑하고, scenario, local supervision,
-  upload partition, objective, `psi_factor`를 update-family runtime plan으로 정규화
-- `local_runtime.py`: FedMatch descriptor가 호출하는 method-owned local runtime
-  entrypoint. 현재는 PEFT text encoder runtime bridge로 위임한다.
+## 빠른 읽기
+
+FedMatch 동작을 볼 때는 아래 네 파일만 먼저 읽는다.
+
+1. `descriptor.py`: method identity, required capability, runtime entrypoint
+2. `local_objective.py`: agreement pseudo-label, confidence filter, sigma/psi loss
+3. `partitioning.py`: sigma/psi partition mapping과 runtime plan
+4. `method_surface.py`: scenario default, report metadata, helper/server policy
+
+필요할 때만 `original_spec.py`, `compatibility.py`, `helper_selection.py`,
+`client_diagnostics.py`를 따라간다. `local_runtime.py`는 descriptor가 호출하는 얇은
+entrypoint이며, FedMatch config를 `partitioning.py`의 plan으로 정규화한 뒤 PEFT text
+encoder runtime bridge로 넘긴다. 그래서 partition 의미 owner는 `partitioning.py` 하나다.
 
 PEFT text encoder에서 FedMatch를 실행하는 family-specific bridge와 partitioned
 optimizer loop의 source of truth는
