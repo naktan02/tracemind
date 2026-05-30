@@ -10,7 +10,7 @@ from methods.adaptation.implementation_modules import (
     adaptation_implementation_module_name,
     normalize_payload_adapter_kind,
 )
-from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDAVG_MERGED_DELTA
+from methods.federated_ssl.capabilities.axes import SERVER_UPDATE_FEDAVG_MERGED_DELTA
 
 
 class FederatedSslServerUpdateBackendResolver(Protocol):

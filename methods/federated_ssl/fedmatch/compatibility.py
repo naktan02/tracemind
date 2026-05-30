@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_axes import (
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICIES_REQUIRING_STATE_SURFACE,
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
     SERVER_UPDATE_FEDMATCH_PARTITIONED,
 )
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     UPDATE_PARTITION_PARTITIONED,
     FederatedSslCapabilityPlan,
 )

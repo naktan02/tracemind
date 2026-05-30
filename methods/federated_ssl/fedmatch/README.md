@@ -5,22 +5,18 @@
 - `original_spec.py`: 원본 repository/commit과 config.py 기반 hyperparameter snapshot
 - `descriptor.py`: method identity, required views, runtime capability surface,
   method-owned local runtime entrypoint
+- `method_surface.py`: scenario default, report metadata, helper/server policy
+  metadata, method-local runtime requirement, supervised seed step parameter 해석
 - `local_objective.py`: sigma/psi loss routing metadata, confidence filter,
   agreement pseudo-label vote helper, tensor-level supervised/unsupervised loss core
-- `server_policy.py`: labels-at-client / labels-at-server policy metadata
-- `round_policy.py`: helper context policy metadata
 - `compatibility.py`: FedMatch 전용 capability 조합 검증
-- `runtime_requirements.py`: FedMatch local runtime이 요구하는 helper probability
-  provider 같은 method-local runtime requirement
 - `helper_selection.py`: 원본 KDTree helper selection을 TraceMind fixed-probe
   vector nearest-neighbor로 보존한 core
-- `parameter_routing.py`: 원본 full parameter sigma/psi를 frozen-backbone 위
-  trainable adapter/head partition scope로 매핑하는 metadata
-- `partitioned_runtime_plan.py`: scenario, local supervision, sigma/psi routing,
+- `partitioning.py`: 원본 full parameter sigma/psi를 frozen-backbone 위
+  trainable adapter/head partition scope로 매핑하고, scenario, local supervision,
   upload partition, objective, `psi_factor`를 update-family runtime plan으로 정규화
-- `partitioned_local_training.py`: FedMatch descriptor가 호출하는 partitioned local
-  training entrypoint. 현재는 PEFT text encoder runtime bridge로 위임한다.
-- `server_step_parameters.py`: labels-at-server supervised seed step budget 해석
+- `local_runtime.py`: FedMatch descriptor가 호출하는 method-owned local runtime
+  entrypoint. 현재는 PEFT text encoder runtime bridge로 위임한다.
 
 PEFT text encoder에서 FedMatch를 실행하는 family-specific bridge와 partitioned
 optimizer loop의 source of truth는
@@ -59,7 +55,7 @@ capability다. 원본 FedMatch snapshot은
   원본 budget ablation으로 잘못 실행된 경우를 즉시 실패 처리한다.
 - helper refresh와 KDTree 우선 nearest-neighbor helper selection
 - 공통 `peer_context=fixed_probe_output_knn` mechanism은
-  `methods/federated_ssl/peer_context.py`가 실행하고, FedMatch
+  `methods/federated_ssl/hooks/peer_context.py`가 실행하고, FedMatch
   `effective_parameters`의 `num_helpers`/`helper_refresh_interval` 해석은
   method-owned parameter surface로 보존
 - 이전 round client-local LoRA snapshot과 validation probe vector 기반 helper

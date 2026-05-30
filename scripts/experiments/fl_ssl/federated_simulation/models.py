@@ -8,8 +8,8 @@ from pathlib import Path
 
 from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
-from methods.federated_ssl.diagnostic_sampling import (
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.diagnostics.sampling import (
     DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM,
     PEER_PROBE_LABEL_BALANCED,
     normalize_sampling_policy_name,

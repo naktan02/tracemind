@@ -47,7 +47,7 @@ from methods.adaptation.query_text_views.view_rows import (
 )
 from methods.common.timing import TimingRecorder
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
-from methods.federated_ssl.capability_axes import (
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
 )

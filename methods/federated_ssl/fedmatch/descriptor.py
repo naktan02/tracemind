@@ -23,13 +23,13 @@ from methods.federated_ssl.base import (
     FederatedSslRuntimePair,
     FederatedSslServerStepSpec,
 )
-from methods.federated_ssl.capability_axes import (
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,
     SERVER_UPDATE_FEDMATCH_PARTITIONED,
 )
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
     PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
@@ -39,17 +39,15 @@ from methods.federated_ssl.capability_plan import (
     SERVER_STEP_SUPERVISED_SEED,
     UPDATE_PARTITION_PARTITIONED,
 )
-from methods.federated_ssl.fedmatch.original_spec import (
-    FEDMATCH_ORIGINAL_COMMIT,
-    FEDMATCH_ORIGINAL_REPOSITORY,
-    FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
-    FEDMATCH_SCENARIO_LABELS_AT_SERVER,
+from methods.federated_ssl.fedmatch.method_surface import (
+    FEDMATCH_METHOD_CONFIG_SURFACE_BY_METHOD_NAME,
+    FEDMATCH_METHOD_NAME,
 )
 from shared.src.contracts.common_types import TrainingTaskType
 
-FEDMATCH_METHOD_NAME = "fedmatch"
 METHOD_IMPLEMENTATION_FAMILY = FEDMATCH_METHOD_NAME
 PUBLIC_METHOD_OWNED_CANONICAL = True
+METHOD_CONFIG_SURFACE_BY_METHOD_NAME = FEDMATCH_METHOD_CONFIG_SURFACE_BY_METHOD_NAME
 
 descriptor = FederatedSslMethodDescriptor(
     name=FEDMATCH_METHOD_NAME,
@@ -66,7 +64,7 @@ descriptor = FederatedSslMethodDescriptor(
         pseudo_labeler_name="fedmatch_agreement_pseudo_labeler",
         training_row_source=TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
         runtime_entrypoint=(
-            "methods.federated_ssl.fedmatch.partitioned_local_training:"
+            "methods.federated_ssl.fedmatch.local_runtime:"
             "run_method_owned_peft_encoder_training_core"
         ),
     ),
@@ -128,60 +126,6 @@ descriptor = FederatedSslMethodDescriptor(
             PARTICIPATION_FRACTION_RANDOM,
         ),
     ),
-)
-
-ORIGINAL_SOURCE_METADATA = {
-    "repository": FEDMATCH_ORIGINAL_REPOSITORY,
-    "commit": FEDMATCH_ORIGINAL_COMMIT,
-    "paper": "arXiv:2006.12097",
-}
-
-DEFAULT_LOCAL_SSL_POLICY_NAME = LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
-DEFAULT_SERVER_UPDATE_POLICY_NAME = SERVER_UPDATE_FEDMATCH_PARTITIONED
-DEFAULT_LABELED_EXPOSURE_POLICY_BY_SCENARIO = {
-    FEDMATCH_SCENARIO_LABELS_AT_CLIENT: LABELED_EXPOSURE_SHARED_CLIENT_SEED,
-    FEDMATCH_SCENARIO_LABELS_AT_SERVER: LABELED_EXPOSURE_SERVER_ONLY_SEED,
-}
-DEFAULT_LOCAL_SUPERVISION_REGIME_BY_SCENARIO = {
-    FEDMATCH_SCENARIO_LABELS_AT_CLIENT: LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
-    FEDMATCH_SCENARIO_LABELS_AT_SERVER: LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
-}
-DEFAULT_SERVER_STEP_POLICY_BY_SCENARIO = {
-    FEDMATCH_SCENARIO_LABELS_AT_CLIENT: SERVER_STEP_NONE,
-    FEDMATCH_SCENARIO_LABELS_AT_SERVER: SERVER_STEP_SUPERVISED_SEED,
-}
-DEFAULT_PEER_CONTEXT_POLICY_BY_SCENARIO = {
-    FEDMATCH_SCENARIO_LABELS_AT_CLIENT: PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
-    FEDMATCH_SCENARIO_LABELS_AT_SERVER: PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
-}
-
-TRACE_MAPPING_METADATA = {
-    "parameter_decomposition": "peft_text_encoder_sigma_psi",
-    "update_partition_policy": UPDATE_PARTITION_PARTITIONED,
-    "partition_scheme": "sigma_psi",
-    "original_trainable_scope": "ResNet9 Conv/Dense full weights",
-    "trace_trainable_scope": "LoRA adapter tensors plus classifier head tensors",
-    "frozen_scope": "Transformer backbone base weights",
-    "supervised_partition": "sigma",
-    "unsupervised_partition": "psi",
-    "published_state": "sigma_plus_psi",
-    "local_ssl_policy": LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
-    "current_server_update_policy": SERVER_UPDATE_FEDAVG_MERGED_DELTA,
-    "target_server_update_policy": SERVER_UPDATE_FEDMATCH_PARTITIONED,
-    "aggregation_weight_policy": AGGREGATION_WEIGHT_UNIFORM,
-}
-
-REPORT_TAGS = ("fl_ssl_main_comparison", FEDMATCH_METHOD_NAME)
-
-NOTES = (
-    "FedMatch 원본 snapshot의 설정과 core decision semantics를 보존한다.",
-    "Method-owned PEFT text encoder local runtime runs FedMatch "
-    "supervised/unsupervised partition steps; helper client context selection and "
-    "helper weak-view probabilities are wired through the common peer_context axis "
-    "and PEFT text encoder update-family slice. The labels-at-server supervised "
-    "seed step is wired through the common server_step axis. Sparse S2C/C2S is "
-    "wired in the simulation slice with artifact communication estimates, not "
-    "measured network packets.",
 )
 
 

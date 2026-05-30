@@ -38,7 +38,7 @@ _PEFT_TEXT_ENCODER_REPORT_RULES = UpdateFamilyReportArtifactRules(
     ),
     aggregate_snapshot_specs=(
         AggregateSnapshotSpec(
-            artifact_family_name=PEFT_CLASSIFIER_ADAPTER_KIND,
+            artifact_family_name=PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME,
             artifact_names=("peft_adapter.json", "classifier_head.json"),
         ),
     ),

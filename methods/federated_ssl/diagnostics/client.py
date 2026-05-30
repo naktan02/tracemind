@@ -7,6 +7,8 @@ from collections.abc import Callable, Iterable, Mapping
 from importlib import import_module
 from types import ModuleType
 
+from methods.federated_ssl.method_module_resolution import import_method_family_module
+
 NumericSummaryFn = Callable[[Iterable[float]], Mapping[str, float | int | None]]
 
 _FEDERATED_SSL_PACKAGE = "methods.federated_ssl"
@@ -161,17 +163,7 @@ def _known_method_diagnostic_modules() -> tuple[ModuleType, ...]:
 
 
 def _import_method_client_diagnostics_module(method_name: str) -> ModuleType | None:
-    normalized_method_name = method_name.strip().lower().replace("-", "_")
-    if not normalized_method_name:
-        return None
-    try:
-        return import_module(
-            f"{_FEDERATED_SSL_PACKAGE}.{normalized_method_name}.client_diagnostics"
-        )
-    except ModuleNotFoundError as exc:
-        expected_name = (
-            f"{_FEDERATED_SSL_PACKAGE}.{normalized_method_name}.client_diagnostics"
-        )
-        if exc.name == expected_name:
-            return None
-        raise
+    return import_method_family_module(
+        method_name=method_name,
+        module_leaf="client_diagnostics",
+    )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from methods.federated_ssl.diagnostic_sampling import (
+from methods.federated_ssl.diagnostics.sampling import (
     DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM,
     normalize_sampling_policy_name,
     select_deterministic_diagnostic_rows,

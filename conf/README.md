@@ -57,6 +57,12 @@ conf/
   실제 objective core는 `methods/ssl/algorithms/*`가 소유한다.
 - local update recipe는 `strategy_axes/ssl_objective/local_update_profile`이
   소유한다. 특정 논문 method를 뜻하는 값은 아니므로 `fssl_method` 아래에 두지 않는다.
+- `strategy_axes/ssl_objective/local_ssl_policy`는 manual baseline/ablation에서만 직접
+  고르는 축이다. Method-owned 실행은 descriptor required capability와 method surface
+  default에서 local SSL policy를 파생한다.
+- `strategy_axes/ssl_objective/multiview_source/materialized_rows`는 현재 FL SSL simulation의
+  materialized row view source를 나타내는 capability leaf다. live agent나 다른 source가
+  실제 구현되기 전에는 method별 leaf를 추가하지 않는다.
 - update family와 runtime callable path는
   `strategy_axes/model_architecture/update_family`가 선언한다.
 - update family가 runtime payload 일부를 training objective extra로 넘겨야 하면,

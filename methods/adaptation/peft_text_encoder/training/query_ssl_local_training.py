@@ -41,7 +41,7 @@ from methods.adaptation.query_text_views.view_rows import (
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
-from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
+from methods.federated_ssl.hooks.peer_context import FederatedSslPeerClientSnapshot
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from methods.ssl.state import export_query_ssl_algorithm_state
 from shared.src.contracts.adapter_contract_families.peft_classifier import (

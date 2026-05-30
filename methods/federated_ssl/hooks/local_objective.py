@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from importlib import import_module
 from types import ModuleType
 from typing import Protocol
 
 from torch import Tensor
 
 from methods.federated_ssl.method_module_resolution import (
-    resolve_federated_ssl_method_family_name,
+    import_method_family_module,
 )
 
 
@@ -107,11 +106,7 @@ def requires_method_helper_probability_provider(
 
 
 def _import_method_runtime_requirements_module(method_name: str) -> ModuleType | None:
-    family_name = resolve_federated_ssl_method_family_name(method_name)
-    module_name = f"methods.federated_ssl.{family_name}.runtime_requirements"
-    try:
-        return import_module(module_name)
-    except ModuleNotFoundError as exc:
-        if exc.name == module_name or module_name.startswith(f"{exc.name}."):
-            return None
-        raise
+    return import_method_family_module(
+        method_name=method_name,
+        module_leaf="runtime_requirements",
+    )

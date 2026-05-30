@@ -1,92 +1,63 @@
 # Federated SSL Methods
 
 `methods/federated_ssl/`는 SSL local update와 federated aggregation을 조합하는
-FL SSL method spec을 둔다. 사람이 새 논문 방법론을 읽을 때는 먼저
-`methods/federated_ssl/<method>/` 폴더를 본다. 기본 manual baseline은 이
-패키지에 descriptor를 두지 않고 lower-axis 조합으로 실행한다.
+FL SSL method 의미를 소유한다. `scripts`, `agent`, `main_server`는 FedMatch 같은
+논문 method 이름으로 분기하지 않고, 여기서 선언한 descriptor/capability를 읽는다.
 
-## 책임
+## 읽기 순서
 
-- `federated_ssl_method` 이름별 method descriptor/spec
-- required views, client local step, server round/aggregation 요구사항 표현
-- simulation/live runtime capability 선언
-- 실제 runtime adapter가 읽을 canonical method 요구사항 제공
-- method-local descriptor module의 `descriptor` 변수와 convention import trigger
-- method recipe metadata와 method-only aggregation/server policy 변형
-- `execution_plan.py`의 method-owned/manual composition과 security policy 검증
-- local update profile support, runtime pair support, payload adapter 일치 검증
-- `capability_axes.py`의 client local SSL objective 이름과 server-side update/delta
-  해석 이름
-- 명시 training config가 없는 API/runtime 요청용 `runtime_fallbacks.py`
-- FL SSL diagnostics/probe row sampling처럼 method/runtime 해석에 속하지만
-  artifact 저장이나 simulation loop는 아닌 공통 helper
+새 method나 기존 method 동작을 볼 때는 아래 순서로 시작한다.
 
-## 제외
+1. `methods/federated_ssl/README.md`
+2. `methods/federated_ssl/<method>/README.md`
+3. `methods/federated_ssl/<method>/descriptor.py`
+4. `methods/federated_ssl/<method>/local_objective.py`
+5. 필요할 때만 `<method>/method_surface.py`, `<method>/partitioning.py`,
+   `methods/adaptation/<family>/federated_ssl/*`
 
-- Hydra config loading
-- simulation loop와 artifact/report 저장
-- `LocalTrainingService`, `RoundOpenRequest` 같은 runtime 객체 생성
-- 실험 실행 조합 source of truth. 일반 FL split/round capability 값은
-  `conf/strategy_axes/fl_topology/*`, local update recipe는
-  `conf/strategy_axes/ssl_objective/local_update_profile/*`가 소유하지만, 논문 method
-  원본 기본값은 method package의 `original_spec.py`가 소유한다.
+## 파일 지도
 
-위 실행 glue는 `scripts/experiments/fl_ssl/federated_simulation/`에 남긴다. 새
-논문 method의 계산 core는 이 패키지나 `methods/ssl/*`, `methods/federated/*`
-같은 `methods` 계층에 두고, `agent`/`main_server`에는 선택된 method의 runtime
-adapter만 둔다.
+| 위치 | 역할 |
+|---|---|
+| `base.py` | FL SSL method descriptor 계약 |
+| `registry.py` | `<method>/descriptor.py` convention discovery |
+| `execution_plan.py` | `method_owned`와 `manual_baseline` 실행 구분 |
+| `compatibility.py` | descriptor/profile/capability 조합 검증 |
+| `method_config_surface.py` | method-owned default와 report metadata resolver |
+| `method_parameters.py` | 원본 method parameter snapshot과 override 병합 |
+| `capabilities/axes.py` | local SSL policy, server update policy 이름 |
+| `capabilities/plan.py` | runtime이 읽는 FL SSL capability 조합 |
+| `hooks/local_objective.py` | method-owned objective protocol/result 타입 |
+| `hooks/peer_context.py` | helper/peer context policy와 selection hook |
+| `hooks/server_step.py` | server-side supervised seed step hook |
+| `hooks/partitioned_update.py` | partitioned update hook metadata |
+| `diagnostics/client.py` | method-local client diagnostic discovery/summary |
+| `diagnostics/sampling.py` | diagnostic/probe row sampling algorithm |
+| `runtime_fallbacks.py` | API/runtime no-config 요청용 named fallback |
+| `local_supervision.py` | client/server labeled row 노출 regime |
 
-method에만 종속된 aggregation 변형은 method 폴더에 둘 수 있다. 두 개 이상 method에서
-공유되는 평균/투영/adapter payload 해석은 `methods/federated/aggregation/*` 또는
-`methods/adaptation/<family>/*`로 승격한다.
+`<method>/descriptor.py`는 method identity, required views, runtime entrypoint,
+required capability를 보여주는 첫 화면이다. Scenario default, report metadata,
+helper/server policy metadata처럼 descriptor를 흐리는 값은 `<method>/method_surface.py`에
+둔다. 원본 논문 parameter snapshot은 `<method>/original_spec.py`가 소유한다.
 
-## 읽기 경로
+## 경계
 
-새 FL SSL method를 볼 때는 `methods/federated_ssl/README.md`,
-`methods/federated_ssl/<method>/README.md`, `<method>/descriptor.py`,
-`<method>/local_objective.py` 순서로 먼저 읽는다. server/round policy는 method가 실제로
-custom state exchange나 server step을 요구할 때만 따라간다. 공통 capability 이름은
-`capability_plan.py`와 `capability_axes.py`를 함께 읽으면 된다.
-
-`recipe.py` 같은 별도 조립표 파일은 descriptor가 흐려질 만큼 recipe metadata가 커질 때만
-분리한다. 단순히 `descriptor.recipe`를 다시 export하는 파일은 두지 않는다.
-
-`FederatedSslExecutionPlan`은 entrypoint의 `fl_method`와 `security_policy`를 해석해
-상위 method가 소유하는 실행인지, lower-axis를 직접 조합하는 manual baseline인지
-명시한다. report에는 `execution_role=manual_baseline` 또는
-`execution_role=method_owned`가 남는다. manual mode의 `descriptor_name`은 비워
-두고 lower-axis report 값은 실제 `query_ssl_method`, `local_update_profile`과
-최종 `round_runtime.*` leaf에서 파생하고 stale preset metadata는 compatibility
-검증에서 무시한다. 현재 security policy는 `plaintext`만 지원하고, secure
-aggregation/DP/암호화 artifact ref는 method가 아니라 runtime capability 축으로 추가한다.
-
-`FederatedSslCapabilityPlan`은 `server_step_policy`와 `server_update_policy`를
-분리한다. 전자는 server-side supervised seed step 같은 추가 학습 여부이고, 후자는
-client가 제출한 merged/partitioned delta를 server가 어떤 의미로 해석할지다.
-`local_ssl_policy`는 local pseudo-label/consistency objective 이름만 소유한다.
-`labeled_exposure_policy`와 `local_supervision_regime`은 모든 FL SSL method가 공유하는
-client/server labeled row 노출 계약이다. `server_only_seed`나
-`client_unlabeled_only`는 FedMatch 전용 조건문으로 해석하지 않고
-`local_supervision.py`의 공통 helper를 거쳐 update-family runtime에 전달한다.
-FixMatch/FlexMatch/FreeMatch의 threshold와 state parameter는 기존
-`query_ssl_method`가 계속 소유하고, FedMatch agreement vote 같은 method-local 의미는
-`methods/federated_ssl/<method>/`가 소유한다.
-
-새 method의 descriptor는 `methods/federated_ssl/<method>/descriptor.py`가
-소유한다. Registry는 `<method>/descriptor.py` module convention을 import해
-`descriptor` 변수를 등록하므로, 같은 convention을 따르면 registry 목록을 수정하지
-않는다. 별도 registry wiring shim 파일은 두지 않는다.
-
-method-owned client runtime core는 descriptor의
-`local_step.runtime_entrypoint`에 `module:function` 형식으로 명시한다. 새 method가
-update-family custom local loop를 요구하면 사람이 `<method>/descriptor.py`에서
-호출 위치를 확인할 수 있어야 한다. PEFT encoder처럼 family-specific 실행 구현은
-`methods/adaptation/<family>/federated_ssl/` 아래에 두고, generic runtime이
-`<method>/<family>_training.py` 같은 파일명을 추측하게 만들지 않는다.
-
-`diagnostic_sampling.py`는 client diagnostic view나 peer probe처럼 FL SSL 의미의
-row subset 선택 규칙을 둔다. `scripts/experiments/fl_ssl/federated_simulation`
-adapter는 config를 읽고 manifest를 조립할 수 있지만, sampling algorithm 자체는
-`scripts`에 두지 않는다.
+- Hydra config loading, simulation loop, artifact/report 저장은 이 패키지의 책임이
+  아니다. 실행 glue는 `scripts/experiments/fl_ssl/federated_simulation/`에 둔다.
+- PEFT text encoder 같은 family-specific 실행 구현은
+  `methods/adaptation/<family>/federated_ssl/`에 둔다.
+- `hooks/`는 여러 FL SSL method가 공유할 수 있는 교체 지점의 interface와 공통
+  primitive만 둔다. Method-local 이름과 parameter 의미는 `<method>/` 안에 둔다.
+- FedMatch의 `sigma/psi`, agreement vote, helper policy처럼 method-local 의미는
+  `methods/federated_ssl/<method>/` 밖으로 올리지 않는다.
+- `server_step_policy`는 server-side 추가 학습 여부이고, `server_update_policy`는
+  client delta를 server가 어떤 의미로 해석할지다. 둘은 같은 축이 아니다.
+- `labeled_exposure_policy`와 `local_supervision_regime`은 FedMatch 조건문이 아니라
+  모든 FL SSL method가 공유하는 labeled row 노출 계약이다.
+- `recipe.py`처럼 descriptor 값을 다시 export하는 얇은 파일은 만들지 않는다.
+- `server_policy.py`, `round_policy.py`, `runtime_requirements.py`,
+  `server_step_parameters.py`처럼 policy 이름만 나누는 leaf는 만들지 않고
+  `<method>/method_surface.py`에 모은다.
 
 새 method 추가 절차는 `NEW_METHOD.md`를 먼저 따른다.

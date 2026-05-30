@@ -3,6 +3,16 @@
 from __future__ import annotations
 
 from importlib import import_module
+from types import ModuleType
+
+_METHOD_SURFACE_LEAF_ALIASES = frozenset(
+    {
+        "round_policy",
+        "runtime_requirements",
+        "server_policy",
+        "server_step_parameters",
+    }
+)
 
 
 def normalize_federated_ssl_method_name(method_name: str) -> str:
@@ -52,6 +62,38 @@ def resolve_federated_ssl_method_family_name(method_name: str) -> str:
         if family_name is None:
             return normalized_name
     return normalize_federated_ssl_method_name(str(family_name))
+
+
+def import_method_family_module(
+    *,
+    method_name: str,
+    module_leaf: str,
+) -> ModuleType | None:
+    """method implementation family 아래 optional module을 convention으로 import한다."""
+
+    family_name = resolve_federated_ssl_method_family_name(method_name)
+    normalized_leaf = module_leaf.strip().removesuffix(".py")
+    if not normalized_leaf:
+        raise ValueError("module_leaf must not be empty.")
+    module_name = f"methods.federated_ssl.{family_name}.{normalized_leaf}"
+    try:
+        return import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name == module_name or module_name.startswith(f"{exc.name}."):
+            if normalized_leaf in _METHOD_SURFACE_LEAF_ALIASES:
+                return _import_optional_method_surface_module(family_name)
+            return None
+        raise
+
+
+def _import_optional_method_surface_module(family_name: str) -> ModuleType | None:
+    module_name = f"methods.federated_ssl.{family_name}.method_surface"
+    try:
+        return import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name == module_name or module_name.startswith(f"{exc.name}."):
+            return None
+        raise
 
 
 def _method_surface_value(

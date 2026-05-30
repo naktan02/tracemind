@@ -35,6 +35,10 @@ from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
 )
+from methods.federated_ssl.method_config_surface import (
+    build_federated_ssl_method_config_surface,
+)
+from methods.federated_ssl.method_module_resolution import import_method_family_module
 from methods.federated_ssl.registry import (
     list_federated_ssl_method_descriptors,
     resolve_federated_ssl_method_descriptor,
@@ -154,6 +158,35 @@ def test_fedmatch_descriptor_prefers_peft_encoder_recipe_surface() -> None:
     ] == [
         ("peft_text_encoder", "fedavg"),
     ]
+
+
+def test_method_family_module_import_resolves_existing_leaf() -> None:
+    module = import_method_family_module(
+        method_name="fedmatch",
+        module_leaf="original_spec",
+    )
+
+    assert module is not None
+    assert module.__name__ == "methods.federated_ssl.fedmatch.original_spec"
+
+
+def test_method_family_module_import_returns_none_for_missing_leaf() -> None:
+    module = import_method_family_module(
+        method_name="fedmatch",
+        module_leaf="not_wired",
+    )
+
+    assert module is None
+
+
+def test_method_family_module_import_resolves_surface_leaf_alias() -> None:
+    module = import_method_family_module(
+        method_name="fedmatch",
+        module_leaf="runtime_requirements",
+    )
+
+    assert module is not None
+    assert module.__name__ == "methods.federated_ssl.fedmatch.method_surface"
 
 
 def test_federated_ssl_execution_plan_defaults_to_method_owned_plaintext() -> None:
@@ -291,6 +324,121 @@ def test_federated_ssl_registry_supports_test_only_method_extension(
             round_aggregation_backend_name=(fixture.TEST_ONLY_AGGREGATION_BACKEND_NAME),
         )
     )
+
+
+def test_minimal_convention_method_extension_does_not_need_optional_modules(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """새 method 기본 추가 비용은 descriptor/local_objective package로 제한한다."""
+
+    import methods.federated_ssl as federated_ssl_package
+
+    method_name = "minimal_convention_ssl"
+    method_package = tmp_path / method_name
+    method_package.mkdir()
+    (method_package / "__init__.py").write_text('"""Minimal test method."""\n')
+    (method_package / "local_objective.py").write_text(
+        "objective_name = 'minimal_objective'\ntrainer_hint = 'minimal_trainer'\n",
+        encoding="utf-8",
+    )
+    (method_package / "descriptor.py").write_text(
+        "from methods.federated_ssl.base import (\n"
+        "    FederatedSslLocalStepSpec,\n"
+        "    FederatedSslMethodDescriptor,\n"
+        "    FederatedSslRequiredCapabilities,\n"
+        "    FederatedSslRequiredViews,\n"
+        "    FederatedSslRuntimeCapabilities,\n"
+        "    FederatedSslServerStepSpec,\n"
+        ")\n\n"
+        "descriptor = FederatedSslMethodDescriptor(\n"
+        f"    name={method_name!r},\n"
+        "    implementation_status='test_only_minimal',\n"
+        "    required_views=FederatedSslRequiredViews(\n"
+        "        view_names=('text',),\n"
+        "        view_generator_name='identity_view',\n"
+        "    ),\n"
+        "    local_step=FederatedSslLocalStepSpec(\n"
+        "        step_name='minimal_local_step',\n"
+        "        client_trainer_name='generic_client_trainer',\n"
+        "        pseudo_labeler_name='generic_pseudo_labeler',\n"
+        "    ),\n"
+        "    server_step=FederatedSslServerStepSpec(\n"
+        "        server_aggregator_name='round_runtime_aggregation_backend',\n"
+        "        round_policy_name='round_active_pair_only',\n"
+        "        server_aggregate_hint='use_round_runtime_aggregation_backend',\n"
+        "    ),\n"
+        "    runtime_capabilities=FederatedSslRuntimeCapabilities(\n"
+        "        simulation_supported=True,\n"
+        "        live_agent_supported=False,\n"
+        "        live_server_supported=False,\n"
+        "    ),\n"
+        "    required_capabilities=FederatedSslRequiredCapabilities(),\n"
+        ")\n",
+        encoding="utf-8",
+    )
+
+    isolated_registry = MethodRegistry[FederatedSslMethodDescriptor](
+        item_label="minimal test federated SSL method descriptor"
+    )
+    monkeypatch.setattr(
+        federated_ssl_registry,
+        "_FEDERATED_SSL_METHOD_DESCRIPTORS",
+        isolated_registry,
+    )
+    monkeypatch.setattr(
+        federated_ssl_registry,
+        "_BUILTIN_FEDERATED_SSL_METHODS_LOADED",
+        False,
+    )
+    monkeypatch.setattr(federated_ssl_package, "__path__", [str(tmp_path)])
+
+    module_prefix = f"methods.federated_ssl.{method_name}"
+    for module_name in tuple(sys.modules):
+        if module_name == module_prefix or module_name.startswith(f"{module_prefix}."):
+            sys.modules.pop(module_name)
+
+    try:
+        descriptor = federated_ssl_registry.resolve_federated_ssl_method_descriptor(
+            method_name
+        )
+        report_surface = build_federated_ssl_method_config_surface(
+            method_name=method_name,
+            method_config={"use_original_parameters": False},
+        )
+
+        assert descriptor.name == method_name
+        assert federated_ssl_registry.list_federated_ssl_method_descriptors() == (
+            descriptor,
+        )
+        assert (
+            import_method_family_module(
+                method_name=method_name,
+                module_leaf="method_surface",
+            )
+            is None
+        )
+        assert (
+            import_method_family_module(
+                method_name=method_name,
+                module_leaf="compatibility",
+            )
+            is None
+        )
+        assert report_surface["scenario"] == "default"
+        assert report_surface["use_original_parameters"] is False
+        assert report_surface["original_parameters"] == {}
+        assert report_surface["effective_parameters"] == {}
+        assert report_surface["original_source"] == {}
+        assert report_surface["trace_mapping"] == {}
+        assert report_surface["report_tags"] == []
+        assert report_surface["notes"] == []
+    finally:
+        for module_name in tuple(sys.modules):
+            if module_name == module_prefix or module_name.startswith(
+                f"{module_prefix}."
+            ):
+                sys.modules.pop(module_name)
 
 
 def test_builtin_federated_ssl_registry_excludes_test_only_extension() -> None:

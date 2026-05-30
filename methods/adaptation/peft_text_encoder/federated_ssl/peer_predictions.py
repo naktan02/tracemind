@@ -33,7 +33,7 @@ from methods.adaptation.peft_text_encoder.update.materialization import (
 )
 from methods.adaptation.query_text_views.data import build_weak_dataloader
 from methods.common.runtime_resources import RuntimeResourceCache
-from methods.federated_ssl.peer_context import (
+from methods.federated_ssl.hooks.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )

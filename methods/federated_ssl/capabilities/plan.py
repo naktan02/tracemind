@@ -11,7 +11,7 @@ from methods.federated.client_split import (
     LABELED_EXPOSURE_SHARED_CLIENT_SEED,
 )
 from methods.federated.participation import ClientParticipationPolicy
-from methods.federated_ssl.capability_axes import (
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_NAMES,
     LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,

@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from importlib import import_module
-from types import ModuleType
 
 from methods.federated_ssl.method_module_resolution import (
-    resolve_federated_ssl_method_family_name,
+    import_method_family_module,
 )
 
 
@@ -48,7 +46,14 @@ def resolve_method_supervised_seed_step_parameters(
 ) -> FederatedSslSupervisedSeedStepParameters:
     """method-local server seed parameter resolver를 convention으로 호출한다."""
 
-    method_module = _import_method_server_step_parameters_module(method_name)
+    method_module = import_method_family_module(
+        method_name=method_name,
+        module_leaf="server_step_parameters",
+    )
+    if method_module is None:
+        raise NotImplementedError(
+            f"Method-owned server step parameter module is not wired: {method_name}"
+        )
     resolver = getattr(method_module, "resolve_supervised_seed_step_parameters", None)
     if resolver is None:
         raise NotImplementedError(
@@ -67,16 +72,3 @@ def resolve_method_supervised_seed_step_parameters(
             "FederatedSslSupervisedSeedStepParameters."
         )
     return resolved
-
-
-def _import_method_server_step_parameters_module(method_name: str) -> ModuleType:
-    family_name = resolve_federated_ssl_method_family_name(method_name)
-    module_name = f"methods.federated_ssl.{family_name}.server_step_parameters"
-    try:
-        return import_module(module_name)
-    except ModuleNotFoundError as exc:
-        if exc.name == module_name or module_name.startswith(f"{exc.name}."):
-            raise NotImplementedError(
-                f"Method-owned server step parameter module is not wired: {method_name}"
-            ) from exc
-        raise

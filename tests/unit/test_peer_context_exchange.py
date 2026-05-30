@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
     FederatedSslCapabilityPlan,
 )

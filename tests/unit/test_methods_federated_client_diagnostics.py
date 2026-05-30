@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from methods.federated_ssl.client_diagnostics import (
+from methods.federated_ssl.diagnostics.client import (
     client_method_diagnostics_summary_payload,
     known_client_diagnostic_metric_names,
 )

@@ -9,8 +9,8 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICIES_FROM_QUERY_SSL
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capabilities.axes import LOCAL_SSL_POLICIES_FROM_QUERY_SSL
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     validate_federated_ssl_local_ssl_policy_alignment,
 )

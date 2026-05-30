@@ -255,7 +255,7 @@ def test_fl_simulation_diagnostic_sampling_core_stays_in_methods() -> None:
         if snippet in path.read_text(encoding="utf-8")
     ]
 
-    assert (METHODS_FEDERATED_SSL_SRC / "diagnostic_sampling.py").exists()
+    assert (METHODS_FEDERATED_SSL_SRC / "diagnostics" / "sampling.py").exists()
     assert not violations, (
         "FL diagnostic/probe row sampling algorithm은 methods/federated_ssl이 "
         "소유한다. scripts adapter는 config와 manifest 조립만 맡는다.\n"

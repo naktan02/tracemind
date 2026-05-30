@@ -18,7 +18,7 @@ from methods.adaptation.peft_text_encoder.update.materialization import (
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
-from methods.federated_ssl.peer_context import FederatedSslPeerContext
+from methods.federated_ssl.hooks.peer_context import FederatedSslPeerContext
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     SERVER_STEP_NONE,
     FederatedSslCapabilityPlan,
 )

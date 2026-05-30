@@ -59,7 +59,7 @@ from methods.adaptation.query_text_views.view_rows import (
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping
-from methods.federated_ssl.capability_axes import (
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
 )
@@ -67,7 +67,7 @@ from methods.federated_ssl.local_supervision import (
     FederatedSslLocalSupervisionRegime,
     require_rows_match_local_supervision_regime,
 )
-from methods.federated_ssl.peer_context import (
+from methods.federated_ssl.hooks.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )

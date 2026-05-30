@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from importlib import import_module
 from types import ModuleType
 
 from methods.common.config_reading import normalize_non_empty_str
 from methods.federated.client_split import LABELED_EXPOSURE_SERVER_ONLY_SEED
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_axes import (
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
     LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,
 )
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
     LOCAL_SUPERVISION_SERVER_LABELED_ONLY,
     SERVER_STEP_NONE,
@@ -24,7 +23,7 @@ from methods.federated_ssl.capability_plan import (
 from methods.federated_ssl.execution_plan import COMPOSITION_MODE_MANUAL
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 from methods.federated_ssl.method_module_resolution import (
-    resolve_federated_ssl_method_family_name,
+    import_method_family_module,
 )
 
 
@@ -365,14 +364,10 @@ def _validate_method_owned_capability_semantics(
 
 
 def _import_method_compatibility_module(method_name: str) -> ModuleType | None:
-    family_name = resolve_federated_ssl_method_family_name(method_name)
-    module_name = f"methods.federated_ssl.{family_name}.compatibility"
-    try:
-        return import_module(module_name)
-    except ModuleNotFoundError as exc:
-        if exc.name == module_name:
-            return None
-        raise
+    return import_method_family_module(
+        method_name=method_name,
+        module_leaf="compatibility",
+    )
 
 
 def _require_supported_capability(

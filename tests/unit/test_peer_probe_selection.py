@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from methods.federated_ssl.diagnostic_sampling import (
+from methods.federated_ssl.diagnostics.sampling import (
     hash_query_ids,
     select_deterministic_diagnostic_rows,
     select_label_balanced_probe_rows,

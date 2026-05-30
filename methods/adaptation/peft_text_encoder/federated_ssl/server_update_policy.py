@@ -8,7 +8,7 @@ from methods.adaptation.federated_ssl_server_update import (
 from methods.adaptation.peft_text_encoder.aggregation import (
     peft_encoder_partitioned_projection as peft_part_projection,
 )
-from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
+from methods.federated_ssl.capabilities.axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
 )

@@ -98,8 +98,8 @@
 
 새 FL SSL method가 round별 state exchange, client weighting, pseudo-label statistics,
 server-side calibration을 요구하면 먼저
-`methods/federated_ssl/<method>/server_policy.py` 또는 `round_policy.py`에 의미를
-둔다. `main_server`에는 그 policy를 실행하기 위한 generic runtime capability만
+`methods/federated_ssl/<method>/method_surface.py`에 의미를 둔다.
+`main_server`에는 그 policy를 실행하기 위한 generic runtime capability만
 추가한다. method 이름을 가진 server 파일이 늘어나면 runtime adapter가 method
 framework 역할을 흡수하고 있다는 신호다.
 

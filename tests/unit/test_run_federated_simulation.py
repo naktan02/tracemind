@@ -36,6 +36,9 @@ from methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime impor
     FederatedPeftEncoderRuntimeConfig,
     build_peft_encoder_round_runtime_payloads,
 )
+from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
+    QuerySslPeftEncoderClientTrainingResult,
+)
 from methods.adaptation.peft_text_encoder.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
 )
@@ -54,13 +57,13 @@ from methods.evaluation.classification_report import (
 )
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capabilities.axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
 from methods.federated_ssl.fedmatch.original_spec import (
     fedmatch_original_parameter_mapping,
 )
-from methods.federated_ssl.peer_context import (
+from methods.federated_ssl.hooks.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )
@@ -126,9 +129,6 @@ from scripts.runtime_adapters.federated_agent import (
 )
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
-)
-from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
-    QuerySslPeftEncoderClientTrainingResult,
 )
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
@@ -337,7 +337,10 @@ def _patch_peft_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _fake_trainer(request_obj: Any = None, **kwargs: object) -> QuerySslPeftEncoderClientTrainingResult:
+    def _fake_trainer(
+        request_obj: Any = None,
+        **kwargs: object,
+    ) -> QuerySslPeftEncoderClientTrainingResult:
         if request_obj is not None:
             labels = list(request_obj.labels)
             active_state = build_initial_shared_state(
@@ -370,7 +373,9 @@ def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
                 "runtime_resource_cache": request_obj.runtime_resource_cache,
                 "timing_recorder": request_obj.timing_recorder,
                 "persist_update_artifact": request_obj.persist_update_artifact,
-                "initial_query_ssl_algorithm_state": request_obj.initial_query_ssl_algorithm_state,
+                "initial_query_ssl_algorithm_state": (
+                    request_obj.initial_query_ssl_algorithm_state
+                ),
                 "active_adapter_state": active_state,
             }
         training_task = kwargs["training_task"]
@@ -1209,7 +1214,9 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
                 "runtime_resource_cache": request_obj.runtime_resource_cache,
                 "timing_recorder": request_obj.timing_recorder,
                 "persist_update_artifact": request_obj.persist_update_artifact,
-                "initial_query_ssl_algorithm_state": request_obj.initial_query_ssl_algorithm_state,
+                "initial_query_ssl_algorithm_state": (
+                    request_obj.initial_query_ssl_algorithm_state
+                ),
                 "active_adapter_state": active_state,
             }
         trainer_calls.append(dict(kwargs))
@@ -1565,7 +1572,10 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     def _unexpected_query_ssl_trainer(**_kwargs: object) -> None:
         raise AssertionError("manual Query SSL trainer must not run for method-owned.")
 
-    import methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime as m_runtime
+    from methods.adaptation.peft_text_encoder.simulation_runtime import (
+        round_runtime as m_runtime,
+    )
+
     monkeypatch.setattr(
         m_runtime,
         "run_method_owned_peft_encoder_local_training_core",

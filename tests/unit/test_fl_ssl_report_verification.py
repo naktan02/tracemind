@@ -289,7 +289,7 @@ def _write_report_run_with_server_update_artifacts(
             )
 
     final_round = dict(payload["rounds"][-1])  # type: ignore[index,arg-type]
-    snapshot_family = "peft_classifier"
+    snapshot_family = "peft_text_encoder"
     adapter_snapshot_name = "peft_adapter.json"
     snapshot_dir = artifact_root / snapshot_family / str(final_round["model_revision"])
     snapshot_dir.mkdir(parents=True)

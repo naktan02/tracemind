@@ -1,4 +1,4 @@
-"""FedMatch partitioned local training runtime entrypoint."""
+"""FedMatch method-owned local runtime entrypoint."""
 
 from __future__ import annotations
 
@@ -23,10 +23,10 @@ from methods.adaptation.peft_text_encoder.update.materialization import (
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
-from methods.federated_ssl.fedmatch.partitioned_runtime_plan import (
+from methods.federated_ssl.fedmatch.partitioning import (
     build_fedmatch_partitioned_runtime_plan,
 )
-from methods.federated_ssl.peer_context import FederatedSslPeerContext
+from methods.federated_ssl.hooks.peer_context import FederatedSslPeerContext
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
@@ -78,7 +78,7 @@ def run_method_owned_peft_encoder_training_core(
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslPeftEncoderClientTrainingResult:
-    """FedMatch descriptor가 호출하는 PEFT text encoder partitioned runtime."""
+    """FedMatch descriptor가 호출하는 PEFT text encoder local runtime."""
 
     partitioned_runtime_plan = build_fedmatch_partitioned_runtime_plan(
         scenario_name=ssl_method_config.scenario,

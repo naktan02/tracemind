@@ -1,11 +1,11 @@
-"""FedMatch partitioned runtime plan helpers."""
+"""FedMatch sigma/psi partitioning metadata and runtime plan."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
 )
@@ -18,16 +18,32 @@ from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
     FEDMATCH_SCENARIO_LABELS_AT_SERVER,
 )
-from methods.federated_ssl.fedmatch.parameter_routing import (
-    FEDMATCH_PSI_PARTITION,
-    FEDMATCH_SIGMA_PARTITION,
-    parameter_routing_policy,
-    upload_partitions_for_scenario,
+from methods.federated_ssl.hooks.partitioned_update import (
+    FederatedSslPartitionedUpdateHook,
+    FederatedSslUpdatePartitionPolicy,
 )
 from methods.federated_ssl.local_supervision import (
     FederatedSslLocalSupervisionRegime,
     resolve_local_supervision_regime,
 )
+
+FEDMATCH_SIGMA_PARTITION = "sigma"
+FEDMATCH_PSI_PARTITION = "psi"
+FEDMATCH_PUBLISHED_STATE_EXPRESSION = "sigma_plus_psi"
+
+
+@dataclass(frozen=True, slots=True)
+class FedMatchTraceParameterMapping:
+    """원본 sigma/psi를 PEFT encoder trainable scope에 매핑한다."""
+
+    original_trainable_scope: str
+    trace_trainable_scope: str
+    frozen_scope: str
+    supervised_partition: str
+    unsupervised_partition: str
+    published_state_expression: str
+    labels_at_client_upload_partitions: tuple[str, ...]
+    labels_at_server_upload_partitions: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +55,7 @@ class FedMatchPartitionedRuntimePlan:
     parameters: FedMatchLocalObjectiveParameters
     physical_objective: FedMatchPartitionedTensorObjective
     sequential_objective: FedMatchPartitionedTensorObjective
+    partition_hook: FederatedSslPartitionedUpdateHook
     partition_names: tuple[str, ...]
     supervised_partition: str
     unsupervised_partition: str
@@ -56,6 +73,33 @@ class FedMatchPartitionedRuntimePlan:
         return self.parameters.confidence_threshold
 
 
+trace_parameter_mapping = FedMatchTraceParameterMapping(
+    original_trainable_scope="ResNet9 Conv/Dense full weights",
+    trace_trainable_scope="LoRA adapter tensors plus classifier head tensors",
+    frozen_scope="Transformer backbone base weights",
+    supervised_partition=FEDMATCH_SIGMA_PARTITION,
+    unsupervised_partition=FEDMATCH_PSI_PARTITION,
+    published_state_expression=FEDMATCH_PUBLISHED_STATE_EXPRESSION,
+    labels_at_client_upload_partitions=(
+        FEDMATCH_SIGMA_PARTITION,
+        FEDMATCH_PSI_PARTITION,
+    ),
+    labels_at_server_upload_partitions=(FEDMATCH_PSI_PARTITION,),
+)
+
+parameter_routing_policy = FederatedSslUpdatePartitionPolicy(
+    policy_name="sigma_psi",
+    partition_names=(FEDMATCH_SIGMA_PARTITION, FEDMATCH_PSI_PARTITION),
+    parameters={
+        "supervised_loss_partition": FEDMATCH_SIGMA_PARTITION,
+        "unsupervised_loss_partition": FEDMATCH_PSI_PARTITION,
+        "published_state": FEDMATCH_PUBLISHED_STATE_EXPRESSION,
+        "trace_trainable_scope": trace_parameter_mapping.trace_trainable_scope,
+        "frozen_scope": trace_parameter_mapping.frozen_scope,
+    },
+)
+
+
 def build_fedmatch_partitioned_runtime_plan(
     *,
     scenario_name: str | None,
@@ -65,6 +109,9 @@ def build_fedmatch_partitioned_runtime_plan(
 
     normalized_scenario = normalize_fedmatch_scenario_name(scenario_name)
     parameters = FedMatchLocalObjectiveParameters.from_mapping(effective_parameters)
+    partition_hook = build_fedmatch_partitioned_update_hook(
+        scenario_name=normalized_scenario,
+    )
     return FedMatchPartitionedRuntimePlan(
         scenario_name=normalized_scenario,
         local_supervision_regime=resolve_fedmatch_local_supervision_regime(
@@ -76,15 +123,47 @@ def build_fedmatch_partitioned_runtime_plan(
             parameters,
             omit_regularization_for_single_trainable_model=True,
         ),
-        partition_names=parameter_routing_policy.partition_names,
+        partition_hook=partition_hook,
+        partition_names=partition_hook.partition_names,
         supervised_partition=FEDMATCH_SIGMA_PARTITION,
         unsupervised_partition=FEDMATCH_PSI_PARTITION,
-        upload_partitions=upload_partitions_for_scenario(
-            scenario_name=normalized_scenario
-        ),
-        l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
+        upload_partitions=partition_hook.upload_partitions,
+        l1_sparse_partitions=partition_hook.l1_sparse_partitions,
         psi_factor=resolve_fedmatch_psi_factor(effective_parameters),
     )
+
+
+def build_fedmatch_partitioned_update_hook(
+    *,
+    scenario_name: str,
+) -> FederatedSslPartitionedUpdateHook:
+    """FedMatch partition 요구사항을 공통 FSSL hook surface로 변환한다."""
+
+    upload_partitions = upload_partitions_for_scenario(scenario_name=scenario_name)
+    return FederatedSslPartitionedUpdateHook(
+        hook_name="partitioned_update",
+        partition_names=parameter_routing_policy.partition_names,
+        upload_partitions=upload_partitions,
+        aggregate_partitions=upload_partitions,
+        l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
+        published_state_expression=FEDMATCH_PUBLISHED_STATE_EXPRESSION,
+        parameters={
+            "policy_name": parameter_routing_policy.policy_name,
+            "supervised_partition": FEDMATCH_SIGMA_PARTITION,
+            "unsupervised_partition": FEDMATCH_PSI_PARTITION,
+            "trace_trainable_scope": trace_parameter_mapping.trace_trainable_scope,
+            "frozen_scope": trace_parameter_mapping.frozen_scope,
+        },
+    )
+
+
+def upload_partitions_for_scenario(*, scenario_name: str) -> tuple[str, ...]:
+    normalized = scenario_name.replace("_", "-")
+    if normalized == FEDMATCH_SCENARIO_LABELS_AT_CLIENT:
+        return trace_parameter_mapping.labels_at_client_upload_partitions
+    if normalized == FEDMATCH_SCENARIO_LABELS_AT_SERVER:
+        return trace_parameter_mapping.labels_at_server_upload_partitions
+    raise ValueError(f"Unsupported FedMatch scenario: {scenario_name!r}")
 
 
 def normalize_fedmatch_scenario_name(scenario_name: str | None) -> str:

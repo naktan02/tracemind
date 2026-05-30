@@ -69,7 +69,7 @@ methods/
   federated_ssl/
     {execution_plan,capability_axes,compatibility_validator}.py
     manual_baseline/descriptor.py
-    fedmatch/{descriptor,original_spec,local_objective,server_policy}.py
+    fedmatch/{descriptor,method_surface,original_spec,local_objective}.py
     fedlgmatch/
     fl2/
 

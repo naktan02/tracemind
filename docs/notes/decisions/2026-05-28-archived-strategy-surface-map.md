@@ -85,7 +85,7 @@ central fixed embedding + classifier seed
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, config-declared runtime adapter executor | simulation active; `supervised_seed_step` implementation is a PEFT encoder runtime adapter, not script-owned policy logic |
 | Server update policy | `fedavg_merged_delta`, `fedmatch_partitioned` | `strategy_axes/fl/server_update_policy` | `methods/federated_ssl/capability_axes.py`, compatibility validator, update-family server update resolver | merged FedAvg active, partitioned PEFT text encoder update simulation active |
-| Peer context policy | `none`, `fixed_probe_output_knn` | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter, `methods/federated_ssl/peer_context.py` | `none` active, KDTree 우선 fixed-probe nearest-neighbor helper context selection and PEFT text encoder helper weak-probability provider active |
+| Peer context policy | `none`, `fixed_probe_output_knn` | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter, `methods/federated_ssl/hooks/peer_context.py` | `none` active, KDTree 우선 fixed-probe nearest-neighbor helper context selection and PEFT text encoder helper weak-probability provider active |
 | Peer probe surface | `label_balanced`, max 128 rows | `peer_probe.*` in FL simulation entrypoint | simulation fixed text probe selector + report protocol metadata | active for `fixed_probe_output_knn` helper selection |
 | Update partition policy | `unified`, `partitioned` | `strategy_axes/fl/update_partition_policy` | common capability + method/adaptation partition helpers | `unified` active, `partitioned` method-gated |
 | Local SSL policy | manual: `profile_pseudo_label` 또는 `query_ssl_method`; method-owned FedMatch: `fedmatch_agreement` | manual은 `strategy_axes/fl/local_ssl_policy` + `strategy_axes/ssl/consistency_method`, method-owned는 descriptor metadata | `methods/federated_ssl/capability_axes.py`, `methods/ssl/algorithms/*`, method-local objective | Query SSL-backed policies active in manual mode, FedMatch agreement는 method-owned slice 전용 |
@@ -140,7 +140,7 @@ central fixed embedding + classifier seed
   `sigma/psi`처럼 partition 이름과 loss routing 의미는 method package가 소유하고,
   두 개 이상 method에서 같은 scheme이 반복될 때만 공통 scheme으로 승격한다.
 - 공통 peer context 축은 `fixed_probe_output_knn` 같은 exchange mechanism까지만
-  표현한다. nearest-neighbor 실행은 `methods/federated_ssl/peer_context.py`의
+  표현한다. nearest-neighbor 실행은 `methods/federated_ssl/hooks/peer_context.py`의
   KDTree 우선 index가 소유하고, FedMatch의 `num_helpers`, `h_interval` 같은 원본
   helper 기본값은 `methods/federated_ssl/fedmatch/original_spec.py`와 method package가
   소유한다. legacy `prediction_similarity_topk` config alias는 제거됐고, 새 실행은

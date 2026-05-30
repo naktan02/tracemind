@@ -97,8 +97,7 @@ def resolve_client_count_sweep_values(cfg: DictConfig) -> tuple[int, ...]:
     invalid_values = [client_count for client_count in values if client_count < 1]
     if invalid_values:
         raise ValueError(
-            "sweep.client_count.members must be positive: "
-            f"{invalid_values}."
+            f"sweep.client_count.members must be positive: {invalid_values}."
         )
     return values
 

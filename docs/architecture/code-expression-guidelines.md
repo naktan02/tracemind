@@ -117,7 +117,7 @@ tracked file 1041개 중 Python 741개, Markdown 148개, YAML 79개를 기준으
 이번 점검에서 바로 정리한 후보는 아래다.
 
 - `methods/federated_ssl/local_ssl_policy.py`와 `server_update_policy.py`: 이름과 작은
-  payload 정규화만 가진 sibling 축 파일이라 `capability_axes.py`로 합쳤다.
+  payload 정규화만 가진 sibling 축 파일이라 `capabilities/axes.py`로 합쳤다.
 - `methods/federated_ssl/fedmatch/recipe.py`: `descriptor.recipe`를 다시 노출하는
   pass-through라 제거했다. recipe metadata는 `descriptor.py`에서 바로 읽는다.
 

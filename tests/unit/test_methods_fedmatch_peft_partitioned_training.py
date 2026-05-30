@@ -36,12 +36,12 @@ from methods.federated_ssl.fedmatch.local_objective import (
     FedMatchLocalObjectiveParameters,
     build_fedmatch_partitioned_tensor_objective,
 )
-from methods.federated_ssl.fedmatch.parameter_routing import (
+from methods.federated_ssl.fedmatch.local_runtime import (
+    run_method_owned_peft_encoder_training_core as run_fedmatch_partitioned_training,
+)
+from methods.federated_ssl.fedmatch.partitioning import (
     FEDMATCH_PSI_PARTITION,
     FEDMATCH_SIGMA_PARTITION,
-)
-from methods.federated_ssl.fedmatch.partitioned_local_training import (
-    run_method_owned_peft_encoder_training_core as run_fedmatch_partitioned_training,
 )
 from methods.ssl.algorithms.fixmatch.fixmatch import FixMatchAlgorithm
 

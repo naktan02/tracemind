@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from methods.common.timing import TimingRecorder
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
-from methods.federated_ssl.peer_context import (
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.hooks.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )
@@ -199,7 +199,7 @@ def run_method_owned_client_round_if_supported(
     client_artifact_byte_counter = getattr(delta_module, byte_counter_name)
     upload_client_update = getattr(delta_module, upload_func_name)
 
-    from methods.federated_ssl.client_diagnostics import (
+    from methods.federated_ssl.diagnostics.client import (
         extract_client_method_diagnostics,
     )
 

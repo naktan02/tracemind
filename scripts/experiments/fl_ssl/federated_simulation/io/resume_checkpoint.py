@@ -6,7 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from methods.federated_ssl.client_diagnostics import (
+from methods.federated_ssl.diagnostics.client import (
     client_method_diagnostics_from_payload,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (

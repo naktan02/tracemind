@@ -25,7 +25,7 @@ from methods.federated.participation import (
     select_participating_clients,
     select_participating_indices,
 )
-from methods.federated_ssl.capability_axes import (
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
     LOCAL_SSL_POLICY_FLEXMATCH,
@@ -33,7 +33,7 @@ from methods.federated_ssl.capability_axes import (
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,
     SERVER_UPDATE_FEDMATCH_PARTITIONED,
 )
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
     PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
@@ -48,17 +48,17 @@ from methods.federated_ssl.execution_plan import (
     COMPOSITION_MODE_MANUAL,
     COMPOSITION_MODE_METHOD_OWNED,
 )
-from methods.federated_ssl.local_objective import (
+from methods.federated_ssl.hooks.local_objective import (
     requires_method_helper_probability_provider,
+)
+from methods.federated_ssl.hooks.server_step import (
+    resolve_method_supervised_seed_step_parameters,
 )
 from methods.federated_ssl.local_supervision import (
     require_rows_match_local_supervision_regime,
     resolve_local_supervision_regime,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
-from methods.federated_ssl.server_step import (
-    resolve_method_supervised_seed_step_parameters,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
 )
@@ -189,18 +189,27 @@ def test_aggregation_diagnostics_weight_helpers_follow_policy_meaning() -> None:
 
     assert aggregation_example_count_for_diagnostics(client) == 5
     assert aggregation_example_count_for_diagnostics(fallback_client) == 3
-    assert aggregation_weight_for_diagnostics(
-        client,
-        policy=AggregationWeightPolicy(name="example_count"),
-    ) == 5.0
-    assert aggregation_weight_for_diagnostics(
-        client,
-        policy=AggregationWeightPolicy(name="accepted_count"),
-    ) == 3.0
-    assert aggregation_weight_for_diagnostics(
-        client,
-        policy=AggregationWeightPolicy(name="uniform"),
-    ) == 1.0
+    assert (
+        aggregation_weight_for_diagnostics(
+            client,
+            policy=AggregationWeightPolicy(name="example_count"),
+        )
+        == 5.0
+    )
+    assert (
+        aggregation_weight_for_diagnostics(
+            client,
+            policy=AggregationWeightPolicy(name="accepted_count"),
+        )
+        == 3.0
+    )
+    assert (
+        aggregation_weight_for_diagnostics(
+            client,
+            policy=AggregationWeightPolicy(name="uniform"),
+        )
+        == 1.0
+    )
     assert (
         aggregation_weight_basis_label(AggregationWeightPolicy(name="example_count"))
         == "update_envelope.example_count"

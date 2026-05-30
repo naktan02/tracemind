@@ -1138,7 +1138,7 @@ def test_federated_ssl_active_docs_use_update_family_terms() -> None:
     checked_paths = (
         METHODS_FEDERATED_SSL_SRC / "README.md",
         METHODS_FEDERATED_SSL_SRC / "fedmatch" / "README.md",
-        METHODS_FEDERATED_SSL_SRC / "fedmatch" / "parameter_routing.py",
+        METHODS_FEDERATED_SSL_SRC / "fedmatch" / "partitioning.py",
     )
     forbidden_snippets = (
         "LoRA-classifier",
@@ -1862,7 +1862,7 @@ def test_federated_agent_runtime_adapter_unit_tests_name_active_peft_surface() -
 
 
 def test_federated_ssl_client_diagnostics_use_method_discovery() -> None:
-    source = (METHODS_FEDERATED_SSL_SRC / "client_diagnostics.py").read_text(
+    source = (METHODS_FEDERATED_SSL_SRC / "diagnostics" / "client.py").read_text(
         encoding="utf-8"
     )
     forbidden_snippets = (
@@ -1875,7 +1875,7 @@ def test_federated_ssl_client_diagnostics_use_method_discovery() -> None:
     assert not violations, (
         "method-local client diagnostics는 methods/federated_ssl/<method>/"
         "client_diagnostics.py convention으로 발견한다. 새 FL method 추가 때 "
-        "공통 client_diagnostics.py에 method 이름 목록을 누적하지 않는다.\n"
+        "공통 diagnostics/client.py에 method 이름 목록을 누적하지 않는다.\n"
         f"violations={violations}"
     )
 
@@ -2526,8 +2526,7 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
         required_files = (
             method_dir / "descriptor.py",
             method_dir / "local_objective.py",
-            method_dir / "server_policy.py",
-            method_dir / "round_policy.py",
+            method_dir / "method_surface.py",
         )
         for required_file in required_files:
             if not required_file.is_file():
@@ -2608,14 +2607,14 @@ def test_federated_ssl_capability_axes_do_not_split_tiny_policy_files() -> None:
 
     assert not violations, (
         "FL SSL local/server capability 이름과 작은 normalizer는 "
-        "capability_axes.py에 함께 둔다. 이름/상수만 가진 sibling policy 파일은 "
+        "capabilities/axes.py에 함께 둔다. 이름/상수만 가진 sibling policy 파일은 "
         "reader path를 늘린다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 
 def test_federated_ssl_capability_axes_stays_payload_adapter_agnostic() -> None:
-    path = METHODS_FEDERATED_SSL_SRC / "capability_axes.py"
+    path = METHODS_FEDERATED_SSL_SRC / "capabilities" / "axes.py"
     imports = _collect_absolute_imports(path)
     forbidden_imports = {
         "shared.src.contracts.adapter_contract_families.classifier_head",
@@ -2630,7 +2629,48 @@ def test_federated_ssl_capability_axes_stays_payload_adapter_agnostic() -> None:
         "methods/adaptation/<family>/federated_ssl/가 소유한다."
     )
     assert "lora_classifier" not in source, (
-        "capability_axes.py는 LoRA-classifier family literal을 하드코딩하지 않는다."
+        "capabilities/axes.py는 LoRA-classifier family literal을 하드코딩하지 않는다."
+    )
+
+
+def test_federated_ssl_root_does_not_keep_flat_moved_modules() -> None:
+    legacy_paths = (
+        METHODS_FEDERATED_SSL_SRC / "capability_axes.py",
+        METHODS_FEDERATED_SSL_SRC / "capability_plan.py",
+        METHODS_FEDERATED_SSL_SRC / "client_diagnostics.py",
+        METHODS_FEDERATED_SSL_SRC / "diagnostic_sampling.py",
+        METHODS_FEDERATED_SSL_SRC / "local_objective.py",
+        METHODS_FEDERATED_SSL_SRC / "peer_context.py",
+        METHODS_FEDERATED_SSL_SRC / "server_step.py",
+        METHODS_FEDERATED_SSL_SRC / "update_partition.py",
+    )
+    existing_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+
+    assert not existing_paths, (
+        "FL SSL root에는 공통 descriptor/planning helper만 남긴다. capability와 "
+        "diagnostics owner는 capabilities/와 diagnostics/ 아래 direct import를 "
+        "사용하고, compatibility facade는 만들지 않는다.\n"
+        f"{chr(10).join(f'- {path}' for path in existing_paths)}"
+    )
+
+
+def test_federated_ssl_hooks_stay_method_agnostic() -> None:
+    hook_root = METHODS_FEDERATED_SSL_SRC / "hooks"
+    forbidden_snippets = ("fedmatch", "sigma", "psi")
+    violations: list[str] = []
+    for path in _iter_python_files(hook_root):
+        source = path.read_text(encoding="utf-8").lower()
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append(f"{_relative_repo_path(path)}: {snippet}")
+
+    assert not violations, (
+        "methods/federated_ssl/hooks는 여러 FL SSL method가 공유할 hook surface만 "
+        "소유한다. FedMatch method 이름과 sigma/psi 같은 method-local partition "
+        "의미는 methods/federated_ssl/<method>/ 아래에 둔다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
 
@@ -2641,6 +2681,38 @@ def test_fedmatch_descriptor_does_not_keep_recipe_pass_through() -> None:
         "FedMatch recipe metadata는 descriptor.py에서 바로 읽는다. descriptor.recipe를 "
         "다시 노출하는 pass-through recipe.py는 만들지 않는다.\n"
         f"recipe path={_relative_repo_path(recipe_path)}"
+    )
+
+
+def test_fedmatch_method_surface_keeps_tiny_policy_leaves_collapsed() -> None:
+    fedmatch_root = METHODS_FEDERATED_SSL_SRC / "fedmatch"
+    collapsed_leaf_paths = (
+        fedmatch_root / "round_policy.py",
+        fedmatch_root / "runtime_requirements.py",
+        fedmatch_root / "server_policy.py",
+        fedmatch_root / "server_step_parameters.py",
+    )
+    existing_paths = [
+        _relative_repo_path(path) for path in collapsed_leaf_paths if path.exists()
+    ]
+    surface_source = (fedmatch_root / "method_surface.py").read_text(encoding="utf-8")
+    required_snippets = (
+        "DEFAULT_SERVER_STEP_POLICY_BY_SCENARIO",
+        "DEFAULT_PEER_CONTEXT_POLICY_BY_SCENARIO",
+        "labels_at_client_policy",
+        "labels_at_server_policy",
+        "helper_context_policy",
+        "resolve_supervised_seed_step_parameters",
+    )
+    missing = [
+        snippet for snippet in required_snippets if snippet not in surface_source
+    ]
+
+    assert not existing_paths and not missing, (
+        "FedMatch scenario default, helper policy, server step parameter 해석은 "
+        "method_surface.py가 소유한다. 이름만 나눈 policy/runtime leaf는 reader "
+        "path를 늘리므로 재도입하지 않는다.\n"
+        f"existing={existing_paths}\nmissing={missing}"
     )
 
 

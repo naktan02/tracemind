@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from methods.federated.participation import select_participating_clients
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     peer_context_exchange,
     server_step_execution,

@@ -36,7 +36,7 @@
 | FL shard policy | `methods/federated/shard_policy/*` | scripts FL simulation | `conf/strategy_axes/fl_topology/shard_policy/*` | shard determinism unit |
 | FL client participation | `methods/federated/participation.py` | scripts FL simulation round loop | `conf/strategy_axes/fl_topology/client_participation/*` | participation unit, round report |
 | FL aggregation weighting | `methods/federated/aggregation_weighting.py` | family FedAvg cores | `conf/strategy_axes/fl_topology/aggregation_weight/*` | weighting unit, aggregation unit |
-| FL SSL capability plan | `methods/federated_ssl/capability_plan.py`, `capability_axes.py` | scripts FL simulation compatibility adapters, future runtime adapters | `conf/strategy_axes/fl_topology/*`, `conf/strategy_axes/ssl_objective/local_ssl_policy/*` | capability compatibility unit |
+| FL SSL capability plan | `methods/federated_ssl/capabilities/plan.py`, `capabilities/axes.py` | scripts FL simulation compatibility adapters, future runtime adapters | `conf/strategy_axes/fl_topology/*`, `conf/strategy_axes/ssl_objective/local_ssl_policy/*` | capability compatibility unit |
 | FL aggregation | method-only는 `methods/federated_ssl/<method>/aggregation.py`, 재사용 backend는 `methods/federated/aggregation/*` + update-family projection | main_server aggregation adapter | update family + aggregation backend leaf | aggregation unit, round integration |
 | FL SSL method descriptor | `methods/federated_ssl/*` | scripts FL simulation, future runtime translation | `conf/strategy_axes/fssl_method/*`는 method name/scenario/overrides만 선택 | simulation smoke |
 | Secure update codec | `shared/src/services/*` | agent/main_server privacy/update boundary | shared config or runtime config | contract/integration |

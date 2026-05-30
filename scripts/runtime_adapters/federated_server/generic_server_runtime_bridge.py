@@ -65,7 +65,7 @@ def run_supervised_seed_step(
     if request.ssl_method_config is None:
         raise ValueError("supervised_seed_step requires ssl_method_config.")
 
-    from methods.federated_ssl.server_step import (
+    from methods.federated_ssl.hooks.server_step import (
         resolve_method_supervised_seed_step_parameters,
     )
 

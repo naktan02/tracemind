@@ -49,7 +49,7 @@ from methods.adaptation.federated_ssl_server_update import (
     resolve_federated_ssl_server_update_backend_name,
 )
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
 )

@@ -207,7 +207,7 @@ PEFT text encoder partitioned step core, `local_ssl_policy`/`server_update_polic
 1. 먼저 새 로직이 method-only 변형인지 재사용 backend인지 판단한다.
 2. FedMatch 같은 논문 방법론에만 종속된 client weighting, state exchange,
    pseudo-label 통계 결합은 `methods/federated_ssl/<method>/aggregation.py`,
-   `server_policy.py`, `round_policy.py`에 둔다.
+   `method_surface.py`에 둔다.
 3. 두 개 이상 방법론에서 공유되는 backend의 generic 산술/strategy wiring은
    `methods/federated/aggregation/`에 추가한다.
 4. update family별 delta 해석과 next-state projection은 `methods/adaptation/<family>/`에 둔다.
@@ -307,8 +307,7 @@ FL SSL 논문 method를 추가하는 경우에는 다음도 확인한다.
 1. `methods/federated_ssl/NEW_METHOD.md`의 추가 순서를 따른다.
 2. `conf/strategy_axes/fssl_method/<method>.yaml`은
    `methods/federated_ssl/<method>/descriptor.py`,
-   `local_objective.py`, `server_policy.py`, `round_policy.py`가
-   생긴 뒤에만 추가한다.
+   `local_objective.py`와 필요한 `method_surface.py`가 생긴 뒤에만 추가한다.
 3. `agent`, `main_server`, `scripts/runtime_adapters`에는 FedMatch/FedLGMatch 같은
    method 이름 파일을 추가하지 않는다.
 4. `methods/adaptation/<family>/federated_ssl/`에도 `<method>_*.py`를 기본값으로

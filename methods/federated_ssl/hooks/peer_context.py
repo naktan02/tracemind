@@ -108,7 +108,7 @@ def should_refresh_peer_context(
     round_index_zero_based: int,
     refresh_interval: int,
 ) -> bool:
-    """원본 FedMatch의 `(curr_round + 1) % interval == 0` 계열 조건."""
+    """one-based round index가 refresh interval에 도달했는지 반환한다."""
 
     if round_index_zero_based < 0:
         raise ValueError("round_index_zero_based must be non-negative.")
@@ -219,9 +219,9 @@ def select_nearest_peer_client_ids(
 class NearestPeerClientIndex:
     """client output vector의 최근접 peer 조회 index.
 
-    FedMatch 원본은 `scipy.spatial.KDTree.query(k=num_helpers + 1)`로 helper를
-    고른다. experiments dependency가 없는 실행도 깨지지 않도록 KDTree를 우선
-    쓰되, scipy를 사용할 수 없으면 같은 Euclidean 기준의 full-scan으로 내린다.
+    `scipy.spatial.KDTree.query(k=peer_count + 1)`를 우선 쓰되, experiments
+    dependency가 없는 실행도 깨지지 않도록 scipy를 사용할 수 없으면 같은
+    Euclidean 기준의 full-scan으로 내린다.
     """
 
     def __init__(
