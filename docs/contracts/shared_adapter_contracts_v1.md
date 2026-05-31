@@ -112,6 +112,9 @@ shared adapter 계약은 두 레이어로 나뉜다.
 현재 FL runtime의 기본 update family는 `peft_text_encoder`이고, payload kind는
 `peft_classifier` v2를 사용한다. `classifier_head`는 고정 feature 위 linear head
 family를 위한 shared value object로 남아 있으며 top-level FL 기본 축은 아니다.
+`classifier_head.v1`은 `head_kind=linear`인 weight/bias payload만 표현한다.
+비선형 classifier head를 추가할 때는 이 v1 shape를 암묵 재사용하지 않고 새
+payload version 또는 별도 payload family를 연다.
 과거 `diagonal_scale`와 `lora_classifier` payload는 shared parser/factory가 아니라
 old artifact/report reader compatibility에서만 다룬다.
 
@@ -179,6 +182,7 @@ state payload:
 {
   "schema_version": "classifier_head_state.v1",
   "adapter_kind": "classifier_head",
+  "head_kind": "linear",
   "model_id": "tracemind-embed",
   "model_revision": "rev_001",
   "training_scope": "head_only",
@@ -220,6 +224,7 @@ update payload:
 {
   "schema_version": "classifier_head_delta.v1",
   "adapter_kind": "classifier_head",
+  "head_kind": "linear",
   "model_id": "tracemind-embed",
   "base_model_revision": "rev_001",
   "training_scope": "head_only",

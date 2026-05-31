@@ -12,6 +12,9 @@ from shared.src.contracts.adapter_contract_families.base import (
     CLASSIFIER_HEAD_STATE_V1,
     PEFT_CLASSIFIER_DELTA_V2,
 )
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    LINEAR_CLASSIFIER_HEAD_KIND,
+)
 from shared.src.contracts.adapter_contract_families.registry import (
     parse_shared_adapter_state_payload,
     parse_shared_adapter_update_payload,
@@ -41,7 +44,25 @@ def test_classifier_head_state_golden_fixture_round_trips_shape() -> None:
     dumped = parsed.model_dump(mode="json")
 
     assert parsed.schema_version == CLASSIFIER_HEAD_STATE_V1
+    assert parsed.head_kind == LINEAR_CLASSIFIER_HEAD_KIND
     assert dumped == fixture
+
+
+def test_classifier_head_state_defaults_missing_head_kind_to_linear() -> None:
+    fixture = _load_fixture("classifier_head_state.v1.json")
+    fixture.pop("head_kind")
+
+    parsed = parse_shared_adapter_state_payload(fixture)
+
+    assert parsed.head_kind == LINEAR_CLASSIFIER_HEAD_KIND
+
+
+def test_classifier_head_state_rejects_unknown_head_kind() -> None:
+    fixture = _load_fixture("classifier_head_state.v1.json")
+    fixture["head_kind"] = "mlp"
+
+    with pytest.raises(ValidationError):
+        parse_shared_adapter_state_payload(fixture)
 
 
 def test_training_update_submission_golden_fixture_round_trips_shape() -> None:

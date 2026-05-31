@@ -6,6 +6,8 @@ import pytest
 
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
+    LINEAR_CLASSIFIER_HEAD_KIND,
+    ClassifierHeadAdapterUpdatePayload,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_classifier_head_delta_payload,
@@ -65,6 +67,15 @@ def test_training_update_submission_parses_inline_update_payload() -> None:
     assert parsed.envelope.update_id == submission.envelope.update_id
     assert parsed.update_payload.model_id == "model"
     assert parsed.update_payload.example_count == 2
+    assert parsed.update_payload.head_kind == LINEAR_CLASSIFIER_HEAD_KIND
+
+
+def test_classifier_head_update_rejects_unknown_head_kind() -> None:
+    payload = _update_payload().model_dump(mode="json")
+    payload["head_kind"] = "mlp"
+
+    with pytest.raises(ValueError, match="head_kind"):
+        ClassifierHeadAdapterUpdatePayload.model_validate(payload)
 
 
 def test_training_update_submission_rejects_misaligned_payload() -> None:

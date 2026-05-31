@@ -257,6 +257,39 @@ def test_shared_adapter_base_does_not_default_to_diagonal_scale() -> None:
     )
 
 
+def test_classifier_head_v1_contract_stays_linear_head_explicit() -> None:
+    contract_path = (
+        SHARED_SRC / "contracts" / "adapter_contract_families" / "classifier_head.py"
+    )
+    update_family_dir = (
+        CONF_SRC / "strategy_axes" / "model_architecture" / "update_family"
+    )
+    source = contract_path.read_text(encoding="utf-8")
+    missing_snippets = [
+        snippet
+        for snippet in (
+            'LINEAR_CLASSIFIER_HEAD_KIND = "linear"',
+            'ClassifierHeadKind: TypeAlias = Literal["linear"]',
+            "head_kind: ClassifierHeadKind",
+        )
+        if snippet not in source
+    ]
+    forbidden_leaf = update_family_dir / "classifier_head.yaml"
+
+    assert not missing_snippets, (
+        "classifier_head.v1은 generic classifier family 전체가 아니라 "
+        "linear weight/bias payload contract다. contract에 head_kind=linear를 "
+        "명시해 future MLP/projection head가 v1 shape에 섞이지 않게 한다.\n"
+        f"missing={missing_snippets}"
+    )
+    assert not forbidden_leaf.exists(), (
+        "config update_family leaf는 concrete 실행 단위여야 한다. 현재 "
+        "classifier-head 실행 leaf는 linear_head.yaml이며, generic "
+        "classifier_head.yaml placeholder를 만들지 않는다.\n"
+        f"path={_relative_repo_path(forbidden_leaf)}"
+    )
+
+
 def test_python_modules_do_not_define_dunder_all() -> None:
     violations = [
         _relative_repo_path(path)

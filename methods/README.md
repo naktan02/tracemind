@@ -83,7 +83,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
 - `methods/adaptation/local_objective_regularizers/`: FedProx처럼 payload/update family와
   분리된 client-local objective regularizer
 - `methods/classification/linear_head/`: modality-independent linear classifier head
-  primitive와 classifier-head projection
+  primitive와 `classifier_head.v1(head_kind=linear)` payload projection. 새 MLP나
+  projection head는 `linear_head` 아래에 넣지 않고 별도 classification owner를 연다
 - `methods/adaptation/peft_text_encoder/`: PEFT text encoder + classifier head
   update family와 text-specific training/update core
 - `methods/adaptation/query_text_views/`: query-domain text view row 해석,

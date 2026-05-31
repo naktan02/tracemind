@@ -5,6 +5,9 @@ from __future__ import annotations
 from shared.src.contracts.adapter_contract_families.base import (
     CurrentSharedAdapterStatePayload,
 )
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    LINEAR_CLASSIFIER_HEAD_KIND,
+)
 from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,
     make_zero_classifier_head_state_payload,
@@ -38,6 +41,7 @@ def test_current_shared_adapter_state_parses_registered_state_payload() -> None:
 
     assert parsed.manifest.model_revision == "rev_001"
     assert parsed.state.adapter_kind == "classifier_head"
+    assert parsed.state.head_kind == LINEAR_CLASSIFIER_HEAD_KIND
     assert parsed.state.embedding_dim == 2
 
 

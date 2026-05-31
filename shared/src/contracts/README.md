@@ -69,7 +69,9 @@ runtime과 test는 family별 direct import를 사용한다.
 - `SharedAdapterStatePayload`
   - 서버가 현재 배포하는 전역 shared adapter 상태 공통 필드
 - `ClassifierHeadAdapterStatePayload`
-  - classifier-head concrete 구현
+  - classifier-head v1 concrete 구현
+  - `head_kind="linear"`를 사용한다. `classifier_head.v1`은 generic
+    classifier head family 전체가 아니라 category별 linear head payload다
   - `label_weights`, `label_biases`는 category별 linear head 파라미터다
 - `PeftClassifierAdapterStatePayload`
   - PEFT-classifier v2 concrete 구현
@@ -89,7 +91,8 @@ runtime과 test는 family별 direct import를 사용한다.
 - `SharedAdapterUpdatePayload`
   - agent가 서버로 올리는 shared adapter update 공통 필드
 - `ClassifierHeadAdapterUpdatePayload`
-  - classifier-head concrete 구현
+  - classifier-head v1 concrete 구현
+  - `head_kind="linear"`를 사용한다
   - `label_weight_deltas`, `label_bias_deltas`는 category별 head 변화량이다
 - `PeftClassifierAdapterUpdatePayload`
   - PEFT-classifier v2 update concrete 구현
@@ -265,6 +268,8 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 추가 원칙:
 
 - `classifier_head` family는 전역 class evidence를 제공하는 shared head로 해석한다.
+  현재 v1 payload shape는 `linear` head만 표현하므로, MLP/projection head처럼
+  다른 shape가 필요하면 `classifier_head.v2` 또는 별도 payload family를 연다.
 - `peft_classifier` family는 기존 `classifier_head`의 옵션이 아니라, PEFT
   adapter state와 classifier head state를 함께 배포/집계하는 별도 family다.
 - 로컬 개인화와 최종 판단은 이 계약 파일이 아니라 agent 로컬 runtime 계층이 소유한다.

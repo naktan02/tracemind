@@ -45,6 +45,13 @@ modality-neutral primitive나 family로 둔다. 이미지나 오디오를 추가
 `methods/`와 `conf/strategy_axes/model_architecture/update_family/`에 추가한다.
 `scripts`는 이 차이를 이름으로 분기하지 않고 resolved execution plan만 실행한다.
 
+`classifier_head.v1` shared payload는 generic classifier 전체가 아니라
+`head_kind=linear`인 category별 weight/bias contract다. 따라서 현재 concrete
+update family leaf는 `linear_head`이고, `classifier_head.yaml` 같은 placeholder
+leaf는 만들지 않는다. MLP/projection head처럼 payload shape가 달라지는 classifier를
+추가할 때는 `methods/classification/<head_kind>/`와 새 payload version 또는 새
+payload family를 함께 연다.
+
 ## 최종 구조
 
 ```text
