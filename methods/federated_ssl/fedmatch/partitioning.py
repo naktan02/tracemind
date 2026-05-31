@@ -73,6 +73,12 @@ class FedMatchPartitionedRuntimePlan:
     def diagnostic_acceptance_threshold(self) -> float:
         return self.parameters.confidence_threshold
 
+    @property
+    def residual_partition_factor(self) -> float:
+        """Published state를 supervised/residual partition으로 나눌 때 쓰는 비율."""
+
+        return self.psi_factor
+
 
 trace_parameter_mapping = FedMatchTraceParameterMapping(
     original_trainable_scope="ResNet9 Conv/Dense full weights",

@@ -2703,27 +2703,41 @@ def test_payload_adapter_federated_ssl_files_do_not_multiply_by_method_name() ->
     )
 
 
-def test_lora_classifier_partitioned_training_loop_is_method_neutral() -> None:
-    path = (
+def test_peft_text_encoder_partitioned_runtime_is_method_neutral() -> None:
+    checked_paths = (
         METHODS_SRC
         / "adaptation"
         / "peft_text_encoder"
         / "federated_ssl"
         / "partitioned"
-        / "training_loop.py"
+        / "training_loop.py",
+        METHODS_SRC
+        / "adaptation"
+        / "peft_text_encoder"
+        / "federated_ssl"
+        / "partitioned_objective_training.py",
     )
-    imports = _collect_absolute_imports(path)
-    violations = sorted(
-        imported
-        for imported in imports
-        if imported.startswith("methods.federated_ssl.fedmatch")
-    )
+    import_violations: list[str] = []
+    snippet_violations: list[str] = []
+    for path in checked_paths:
+        import_violations.extend(
+            f"{_relative_repo_path(path)}: {imported}"
+            for imported in _collect_absolute_imports(path)
+            if imported.startswith("methods.federated_ssl.fedmatch")
+        )
+        source = path.read_text(encoding="utf-8").lower()
+        snippet_violations.extend(
+            f"{_relative_repo_path(path)}: {snippet}"
+            for snippet in ("fedmatch", "sigma", "psi")
+            if snippet in source
+        )
 
-    assert not violations, (
-        "partitioned training loop는 payload-adapter execution primitive다. "
-        "FedMatch objective와 partition 이름은 methods/federated_ssl/fedmatch/의 "
-        "caller가 주입해야 한다.\n"
-        f"{chr(10).join(f'- {item}' for item in violations)}"
+    assert not import_violations and not snippet_violations, (
+        "partitioned PEFT text encoder runtime은 payload-adapter execution "
+        "primitive다. FedMatch objective, metric prefix, partition 이름은 "
+        "methods/federated_ssl/fedmatch/의 caller가 주입해야 한다.\n"
+        f"{chr(10).join(f'- import: {item}' for item in import_violations)}"
+        f"{chr(10).join(f'- snippet: {item}' for item in snippet_violations)}"
     )
 
 

@@ -60,16 +60,16 @@ from methods.adaptation.query_text_views.view_rows import (
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping
 from methods.federated_ssl.capabilities.axes import (
-    LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+    LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
     LOCAL_SSL_POLICY_FIXMATCH,
-)
-from methods.federated_ssl.local_supervision import (
-    FederatedSslLocalSupervisionRegime,
-    require_rows_match_local_supervision_regime,
 )
 from methods.federated_ssl.hooks.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
+)
+from methods.federated_ssl.local_supervision import (
+    FederatedSslLocalSupervisionRegime,
+    require_rows_match_local_supervision_regime,
 )
 from methods.ssl.base import (
     QuerySslAlgorithm,
@@ -154,7 +154,7 @@ class PartitionedLocalRuntimePlan(Protocol):
     unsupervised_partition: str
     upload_partitions: tuple[str, ...]
     l1_sparse_partitions: tuple[str, ...]
-    psi_factor: float
+    residual_partition_factor: float
     metric_prefix: str
     diagnostic_acceptance_threshold: float
     emit_supervised_partition: bool
@@ -284,7 +284,7 @@ def run_partitioned_peft_encoder_training_core(
             tokenization_cache=tokenization_cache,
             tokenization_cache_namespace=tokenization_cache_namespace_value,
         )
-        psi_query_ssl_algorithm = _build_psi_query_ssl_algorithm(
+        unsupervised_query_ssl_algorithm = _build_unsupervised_query_ssl_algorithm(
             local_ssl_policy_name=local_ssl_policy_name,
             query_ssl_config=query_ssl_config,
             train_loader_steps=step_plan.labeled_loader_steps,
@@ -296,7 +296,7 @@ def run_partitioned_peft_encoder_training_core(
         )
 
     with _measure(timing_recorder, "core_training_loop_seconds"):
-        uses_physical_partition_runtime = psi_query_ssl_algorithm is None
+        uses_physical_partition_runtime = unsupervised_query_ssl_algorithm is None
         server_partition_parameters = (
             {} if base_partition_parameters is None else base_partition_parameters
         )
@@ -341,13 +341,17 @@ def run_partitioned_peft_encoder_training_core(
                 published_parameters=base_parameters,
                 base_partition_name=partitioned_runtime_plan.supervised_partition,
                 residual_partition_name=partitioned_runtime_plan.unsupervised_partition,
-                residual_factor=partitioned_runtime_plan.psi_factor,
+                residual_factor=partitioned_runtime_plan.residual_partition_factor,
             )
             partition_initialization_metrics = {
-                "fedmatch_initial_partition_from_published_state": 1.0,
-                "fedmatch_initial_partition_psi_factor": (
-                    partitioned_runtime_plan.psi_factor
-                ),
+                _method_metric_key(
+                    partitioned_runtime_plan.metric_prefix,
+                    "initial_partition_from_published_state",
+                ): 1.0,
+                (
+                    f"{partitioned_runtime_plan.metric_prefix}_"
+                    "initial_partition_residual_factor"
+                ): partitioned_runtime_plan.residual_partition_factor,
             }
         if uses_physical_partition_runtime:
             partitioned_build = (
@@ -456,7 +460,7 @@ def run_partitioned_peft_encoder_training_core(
                     else float(training_task.gradient_clip_norm)
                 ),
                 helper_weak_probability_provider=helper_weak_probability_provider,
-                psi_query_ssl_algorithm=psi_query_ssl_algorithm,
+                unsupervised_query_ssl_algorithm=unsupervised_query_ssl_algorithm,
                 enable_inter_client_consistency=(
                     helper_weak_probability_provider is not None
                 ),
@@ -465,7 +469,9 @@ def run_partitioned_peft_encoder_training_core(
                 ),
                 supervised_partition=partitioned_runtime_plan.supervised_partition,
                 unsupervised_partition=partitioned_runtime_plan.unsupervised_partition,
-                emit_sigma_partition=partitioned_runtime_plan.emit_supervised_partition,
+                emit_supervised_partition=(
+                    partitioned_runtime_plan.emit_supervised_partition
+                ),
                 metric_prefix=partitioned_runtime_plan.metric_prefix,
             )
     history_record = training_result.metrics
@@ -556,39 +562,89 @@ def run_partitioned_peft_encoder_training_core(
     )
     client_metrics = {
         **dict(update_build_result.client_metrics),
-        "fedmatch_local_runtime": 1.0,
-        "fedmatch_physical_partition_runtime": float(uses_physical_partition_runtime),
-        "fedmatch_c2s_sparse_upload": float(uses_physical_partition_runtime),
-        "fedmatch_s2c_sparse_download": float(uses_s2c_sparse_download),
-        "fedmatch_c2s_sparse_upload_value_count": float(c2s_sparse_upload_value_count),
-        "fedmatch_s2c_sparse_download_value_count": float(
-            s2c_sparse_download_value_count
+        _method_metric_key(partitioned_runtime_plan.metric_prefix, "local_runtime"): (
+            1.0
         ),
-        "fedmatch_local_ssl_policy_is_fixmatch": float(
-            local_ssl_policy_name == LOCAL_SSL_POLICY_FIXMATCH
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "physical_partition_runtime",
+        ): float(uses_physical_partition_runtime),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "c2s_sparse_upload",
+        ): float(uses_physical_partition_runtime),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "s2c_sparse_download",
+        ): float(uses_s2c_sparse_download),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "c2s_sparse_upload_value_count",
+        ): float(c2s_sparse_upload_value_count),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "s2c_sparse_download_value_count",
+        ): float(s2c_sparse_download_value_count),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "local_ssl_policy_is_fixmatch",
+        ): float(local_ssl_policy_name == LOCAL_SSL_POLICY_FIXMATCH),
+        _method_metric_key(partitioned_runtime_plan.metric_prefix, "helper_count"): (
+            _history_float(
+                history_record,
+                "train_"
+                f"{partitioned_runtime_plan.metric_prefix}_"
+                f"{partitioned_runtime_plan.unsupervised_partition}_helper_count",
+            )
         ),
-        "fedmatch_helper_count": _history_float(
-            history_record,
-            "train_fedmatch_psi_helper_count",
-        ),
-        "fedmatch_peer_context_helper_count": peer_context_helper_count,
-        "fedmatch_helper_provider_count": helper_provider_count,
-        "fedmatch_missing_helper_snapshot_count": missing_helper_snapshot_count,
-        "fedmatch_materialized_helper_model_count": materialized_helper_model_count,
-        "fedmatch_peer_context_refreshed": (
-            0.0 if peer_context is None else float(peer_context.refreshed)
-        ),
-        "fedmatch_partitioned_delta_count": float(
-            len(training_result.partition_deltas)
-        ),
-        "fedmatch_local_budget_policy_is_original": float(
-            local_budget_policy == LOCAL_BUDGET_POLICY_ORIGINAL_METHOD
-        ),
-        "fedmatch_budget_client_epochs": float(step_plan.local_epochs),
-        "fedmatch_budget_labeled_batch_size": float(labeled_batch_size),
-        "fedmatch_budget_unlabeled_batch_size": float(resolved_unlabeled_batch_size),
-        "fedmatch_budget_steps_per_epoch": float(step_plan.full_epoch_steps),
-        "fedmatch_budget_total_steps": float(step_plan.total_steps),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "peer_context_helper_count",
+        ): peer_context_helper_count,
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "helper_provider_count",
+        ): helper_provider_count,
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "missing_helper_snapshot_count",
+        ): missing_helper_snapshot_count,
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "materialized_helper_model_count",
+        ): materialized_helper_model_count,
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "peer_context_refreshed",
+        ): (0.0 if peer_context is None else float(peer_context.refreshed)),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "partitioned_delta_count",
+        ): float(len(training_result.partition_deltas)),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "local_budget_policy_is_original",
+        ): float(local_budget_policy == LOCAL_BUDGET_POLICY_ORIGINAL_METHOD),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "budget_client_epochs",
+        ): float(step_plan.local_epochs),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "budget_labeled_batch_size",
+        ): float(labeled_batch_size),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "budget_unlabeled_batch_size",
+        ): float(resolved_unlabeled_batch_size),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "budget_steps_per_epoch",
+        ): float(step_plan.full_epoch_steps),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "budget_total_steps",
+        ): float(step_plan.total_steps),
         **diagnostic_threshold.to_client_metrics(),
     }
     update_envelope = make_training_update_envelope(
@@ -627,18 +683,24 @@ def run_partitioned_peft_encoder_training_core(
         client_partition_parameters=client_partition_parameters,
         query_ssl_algorithm_state=(
             {}
-            if psi_query_ssl_algorithm is None
-            else dict(export_query_ssl_algorithm_state(psi_query_ssl_algorithm))
+            if unsupervised_query_ssl_algorithm is None
+            else dict(
+                export_query_ssl_algorithm_state(unsupervised_query_ssl_algorithm)
+            )
         ),
         timing_breakdown=timing_mapping(timing_recorder),
     )
+
+
+def _method_metric_key(metric_prefix: str, metric_name: str) -> str:
+    return f"{metric_prefix}_{metric_name}"
 
 
 def _payload_format_for_update(update_payload: PeftClassifierDelta) -> str:
     return PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
 
 
-def _build_psi_query_ssl_algorithm(
+def _build_unsupervised_query_ssl_algorithm(
     *,
     local_ssl_policy_name: str,
     query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig | None,
@@ -650,17 +712,17 @@ def _build_psi_query_ssl_algorithm(
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslAlgorithm | None:
     normalized_policy = local_ssl_policy_name.strip().lower().replace("-", "_")
-    if normalized_policy == LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
+    if normalized_policy not in LOCAL_SSL_POLICIES_FROM_QUERY_SSL:
         if initial_query_ssl_algorithm_state:
             raise ValueError(
                 "Query SSL algorithm state cannot be loaded for "
-                "local_ssl_policy=fedmatch_agreement."
+                f"method-owned local_ssl_policy={normalized_policy}."
             )
         return None
     if normalized_policy != LOCAL_SSL_POLICY_FIXMATCH:
         raise NotImplementedError(
-            "FedMatch partitioned PEFT text encoder runtime currently supports "
-            "local_ssl_policy=fedmatch_agreement or fixmatch."
+            "partitioned PEFT text encoder runtime currently supports "
+            "method-owned partitioned objective policy or fixmatch."
         )
     if query_ssl_config is None:
         raise ValueError("local_ssl_policy=fixmatch requires query_ssl_config.")

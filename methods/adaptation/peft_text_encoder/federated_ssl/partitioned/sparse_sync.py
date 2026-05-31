@@ -64,9 +64,9 @@ def apply_partitioned_c2s_sparse_upload(
     partition_deltas: Mapping[str, PeftEncoderPartitionDelta],
     parameters: PartitionSparseSyncParameters,
 ) -> dict[str, PeftEncoderPartitionDelta]:
-    """원본 FedMatch `cal_c2s`처럼 의미 있게 변한 partition update만 남긴다.
+    """method plan이 요청한 sparse C2S partition update만 남긴다.
 
-    `psi`처럼 L1 sparse partition으로 지정된 partition은 먼저
+    L1 sparse partition으로 지정된 partition은 먼저
     `sparsify(base + delta)`를 만든 뒤 server base와의 차이를 `delta_threshold`로
     자른다. 그 외 partition은 `delta` 자체를 `delta_threshold`로 자른다.
     """
@@ -127,10 +127,10 @@ def apply_partitioned_s2c_sparse_download(
     client_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
     parameters: PartitionSparseSyncParameters,
 ) -> dict[str, PeftEncoderPartitionDelta]:
-    """원본 FedMatch `cal_s2c`처럼 server-client sparse diff를 만든다.
+    """method plan이 요청한 server-client sparse S2C diff를 만든다.
 
-    반환 delta는 client partition state에 적용할 S2C transport payload다. `psi`
-    같은 L1 sparse partition은 server/client 양쪽 값을 먼저 sparsify한 뒤
+    반환 delta는 client partition state에 적용할 S2C transport payload다.
+    L1 sparse partition은 server/client 양쪽 값을 먼저 sparsify한 뒤
     `delta_threshold`로 의미 있게 달라진 원소만 남긴다.
     """
 

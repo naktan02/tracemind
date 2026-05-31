@@ -30,8 +30,8 @@ def resolve_peft_encoder_federated_ssl_server_update_backend(
     normalized_backend = aggregation_backend_name.strip().lower()
     if normalized_backend != "fedavg":
         raise ValueError(
-            "server_update_policy=fedmatch_partitioned currently maps from "
-            "round_runtime.aggregation_backend_name=fedavg to "
+            "The selected partitioned server update policy currently maps from "
+            "round_runtime.aggregation_backend_name='fedavg' to "
             f"{peft_part_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME}."
         )
     return peft_part_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME

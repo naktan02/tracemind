@@ -235,20 +235,20 @@ def test_fedmatch_peft_encoder_partitioned_step_records_sigma_then_psi_delta() -
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
         objective=_fedmatch_objective(parameters, single_model=True),
-        sigma_optimizer=sigma_optimizer,
-        psi_optimizer=psi_optimizer,
+        supervised_optimizer=sigma_optimizer,
+        unsupervised_optimizer=psi_optimizer,
     )
 
     after = snapshot_trainable_parameter_tensors(model)
     total_delta = diff_parameter_snapshots(after=after, before=before)
     sigma_delta = build_peft_encoder_partition_delta_from_parameter_deltas(
         partition_name=FEDMATCH_SIGMA_PARTITION,
-        parameter_deltas=result.sigma_parameter_deltas,
+        parameter_deltas=result.supervised_parameter_deltas,
         labels=labels,
     )
     psi_delta = build_peft_encoder_partition_delta_from_parameter_deltas(
         partition_name=FEDMATCH_PSI_PARTITION,
-        parameter_deltas=result.psi_parameter_deltas,
+        parameter_deltas=result.unsupervised_parameter_deltas,
         labels=labels,
     )
     assert "encoder_lora.weight" in sigma_delta.peft_parameter_deltas
@@ -256,17 +256,20 @@ def test_fedmatch_peft_encoder_partitioned_step_records_sigma_then_psi_delta() -
     assert set(psi_delta.classifier_head_bias_deltas) == set(labels)
     for name, delta in total_delta.items():
         torch.testing.assert_close(
-            result.sigma_parameter_deltas[name] + result.psi_parameter_deltas[name],
+            (
+                result.supervised_parameter_deltas[name]
+                + result.unsupervised_parameter_deltas[name]
+            ),
             delta,
         )
     assert float(result.supervised.total_loss.detach().item()) > 0.0
     assert float(result.unsupervised.total_loss.detach().item()) > 0.0
     torch.testing.assert_close(
-        result.metrics["sigma_labeled_count"],
+        result.metrics["supervised_labeled_count"],
         torch.tensor(2.0),
     )
     torch.testing.assert_close(
-        result.metrics["psi_confident_count"],
+        result.metrics["unsupervised_confident_count"],
         torch.tensor(2.0),
     )
 
@@ -327,9 +330,9 @@ def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
         objective=_fedmatch_objective(parameters, single_model=True),
-        sigma_optimizer=sigma_optimizer,
-        psi_optimizer=psi_optimizer,
-        psi_query_ssl_algorithm=FixMatchAlgorithm(
+        supervised_optimizer=sigma_optimizer,
+        unsupervised_optimizer=psi_optimizer,
+        unsupervised_query_ssl_algorithm=FixMatchAlgorithm(
             temperature=0.5,
             p_cutoff=0.0,
             hard_label=True,
@@ -338,7 +341,9 @@ def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
         ),
     )
 
-    assert set(result.sigma_parameter_deltas) == set(result.psi_parameter_deltas)
+    assert set(result.supervised_parameter_deltas) == set(
+        result.unsupervised_parameter_deltas
+    )
     assert "unsup_loss" in result.unsupervised.loss_components
     assert "util_ratio" in result.unsupervised.metrics
 
@@ -400,8 +405,8 @@ def test_fedmatch_partitioned_step_forwards_strong_view_only_for_confident_rows(
             "strong_attention_mask": torch.ones(3, 3),
         },
         objective=_fedmatch_objective(parameters, single_model=True),
-        sigma_optimizer=sigma_optimizer,
-        psi_optimizer=psi_optimizer,
+        supervised_optimizer=sigma_optimizer,
+        unsupervised_optimizer=psi_optimizer,
     )
 
     assert model.forward_shapes == [(1, 3), (3, 3), (2, 3)]
@@ -485,8 +490,8 @@ def test_fedmatch_partitioned_step_requests_helper_probs_only_for_confident_rows
             "strong_attention_mask": torch.ones(3, 3),
         },
         objective=_fedmatch_objective(parameters, single_model=True),
-        sigma_optimizer=sigma_optimizer,
-        psi_optimizer=psi_optimizer,
+        supervised_optimizer=sigma_optimizer,
+        unsupervised_optimizer=psi_optimizer,
         helper_weak_probability_provider=helper_provider,
     )
 
@@ -523,8 +528,8 @@ def test_fedmatch_peft_single_model_regularizer_does_not_shrink_full_parameters(
         labeled_batch=None,
         unlabeled_batch=unlabeled_batch,
         objective=_fedmatch_objective(parameters, single_model=True),
-        sigma_optimizer=torch.optim.SGD(model.parameters(), lr=0.2),
-        psi_optimizer=psi_optimizer,
+        supervised_optimizer=torch.optim.SGD(model.parameters(), lr=0.2),
+        unsupervised_optimizer=psi_optimizer,
         apply_supervised_step=False,
     )
 
@@ -532,7 +537,7 @@ def test_fedmatch_peft_single_model_regularizer_does_not_shrink_full_parameters(
     for name, before_tensor in before.items():
         torch.testing.assert_close(after[name], before_tensor)
         torch.testing.assert_close(
-            result.psi_parameter_deltas[name],
+            result.unsupervised_parameter_deltas[name],
             torch.zeros_like(before_tensor),
         )
     torch.testing.assert_close(
@@ -580,11 +585,11 @@ def test_physical_fedmatch_step_updates_separate_sigma_and_psi_partitions() -> N
         objective=_fedmatch_objective(parameters),
         supervised_partition=FEDMATCH_SIGMA_PARTITION,
         unsupervised_partition=FEDMATCH_PSI_PARTITION,
-        sigma_optimizer=torch.optim.SGD(
+        supervised_optimizer=torch.optim.SGD(
             model.partition_parameters(FEDMATCH_SIGMA_PARTITION),
             lr=0.2,
         ),
-        psi_optimizer=torch.optim.SGD(
+        unsupervised_optimizer=torch.optim.SGD(
             model.partition_parameters(FEDMATCH_PSI_PARTITION),
             lr=0.2,
         ),
@@ -602,12 +607,14 @@ def test_physical_fedmatch_step_updates_separate_sigma_and_psi_partitions() -> N
         model,
         FEDMATCH_PSI_PARTITION,
     )
-    assert set(result.sigma_parameter_deltas) == {
+    assert set(result.supervised_parameter_deltas) == {
         "adapter.weight",
         "classifier.weight",
         "classifier.bias",
     }
-    assert set(result.psi_parameter_deltas) == set(result.sigma_parameter_deltas)
+    assert set(result.unsupervised_parameter_deltas) == set(
+        result.supervised_parameter_deltas
+    )
     assert ptm.parameters_changed(before=sigma_before, after=sigma_after)
     assert ptm.parameters_changed(before=psi_before, after=psi_after)
     assert not ptm.parameters_changed(before=feature_before, after=feature_after)
@@ -652,11 +659,11 @@ def test_physical_fedmatch_unsupervised_regularizer_keeps_sigma_fixed() -> None:
         objective=_fedmatch_objective(parameters),
         supervised_partition=FEDMATCH_SIGMA_PARTITION,
         unsupervised_partition=FEDMATCH_PSI_PARTITION,
-        sigma_optimizer=torch.optim.SGD(
+        supervised_optimizer=torch.optim.SGD(
             model.partition_parameters(FEDMATCH_SIGMA_PARTITION),
             lr=0.2,
         ),
-        psi_optimizer=torch.optim.SGD(
+        unsupervised_optimizer=torch.optim.SGD(
             model.partition_parameters(FEDMATCH_PSI_PARTITION),
             lr=0.2,
         ),
@@ -895,11 +902,11 @@ def test_physical_fedmatch_confidence_uses_sigma_plus_psi_forward() -> None:
         objective=_fedmatch_objective(parameters),
         supervised_partition=FEDMATCH_SIGMA_PARTITION,
         unsupervised_partition=FEDMATCH_PSI_PARTITION,
-        sigma_optimizer=torch.optim.SGD(
+        supervised_optimizer=torch.optim.SGD(
             model.partition_parameters(FEDMATCH_SIGMA_PARTITION),
             lr=0.2,
         ),
-        psi_optimizer=torch.optim.SGD(
+        unsupervised_optimizer=torch.optim.SGD(
             model.partition_parameters(FEDMATCH_PSI_PARTITION),
             lr=0.2,
         ),
@@ -954,11 +961,11 @@ def test_physical_fedmatch_full_text_partition_rejects_key_mismatch() -> None:
             objective=_fedmatch_objective(parameters),
             supervised_partition=FEDMATCH_SIGMA_PARTITION,
             unsupervised_partition=FEDMATCH_PSI_PARTITION,
-            sigma_optimizer=torch.optim.SGD(
+            supervised_optimizer=torch.optim.SGD(
                 model.partition_parameters(FEDMATCH_SIGMA_PARTITION),
                 lr=0.2,
             ),
-            psi_optimizer=torch.optim.SGD(
+            unsupervised_optimizer=torch.optim.SGD(
                 model.partition_parameters(FEDMATCH_PSI_PARTITION),
                 lr=0.2,
             ),
@@ -1112,7 +1119,7 @@ def test_fedmatch_labels_at_server_training_uploads_only_psi_partition() -> None
         use_supervised_steps=False,
         supervised_partition=FEDMATCH_SIGMA_PARTITION,
         unsupervised_partition=FEDMATCH_PSI_PARTITION,
-        emit_sigma_partition=False,
+        emit_supervised_partition=False,
         metric_prefix="fedmatch",
     )
 

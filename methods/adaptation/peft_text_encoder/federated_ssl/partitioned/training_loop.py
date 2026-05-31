@@ -51,8 +51,8 @@ class PartitionedAdapterLinearHeadStepResult:
 
     supervised: TensorLocalObjectiveResult
     unsupervised: TensorLocalObjectiveResult
-    sigma_parameter_deltas: Mapping[str, Tensor]
-    psi_parameter_deltas: Mapping[str, Tensor]
+    supervised_parameter_deltas: Mapping[str, Tensor]
+    unsupervised_parameter_deltas: Mapping[str, Tensor]
     metrics: Mapping[str, Tensor]
 
 
@@ -89,25 +89,25 @@ def train_partitioned_adapter_linear_head(
     weight_decay: float,
     max_grad_norm: float,
     helper_weak_probability_provider: (HelperWeakProbabilityProvider | None) = None,
-    psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
+    unsupervised_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
     use_supervised_steps: bool = True,
     supervised_partition: str,
     unsupervised_partition: str,
-    emit_sigma_partition: bool = True,
+    emit_supervised_partition: bool = True,
     metric_prefix: str = "partitioned",
 ) -> PartitionedAdapterLinearHeadTrainingResult:
     """supervised/unsupervised partitioned step을 budget만큼 실행한다."""
 
     if use_supervised_steps and train_loader is None:
-        raise ValueError("supervised FedMatch steps require train_loader.")
-    sigma_optimizer = build_optimizer(
+        raise ValueError("supervised partition steps require train_loader.")
+    supervised_optimizer = build_optimizer(
         model=model,
         learning_rate=learning_rate,
         classifier_learning_rate=classifier_learning_rate,
         weight_decay=weight_decay,
     )
-    psi_optimizer = build_optimizer(
+    unsupervised_optimizer = build_optimizer(
         model=model,
         learning_rate=learning_rate,
         classifier_learning_rate=classifier_learning_rate,
@@ -115,19 +115,19 @@ def train_partitioned_adapter_linear_head(
     )
     total_steps = int(step_plan.total_steps)
     if total_steps <= 0:
-        raise ValueError("FedMatch local step_plan.total_steps must be positive.")
+        raise ValueError("partitioned local step_plan.total_steps must be positive.")
     step_budget = resolve_epoch_distributed_step_budget(
         epochs=int(step_plan.local_epochs),
         full_epoch_steps=int(step_plan.full_epoch_steps),
         max_train_steps=total_steps,
         invalid_max_steps_message=(
-            "FedMatch local step_plan.total_steps must be positive."
+            "partitioned local step_plan.total_steps must be positive."
         ),
     )
     completed_steps = 0
     scalar_metrics = ScalarMetricAccumulator()
-    sigma_parameter_delta_sums: dict[str, Tensor] = {}
-    psi_parameter_delta_sums: dict[str, Tensor] = {}
+    supervised_parameter_delta_sums: dict[str, Tensor] = {}
+    unsupervised_parameter_delta_sums: dict[str, Tensor] = {}
 
     for _epoch in range(1, step_budget.effective_epochs + 1):
         model.train()
@@ -138,7 +138,9 @@ def train_partitioned_adapter_linear_head(
             labeled_batch = None
             if use_supervised_steps:
                 if train_loader is None or labeled_iterator is None:
-                    raise ValueError("supervised FedMatch steps require train_loader.")
+                    raise ValueError(
+                        "supervised partition steps require train_loader."
+                    )
                 labeled_batch, labeled_iterator = next_cycling_batch(
                     loader=train_loader,
                     iterator=labeled_iterator,
@@ -163,14 +165,14 @@ def train_partitioned_adapter_linear_head(
                 ),
                 unlabeled_batch=device_unlabeled_batch,
                 objective=objective,
-                sigma_optimizer=sigma_optimizer,
-                psi_optimizer=psi_optimizer,
+                supervised_optimizer=supervised_optimizer,
+                unsupervised_optimizer=unsupervised_optimizer,
                 helper_weak_probability_provider=helper_weak_probability_provider,
-                psi_query_ssl_algorithm=psi_query_ssl_algorithm,
+                unsupervised_query_ssl_algorithm=unsupervised_query_ssl_algorithm,
                 enable_inter_client_consistency=(
                     enable_inter_client_consistency
                     and helper_weak_probability_provider is not None
-                    and psi_query_ssl_algorithm is None
+                    and unsupervised_query_ssl_algorithm is None
                 ),
                 apply_supervised_step=use_supervised_steps,
                 max_grad_norm=max_grad_norm,
@@ -194,28 +196,28 @@ def train_partitioned_adapter_linear_head(
             )
             scalar_metrics.add_tensor_mapping(
                 step_result.supervised.metrics,
-                prefix=f"{metric_prefix}_sigma_",
+                prefix=f"{metric_prefix}_{supervised_partition}_",
             )
             scalar_metrics.add_tensor_mapping(
                 step_result.unsupervised.metrics,
-                prefix=f"{metric_prefix}_psi_",
+                prefix=f"{metric_prefix}_{unsupervised_partition}_",
             )
             scalar_metrics.add_float(
-                f"{metric_prefix}_sigma_delta_l2",
-                tensor_mapping_l2(step_result.sigma_parameter_deltas),
+                f"{metric_prefix}_{supervised_partition}_delta_l2",
+                tensor_mapping_l2(step_result.supervised_parameter_deltas),
             )
             scalar_metrics.add_float(
-                f"{metric_prefix}_psi_delta_l2",
-                tensor_mapping_l2(step_result.psi_parameter_deltas),
+                f"{metric_prefix}_{unsupervised_partition}_delta_l2",
+                tensor_mapping_l2(step_result.unsupervised_parameter_deltas),
             )
-            if emit_sigma_partition:
+            if emit_supervised_partition:
                 _accumulate_parameter_deltas(
-                    sigma_parameter_delta_sums,
-                    step_result.sigma_parameter_deltas,
+                    supervised_parameter_delta_sums,
+                    step_result.supervised_parameter_deltas,
                 )
             _accumulate_parameter_deltas(
-                psi_parameter_delta_sums,
-                step_result.psi_parameter_deltas,
+                unsupervised_parameter_delta_sums,
+                step_result.unsupervised_parameter_deltas,
             )
         if completed_steps >= total_steps:
             break
@@ -231,18 +233,18 @@ def train_partitioned_adapter_linear_head(
                     supervised_partition: (
                         build_peft_encoder_partition_delta_from_parameter_deltas(
                             partition_name=supervised_partition,
-                            parameter_deltas=sigma_parameter_delta_sums,
+                            parameter_deltas=supervised_parameter_delta_sums,
                             labels=labels,
                         )
                     )
                 }
-                if emit_sigma_partition
+                if emit_supervised_partition
                 else {}
             ),
             unsupervised_partition: (
                 build_peft_encoder_partition_delta_from_parameter_deltas(
                     partition_name=unsupervised_partition,
-                    parameter_deltas=psi_parameter_delta_sums,
+                    parameter_deltas=unsupervised_parameter_delta_sums,
                     labels=labels,
                 )
             ),
@@ -273,7 +275,7 @@ def train_physical_partitioned_adapter_linear_head(
 ) -> PartitionedAdapterLinearHeadTrainingResult:
     """physical trainable partition loop를 budget만큼 실행한다.
 
-    이 함수는 FedMatch 이름이나 concrete PEFT adapter 종류를 해석하지 않는다.
+    이 함수는 method 이름이나 concrete PEFT adapter 종류를 해석하지 않는다.
     caller가 지정한 supervised/unsupervised partition에 objective를 라우팅하고,
     현재 PEFT encoder shared payload로 projection 가능한 partition delta를
     반환한다.
@@ -281,14 +283,14 @@ def train_physical_partitioned_adapter_linear_head(
 
     if use_supervised_steps and train_loader is None:
         raise ValueError("physical partition supervised steps require train_loader.")
-    sigma_optimizer = _build_partition_optimizer(
+    supervised_optimizer = _build_partition_optimizer(
         model=model,
         partition_name=supervised_partition,
         learning_rate=learning_rate,
         classifier_learning_rate=classifier_learning_rate,
         weight_decay=weight_decay,
     )
-    psi_optimizer = _build_partition_optimizer(
+    unsupervised_optimizer = _build_partition_optimizer(
         model=model,
         partition_name=unsupervised_partition,
         learning_rate=learning_rate,
@@ -348,8 +350,8 @@ def train_physical_partitioned_adapter_linear_head(
                 objective=objective,
                 supervised_partition=supervised_partition,
                 unsupervised_partition=unsupervised_partition,
-                sigma_optimizer=sigma_optimizer,
-                psi_optimizer=psi_optimizer,
+                supervised_optimizer=supervised_optimizer,
+                unsupervised_optimizer=unsupervised_optimizer,
                 helper_weak_probability_provider=helper_weak_probability_provider,
                 enable_inter_client_consistency=(
                     enable_inter_client_consistency
@@ -371,28 +373,28 @@ def train_physical_partitioned_adapter_linear_head(
             )
             scalar_metrics.add_tensor_mapping(
                 step_result.supervised.metrics,
-                prefix=f"{metric_prefix}_sigma_",
+                prefix=f"{metric_prefix}_{supervised_partition}_",
             )
             scalar_metrics.add_tensor_mapping(
                 step_result.unsupervised.metrics,
-                prefix=f"{metric_prefix}_psi_",
+                prefix=f"{metric_prefix}_{unsupervised_partition}_",
             )
             scalar_metrics.add_float(
-                f"{metric_prefix}_sigma_delta_l2",
-                tensor_mapping_l2(step_result.sigma_parameter_deltas),
+                f"{metric_prefix}_{supervised_partition}_delta_l2",
+                tensor_mapping_l2(step_result.supervised_parameter_deltas),
             )
             scalar_metrics.add_float(
-                f"{metric_prefix}_psi_delta_l2",
-                tensor_mapping_l2(step_result.psi_parameter_deltas),
+                f"{metric_prefix}_{unsupervised_partition}_delta_l2",
+                tensor_mapping_l2(step_result.unsupervised_parameter_deltas),
             )
             if emit_supervised_partition:
                 _accumulate_parameter_deltas(
                     supervised_parameter_delta_sums,
-                    step_result.sigma_parameter_deltas,
+                    step_result.supervised_parameter_deltas,
                 )
             _accumulate_parameter_deltas(
                 unsupervised_parameter_delta_sums,
-                step_result.psi_parameter_deltas,
+                step_result.unsupervised_parameter_deltas,
             )
         if completed_steps >= total_steps:
             break
@@ -433,71 +435,66 @@ def run_partitioned_adapter_linear_head_step(
     labeled_batch: Mapping[str, Tensor] | None,
     unlabeled_batch: Mapping[str, Tensor],
     objective: PartitionedTensorLocalObjective,
-    sigma_optimizer: torch.optim.Optimizer,
-    psi_optimizer: torch.optim.Optimizer,
+    supervised_optimizer: torch.optim.Optimizer,
+    unsupervised_optimizer: torch.optim.Optimizer,
     helper_weak_probability_provider: HelperWeakProbabilityProvider | None = None,
-    psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
+    unsupervised_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
     apply_supervised_step: bool = True,
     max_grad_norm: float = 0.0,
 ) -> PartitionedAdapterLinearHeadStepResult:
-    """원본 FedMatch처럼 supervised와 unsupervised update를 분리 적용한다.
-
-    TraceMind의 PEFT text encoder/head 모델은 실제 parameter를 `sigma + psi`로 두 벌
-    보관하지 않는다. 같은 trainable tensor에 두 step을 순차 적용하고,
-    sub-step delta를 `sigma`/`psi` partition으로 기록한다.
-    """
+    """supervised/unsupervised objective를 같은 trainable tensor에 순차 적용한다."""
 
     if not isinstance(model, nn.Module):
         raise TypeError(
-            "FedMatch partitioned adapter classifier step requires a torch nn.Module."
+            "partitioned adapter classifier step requires a torch nn.Module."
         )
     if apply_supervised_step and labeled_batch is None:
-        raise ValueError("FedMatch supervised step requires labeled_batch.")
+        raise ValueError("supervised partition step requires labeled_batch.")
 
     before_supervised = snapshot_trainable_parameter_tensors(model)
     if apply_supervised_step:
         if labeled_batch is None:
-            raise ValueError("FedMatch supervised step requires labeled_batch.")
+            raise ValueError("supervised partition step requires labeled_batch.")
         supervised = _apply_supervised_objective_step(
             model=model,
             labeled_batch=labeled_batch,
             objective=objective,
-            optimizer=sigma_optimizer,
+            optimizer=supervised_optimizer,
             max_grad_norm=max_grad_norm,
         )
         after_supervised = snapshot_trainable_parameter_tensors(model)
-        sigma_parameter_deltas = diff_parameter_snapshots(
+        supervised_parameter_deltas = diff_parameter_snapshots(
             after=after_supervised,
             before=before_supervised,
         )
     else:
         supervised = _empty_objective_step_result(before_supervised)
         after_supervised = before_supervised
-        sigma_parameter_deltas = {}
+        supervised_parameter_deltas = {}
 
     unsupervised = (
-        _apply_query_ssl_psi_step(
+        _apply_query_ssl_unsupervised_step(
             model=model,
             unlabeled_batch=unlabeled_batch,
-            optimizer=psi_optimizer,
-            algorithm=psi_query_ssl_algorithm,
+            optimizer=unsupervised_optimizer,
+            algorithm=unsupervised_query_ssl_algorithm,
             max_grad_norm=max_grad_norm,
         )
-        if psi_query_ssl_algorithm is not None
+        if unsupervised_query_ssl_algorithm is not None
         else _apply_unsupervised_objective_step(
             model=model,
-            sigma_snapshot=after_supervised,
+            supervised_reference_snapshot=after_supervised,
             unlabeled_batch=unlabeled_batch,
             objective=objective,
-            optimizer=psi_optimizer,
+            optimizer=unsupervised_optimizer,
             helper_weak_probability_provider=helper_weak_probability_provider,
             enable_inter_client_consistency=enable_inter_client_consistency,
             max_grad_norm=max_grad_norm,
         )
     )
     after_unsupervised = snapshot_trainable_parameter_tensors(model)
-    psi_parameter_deltas = diff_parameter_snapshots(
+    unsupervised_parameter_deltas = diff_parameter_snapshots(
         after=after_unsupervised,
         before=after_supervised,
     )
@@ -505,11 +502,14 @@ def run_partitioned_adapter_linear_head_step(
     return PartitionedAdapterLinearHeadStepResult(
         supervised=supervised,
         unsupervised=unsupervised,
-        sigma_parameter_deltas=sigma_parameter_deltas,
-        psi_parameter_deltas=psi_parameter_deltas,
+        supervised_parameter_deltas=supervised_parameter_deltas,
+        unsupervised_parameter_deltas=unsupervised_parameter_deltas,
         metrics={
-            **{f"sigma_{key}": value for key, value in supervised.metrics.items()},
-            **{f"psi_{key}": value for key, value in unsupervised.metrics.items()},
+            **{f"supervised_{key}": value for key, value in supervised.metrics.items()},
+            **{
+                f"unsupervised_{key}": value
+                for key, value in unsupervised.metrics.items()
+            },
         },
     )
 
@@ -522,87 +522,86 @@ def run_physical_partitioned_adapter_linear_head_step(
     objective: PartitionedTensorLocalObjective,
     supervised_partition: str,
     unsupervised_partition: str,
-    sigma_optimizer: torch.optim.Optimizer,
-    psi_optimizer: torch.optim.Optimizer,
+    supervised_optimizer: torch.optim.Optimizer,
+    unsupervised_optimizer: torch.optim.Optimizer,
     helper_weak_probability_provider: HelperWeakProbabilityProvider | None = None,
     enable_inter_client_consistency: bool = True,
     apply_supervised_step: bool = True,
     max_grad_norm: float = 0.0,
 ) -> PartitionedAdapterLinearHeadStepResult:
-    """원본 의미의 sigma/psi를 물리적으로 분리한 partition에 적용한다.
-
-    frozen backbone은 공유하고 adapter/head trainable state만 partition별로
-    보관한다. 이 함수는 partition 이름의 FedMatch 의미를 해석하지 않고,
-    caller가 지정한 supervised/unsupervised partition에 objective를 라우팅한다.
-    """
+    """caller가 지정한 supervised/unsupervised partition에 objective를 라우팅한다."""
 
     if apply_supervised_step and labeled_batch is None:
-        raise ValueError("FedMatch physical supervised step requires labeled_batch.")
+        raise ValueError("physical supervised step requires labeled_batch.")
 
-    before_sigma = ptm.snapshot_partition_parameter_tensors(
+    before_supervised = ptm.snapshot_partition_parameter_tensors(
         model,
         supervised_partition,
     )
     if apply_supervised_step:
         if labeled_batch is None:
-            raise ValueError(
-                "FedMatch physical supervised step requires labeled_batch."
-            )
+            raise ValueError("physical supervised step requires labeled_batch.")
         supervised = _apply_physical_supervised_objective_step(
             model=model,
             partition_name=supervised_partition,
             composed_partition_names=(supervised_partition, unsupervised_partition),
             labeled_batch=labeled_batch,
             objective=objective,
-            optimizer=sigma_optimizer,
+            optimizer=supervised_optimizer,
             max_grad_norm=max_grad_norm,
         )
-        after_sigma = ptm.snapshot_partition_parameter_tensors(
+        after_supervised = ptm.snapshot_partition_parameter_tensors(
             model,
             supervised_partition,
         )
-        sigma_parameter_deltas = diff_parameter_snapshots(
-            after=after_sigma,
-            before=before_sigma,
+        supervised_parameter_deltas = diff_parameter_snapshots(
+            after=after_supervised,
+            before=before_supervised,
         )
     else:
-        supervised = _empty_objective_step_result(before_sigma)
-        after_sigma = before_sigma
-        sigma_parameter_deltas = {}
+        supervised = _empty_objective_step_result(before_supervised)
+        after_supervised = before_supervised
+        supervised_parameter_deltas = {}
 
-    before_psi = ptm.snapshot_partition_parameter_tensors(
+    before_unsupervised = ptm.snapshot_partition_parameter_tensors(
         model,
         unsupervised_partition,
     )
     unsupervised = _apply_physical_unsupervised_objective_step(
         model=model,
-        sigma_partition_snapshot=after_sigma,
+        supervised_partition_snapshot=after_supervised,
         supervised_partition=supervised_partition,
         unsupervised_partition=unsupervised_partition,
         unlabeled_batch=unlabeled_batch,
         objective=objective,
-        optimizer=psi_optimizer,
+        optimizer=unsupervised_optimizer,
         helper_weak_probability_provider=helper_weak_probability_provider,
         enable_inter_client_consistency=enable_inter_client_consistency,
         max_grad_norm=max_grad_norm,
     )
-    after_psi = ptm.snapshot_partition_parameter_tensors(
+    after_unsupervised = ptm.snapshot_partition_parameter_tensors(
         model,
         unsupervised_partition,
     )
-    psi_parameter_deltas = diff_parameter_snapshots(
-        after=after_psi,
-        before=before_psi,
+    unsupervised_parameter_deltas = diff_parameter_snapshots(
+        after=after_unsupervised,
+        before=before_unsupervised,
     )
 
     return PartitionedAdapterLinearHeadStepResult(
         supervised=supervised,
         unsupervised=unsupervised,
-        sigma_parameter_deltas=sigma_parameter_deltas,
-        psi_parameter_deltas=psi_parameter_deltas,
+        supervised_parameter_deltas=supervised_parameter_deltas,
+        unsupervised_parameter_deltas=unsupervised_parameter_deltas,
         metrics={
-            **{f"sigma_{key}": value for key, value in supervised.metrics.items()},
-            **{f"psi_{key}": value for key, value in unsupervised.metrics.items()},
+            **{
+                f"{supervised_partition}_{key}": value
+                for key, value in supervised.metrics.items()
+            },
+            **{
+                f"{unsupervised_partition}_{key}": value
+                for key, value in unsupervised.metrics.items()
+            },
         },
     )
 
@@ -684,7 +683,7 @@ def _empty_objective_step_result(
         reference = next(iter(parameter_snapshot.values()))
     except StopIteration as error:
         raise ValueError(
-            "FedMatch partitioned step requires trainable parameters."
+            "partitioned step requires trainable parameters."
         ) from error
     zero = reference.new_zeros(())
     return TensorLocalObjectiveResult(
@@ -699,7 +698,7 @@ def _empty_objective_step_result(
 def _apply_unsupervised_objective_step(
     *,
     model: TextBatchClassifier,
-    sigma_snapshot: Mapping[str, Tensor],
+    supervised_reference_snapshot: Mapping[str, Tensor],
     unlabeled_batch: Mapping[str, Tensor],
     objective: PartitionedTensorLocalObjective,
     optimizer: torch.optim.Optimizer,
@@ -737,7 +736,7 @@ def _apply_unsupervised_objective_step(
             parameter_tensors=PartitionedObjectiveParameterTensors(
                 reference={
                     key: value.to(device=weak_logits.device, dtype=weak_logits.dtype)
-                    for key, value in sigma_snapshot.items()
+                    for key, value in supervised_reference_snapshot.items()
                 },
                 trainable=named_trainable_parameter_tensors(_as_torch_module(model)),
             ),
@@ -758,7 +757,7 @@ def _apply_unsupervised_objective_step(
 def _apply_physical_unsupervised_objective_step(
     *,
     model: ptm.PartitionedTrainableTextEncoderHead,
-    sigma_partition_snapshot: Mapping[str, Tensor],
+    supervised_partition_snapshot: Mapping[str, Tensor],
     supervised_partition: str,
     unsupervised_partition: str,
     unlabeled_batch: Mapping[str, Tensor],
@@ -803,7 +802,7 @@ def _apply_physical_unsupervised_objective_step(
             parameter_tensors=PartitionedObjectiveParameterTensors(
                 reference={
                     key: value.to(device=weak_logits.device, dtype=weak_logits.dtype)
-                    for key, value in sigma_partition_snapshot.items()
+                    for key, value in supervised_partition_snapshot.items()
                 },
                 trainable=model.partition_parameter_tensors(unsupervised_partition),
             ),
@@ -894,7 +893,7 @@ def _forward_selected_physical_strong_view(
     )
 
 
-def _apply_query_ssl_psi_step(
+def _apply_query_ssl_unsupervised_step(
     *,
     model: TextBatchClassifier,
     unlabeled_batch: Mapping[str, Tensor],
@@ -992,5 +991,5 @@ def _accumulate_parameter_deltas(
             sums[name] = detached.clone()
             continue
         if sums[name].shape != detached.shape:
-            raise ValueError("FedMatch partition delta shape changed during training.")
+            raise ValueError("partition delta shape changed during training.")
         sums[name] = sums[name] + detached

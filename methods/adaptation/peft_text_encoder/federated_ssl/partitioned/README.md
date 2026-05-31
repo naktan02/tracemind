@@ -20,9 +20,9 @@
 
 ## 금지
 
-- `sigma`, `psi` 같은 FedMatch partition 이름의 source of truth 소유
-- FedMatch supervised/unsupervised objective 직접 import
+- method-local partition 이름의 source of truth 소유
+- method-owned supervised/unsupervised objective 직접 import
 - method-specific file name 추가
 
-FedMatch partition routing과 objective 의미는 `methods/federated_ssl/fedmatch/`에서
-주입한다.
+partition routing과 objective 의미는 `methods/federated_ssl/<method>/`에서
+runtime plan으로 주입한다.
