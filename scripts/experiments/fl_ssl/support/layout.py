@@ -264,9 +264,9 @@ def _resolve_label_budget_slug(cfg: DictConfig) -> str | None:
     )
     if count_per_class is not None:
         return f"labels_pc{int(count_per_class)}"
-    materialized_split_name = _select(cfg, "materialized_split.name", default=None)
+    fl_client_split_name = _select(cfg, "fl_client_split.name", default=None)
     manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
-    for source in (materialized_split_name, manifest):
+    for source in (fl_client_split_name, manifest):
         match = re.search(r"(?:^|_)labels_pc(\d+)(?:_|$)", str(source or ""))
         if match:
             return f"labels_pc{match.group(1)}"

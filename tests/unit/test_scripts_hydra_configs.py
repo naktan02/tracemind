@@ -820,12 +820,12 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.report.seed_count == 3
 
 
-def test_federated_simulation_materialized_split_axis_selects_manifest() -> None:
+def test_federated_simulation_fl_client_split_context_selects_manifest() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl_topology/materialized_split=shared_general_reddit_pc100_alpha03_clients10",
+                "execution_context/fl_client_split=shared_general_reddit_pc100_alpha03_clients10",
             ],
         )
 
@@ -865,7 +865,7 @@ def test_federated_simulation_materialized_split_axis_selects_manifest() -> None
         ),
     ],
 )
-def test_federated_simulation_materialized_split_axis_covers_shared_budgets(
+def test_federated_simulation_fl_client_split_context_covers_shared_budgets(
     selector: str,
     labeled: str,
     budget: int,
@@ -873,7 +873,7 @@ def test_federated_simulation_materialized_split_axis_covers_shared_budgets(
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
-            overrides=[f"strategy_axes/fl_topology/materialized_split={selector}"],
+            overrides=[f"execution_context/fl_client_split={selector}"],
         )
 
     assert cfg.fl_data.source_mode == "materialized_client_split"

@@ -672,6 +672,19 @@ def test_legacy_fl_strategy_axis_group_is_removed() -> None:
     )
 
 
+def test_fl_client_split_preset_is_not_strategy_axis() -> None:
+    forbidden_path = CONF_SRC / "strategy_axes" / "fl_topology" / "materialized_split"
+    expected_path = CONF_SRC / "execution_context" / "fl_client_split"
+
+    assert not forbidden_path.exists(), (
+        "materialized FL client split preset은 method/topology strategy axis가 아니라 "
+        "실행 데이터 artifact 선택이다. execution_context/fl_client_split 아래에 둔다."
+    )
+    assert expected_path.exists(), (
+        "FL client split preset 선택 group은 execution_context/fl_client_split에 둔다."
+    )
+
+
 def test_central_ssl_input_mode_strategy_axis_group_is_removed() -> None:
     legacy_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "input_mode"
 

@@ -26,7 +26,7 @@
   `initial_checkpoint`
 - Experiment condition axis:
   데이터 노출 조건, split, client 참여 규칙처럼 방법론 바깥의 비교 조건이다.
-  예: `shard_policy`, `materialized_split`, `labeled_exposure`,
+  예: `shard_policy`, `labeled_exposure`,
   `supervision_regime`, `client_participation`
 - Method-owned axis:
   방법론을 고르면 같이 따라와야 하는 local objective, teacher usage, helper
@@ -121,6 +121,11 @@ manual baseline에서는 lower-axis 조합을 계속 허용한다.
 `update_partition`, `peer_context`, `server_step`이다. 단, 이 값들은 method 비교가
 아니라 baseline/ablation 조합으로만 해석한다.
 
+materialize된 client split artifact preset은 lower-axis 조합이 아니라
+`execution_context/fl_client_split` 실행 문맥으로 고른다. 이 preset은 manifest와
+맞춰야 하는 source/policy/budget 값을 함께 고정할 수 있지만 method 의미를 소유하지
+않는다.
+
 ### FL SSL method-owned
 
 method-owned에서는 사용자가 `fssl_method`, scenario/parameter override, split/exposure/
@@ -129,6 +134,11 @@ supervision/client participation, scaffold axis만 고르게 만든다.
 `peer_context`, `update_partition`, `aggregation_weight`, 경우에 따라
 `consistency_method`는 숨기고 descriptor, method config surface, scenario preset이
 파생한다.
+
+이미 생성된 FL client split manifest 선택은 method-owned surface가 아니라
+`execution_context/fl_client_split`의 실행 데이터 선택으로 남긴다. method-owned
+descriptor는 이 preset의 경로를 해석하지 않고, data source request가 manifest와
+config drift를 검증한다.
 
 ## method/scenario 규칙
 

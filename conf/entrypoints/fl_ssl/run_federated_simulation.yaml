@@ -31,7 +31,7 @@ defaults:
   # fssl_method: FL+SSL 결합 방법론
   - /strategy_axes/fssl_method: null
   - _self_
-  - /strategy_axes/fl_topology/materialized_split: null
+  - /execution_context/fl_client_split: null
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
 

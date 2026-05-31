@@ -24,7 +24,8 @@
 | Central trainable surface | `strategy_axes/model_architecture/trainable_surface` | `methods/adaptation/*` trainer |
 | PEFT adapter mechanism | `strategy_axes/model_architecture/peft` | `methods/adaptation/peft_adapters/*` |
 | Trainable update family | `strategy_axes/model_architecture/update_family`, `round_runtime.update_family_name` | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*` |
-| FL split/topology policy | `strategy_axes/fl_topology/shard_policy`, `labeled_exposure`, `materialized_split` | `methods/federated/*`, split materialization |
+| FL split/topology policy | `strategy_axes/fl_topology/shard_policy`, `labeled_exposure` | `methods/federated/*`, split materialization |
+| FL client split artifact preset | `execution_context/fl_client_split` | split materialization manifest |
 | FL round capability | `strategy_axes/fl_topology/server_step`, `server_update`, `peer_context`, `update_partition`, `aggregation_weight` | `methods/federated_ssl/*` + selected update family runtime |
 | FL SSL method descriptor | `strategy_axes/fssl_method` | `methods/federated_ssl/<method family>/` |
 | FL local update profile | `strategy_axes/ssl_objective/local_update_profile` | `methods/federated_ssl/local_update_profile.py`, Query SSL/PEFT runtime |
@@ -90,9 +91,13 @@ FL SSL:
   method recipe 조각을 직접 고르지 않는다.
 - 위 capability leaf를 사람이 직접 고르는 것은 `composition_mode=manual` baseline이나
   명시적 ablation에서만 허용한다. method 이름이 들어간 leaf는 만들지 않는다.
-- `shard_policy`, `materialized_split`, `labeled_exposure`, `supervision_regime`,
+- `shard_policy`, `labeled_exposure`, `supervision_regime`,
   `client_participation`은 데이터/실험 조건 축이다. 단, 특정 method가 요구하는 regime은
   descriptor compatibility validator가 제한한다.
+- materialize된 client split preset 선택은 `execution_context/fl_client_split`이
+  소유한다. 이것은 method identity나 topology strategy가 아니라 실행 데이터 artifact
+  선택이다. preset은 manifest drift를 막기 위해 source, exposure/shard policy,
+  client_count/bootstrap_ratio를 함께 고정할 수 있다.
 - `update_family`, PEFT mechanism, backbone은 trainable state/scaffold 축이다. method가
   요구할 수는 있지만 method identity 자체로 합치지 않는다.
 

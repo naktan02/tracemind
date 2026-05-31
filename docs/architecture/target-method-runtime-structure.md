@@ -89,12 +89,12 @@ conf/
     prototype/build_strategy/
     fssl_method/
     fl_topology/
-      {shard_policy,labeled_exposure,client_participation,materialized_split}/
+      {shard_policy,labeled_exposure,client_participation}/
       {server_step,server_update,peer_context,update_partition,aggregation_weight}/
   run_controls/
     fl_ssl/{budget,safety_and_sweeps}/
   execution_context/
-    {dataset_asset,query_data_source,embedding_adapter,runtime_env,security_policy}/
+    {dataset_asset,query_data_source,fl_client_split,embedding_adapter,runtime_env,security_policy}/
 
 scripts/
   experiments/

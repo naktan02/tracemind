@@ -17,6 +17,7 @@ YAML은 조합과 값만 소유하고, method 계산 의미나 runtime 구현은
 conf/
 ├── entrypoints/
 ├── execution_context/
+│   ├── fl_client_split/
 ├── strategy_axes/
 │   ├── fl_topology/
 │   ├── fssl_method/
@@ -76,11 +77,14 @@ conf/
 - aggregation backend는 `round_runtime.aggregation_backend_name`으로 고른다.
 - PEFT text encoder runtime 값은 `strategy_axes/model_architecture/backbone`과
   `strategy_axes/model_architecture/peft`에서 온다.
-- client split 방식은 `strategy_axes/fl_topology/shard_policy`, materialized split 선택은
-  `strategy_axes/fl_topology/materialized_split`이 소유한다.
+- client split 방식은 `strategy_axes/fl_topology/shard_policy`가 소유하고, 이미
+  materialize된 FL client split artifact preset 선택은 `execution_context/fl_client_split`이
+  소유한다.
 - labeled rows를 server/client 어디에 노출할지는
   `strategy_axes/fl_topology/labeled_exposure`가 소유한다.
-- client 수, round budget, output root는 `run_controls/fl_ssl/budget`이 소유한다.
+- 기본 client 수, round budget, output root는 `run_controls/fl_ssl/budget`이 소유한다.
+  단, `execution_context/fl_client_split` preset은 manifest와 맞추기 위해
+  `client_count`와 `bootstrap_ratio`를 함께 고정할 수 있다.
 - accidental long-run guard, seed/client-count sweep, resume/persistence control은
   `run_controls/fl_ssl/safety_and_sweeps`가 소유한다.
 - plaintext/secure aggregation 같은 transport/privacy policy는
@@ -114,6 +118,8 @@ conf/
 - `query_data_selection.labeled`, `unlabeled`, `validation`, `test`가 실행 source를 고른다.
 - `execution_context/query_split`은 central SSL query split 선택을 소유한다.
 - `execution_context/query_view`는 weak/strong/original view JSONL surface를 고른다.
+- `execution_context/fl_client_split`은 FL SSL simulation이 읽을 materialized client
+  split manifest와 그 manifest에 맞춰야 하는 source/policy/budget preset을 고른다.
 - FL materialized split은 data artifact를 읽기만 한다. `data/**`와 `runs/**`는
   config cleanup 과정에서 수정하지 않는다.
 
