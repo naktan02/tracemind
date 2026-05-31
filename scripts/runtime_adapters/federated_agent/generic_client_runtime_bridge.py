@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 import time
 from collections.abc import Mapping
 from datetime import datetime, timezone
@@ -34,17 +33,7 @@ from scripts.runtime_adapters.federated_agent.client_update_flow import (
 from scripts.runtime_adapters.federated_agent.training_runtime import (
     build_query_ssl_local_training_service,
 )
-
-
-def _load_round_runtime_module(update_family_name: str) -> Any:
-    normalized = update_family_name.strip().lower().replace("-", "_")
-    module_path = f"methods.adaptation.{normalized}.simulation_runtime.round_runtime"
-    return importlib.import_module(module_path)
-
-
-def _normalize_prefix(update_family_name: str) -> str:
-    normalized = update_family_name.replace("-", "_").lower()
-    return "peft_encoder" if "peft" in normalized else normalized
+from scripts.support.configured_callable import load_configured_callable
 
 
 def run_method_owned_client_round_if_supported(
@@ -63,27 +52,10 @@ def run_method_owned_client_round_if_supported(
 ) -> ClientRoundExecution | None:
     """method-owned client-round training이 가능한 update_family면 실행한다."""
 
-    update_family_name = request.round_runtime_config.update_family_name
-    normalized = update_family_name.strip().lower().replace("-", "_")
-    try:
-        runtime_module = importlib.import_module(
-            f"methods.adaptation.{normalized}.update_family_runtime"
-        )
-    except ImportError:
-        return None
-
-    prefix = _normalize_prefix(update_family_name)
-    checker_name = f"is_{prefix}_update_family"
-    checker = getattr(runtime_module, checker_name, None)
-    if checker is not None and not checker(update_family_name):
-        return None
-
     if request.ssl_method_config is None:
         return None
     if request.round_runtime_config.runtime_payload_for_update_family() is None:
         return None
-
-    m = _load_round_runtime_module(update_family_name)
 
     query_ssl_config = request.query_ssl_objective_config
     timing = TimingRecorder()
@@ -98,17 +70,14 @@ def run_method_owned_client_round_if_supported(
 
     effective_created_at = datetime.now(tz=timezone.utc)
 
-    # base parameters materialization (convention lookup)
-    materialization_module = importlib.import_module(
-        "scripts.runtime_adapters.federated_agent.base_state_materialization"
+    load_base_parameters = _load_client_round_callable(
+        request=request,
+        callable_name="base_state_materializer",
     )
-    load_base_parameters = getattr(
-        materialization_module, f"load_{prefix}_base_parameters_with_timing"
+    load_base_partition_parameters = _load_client_round_callable(
+        request=request,
+        callable_name="base_partition_state_materializer",
     )
-    load_base_partition_parameters = getattr(
-        materialization_module, f"load_{prefix}_base_partition_parameters_with_timing"
-    )
-
     base_parameters = load_base_parameters(
         active_adapter_state=active.adapter_state,
         output_dir=request.output_dir,
@@ -124,13 +93,11 @@ def run_method_owned_client_round_if_supported(
         timing_recorder=timing,
     )
 
-    delta_module = importlib.import_module(
-        f"methods.adaptation.{normalized}.update.delta_artifacts"
+    delta_materializer_factory = _load_client_round_callable(
+        request=request,
+        callable_name="delta_materializer_factory",
     )
-    class_title = "".join(part.title() for part in prefix.split("_"))
-    class_name = f"{class_title}DeltaMaterializer"
-    delta_materializer_class = getattr(delta_module, class_name)
-    delta_materializer = delta_materializer_class(
+    delta_materializer = delta_materializer_factory(
         artifact_store=SimulationClientArtifactStore(output_dir=request.output_dir)
     )
 
@@ -145,7 +112,10 @@ def run_method_owned_client_round_if_supported(
         None if query_ssl_config is None else query_ssl_config.unlabeled_batch_size
     )
 
-    run_training_core = getattr(m, f"run_method_owned_{prefix}_local_training_core")
+    run_training_core = _load_client_round_callable(
+        request=request,
+        callable_name="method_owned_local_training_core",
+    )
 
     with timing.measure("local_training_total_seconds"):
         local_result = run_training_core(
@@ -180,8 +150,12 @@ def run_method_owned_client_round_if_supported(
             delta_materializer=delta_materializer,
         )
 
+    release_transient_model_cache = _load_client_round_callable(
+        request=request,
+        callable_name="transient_model_cache_releaser",
+    )
     with timing.measure("helper_model_cache_release_seconds"):
-        m.release_transient_model_cache(bootstrapped.runtime_resource_cache)
+        release_transient_model_cache(bootstrapped.runtime_resource_cache)
 
     client_train_time_seconds = time.perf_counter() - training_started_at
 
@@ -194,10 +168,14 @@ def run_method_owned_client_round_if_supported(
             timing_recorder=timing,
         )
 
-    byte_counter_name = f"server_owned_{prefix}_update_artifact_byte_count"
-    upload_func_name = f"upload_agent_local_{prefix}_update"
-    client_artifact_byte_counter = getattr(delta_module, byte_counter_name)
-    upload_client_update = getattr(delta_module, upload_func_name)
+    client_artifact_byte_counter = _load_client_round_callable(
+        request=request,
+        callable_name="update_artifact_byte_counter",
+    )
+    upload_client_update = _load_client_round_callable(
+        request=request,
+        callable_name="update_uploader",
+    )
 
     from methods.federated_ssl.diagnostics.client import (
         extract_client_method_diagnostics,
@@ -246,21 +224,6 @@ def run_query_ssl_client_round_if_supported(
         peer_snapshots,
         previous_client_partition_parameters,
     )
-    update_family_name = request.round_runtime_config.update_family_name
-    normalized = update_family_name.strip().lower().replace("-", "_")
-    try:
-        runtime_module = importlib.import_module(
-            f"methods.adaptation.{normalized}.update_family_runtime"
-        )
-    except ImportError:
-        return None
-
-    prefix = _normalize_prefix(update_family_name)
-    checker_name = f"is_{prefix}_update_family"
-    checker = getattr(runtime_module, checker_name, None)
-    if checker is not None and not checker(update_family_name):
-        return None
-
     if request.ssl_method_config is not None:
         return None
     if request.query_ssl_objective_config is None:
@@ -280,14 +243,10 @@ def run_query_ssl_client_round_if_supported(
 
     effective_created_at = datetime.now(tz=timezone.utc)
 
-    # base parameters materialization (convention lookup)
-    materialization_module = importlib.import_module(
-        "scripts.runtime_adapters.federated_agent.base_state_materialization"
+    load_base_parameters = _load_client_round_callable(
+        request=request,
+        callable_name="base_state_materializer",
     )
-    load_base_parameters = getattr(
-        materialization_module, f"load_{prefix}_base_parameters_with_timing"
-    )
-
     base_parameters = load_base_parameters(
         active_adapter_state=active.adapter_state,
         output_dir=request.output_dir,
@@ -296,18 +255,17 @@ def run_query_ssl_client_round_if_supported(
         timing_recorder=timing,
     )
 
-    delta_module = importlib.import_module(
-        f"methods.adaptation.{normalized}.update.delta_artifacts"
+    delta_materializer_factory = _load_client_round_callable(
+        request=request,
+        callable_name="delta_materializer_factory",
     )
-    class_title = "".join(part.title() for part in prefix.split("_"))
-    class_name = f"{class_title}DeltaMaterializer"
-    delta_materializer_class = getattr(delta_module, class_name)
-    delta_materializer = delta_materializer_class(
+    delta_materializer = delta_materializer_factory(
         artifact_store=SimulationClientArtifactStore(output_dir=request.output_dir)
     )
 
-    build_training_backend = getattr(
-        runtime_module, f"build_training_backend_for_{prefix}_state"
+    build_training_backend = _load_client_round_callable(
+        request=request,
+        callable_name="query_ssl_training_backend_factory",
     )
     local_training_service = build_query_ssl_local_training_service(
         client_state_root=request.output_dir / "agents" / shard.client_id,
@@ -317,13 +275,14 @@ def run_query_ssl_client_round_if_supported(
         ),
     )
 
-    service_module_path = (
-        "agent.src.services.training.execution.query_ssl_local_training_service"
+    request_factory = _load_client_round_callable(
+        request=request,
+        callable_name="query_ssl_request_factory",
     )
-    service_module = importlib.import_module(service_module_path)
-    class_title = "".join(part.title() for part in prefix.split("_"))
-    request_class_name = f"QuerySsl{class_title}LocalTrainingRequest"
-    request_class = getattr(service_module, request_class_name)
+    run_query_ssl_training = _load_client_round_callable(
+        request=request,
+        callable_name="query_ssl_training_runner",
+    )
 
     if not hasattr(active.adapter_state, "label_schema"):
         raise ValueError(
@@ -331,8 +290,9 @@ def run_query_ssl_client_round_if_supported(
         )
 
     with timing.measure("local_training_total_seconds"):
-        local_result = local_training_service.run_peft_encoder(
-            request_class(
+        local_result = run_query_ssl_training(
+            local_training_service=local_training_service,
+            request=request_factory(
                 client_id=shard.client_id,
                 seed=request.seed,
                 labeled_rows=shard.labeled_rows,
@@ -350,7 +310,7 @@ def run_query_ssl_client_round_if_supported(
                 persist_update_artifact=True,
                 initial_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
                 delta_materializer=delta_materializer,
-            )
+            ),
         )
 
     client_train_time_seconds = time.perf_counter() - training_started_at
@@ -364,10 +324,14 @@ def run_query_ssl_client_round_if_supported(
             timing_recorder=timing,
         )
 
-    byte_counter_name = f"server_owned_{prefix}_update_artifact_byte_count"
-    upload_func_name = f"upload_agent_local_{prefix}_update"
-    client_artifact_byte_counter = getattr(delta_module, byte_counter_name)
-    upload_client_update = getattr(delta_module, upload_func_name)
+    client_artifact_byte_counter = _load_client_round_callable(
+        request=request,
+        callable_name="update_artifact_byte_counter",
+    )
+    upload_client_update = _load_client_round_callable(
+        request=request,
+        callable_name="update_uploader",
+    )
 
     return submit_local_training_result(
         bootstrapped=bootstrapped,
@@ -382,3 +346,41 @@ def run_query_ssl_client_round_if_supported(
         client_artifact_byte_counter=client_artifact_byte_counter,
         query_ssl_algorithm_state=local_result.query_ssl_algorithm_state,
     )
+
+
+def _load_client_round_callable(
+    *,
+    request: SimulationRunRequest,
+    callable_name: str,
+) -> Any:
+    path = _client_round_callable_path(
+        request.round_runtime_config,
+        callable_name,
+    )
+    if path is None:
+        raise NotImplementedError(
+            "round_runtime.client_round_runtime is missing required callable: "
+            f"{callable_name}"
+        )
+    return load_configured_callable(
+        path,
+        field_name=f"round_runtime.client_round_runtime.{callable_name}",
+    )
+
+
+def _client_round_callable_path(
+    round_runtime_config: object,
+    callable_name: str,
+) -> str | None:
+    resolver = getattr(round_runtime_config, "client_round_callable_path", None)
+    if callable(resolver):
+        return resolver(callable_name)
+    mapping = getattr(round_runtime_config, "client_round_runtime", {})
+    if not isinstance(mapping, Mapping):
+        return None
+    normalized_name = callable_name.strip().lower().replace("-", "_")
+    raw_value = mapping.get(normalized_name)
+    if raw_value is None:
+        return None
+    normalized_value = str(raw_value).strip()
+    return normalized_value or None

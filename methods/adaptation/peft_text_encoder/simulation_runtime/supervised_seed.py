@@ -64,6 +64,15 @@ def peft_encoder_supervised_seed_step_seed(
     )
 
 
+def peft_encoder_supervised_seed_artifact_names() -> tuple[str, str]:
+    """server seed projection이 publish할 PEFT artifact slot 이름을 반환한다."""
+
+    return (
+        PEFT_ENCODER_SEED_ADAPTER_ARTIFACT_SLOT,
+        PEFT_ENCODER_SEED_CLASSIFIER_HEAD_ARTIFACT_SLOT,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class PeftEncoderSupervisedSeedProjection:
     """server publication runtime이 저장할 seed-step projection 결과."""
@@ -131,4 +140,48 @@ def build_peft_encoder_supervised_seed_projection(
         next_state=projection.next_state,
         artifacts=projection.artifacts,
         metrics=seed_result.metrics,
+    )
+
+
+def build_peft_encoder_supervised_seed_projection_from_runtime_payload(
+    *,
+    adapter_state: PeftClassifierState,
+    bootstrap_rows: list[LabeledQueryRow],
+    aggregation_context: FederatedAggregationContext,
+    runtime_payload: object,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
+    runtime_resource_cache: RuntimeResourceCache | None,
+    seed: int,
+    epochs: int,
+    batch_size: int,
+    learning_rate: float,
+    gradient_clip_norm: float | None,
+    next_model_revision: str,
+    updated_at: datetime,
+    artifact_refs_by_name: Mapping[str, str],
+    artifact_format: str,
+) -> PeftEncoderSupervisedSeedProjection:
+    """config-declared server bridge용 PEFT seed projection entrypoint."""
+
+    peft_config = getattr(runtime_payload, "training_backend_config", None)
+    if peft_config is None:
+        raise TypeError(
+            "PEFT supervised seed runtime payload must expose training_backend_config."
+        )
+    return build_peft_encoder_supervised_seed_projection(
+        adapter_state=adapter_state,
+        bootstrap_rows=bootstrap_rows,
+        aggregation_context=aggregation_context,
+        peft_config=peft_config,
+        trainer_runtime_config=trainer_runtime_config,
+        runtime_resource_cache=runtime_resource_cache,
+        seed=seed,
+        epochs=epochs,
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        gradient_clip_norm=gradient_clip_norm,
+        next_model_revision=next_model_revision,
+        updated_at=updated_at,
+        artifact_refs_by_name=artifact_refs_by_name,
+        artifact_format=artifact_format,
     )

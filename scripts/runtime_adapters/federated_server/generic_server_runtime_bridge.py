@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import importlib
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
 
@@ -16,11 +16,7 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
-
-
-def _normalize_prefix(update_family_name: str) -> str:
-    normalized = update_family_name.replace("-", "_").lower()
-    return "peft_encoder" if "peft" in normalized else normalized
+from scripts.support.configured_callable import load_configured_callable
 
 
 def run_supervised_seed_step(
@@ -32,29 +28,12 @@ def run_supervised_seed_step(
 ) -> server_step_execution.ServerStepExecution:
     """Supervised seed step이 가능한 update_family면 실행한다."""
 
-    update_family_name = request.round_runtime_config.update_family_name
-    normalized = update_family_name.strip().lower().replace("-", "_")
-    try:
-        runtime_module = importlib.import_module(
-            f"methods.adaptation.{normalized}.update_family_runtime"
-        )
-    except ImportError:
-        raise NotImplementedError(
-            f"Update family {update_family_name} runtime module not found."
-        )
-
-    prefix = _normalize_prefix(update_family_name)
-    checker_name = f"is_{prefix}_update_family"
-    checker = getattr(runtime_module, checker_name, None)
-    if checker is not None and not checker(update_family_name):
-        raise NotImplementedError(
-            f"Update family {update_family_name} is not supported."
-        )
-
-    payload_getter = getattr(runtime_module, f"{prefix}_runtime_payload")
-    runtime_payload = payload_getter(request.round_runtime_config)
+    runtime_payload = request.round_runtime_config.runtime_payload_for_update_family()
     if runtime_payload is None:
-        raise ValueError(f"{update_family_name} runtime config is required.")
+        raise ValueError(
+            f"{request.round_runtime_config.update_family_name} runtime config "
+            "is required."
+        )
 
     if not hasattr(active.adapter_state, "label_schema"):
         raise ValueError(
@@ -77,24 +56,23 @@ def run_supervised_seed_step(
         round_index=round_index,
     )
 
-    supervised_seed_module = importlib.import_module(
-        f"methods.adaptation.{normalized}.simulation_runtime.supervised_seed"
+    seed_artifact_names = _seed_artifact_names(
+        _load_server_round_callable(
+            request=request,
+            callable_name="supervised_seed_artifact_names",
+        )()
     )
-    seed_adapter_slot = getattr(
-        supervised_seed_module, f"{prefix.upper()}_SEED_ADAPTER_ARTIFACT_SLOT"
+    build_supervised_seed_revision = _load_server_round_callable(
+        request=request,
+        callable_name="supervised_seed_revision_builder",
     )
-    seed_head_slot = getattr(
-        supervised_seed_module,
-        f"{prefix.upper()}_SEED_CLASSIFIER_HEAD_ARTIFACT_SLOT",
+    build_supervised_seed_projection = _load_server_round_callable(
+        request=request,
+        callable_name="supervised_seed_projection_builder",
     )
-    build_supervised_seed_revision = getattr(
-        supervised_seed_module, f"build_{prefix}_supervised_seed_revision"
-    )
-    build_supervised_seed_projection = getattr(
-        supervised_seed_module, f"build_{prefix}_supervised_seed_projection"
-    )
-    supervised_seed_step_seed_func = getattr(
-        supervised_seed_module, f"{prefix}_supervised_seed_step_seed"
+    supervised_seed_step_seed_func = _load_server_round_callable(
+        request=request,
+        callable_name="supervised_seed_seed",
     )
 
     from scripts.experiments.fl_ssl.federated_simulation.io.run_artifact_writer import (
@@ -115,7 +93,7 @@ def run_supervised_seed_step(
     artifact_refs = build_server_aggregate_artifact_refs(
         artifact_namespace=request.round_runtime_config.update_family_name,
         next_model_revision=next_model_revision,
-        artifact_names=(seed_adapter_slot, seed_head_slot),
+        artifact_names=seed_artifact_names,
     )
     projection = build_supervised_seed_projection(
         adapter_state=active.adapter_state,
@@ -125,7 +103,7 @@ def run_supervised_seed_step(
             next_model_revision=active.adapter_state.model_revision,
             aggregated_at=now,
         ),
-        peft_config=runtime_payload.training_backend_config,
+        runtime_payload=runtime_payload,
         trainer_runtime_config=request.local_trainer_runtime_config,
         runtime_resource_cache=bootstrapped.runtime_resource_cache,
         seed=supervised_seed_step_seed_func(
@@ -171,34 +149,15 @@ def build_final_projection_artifacts(
     active: ActiveSimulationState,
     runtime_resource_cache: Any | None = None,
 ) -> dict[str, Any] | None:
-    """최종 global PEFT encoder state projection artifact를 만든다."""
+    """최종 global update-family projection artifact를 만든다."""
 
-    update_family_name = request.round_runtime_config.update_family_name
-    normalized = update_family_name.strip().lower().replace("-", "_")
-    try:
-        runtime_module = importlib.import_module(
-            f"methods.adaptation.{normalized}.update_family_runtime"
-        )
-    except ImportError:
-        return None
-
-    prefix = _normalize_prefix(update_family_name)
-    checker_name = f"is_{prefix}_update_family"
-    checker = getattr(runtime_module, checker_name, None)
-    if checker is not None and not checker(update_family_name):
-        return None
-
-    evaluation_module = importlib.import_module(
-        f"methods.adaptation.{normalized}.evaluation"
+    require_state = _load_server_round_callable(
+        request=request,
+        callable_name="final_projection_state_resolver",
     )
-    require_state = getattr(evaluation_module, f"require_{prefix}_state")
-
-    final_projection_module = importlib.import_module(
-        f"methods.adaptation.{normalized}.simulation_runtime.final_projection"
-    )
-    build_final_projection_artifacts_from_state = getattr(
-        final_projection_module,
-        f"build_{prefix}_final_projection_artifacts_from_state",
+    build_final_projection_artifacts_from_state = _load_server_round_callable(
+        request=request,
+        callable_name="final_projection_artifacts_builder",
     )
 
     from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
@@ -240,3 +199,48 @@ def _projection_rows_by_dataset_name(
         for dataset_name, rows in rows_by_name.items()
         if dataset_name in request.final_projection_config.dataset_names and rows
     }
+
+
+def _load_server_round_callable(
+    *,
+    request: SimulationRunRequest,
+    callable_name: str,
+) -> Any:
+    path = _server_round_callable_path(
+        request.round_runtime_config,
+        callable_name,
+    )
+    if path is None:
+        raise NotImplementedError(
+            "round_runtime.server_round_runtime is missing required callable: "
+            f"{callable_name}"
+        )
+    return load_configured_callable(
+        path,
+        field_name=f"round_runtime.server_round_runtime.{callable_name}",
+    )
+
+
+def _server_round_callable_path(
+    round_runtime_config: object,
+    callable_name: str,
+) -> str | None:
+    resolver = getattr(round_runtime_config, "server_round_callable_path", None)
+    if callable(resolver):
+        return resolver(callable_name)
+    mapping = getattr(round_runtime_config, "server_round_runtime", {})
+    if not isinstance(mapping, Mapping):
+        return None
+    normalized_name = callable_name.strip().lower().replace("-", "_")
+    raw_value = mapping.get(normalized_name)
+    if raw_value is None:
+        return None
+    normalized_value = str(raw_value).strip()
+    return normalized_value or None
+
+
+def _seed_artifact_names(source: Sequence[object]) -> tuple[str, ...]:
+    artifact_names = tuple(str(item).strip() for item in source if str(item).strip())
+    if not artifact_names:
+        raise ValueError("supervised_seed_artifact_names must not be empty.")
+    return artifact_names

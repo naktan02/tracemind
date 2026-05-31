@@ -327,7 +327,9 @@ class FederatedRoundRuntimeConfig:
     runtime_payloads: dict[str, object] = field(default_factory=dict)
     round_runtime_payload_builder: str | None = None
     local_objective_executors: tuple[str, ...] = ()
+    client_round_runtime: dict[str, str] = field(default_factory=dict)
     server_step_executors: dict[str, str] = field(default_factory=dict)
+    server_round_runtime: dict[str, str] = field(default_factory=dict)
     initial_state_builder: str | None = None
     validation_evaluator: str | None = None
     final_projection_builder: str | None = None
@@ -343,7 +345,9 @@ class FederatedRoundRuntimeConfig:
         runtime_payloads: Mapping[str, object] | None = None,
         round_runtime_payload_builder: str | None = None,
         local_objective_executors: tuple[str, ...] = (),
+        client_round_runtime: Mapping[str, str] | None = None,
         server_step_executors: Mapping[str, str] | None = None,
+        server_round_runtime: Mapping[str, str] | None = None,
         initial_state_builder: str | None = None,
         validation_evaluator: str | None = None,
         final_projection_builder: str | None = None,
@@ -356,6 +360,10 @@ class FederatedRoundRuntimeConfig:
         self.runtime_payloads = dict(runtime_payloads or {})
         self.round_runtime_payload_builder = round_runtime_payload_builder
         self.local_objective_executors = local_objective_executors
+        self.client_round_runtime = _normalize_round_runtime_callable_mapping(
+            client_round_runtime or {},
+            field_name="client_round_runtime",
+        )
         self.server_step_executors = {
             _normalize_round_runtime_name(
                 key,
@@ -363,6 +371,10 @@ class FederatedRoundRuntimeConfig:
             ): str(value)
             for key, value in (server_step_executors or {}).items()
         }
+        self.server_round_runtime = _normalize_round_runtime_callable_mapping(
+            server_round_runtime or {},
+            field_name="server_round_runtime",
+        )
         self.initial_state_builder = initial_state_builder
         self.validation_evaluator = validation_evaluator
         self.final_projection_builder = final_projection_builder
@@ -394,6 +406,26 @@ class FederatedRoundRuntimeConfig:
             return self.runtime_payloads.get(self.runtime_payload_key)
         return self.runtime_payloads.get(self.update_family_name)
 
+    def client_round_callable_path(self, callable_name: str) -> str | None:
+        """client round bridge가 실행할 update-family callable path를 반환한다."""
+
+        return self.client_round_runtime.get(
+            _normalize_round_runtime_name(
+                callable_name,
+                field_name="client_round_runtime key",
+            )
+        )
+
+    def server_round_callable_path(self, callable_name: str) -> str | None:
+        """server round bridge가 실행할 update-family callable path를 반환한다."""
+
+        return self.server_round_runtime.get(
+            _normalize_round_runtime_name(
+                callable_name,
+                field_name="server_round_runtime key",
+            )
+        )
+
     def server_step_executor_for_policy(self, policy_name: object) -> str | None:
         """선택된 server step policy를 이 update family runtime executor로 해석한다."""
 
@@ -406,6 +438,24 @@ class FederatedRoundRuntimeConfig:
                 field_name="server_step_policy",
             )
         )
+
+
+def _normalize_round_runtime_callable_mapping(
+    source: Mapping[str, str],
+    *,
+    field_name: str,
+) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for key, value in source.items():
+        normalized_key = _normalize_round_runtime_name(
+            str(key),
+            field_name=f"{field_name} key",
+        )
+        normalized_value = _optional_str(value)
+        if normalized_value is None:
+            raise ValueError(f"round_runtime.{field_name}.{key} must not be empty.")
+        result[normalized_key] = normalized_value
+    return result
 
 
 @dataclass(frozen=True, slots=True)

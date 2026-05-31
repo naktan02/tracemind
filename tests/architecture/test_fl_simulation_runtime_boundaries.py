@@ -178,6 +178,42 @@ def test_server_step_policy_leaf_does_not_own_update_family_executor() -> None:
     )
 
 
+def test_generic_runtime_bridges_do_not_derive_update_family_modules() -> None:
+    checked_paths = (
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_agent"
+        / "generic_client_runtime_bridge.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "generic_server_runtime_bridge.py",
+    )
+    forbidden_snippets = (
+        "importlib",
+        "_normalize_prefix",
+        "methods.adaptation.{",
+        'f"methods.adaptation',
+        "f'methods.adaptation",
+        "QuerySsl{",
+        "run_method_owned_{",
+        "build_training_backend_for_{",
+        "peft_encoder",
+    )
+    violations = [
+        (_relative_repo_path(path), snippet)
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "generic FL runtime bridge는 update_family 이름으로 methods module/function "
+        "path를 만들지 않는다. family-specific 실행 표면은 "
+        "strategy_axes/model_architecture/update_family leaf의 "
+        "client_round_runtime/server_round_runtime callable 선언이 소유한다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
 def test_fl_entrypoint_does_not_embed_update_family_objective_payload_scope() -> None:
     entrypoint_path = (
         CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml"

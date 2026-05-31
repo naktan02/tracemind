@@ -115,8 +115,16 @@ def build_simulation_request_from_config(
             cfg.round_runtime,
             "local_objective_executors",
         ),
+        client_round_runtime=optional_plain_dict(
+            cfg.round_runtime,
+            "client_round_runtime",
+        ),
         server_step_executors=to_plain_dict(
             cfg.round_runtime.get("server_step_executors", {})
+        ),
+        server_round_runtime=optional_plain_dict(
+            cfg.round_runtime,
+            "server_round_runtime",
         ),
         initial_state_builder=_optional_config_str(
             cfg.round_runtime,

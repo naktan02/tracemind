@@ -196,3 +196,13 @@ class QuerySslLocalTrainingService:
             backend_name,
             objective_config=training_task.objective_config,
         )
+
+
+def run_query_ssl_peft_encoder_local_training(
+    *,
+    local_training_service: QuerySslLocalTrainingService,
+    request: QuerySslPeftEncoderLocalTrainingRequest,
+) -> QuerySslPeftEncoderClientTrainingResult:
+    """config-declared bridge가 PEFT encoder Query SSL service를 실행하는 entrypoint."""
+
+    return local_training_service.run_peft_encoder(request)

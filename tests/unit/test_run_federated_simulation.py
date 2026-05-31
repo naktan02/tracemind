@@ -495,6 +495,80 @@ def _legacy_manual_ssl_method_config() -> FederatedSslMethodConfig:
     )
 
 
+def _peft_client_round_runtime_callables() -> dict[str, str]:
+    return {
+        "base_state_materializer": (
+            "scripts.runtime_adapters.federated_agent.base_state_materialization."
+            "load_peft_encoder_base_parameters_with_timing"
+        ),
+        "base_partition_state_materializer": (
+            "scripts.runtime_adapters.federated_agent.base_state_materialization."
+            "load_peft_encoder_base_partition_parameters_with_timing"
+        ),
+        "delta_materializer_factory": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "PeftEncoderDeltaMaterializer"
+        ),
+        "method_owned_local_training_core": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
+            "run_method_owned_peft_encoder_local_training_core"
+        ),
+        "transient_model_cache_releaser": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
+            "release_transient_model_cache"
+        ),
+        "update_artifact_byte_counter": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "server_owned_peft_encoder_update_artifact_byte_count"
+        ),
+        "update_uploader": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "upload_agent_local_peft_encoder_update"
+        ),
+        "query_ssl_training_backend_factory": (
+            "methods.adaptation.peft_text_encoder.update_family_runtime."
+            "build_training_backend_for_peft_encoder_state"
+        ),
+        "query_ssl_request_factory": (
+            "agent.src.services.training.execution.query_ssl_local_training_service."
+            "QuerySslPeftEncoderLocalTrainingRequest"
+        ),
+        "query_ssl_training_runner": (
+            "agent.src.services.training.execution.query_ssl_local_training_service."
+            "run_query_ssl_peft_encoder_local_training"
+        ),
+    }
+
+
+def _peft_server_round_runtime_callables() -> dict[str, str]:
+    return {
+        "supervised_seed_artifact_names": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "supervised_seed.peft_encoder_supervised_seed_artifact_names"
+        ),
+        "supervised_seed_revision_builder": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "supervised_seed.build_peft_encoder_supervised_seed_revision"
+        ),
+        "supervised_seed_projection_builder": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "supervised_seed."
+            "build_peft_encoder_supervised_seed_projection_from_runtime_payload"
+        ),
+        "supervised_seed_seed": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "supervised_seed.peft_encoder_supervised_seed_step_seed"
+        ),
+        "final_projection_state_resolver": (
+            "methods.adaptation.peft_text_encoder.evaluation.require_peft_encoder_state"
+        ),
+        "final_projection_artifacts_builder": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "final_projection.build_peft_encoder_final_projection_artifacts_from_state"
+        ),
+    }
+
+
 def _default_round_runtime_config(
     *,
     payload_adapter_kind: str = "peft_classifier",
@@ -546,6 +620,16 @@ def _default_round_runtime_config(
         final_projection_builder=final_projection_builder,
         transient_resource_cleaner=transient_resource_cleaner,
         local_objective_executors=local_objective_executors,
+        client_round_runtime=(
+            _peft_client_round_runtime_callables()
+            if update_family_name == "peft_text_encoder"
+            else {}
+        ),
+        server_round_runtime=(
+            _peft_server_round_runtime_callables()
+            if update_family_name == "peft_text_encoder"
+            else {}
+        ),
     )
 
 

@@ -61,8 +61,10 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
     RoundBaseSnapshotCache,
 )
-from scripts.runtime_adapters.federated_agent import base_state_materialization
-from scripts.runtime_adapters.federated_agent import generic_client_runtime_bridge
+from scripts.runtime_adapters.federated_agent import (
+    base_state_materialization,
+    generic_client_runtime_bridge,
+)
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
@@ -86,6 +88,51 @@ from shared.src.contracts.training_contracts import (
 build_peft_encoder_helper_provider_for_local_ssl_policy = (
     helper_provider.build_peft_encoder_helper_provider_for_local_ssl_policy
 )
+
+
+def _peft_client_round_runtime_callables() -> dict[str, str]:
+    return {
+        "base_state_materializer": (
+            "scripts.runtime_adapters.federated_agent.base_state_materialization."
+            "load_peft_encoder_base_parameters_with_timing"
+        ),
+        "base_partition_state_materializer": (
+            "scripts.runtime_adapters.federated_agent.base_state_materialization."
+            "load_peft_encoder_base_partition_parameters_with_timing"
+        ),
+        "delta_materializer_factory": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "PeftEncoderDeltaMaterializer"
+        ),
+        "method_owned_local_training_core": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
+            "run_method_owned_peft_encoder_local_training_core"
+        ),
+        "transient_model_cache_releaser": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
+            "release_transient_model_cache"
+        ),
+        "update_artifact_byte_counter": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "server_owned_peft_encoder_update_artifact_byte_count"
+        ),
+        "update_uploader": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "upload_agent_local_peft_encoder_update"
+        ),
+        "query_ssl_training_backend_factory": (
+            "methods.adaptation.peft_text_encoder.update_family_runtime."
+            "build_training_backend_for_peft_encoder_state"
+        ),
+        "query_ssl_request_factory": (
+            "agent.src.services.training.execution.query_ssl_local_training_service."
+            "QuerySslPeftEncoderLocalTrainingRequest"
+        ),
+        "query_ssl_training_runner": (
+            "agent.src.services.training.execution.query_ssl_local_training_service."
+            "run_query_ssl_peft_encoder_local_training"
+        ),
+    }
 
 
 def test_peft_training_backend_owns_simulation_inline_executor_wiring() -> None:
@@ -408,6 +455,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         _fake_build_peft_encoder_model,
     )
     from scripts.runtime_adapters.federated_agent import base_state_materialization
+
     monkeypatch.setattr(
         base_state_materialization,
         "load_peft_encoder_base_parameters_with_timing",
@@ -476,6 +524,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         round_runtime_config=SimpleNamespace(
             update_family_name="peft_text_encoder",
             runtime_payload_for_update_family=lambda: object(),
+            client_round_runtime=_peft_client_round_runtime_callables(),
         ),
         local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
             device="cpu",

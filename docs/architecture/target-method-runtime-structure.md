@@ -134,6 +134,10 @@ scripts/
   `conf/strategy_axes/model_architecture/update_family/*`는 update family 이름과
   runtime payload key, methods-owned initial state builder, validation evaluator,
   final projection builder, transient resource cleaner path를 제공할 수 있다.
+  client/server round 중 family-specific callable이 필요하면
+  `client_round_runtime` / `server_round_runtime` 아래에 fully-qualified callable
+  path로 선언한다. scripts bridge는 이 값을 import해 실행만 하고 update-family
+  이름으로 module path나 function prefix를 만들지 않는다.
   runtime payload 일부를 TrainingTask objective extra로 전달해야 하는 family는
   objective payload scope와 제외 key를 같은 update-family leaf에 선언한다.
   `conf/strategy_axes/fl_topology/server_step/*`처럼 runtime capability leaf도
@@ -262,7 +266,8 @@ Adapter 뒤로 옮긴다.
 
 - FL/central runner가 update family나 method 이름으로 분기하는 지점을 제거한다.
 - scripts runtime adapter는 artifact load, request mapping, repository wiring만 맡긴다.
-- 새 classifier/prototype method를 추가해도 `scripts/experiments/fl_ssl/run.py`가
+- 새 classifier/prototype method를 추가해도
+  `scripts/experiments/fl_ssl/run_federated_simulation.py`와 generic runtime bridge가
   바뀌지 않는 architecture test를 둔다.
 
 ### 5단계: shared contract v2
@@ -297,7 +302,9 @@ tests/*
 그리고 아래 파일은 바뀌지 않아야 한다.
 
 ```text
-scripts/experiments/fl_ssl/run.py
+scripts/experiments/fl_ssl/run_federated_simulation.py
+scripts/runtime_adapters/federated_agent/generic_client_runtime_bridge.py
+scripts/runtime_adapters/federated_server/generic_server_runtime_bridge.py
 ```
 
 이 조건이 깨지면 Module의 Interface가 충분히 깊지 않고, method/update-family Seam이

@@ -527,6 +527,21 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "generic_client_runtime_bridge."
         "run_query_ssl_client_round_if_supported",
     ]
+    assert cfg.round_runtime.client_round_runtime.base_state_materializer == (
+        "scripts.runtime_adapters.federated_agent.base_state_materialization."
+        "load_peft_encoder_base_parameters_with_timing"
+    )
+    assert cfg.round_runtime.client_round_runtime.query_ssl_training_runner == (
+        "agent.src.services.training.execution.query_ssl_local_training_service."
+        "run_query_ssl_peft_encoder_local_training"
+    )
+    assert (
+        cfg.round_runtime.server_round_runtime.final_projection_artifacts_builder
+        == (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "final_projection.build_peft_encoder_final_projection_artifacts_from_state"
+        )
+    )
     assert cfg.round_runtime.initial_state_builder == (
         "methods.adaptation.peft_text_encoder.update_family_runtime."
         "build_initial_peft_encoder_state"
@@ -765,6 +780,21 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "generic_client_runtime_bridge."
         "run_query_ssl_client_round_if_supported",
     ]
+    assert cfg.round_runtime.client_round_runtime.base_state_materializer == (
+        "scripts.runtime_adapters.federated_agent.base_state_materialization."
+        "load_peft_encoder_base_parameters_with_timing"
+    )
+    assert cfg.round_runtime.client_round_runtime.query_ssl_training_runner == (
+        "agent.src.services.training.execution.query_ssl_local_training_service."
+        "run_query_ssl_peft_encoder_local_training"
+    )
+    assert (
+        cfg.round_runtime.server_round_runtime.final_projection_artifacts_builder
+        == (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "final_projection.build_peft_encoder_final_projection_artifacts_from_state"
+        )
+    )
     assert cfg.round_runtime.initial_state_builder == (
         "methods.adaptation.peft_text_encoder.update_family_runtime."
         "build_initial_peft_encoder_state"
@@ -996,8 +1026,7 @@ def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm()
     assert capability_plan.server_update_policy_name == "fedavg_merged_delta"
 
 
-def test_method_owned_fedmatch_labels_at_client_scenario_derives_capabilities(
-) -> None:
+def test_method_owned_fedmatch_labels_at_client_scenario_derives_capabilities() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
@@ -1499,10 +1528,7 @@ def test_run_peft_supervised_control_defaults_to_gpu_online_scaffold() -> None:
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert cfg.trainable_surface.name == "peft_text_encoder"
-    assert (
-        cfg.trainable_surface.trainable_state
-        == "peft_adapter_and_classifier_head"
-    )
+    assert cfg.trainable_surface.trainable_state == "peft_adapter_and_classifier_head"
     assert cfg.peft_adapter.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
     assert cfg.output_dir == "runs/run_peft_supervised_control"

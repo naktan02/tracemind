@@ -98,6 +98,8 @@ def build_protocol_payload(
             "local_objective_executors": list(
                 round_runtime_config.local_objective_executors
             ),
+            "client_round_runtime": dict(round_runtime_config.client_round_runtime),
+            "server_round_runtime": dict(round_runtime_config.server_round_runtime),
             "initial_state_builder": round_runtime_config.initial_state_builder,
             "validation_evaluator": round_runtime_config.validation_evaluator,
             "final_projection_builder": (round_runtime_config.final_projection_builder),

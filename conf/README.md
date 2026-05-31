@@ -65,6 +65,9 @@ conf/
   실제 구현되기 전에는 method별 leaf를 추가하지 않는다.
 - update family와 runtime callable path는
   `strategy_axes/model_architecture/update_family`가 선언한다.
+- family-specific client/server round callable은 같은 leaf의
+  `client_round_runtime` / `server_round_runtime` 아래에 선언한다. scripts bridge는
+  family 이름으로 module path를 조립하지 않는다.
 - update family가 runtime payload 일부를 training objective extra로 넘겨야 하면,
   entrypoint가 family 이름으로 분기하지 않고 update-family leaf의
   `training_objective_payload_scope` 선언을 따른다.
