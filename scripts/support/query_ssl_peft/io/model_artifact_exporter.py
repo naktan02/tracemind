@@ -24,11 +24,26 @@ class QueryPeftModelArtifactExporter:
     ) -> None:
         model.backbone.save_pretrained(paths.adapter_output_dir)
         tokenizer.save_pretrained(paths.adapter_output_dir)
-        torch.save(
-            {
-                "classifier_state_dict": model.classifier.state_dict(),
-                "categories": categories,
-                "hidden_size": int(model.classifier.in_features),
-            },
-            paths.classifier_path,
+        save_classifier_head_artifact(
+            model=model,
+            categories=categories,
+            classifier_path=paths.classifier_path,
         )
+
+
+def save_classifier_head_artifact(
+    *,
+    model: Any,
+    categories: list[str],
+    classifier_path,
+) -> None:
+    """linear classifier head checkpoint를 공통 shape로 저장한다."""
+
+    torch.save(
+        {
+            "classifier_state_dict": model.classifier.state_dict(),
+            "categories": categories,
+            "hidden_size": int(model.classifier.in_features),
+        },
+        classifier_path,
+    )

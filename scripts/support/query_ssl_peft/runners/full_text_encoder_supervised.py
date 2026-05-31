@@ -1,4 +1,4 @@
-"""Query-domain PEFT supervised baseline runner."""
+"""Full text encoder supervised baseline runner."""
 
 from __future__ import annotations
 
@@ -6,17 +6,22 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from methods.adaptation.peft_text_encoder.training.loops import (
-    train_classifier as train_query_peft_classifier,
+from methods.adaptation.full_text_encoder.training.modeling import (
+    build_model as build_full_text_encoder_model,
 )
-from scripts.support.query_ssl_peft.io.artifacts import write_run_artifacts
+from methods.adaptation.text_encoder_classifier.training import (
+    train_classifier as train_text_encoder_classifier,
+)
+from scripts.support.query_ssl_peft.io.full_text_encoder_artifacts import (
+    write_full_text_encoder_run_artifacts,
+)
 from scripts.support.query_ssl_peft.runners.supervised_text_encoder import (
     run_supervised_text_encoder_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
-def run_supervised_peft_baseline(
+def run_full_text_encoder_supervised_baseline(
     cfg,
     *,
     train_rows: list[LabeledQueryRow] | None = None,
@@ -28,11 +33,7 @@ def run_supervised_peft_baseline(
     extra_manifest: Mapping[str, Any] | None = None,
     categories_override: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, str]:
-    """PEFT baseline을 실행한다.
-
-    기본 경로는 cfg가 가리키는 JSONL을 읽는다. query adaptation처럼 이미 메모리에
-    조립된 labeled row가 있으면 override로 받아 JSONL bridge 없이 바로 학습한다.
-    """
+    """Full text encoder + linear head supervised baseline을 실행한다."""
 
     return run_supervised_text_encoder_baseline(
         cfg=cfg,
@@ -44,8 +45,8 @@ def run_supervised_peft_baseline(
         trainer_version_override=trainer_version_override,
         extra_manifest=extra_manifest,
         categories_override=categories_override,
-        train_classifier_func=train_query_peft_classifier,
-        write_artifacts_func=write_run_artifacts,
-        model_builder=None,
-        trainer_version_prefix="peft_clf",
+        train_classifier_func=train_text_encoder_classifier,
+        write_artifacts_func=write_full_text_encoder_run_artifacts,
+        model_builder=build_full_text_encoder_model,
+        trainer_version_prefix="full_text_encoder_clf",
     )

@@ -94,6 +94,7 @@ def test_trainable_state_update_family_leafs_are_executable_surfaces() -> None:
         "entrypoints/fl_ssl/materialize_fl_client_split",
         "entrypoints/fl_ssl/run_federated_simulation",
         "entrypoints/central/ssl_control/run_peft_supervised_control",
+        "entrypoints/central/ssl_control/run_full_text_encoder_supervised_control",
         "entrypoints/central/ssl_control/run_peft_ssl_control",
     ],
 )
@@ -307,6 +308,50 @@ def test_run_peft_supervised_control_supports_source_and_budget_overrides() -> N
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
+
+
+def test_run_full_text_encoder_supervised_control_supports_transfer_overrides() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/ssl_control/"
+                "run_full_text_encoder_supervised_control"
+            ),
+            overrides=[
+                "query_data_selection.labeled=szegeelim_general4",
+                "query_data_selection.validation=ourafla_reddit",
+                "query_data_selection.test=ourafla_reddit",
+                "run_controls/central_ssl/budget=smoke",
+            ],
+        )
+
+    assert cfg.trainable_surface.name == "full_text_encoder"
+    assert cfg.trainable_surface.trainable_state == "full_encoder_and_classifier_head"
+    assert cfg.trainable_surface.requires_peft_adapter is False
+    assert "peft_adapter" not in cfg
+    assert cfg.query_data_selection.labeled == "szegeelim_general4"
+    assert cfg.query_data_selection.validation == "ourafla_reddit"
+    assert cfg.query_data_selection.test == "ourafla_reddit"
+    assert cfg.train_jsonl.endswith(
+        "data/datasets/szegeelim_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+    )
+    assert cfg.eval_sets.validation.endswith(
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/validation.jsonl"
+    )
+    assert cfg.eval_sets.test.endswith(
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/test.jsonl"
+    )
+    assert cfg.output_dir == "runs/_smoke/run_full_text_encoder_supervised_control"
+    assert cfg.model_output_dir == "data/artifacts/full_text_encoder_models"
+    assert (
+        cfg.classifier_output_dir == "data/artifacts/full_text_encoder_classifier_heads"
+    )
+    assert cfg.learning_rate == 0.00002
+    assert cfg.classifier_learning_rate == 0.0002
 
 
 def test_run_peft_ssl_control_supports_auto_local_runtime_override() -> None:
@@ -1532,6 +1577,27 @@ def test_run_peft_supervised_control_defaults_to_gpu_online_scaffold() -> None:
     assert cfg.peft_adapter.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
     assert cfg.output_dir == "runs/run_peft_supervised_control"
+    assert cfg.central_ssl_budget.output_root == "runs"
+
+
+def test_run_full_text_encoder_supervised_control_defaults_to_gpu_online() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/ssl_control/"
+                "run_full_text_encoder_supervised_control"
+            )
+        )
+
+    assert cfg.dataset.name == "ourafla"
+    assert cfg.runtime.name == "gpu_online"
+    assert cfg.runtime.device == "cuda"
+    assert cfg.paper_backbone.name == "mxbai_encoder"
+    assert cfg.trainable_surface.name == "full_text_encoder"
+    assert cfg.trainable_surface.trainable_state == "full_encoder_and_classifier_head"
+    assert cfg.trainable_surface.supports_initial_adapter is False
+    assert cfg.selection_set == "validation"
+    assert cfg.output_dir == "runs/run_full_text_encoder_supervised_control"
     assert cfg.central_ssl_budget.output_root == "runs"
 
 

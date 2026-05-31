@@ -12,6 +12,9 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from scripts.support.query_ssl_peft.io.artifacts import write_run_artifacts
+from scripts.support.query_ssl_peft.io.full_text_encoder_artifacts import (
+    write_full_text_encoder_run_artifacts,
+)
 
 
 class _DummySaver:
@@ -186,3 +189,75 @@ def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None
     assert validation_projection["row_count"] == 2
     assert Path(validation_projection["points_jsonl"]).exists()
     assert Path(validation_projection["figure_png"]).exists()
+
+
+def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
+    tmp_path: Path,
+) -> None:
+    cfg = SimpleNamespace(
+        output_dir=tmp_path / "runs",
+        model_output_dir=tmp_path / "full_models",
+        classifier_output_dir=tmp_path / "classifiers",
+        central_ssl_budget=SimpleNamespace(name="smoke", output_root="runs/_smoke"),
+        train_jsonl=tmp_path / "train.jsonl",
+        selection_set="validation",
+        seed=7,
+        epochs=3,
+        train_batch_size=4,
+        eval_batch_size=5,
+        learning_rate=0.00002,
+        classifier_learning_rate=0.0002,
+        weight_decay=0.01,
+        max_grad_norm=1.0,
+    )
+    model = SimpleNamespace(
+        backbone=_DummySaver("model.txt"),
+        classifier=_DummyClassifier(),
+    )
+    tokenizer = _DummySaver("tokenizer.txt")
+
+    outputs = write_full_text_encoder_run_artifacts(
+        cfg=cfg,
+        trainer_version="full-run-001",
+        created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        model=model,
+        tokenizer=tokenizer,
+        categories=["alpha", "beta"],
+        eval_set_map={"validation": tmp_path / "validation.jsonl"},
+        training_device="cpu",
+        backbone_summary={
+            "name": "dummy-backbone",
+            "trainable_surface": {
+                "name": "full_text_encoder",
+                "trainable_state": "full_encoder_and_classifier_head",
+            },
+        },
+        history=[{"epoch": 1, "loss": 0.5}],
+        best_selection_report={"macro_f1": 0.75},
+        results={"test": {"accuracy": 0.8}},
+        extra_manifest={"experiment_family": "full_supervised"},
+    )
+
+    model_dir = Path(outputs["model_dir"])
+    classifier_path = Path(outputs["classifier_path"])
+    manifest_path = Path(outputs["manifest"])
+    report_path = Path(outputs["report_json"])
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert "adapter_dir" not in outputs
+    assert Path(outputs["output_dir"]) == tmp_path / "runs" / "full-run-001"
+    assert (Path(outputs["output_dir"]) / "logs").is_dir()
+    assert (model_dir / "model.txt").read_text(encoding="utf-8") == "saved\n"
+    assert (model_dir / "tokenizer.txt").read_text(encoding="utf-8") == "saved\n"
+    assert torch.load(classifier_path, weights_only=False)["hidden_size"] == 384
+    assert manifest["model_dir"] == str(model_dir)
+    assert manifest["classifier_path"] == str(classifier_path)
+    assert manifest["trainable_surface"] == {
+        "name": "full_text_encoder",
+        "trainable_state": "full_encoder_and_classifier_head",
+    }
+    assert manifest["experiment_family"] == "full_supervised"
+    assert report["schema_version"] == "central_full_text_encoder_eval.v1"
+    assert report["manifest"] == manifest
+    assert report["results"] == {"test": {"accuracy": 0.8}}

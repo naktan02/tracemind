@@ -24,6 +24,38 @@ def build_query_peft_run_manifest(
     paths: QueryPeftRunArtifactPaths,
     extra_manifest: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    return build_query_text_encoder_run_manifest(
+        cfg=cfg,
+        trainer_version=trainer_version,
+        eval_set_map=eval_set_map,
+        training_device=training_device,
+        backbone_summary=backbone_summary,
+        history=history,
+        best_selection_report=best_selection_report,
+        categories=categories,
+        model_artifact_fields={
+            "adapter_dir": str(paths.adapter_output_dir),
+            "classifier_path": str(paths.classifier_path),
+        },
+        extra_manifest=extra_manifest,
+    )
+
+
+def build_query_text_encoder_run_manifest(
+    *,
+    cfg: Any,
+    trainer_version: str,
+    eval_set_map: dict[str, Path],
+    training_device: str,
+    backbone_summary: dict[str, Any],
+    history: list[dict[str, Any]],
+    best_selection_report: dict[str, Any],
+    categories: list[str],
+    model_artifact_fields: Mapping[str, object],
+    extra_manifest: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """중앙 text encoder classifier run manifest 공통 필드를 조립한다."""
+
     manifest = {
         "trainer_version": trainer_version,
         "train_jsonl": str(cfg.train_jsonl),
@@ -44,12 +76,11 @@ def build_query_peft_run_manifest(
         "weight_decay": float(cfg.weight_decay),
         "max_grad_norm": float(cfg.max_grad_norm),
         "categories": categories,
-        "adapter_dir": str(paths.adapter_output_dir),
-        "classifier_path": str(paths.classifier_path),
         "backbone": backbone_summary,
         "best_selection_report": best_selection_report,
         "history": history,
     }
+    manifest.update(dict(model_artifact_fields))
     trainable_surface = backbone_summary.get("trainable_surface")
     if isinstance(trainable_surface, Mapping):
         manifest["trainable_surface"] = dict(trainable_surface)
@@ -69,6 +100,23 @@ def build_query_peft_eval_report(
 ) -> dict[str, Any]:
     return {
         "schema_version": "central_peft_classifier_eval.v1",
+        "trainer_version": trainer_version,
+        "manifest": manifest,
+        "results": results,
+    }
+
+
+def build_query_text_encoder_eval_report(
+    *,
+    schema_version: str,
+    trainer_version: str,
+    manifest: dict[str, Any],
+    results: dict[str, Any],
+) -> dict[str, Any]:
+    """중앙 text encoder classifier eval report wrapper를 조립한다."""
+
+    return {
+        "schema_version": schema_version,
         "trainer_version": trainer_version,
         "manifest": manifest,
         "results": results,

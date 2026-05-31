@@ -45,6 +45,8 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
     소유하고, 실제 runtime 구현이 완료된 method만 열어야 한다.
 - `central/ssl_control/run_peft_supervised_control.py`
   - query-domain 적응 단계의 `frozen backbone + PEFT text encoder + linear head` canonical supervised baseline entrypoint.
+- `central/ssl_control/run_full_text_encoder_supervised_control.py`
+  - 중앙 실험용 `full mxbai encoder + linear head` supervised-only transfer baseline entrypoint.
 - `central/ssl_control/run_peft_ssl_control.py`
   - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT text encoder scaffold에 얹는
     consistency family SSL entrypoint.
@@ -56,8 +58,8 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
     현재 augmentation reader는 entrypoint의 `query_ssl_augmenter` 고정 설정으로
     precomputed USB candidates만 사용한다.
 - `scripts/support/query_ssl_peft/`
-  - `runners/{supervised,consistency,pseudo_label,query_adaptation}.py`가 query-domain
-    PEFT text encoder scaffold를 실행한다.
+  - `runners/{supervised,full_text_encoder_supervised,consistency,pseudo_label,query_adaptation}.py`가 query-domain
+    central supervised/SSL scaffold를 실행한다.
   - Query SSL family 공통 scaffolding은 `query_ssl/common.py`, strict USB NLP
     view preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
   - bootstrap teacher와 pseudo-label replay helper는 public experiment entrypoint가

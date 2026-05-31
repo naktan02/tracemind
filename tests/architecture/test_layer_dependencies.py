@@ -1560,6 +1560,11 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         / "central"
         / "ssl_control"
         / "run_peft_supervised_control.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "central"
+        / "ssl_control"
+        / "run_full_text_encoder_supervised_control.py",
         CONF_SRC
         / "entrypoints"
         / "central"
@@ -1570,6 +1575,11 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         / "central"
         / "ssl_control"
         / "run_peft_supervised_control.yaml",
+        CONF_SRC
+        / "entrypoints"
+        / "central"
+        / "ssl_control"
+        / "run_full_text_encoder_supervised_control.yaml",
     )
     legacy_paths = (
         SCRIPTS_SRC

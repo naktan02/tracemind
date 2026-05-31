@@ -51,13 +51,9 @@ def build_query_peft_run_artifact_paths(
     trainer_version: str,
     created_at: datetime,
 ) -> QueryPeftRunArtifactPaths:
-    base_output_dir = Path(str(cfg.output_dir))
-    run_group = _resolve_query_ssl_run_group(cfg)
-    if run_group is not None:
-        base_output_dir = base_output_dir / run_group
-    output_dir = build_run_dir(
-        base_output_dir,
-        run_id=trainer_version,
+    output_dir = build_query_text_run_output_dir(
+        cfg=cfg,
+        trainer_version=trainer_version,
         created_at=created_at,
     )
     adapter_output_dir = Path(str(cfg.adapter_output_dir)) / trainer_version
@@ -73,6 +69,25 @@ def build_query_peft_run_artifact_paths(
         report_path=output_dir / "reports" / "report.json",
         logs_dir=output_dir / "logs",
         projections_dir=output_dir / "projections",
+    )
+
+
+def build_query_text_run_output_dir(
+    *,
+    cfg: Any,
+    trainer_version: str,
+    created_at: datetime,
+) -> Path:
+    """Query text encoder 계열 중앙 run output dir을 계산한다."""
+
+    base_output_dir = Path(str(cfg.output_dir))
+    run_group = _resolve_query_ssl_run_group(cfg)
+    if run_group is not None:
+        base_output_dir = base_output_dir / run_group
+    return build_run_dir(
+        base_output_dir,
+        run_id=trainer_version,
+        created_at=created_at,
     )
 
 

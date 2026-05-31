@@ -25,6 +25,8 @@ central fixed embedding + classifier seed
 - `WindowSummary`, `NormPack`은 활성 경로가 아니다.
 - `PrototypePack`은 bootstrap/comparison/reference artifact이며 메인 판정기가 아니다.
 - query-domain 적응은 현재 `PEFT text encoder + linear head` scaffold를 쓴다.
+  중앙 supervised-only ablation으로 `full_text_encoder + linear head` scaffold도
+  열려 있지만, canonical FL/runtime update family는 아니다.
 - `classifier_head`는 shared state/payload 안의 head value object 이름으로만 남긴다.
   top-level update family나 config 축 이름으로 쓰지 않는다.
 - `lora_classifier`, `adapter_family_name`, `diagonal_scale`은 active 실행 축이 아니다.
@@ -81,9 +83,9 @@ central fixed embedding + classifier seed
   `consistency_method` objective payload를 request/report protocol에 싣지 않는다.
 - 중앙 SSL `augmentation_source` strategy group은 제거했고, precomputed USB candidate
   reader는 entrypoint의 `query_ssl_augmenter` 고정 설정으로 남겼다.
-- `trainable_surface`는 중앙 PEFT trainer manifest와 artifact kind를 설명하는
-  scaffold/provenance 축으로 유지한다. 새 surface leaf는 실제 구현/검증 전까지
-  추가하지 않는다.
+- `trainable_surface`는 중앙 text encoder trainer manifest와 artifact kind를 설명하는
+  scaffold/provenance 축으로 유지한다. 현재 실행 surface는 `peft_text_encoder`와
+  중앙 실험용 `full_text_encoder`다.
 - FedMatch public Hydra leaf는 `fssl_method=fedmatch` 하나로 유지하고,
   labels 위치는 `ssl_method.scenario`가 소유한다.
 - result-index와 dashboard reader는 current `peft_adapter_*`,

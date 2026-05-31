@@ -196,6 +196,15 @@ PEFT supervised baseline:
 uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py
 ```
 
+Full text encoder supervised-only baseline:
+
+```bash
+uv run python scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py \
+  query_data_selection.labeled=szegeelim_general4 \
+  query_data_selection.validation=ourafla_reddit \
+  query_data_selection.test=ourafla_reddit
+```
+
 USB PseudoLabel baseline:
 
 ```bash
@@ -223,8 +232,9 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
 
 중앙 SSL smoke/test 실행은 `run_controls/central_ssl/budget=smoke`를 사용한다.
 이 경우 산출물은 `runs/_smoke/run_peft_ssl_control/...` 또는
-`runs/_smoke/run_peft_supervised_control` 아래에 저장되어 main run과 섞이지
-않는다.
+`runs/_smoke/run_peft_supervised_control`,
+`runs/_smoke/run_full_text_encoder_supervised_control` 아래에 저장되어 main run과
+섞이지 않는다.
 기본 dashboard/index ingest(`--runs-root runs`)는 `runs/_smoke/**` report를
 제외한다.
 

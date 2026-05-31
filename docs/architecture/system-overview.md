@@ -138,6 +138,7 @@ Reddit Labeled Data
 | 책임 | 파일 |
 |---|---|
 | PEFT supervised entrypoint | `scripts/experiments/central/ssl_control/run_peft_supervised_control.py` |
+| Full text encoder supervised entrypoint | `scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py` |
 | PEFT SSL entrypoint | `scripts/experiments/central/ssl_control/run_peft_ssl_control.py` |
 | 중앙/FL 공통 PEFT SSL runtime support | `scripts/support/query_ssl_peft/*` |
 | trainer core | `methods/adaptation/query_text_views/*`, `methods/ssl/*`, `methods/adaptation/*` |
