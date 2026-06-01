@@ -7,7 +7,13 @@ from typing import Any
 
 from torch import Tensor
 
-from ...base import QuerySslStepResult, TextBatchClassifier
+from ...base import (
+    QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
+    QUERY_SSL_ALGORITHM_STATE_DATASET_STATE,
+    QuerySslRuntimeRequirements,
+    QuerySslStepResult,
+    TextBatchClassifier,
+)
 from ...common import compute_prob
 from ...hooks.adaptive_thresholding import FlexMatchThresholdingHook
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
@@ -270,6 +276,14 @@ def _require_row_indices(unlabeled_batch: Mapping[str, Any]) -> Tensor:
     display_name="FlexMatch",
     required_views=USB_MULTIVIEW_REQUIRED_VIEWS,
     default_uses_labeled_batches=True,
+    runtime_requirements=QuerySslRuntimeRequirements(
+        algorithm_state_surface=frozenset(
+            {
+                QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
+                QUERY_SSL_ALGORITHM_STATE_DATASET_STATE,
+            }
+        ),
+    ),
 )
 def build_flexmatch_algorithm(parameters: Mapping[str, Any]) -> FlexMatchAlgorithm:
     """Hydra method parameter mapping으로 FlexMatch algorithm을 만든다."""

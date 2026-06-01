@@ -7,7 +7,14 @@ from typing import Any
 
 from torch import Tensor
 
-from ...base import QuerySslRequiredViews, QuerySslStepResult, TextBatchClassifier
+from ...base import (
+    QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER,
+    QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
+    QuerySslRequiredViews,
+    QuerySslRuntimeRequirements,
+    QuerySslStepResult,
+    TextBatchClassifier,
+)
 from ...common import compute_prob
 from ...hooks.consistency import CrossEntropyConsistencyLossHook
 from ...hooks.masking import FixedThresholdMaskingHook
@@ -219,6 +226,10 @@ def _compute_usb_unsup_warmup(
         view_builder_name="usb_weak",
     ),
     default_uses_labeled_batches=True,
+    runtime_requirements=QuerySslRuntimeRequirements(
+        batch_surface=QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
+        algorithm_state_surface=frozenset({QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER}),
+    ),
 )
 def build_pseudolabel_algorithm(parameters: Mapping[str, Any]) -> PseudoLabelAlgorithm:
     """Hydra method parameter mapping으로 PseudoLabel algorithm을 만든다."""

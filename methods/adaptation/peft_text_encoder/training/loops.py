@@ -23,7 +23,9 @@ from methods.adaptation.local_objective_regularizers.fedprox import (
 from methods.adaptation.text_encoder_classifier import training as _text_training
 from methods.ssl.base import (
     QuerySslAlgorithm,
+    QuerySslStepContext,
     QuerySslStepResult,
+    compute_query_ssl_algorithm_step,
     configure_query_ssl_algorithm_dataset,
     configure_query_ssl_algorithm_training,
 )
@@ -216,14 +218,24 @@ def train_query_ssl_classifier(
             )
 
             step_output: QuerySslStepResult | None = None
+            step_context = QuerySslStepContext(
+                epoch_index=epoch,
+                step_index=step_index,
+                global_step=completed_steps + 1,
+                total_train_steps=step_budget.total_train_steps,
+                num_classes=len(categories),
+                device=torch.device(device),
+            )
 
             def compute_total_loss() -> torch.Tensor:
                 nonlocal step_output
 
-                step_output = algorithm.compute_step(
+                step_output = compute_query_ssl_algorithm_step(
+                    algorithm,
                     model=model,
                     labeled_batch=labeled_batch,
                     unlabeled_batch=unlabeled_batch,
+                    step_context=step_context,
                 )
                 total_loss = step_output.total_loss
                 if fedprox.enabled:

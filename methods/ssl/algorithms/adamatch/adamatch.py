@@ -8,7 +8,12 @@ from typing import Any
 from torch import Tensor
 from torch.nn import functional as F
 
-from ...base import QuerySslStepResult, TextBatchClassifier
+from ...base import (
+    QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA,
+    QuerySslRuntimeRequirements,
+    QuerySslStepResult,
+    TextBatchClassifier,
+)
 from ...common import compute_prob
 from ...hooks.adaptive_thresholding import RelativeConfidenceThresholdingHook
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
@@ -277,6 +282,9 @@ class _AdaMatchMaskingAlgorithm:
     display_name="AdaMatch",
     required_views=USB_MULTIVIEW_REQUIRED_VIEWS,
     default_uses_labeled_batches=True,
+    runtime_requirements=QuerySslRuntimeRequirements(
+        algorithm_state_surface=frozenset({QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA}),
+    ),
 )
 def build_adamatch_algorithm(parameters: Mapping[str, Any]) -> AdaMatchAlgorithm:
     """Hydra method parameter mapping으로 AdaMatch algorithm을 만든다."""

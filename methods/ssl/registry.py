@@ -14,6 +14,7 @@ from .base import (
     QuerySslAlgorithmDescriptor,
     QuerySslAlgorithmFactory,
     QuerySslRequiredViews,
+    QuerySslRuntimeRequirements,
 )
 
 _QUERY_SSL_ALGORITHM_REGISTRY = MethodRegistry[QuerySslAlgorithmDescriptor](
@@ -34,6 +35,7 @@ def register_query_ssl_algorithm(
     required_views: QuerySslRequiredViews,
     display_name: str | None = None,
     default_uses_labeled_batches: bool = True,
+    runtime_requirements: QuerySslRuntimeRequirements | None = None,
 ) -> Callable[[QuerySslAlgorithmFactory], QuerySslAlgorithmFactory]:
     """algorithm_name으로 Query SSL algorithm factory를 등록하는 decorator."""
 
@@ -48,6 +50,9 @@ def register_query_ssl_algorithm(
             required_views=required_views,
             algorithm_factory=factory,
             default_uses_labeled_batches=default_uses_labeled_batches,
+            runtime_requirements=(
+                runtime_requirements or QuerySslRuntimeRequirements()
+            ),
         )
         _QUERY_SSL_ALGORITHM_REGISTRY.register(*names, item=descriptor)
         return factory

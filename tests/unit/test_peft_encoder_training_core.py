@@ -197,6 +197,32 @@ class _StatefulCountingQuerySslAlgorithm(_CountingQuerySslAlgorithm):
         }
 
 
+class _ContextAwareCountingQuerySslAlgorithm(_CountingQuerySslAlgorithm):
+    algorithm_name = "context_aware_counting"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.step_contexts = []
+
+    def compute_step(self, *, model, labeled_batch, unlabeled_batch):
+        raise AssertionError("context-aware algorithm should receive step context.")
+
+    def compute_step_with_context(
+        self,
+        *,
+        model,
+        labeled_batch,
+        unlabeled_batch,
+        step_context,
+    ):
+        self.step_contexts.append(step_context)
+        return super().compute_step(
+            model=model,
+            labeled_batch=labeled_batch,
+            unlabeled_batch=unlabeled_batch,
+        )
+
+
 def _build_unlabeled_loader() -> DataLoader[dict[str, torch.Tensor]]:
     rows = [
         {
@@ -278,6 +304,39 @@ def test_query_ssl_training_loads_initial_state_after_dataset_config() -> None:
 
     assert algorithm.events[:3] == ["dataset", "load", "training"]
     assert algorithm.steps == 5
+
+
+def test_query_ssl_training_passes_step_context_to_context_aware_algorithm() -> None:
+    torch.manual_seed(7)
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _ContextAwareCountingQuerySslAlgorithm()
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=2,
+        max_train_steps=2,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+    )
+
+    assert [context.global_step for context in algorithm.step_contexts] == [1, 2]
+    assert {context.total_train_steps for context in algorithm.step_contexts} == {2}
+    assert {context.num_classes for context in algorithm.step_contexts} == {2}
+    assert {context.device.type for context in algorithm.step_contexts} == {"cpu"}
 
 
 def test_fedprox_proximal_loss_uses_round_start_snapshot() -> None:
