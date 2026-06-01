@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
+from scripts.support.query_ssl_text_encoder.io.artifact_writer import (
+    write_json_artifact,
+)
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     dump_labeled_query_rows,
@@ -89,38 +91,28 @@ def write_query_adaptation_multiview_dataset(
     summary_path = resolved_output_path.with_suffix(
         f"{resolved_output_path.suffix}.summary.json"
     )
-    manifest_path.write_text(
-        json.dumps(
-            {
-                "schema_version": QUERY_ADAPTATION_MULTIVIEW_EXPORT_SCHEMA_VERSION,
-                "generated_at": effective_generated_at.isoformat(),
-                "annotation_source": annotation_source,
-                "row_count": len(rows),
-                "label_counts": dict(
-                    sorted(Counter(row["mapped_label_4"] for row in rows).items())
-                ),
-                "label_source_counts": dict(
-                    sorted(Counter(row["raw_label_scheme"] for row in rows).items())
-                ),
-            },
-            indent=2,
-            ensure_ascii=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    summary_path.write_text(
-        json.dumps(
-            _build_query_adaptation_multiview_summary(
-                dataset=dataset,
-                annotation_source=annotation_source,
-                generated_at=effective_generated_at,
+    write_json_artifact(
+        path=manifest_path,
+        payload={
+            "schema_version": QUERY_ADAPTATION_MULTIVIEW_EXPORT_SCHEMA_VERSION,
+            "generated_at": effective_generated_at.isoformat(),
+            "annotation_source": annotation_source,
+            "row_count": len(rows),
+            "label_counts": dict(
+                sorted(Counter(row["mapped_label_4"] for row in rows).items())
             ),
-            indent=2,
-            ensure_ascii=True,
-        )
-        + "\n",
-        encoding="utf-8",
+            "label_source_counts": dict(
+                sorted(Counter(row["raw_label_scheme"] for row in rows).items())
+            ),
+        },
+    )
+    write_json_artifact(
+        path=summary_path,
+        payload=_build_query_adaptation_multiview_summary(
+            dataset=dataset,
+            annotation_source=annotation_source,
+            generated_at=effective_generated_at,
+        ),
     )
     return QueryAdaptationMultiviewExportArtifacts(
         jsonl_path=resolved_output_path,

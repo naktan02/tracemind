@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from scripts.support.query_ssl_text_encoder.io.artifact_writer import (
+    write_json_artifact,
+)
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     dump_labeled_query_rows,
@@ -76,14 +78,8 @@ def write_labeled_row_export(
         "label_counts": manifest["label_counts"],
         "raw_label_scheme_counts": manifest["raw_label_scheme_counts"],
     }
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
-    )
-    summary_path.write_text(
-        json.dumps(summary, indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
-    )
+    write_json_artifact(path=manifest_path, payload=manifest)
+    write_json_artifact(path=summary_path, payload=summary)
     return LabeledRowExportArtifacts(
         jsonl_path=resolved_output_path,
         manifest_path=manifest_path,

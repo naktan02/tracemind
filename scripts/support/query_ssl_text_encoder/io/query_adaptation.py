@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -10,6 +9,9 @@ from math import fsum
 from pathlib import Path
 from typing import Any
 
+from scripts.support.query_ssl_text_encoder.io.artifact_writer import (
+    write_json_artifact,
+)
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     dump_labeled_query_rows,
@@ -91,22 +93,14 @@ def write_query_adaptation_peft_dataset(
             sorted(Counter(row["raw_label_scheme"] for row in rows).items())
         ),
     }
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
-    )
-    summary_path.write_text(
-        json.dumps(
-            _build_query_adaptation_summary(
-                dataset=dataset,
-                annotation_source=annotation_source,
-                generated_at=effective_generated_at,
-            ),
-            indent=2,
-            ensure_ascii=True,
-        )
-        + "\n",
-        encoding="utf-8",
+    write_json_artifact(path=manifest_path, payload=manifest)
+    write_json_artifact(
+        path=summary_path,
+        payload=_build_query_adaptation_summary(
+            dataset=dataset,
+            annotation_source=annotation_source,
+            generated_at=effective_generated_at,
+        ),
     )
     return QueryAdaptationPeftExportArtifacts(
         jsonl_path=resolved_output_path,

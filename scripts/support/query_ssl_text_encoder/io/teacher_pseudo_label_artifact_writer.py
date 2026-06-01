@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+
+from scripts.support.query_ssl_text_encoder.io.artifact_writer import (
+    write_json_artifact,
+    write_jsonl_artifact,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,8 +34,14 @@ class TeacherPseudoLabelArtifactWriter:
         prediction_summary_path = (
             export_dir / "teacher_unlabeled_predictions.summary.json"
         )
-        _write_jsonl(prediction_trace_path, prediction_trace_rows)
-        _write_json(prediction_summary_path, prediction_summary)
+        write_jsonl_artifact(
+            path=prediction_trace_path,
+            rows=prediction_trace_rows,
+        )
+        write_json_artifact(
+            path=prediction_summary_path,
+            payload=dict(prediction_summary),
+        )
         return TeacherPseudoLabelArtifactPaths(
             prediction_trace_jsonl=prediction_trace_path,
             prediction_summary_json=prediction_summary_path,
@@ -44,20 +54,8 @@ class TeacherPseudoLabelArtifactWriter:
         bootstrap_summary: Mapping[str, object],
     ) -> Path:
         bootstrap_summary_path = export_dir / "bootstrap.summary.json"
-        _write_json(bootstrap_summary_path, bootstrap_summary)
+        write_json_artifact(
+            path=bootstrap_summary_path,
+            payload=dict(bootstrap_summary),
+        )
         return bootstrap_summary_path
-
-
-def _write_json(path: Path, payload: Mapping[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(dict(payload), indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
-    )
-
-
-def _write_jsonl(path: Path, rows: Sequence[Mapping[str, object]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as file:
-        for row in rows:
-            file.write(json.dumps(dict(row), ensure_ascii=True) + "\n")
