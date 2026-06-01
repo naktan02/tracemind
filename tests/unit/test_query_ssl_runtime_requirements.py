@@ -6,12 +6,17 @@ from methods.ssl.base import (
     QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
     QUERY_SSL_ALGORITHM_STATE_DATASET_STATE,
     QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA,
+    QUERY_SSL_ALGORITHM_STATE_FEATURE_QUEUE,
+    QUERY_SSL_ALGORITHM_STATE_PROBABILITY_QUEUE,
     QUERY_SSL_ALGORITHM_STATE_STATELESS,
     QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER,
     QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
     QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
+    QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR,
     QUERY_SSL_INPUT_TRANSFORM_NONE,
     QUERY_SSL_MODEL_OUTPUT_LOGITS,
+    QUERY_SSL_MODEL_OUTPUT_POOLED_FEATURES,
+    QUERY_SSL_OPTIMIZER_LIFECYCLE_AUXILIARY_TRAINABLE_MODULE,
     QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,
     QUERY_SSL_TEACHER_STATE_NONE,
     QuerySslRuntimeRequirements,
@@ -56,6 +61,12 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
             }
         ),
         "pseudo_label": frozenset({QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER}),
+        "comatch": frozenset(
+            {
+                QUERY_SSL_ALGORITHM_STATE_FEATURE_QUEUE,
+                QUERY_SSL_ALGORITHM_STATE_PROBABILITY_QUEUE,
+            }
+        ),
     }
     expected_batch_surfaces = {
         "fixmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
@@ -63,6 +74,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         "adamatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "freematch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "pseudo_label": QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
+        "comatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR,
     }
 
     for algorithm_name, expected_state_surface in expected_state_surfaces.items():
@@ -70,10 +82,26 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         requirements = descriptor.runtime_requirements
 
         assert requirements.batch_surface == expected_batch_surfaces[algorithm_name]
-        assert requirements.model_outputs == frozenset({QUERY_SSL_MODEL_OUTPUT_LOGITS})
+        expected_model_outputs = frozenset({QUERY_SSL_MODEL_OUTPUT_LOGITS})
+        if algorithm_name == "comatch":
+            expected_model_outputs = frozenset(
+                {
+                    QUERY_SSL_MODEL_OUTPUT_LOGITS,
+                    QUERY_SSL_MODEL_OUTPUT_POOLED_FEATURES,
+                }
+            )
+        assert requirements.model_outputs == expected_model_outputs
         assert requirements.algorithm_state_surface == expected_state_surface
         assert requirements.input_transform_surface == QUERY_SSL_INPUT_TRANSFORM_NONE
-        assert requirements.optimizer_lifecycle == frozenset(
+        expected_optimizer_lifecycle = frozenset(
             {QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP}
         )
+        if algorithm_name == "comatch":
+            expected_optimizer_lifecycle = frozenset(
+                {
+                    QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,
+                    QUERY_SSL_OPTIMIZER_LIFECYCLE_AUXILIARY_TRAINABLE_MODULE,
+                }
+            )
+        assert requirements.optimizer_lifecycle == expected_optimizer_lifecycle
         assert requirements.teacher_state == QUERY_SSL_TEACHER_STATE_NONE

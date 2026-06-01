@@ -13,6 +13,7 @@ QuerySslAlgorithmFactory = Callable[[Mapping[str, Any]], "QuerySslAlgorithm"]
 
 QUERY_SSL_BATCH_SURFACE_WEAK_ONLY = "weak_only"
 QUERY_SSL_BATCH_SURFACE_WEAK_STRONG = "weak_strong"
+QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR = "weak_strong_pair"
 
 QUERY_SSL_MODEL_OUTPUT_LOGITS = "logits"
 QUERY_SSL_MODEL_OUTPUT_POOLED_FEATURES = "pooled_features"

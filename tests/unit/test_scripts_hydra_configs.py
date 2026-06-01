@@ -507,6 +507,27 @@ def test_run_peft_ssl_control_supports_adamatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
+def test_run_peft_ssl_control_supports_comatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=comatch_usb_v1",
+                "query_ssl_method.queue_batch=4",
+                "query_ssl_method.proj_size=2",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "comatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "comatch"
+    assert cfg.query_ssl_method.queue_batch == 4
+    assert cfg.query_ssl_method.proj_size == 2
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+    assert cfg.query_ssl_method.require_weak_strong_pair is True
+
+
 def test_run_peft_ssl_control_uses_entrypoint_precomputed_query_views() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(

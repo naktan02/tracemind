@@ -752,6 +752,8 @@ uv run pytest tests/unit/test_methods_ssl_hooks.py tests/unit/test_methods_comat
 
 ### Step 6. CoMatch tensor core와 algorithm adapter 구현
 
+상태: 완료 (2026-06-01)
+
 목표:
 
 - CoMatch 수식 core를 tensor-level function으로 먼저 검증한다.
@@ -782,6 +784,28 @@ uv run pytest tests/unit/test_methods_comatch.py tests/unit/test_scripts_hydra_c
 - supervised CE, weak probability, queue DA, memory smoothing, confidence mask,
   strong consistency, graph contrastive loss가 각각 unit test로 보인다.
 - Hydra leaf는 parameter와 조합만 소유한다.
+
+완료 기록:
+
+- `methods/ssl/algorithms/comatch/comatch.py`에 CoMatch tensor core와
+  `CoMatchAlgorithm` adapter를 추가하고 Query SSL registry에 `comatch`를 등록했다.
+- `COMATCH_REQUIRED_VIEWS`는 `usb_weak_strong_pair`를 요구하고, descriptor runtime
+  requirement는 `weak_strong_pair`, `logits + pooled_features`,
+  `feature_queue + probability_queue`, `auxiliary_trainable_module`을 선언한다.
+- projection head는 `CoMatchProjectionHead` auxiliary module로 생성되며 Step 4 lifecycle을
+  통해 optimizer/checkpoint에 연결된다. public classifier/update family payload에는
+  포함되지 않는다.
+- CoMatch tensor core는 supervised CE, weak probability, queue DA, memory smoothing,
+  confidence mask, strong consistency, graph target, contrastive loss를 분리된 함수와
+  deterministic unit test로 검증한다.
+- `methods/ssl/algorithms/comatch/original_spec.py`에 USB 원본 repository/commit/path와
+  v1 의도적 차이를 기록했다.
+- `conf/strategy_axes/ssl_objective/consistency_method/comatch_usb_v1.yaml`을 추가했다.
+  Hydra leaf는 parameter와 조합만 소유하고 수식 의미는 `methods/ssl/algorithms/comatch`
+  owner에 둔다.
+- `tests/unit/test_methods_comatch.py`, `tests/unit/test_query_ssl_runtime_requirements.py`,
+  `tests/unit/test_scripts_hydra_configs.py`가 registry, descriptor capability, tensor core,
+  state roundtrip, Hydra override를 검증한다.
 
 ### Step 7. Runner smoke와 architecture guard 고정
 

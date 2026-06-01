@@ -141,6 +141,13 @@ class CoMatchMemoryBank:
 
         return self.probability_queue[: self.filled_size]
 
+    def to(self, device: torch.device | str) -> "CoMatchMemoryBank":
+        """queue tensor를 target device로 옮기고 self를 반환한다."""
+
+        self.feature_queue = self.feature_queue.to(device)
+        self.probability_queue = self.probability_queue.to(device)
+        return self
+
     def export_state(self) -> CoMatchMemoryBankState:
         """resume checkpoint에 넣을 memory bank state를 반환한다."""
 
