@@ -1792,6 +1792,27 @@ def test_query_ssl_text_encoder_runtime_support_keeps_surface_names_separated() 
     )
 
 
+def test_query_ssl_text_encoder_common_context_does_not_default_to_peft() -> None:
+    checked_paths = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "runtime_context.py",
+        QUERY_SSL_TEXT_ENCODER_SRC / "query_ssl" / "common.py",
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "supervised_text_encoder.py",
+    )
+    forbidden_snippet = "methods.adaptation.peft_text_encoder"
+    violations = [
+        _relative_repo_path(path)
+        for path in checked_paths
+        if forbidden_snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "query_ssl_text_encoder 공통 context는 PEFT model builder를 기본값으로 "
+        "소유하지 않는다. PEFT runner가 PEFT builder를 주입하고, full/frozen/prototype "
+        "runner는 자기 surface builder를 주입해야 한다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
     checked_paths = (
         SCRIPTS_SRC / "workflows" / "result_index" / "schema.py",

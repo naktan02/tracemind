@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -81,6 +81,7 @@ def prepare_query_ssl_run_context(
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None,
     selection_set_name: str | None,
     categories_override: list[str] | tuple[str, ...] | None,
+    model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]],
     trainer_version_prefix: str,
     algorithm_name: str,
 ) -> QuerySslRunContext:
@@ -105,6 +106,7 @@ def prepare_query_ssl_run_context(
         eval_rows_by_name=eval_rows_by_name,
         selection_set_name=selection_set_name,
         categories_override=categories_override,
+        model_builder=model_builder,
         trainer_version_prefix=trainer_version_prefix,
     )
 

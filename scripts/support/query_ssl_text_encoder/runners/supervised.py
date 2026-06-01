@@ -9,6 +9,9 @@ from typing import Any
 from methods.adaptation.peft_text_encoder.training.loops import (
     train_classifier as train_query_peft_classifier,
 )
+from methods.adaptation.peft_text_encoder.training.modeling import (
+    build_model as build_query_peft_model,
+)
 from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
 from scripts.support.query_ssl_text_encoder.runners.supervised_text_encoder import (
     run_supervised_text_encoder_baseline,
@@ -46,6 +49,6 @@ def run_supervised_peft_baseline(
         categories_override=categories_override,
         train_classifier_func=train_query_peft_classifier,
         write_artifacts_func=write_run_artifacts,
-        model_builder=None,
+        model_builder=build_query_peft_model,
         trainer_version_prefix="peft_clf",
     )

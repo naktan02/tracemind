@@ -113,7 +113,7 @@ def test_run_supervised_peft_baseline_wires_common_context_and_artifacts(
         }
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runtime_context.build_query_peft_model",
+        "scripts.support.query_ssl_text_encoder.runners.supervised.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),

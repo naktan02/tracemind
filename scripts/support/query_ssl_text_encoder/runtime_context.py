@@ -10,9 +10,6 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from methods.adaptation.peft_text_encoder.training.modeling import (
-    build_model as build_query_peft_model,
-)
 from methods.adaptation.query_text_views.data import (
     build_dataloader as build_query_text_dataloader,
 )
@@ -71,7 +68,7 @@ def prepare_supervised_text_encoder_run_context(
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None,
     selection_set_name: str | None,
     categories_override: list[str] | tuple[str, ...] | None,
-    model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]] | None = None,
+    model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]],
     train_jsonl_ref: str | Path | None = None,
     eval_set_refs: Mapping[str, str | Path] | None = None,
     trainer_version_override: str | None = None,
@@ -122,10 +119,7 @@ def prepare_supervised_text_encoder_run_context(
         selection_set_name=effective_selection_set,
     )
 
-    effective_model_builder = (
-        build_query_peft_model if model_builder is None else model_builder
-    )
-    model, tokenizer, backbone_summary = effective_model_builder(
+    model, tokenizer, backbone_summary = model_builder(
         cfg=effective_cfg,
         categories=categories,
         device=training_device,
@@ -181,7 +175,7 @@ def prepare_labeled_text_encoder_run_context(
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None,
     selection_set_name: str | None,
     categories_override: list[str] | tuple[str, ...] | None,
-    model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]] | None = None,
+    model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]],
     train_jsonl_ref: str | Path | None = None,
     eval_set_refs: Mapping[str, str | Path] | None = None,
     trainer_version_override: str | None = None,

@@ -31,7 +31,7 @@ def run_supervised_text_encoder_baseline(
         ..., tuple[Any, list[dict[str, Any]], dict[str, Any]]
     ],
     write_artifacts_func: Callable[..., dict[str, str]],
-    model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]] | None,
+    model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]],
     trainer_version_prefix: str,
 ) -> dict[str, str]:
     """중앙 supervised text encoder baseline 공통 실행 흐름."""

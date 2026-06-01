@@ -9,6 +9,9 @@ from typing import Any
 from methods.adaptation.peft_text_encoder.training.loops import (
     train_query_ssl_classifier as train_query_ssl_peft_classifier,
 )
+from methods.adaptation.peft_text_encoder.training.modeling import (
+    build_model as build_query_peft_model,
+)
 from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.adaptation.query_text_views.query_ssl_views import (
     build_query_ssl_unlabeled_dataloader,
@@ -106,6 +109,7 @@ def run_consistency_query_ssl_peft_baseline(
         eval_rows_by_name=eval_rows_by_name,
         selection_set_name=selection_set_name,
         categories_override=categories_override,
+        model_builder=build_query_peft_model,
         trainer_version_prefix=_build_trainer_version_prefix(descriptor),
         algorithm_name=descriptor.display_name,
     )
