@@ -529,6 +529,29 @@ def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
     )
 
 
+def test_query_ssl_peft_runner_stays_descriptor_capability_driven() -> None:
+    runner_source = (QUERY_SSL_PEFT_SRC / "runners" / "consistency.py").read_text(
+        encoding="utf-8"
+    )
+    forbidden_snippets = (
+        'algorithm_name == "comatch"',
+        'algorithm_name == "simmatch"',
+        'algorithm_name == "softmatch"',
+        'algorithm_name == "mixmatch"',
+        'algorithm_name == "vat"',
+        'view_builder_name == "usb_weak_strong_pair"',
+        'if "comatch"',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in runner_source]
+
+    assert not violations, (
+        "query_ssl_peft consistency runner는 method 이름이나 concrete view 이름으로 "
+        "분기하지 않는다. Descriptor required_views/runtime_requirements와 "
+        "methods-owned view builder를 통해 capability를 해석해야 한다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_central_ssl_consistency_entrypoint_imports_runner_directly() -> None:
     entrypoint_path = (
         SCRIPTS_SRC

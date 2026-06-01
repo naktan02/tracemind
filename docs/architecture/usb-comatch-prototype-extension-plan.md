@@ -809,6 +809,8 @@ uv run pytest tests/unit/test_methods_comatch.py tests/unit/test_scripts_hydra_c
 
 ### Step 7. Runner smoke와 architecture guard 고정
 
+상태: 완료 (2026-06-01)
+
 목표:
 
 - scripts runner가 method 이름으로 분기하지 않음을 test로 고정한다.
@@ -833,6 +835,22 @@ uv run pytest tests/unit/test_peft_fixmatch_runner.py \
 - `scripts/support/query_ssl_peft/runners/consistency.py`에 `comatch`, `simmatch`,
   `softmatch` 같은 method-name branch가 없다.
 - unsupported capability 조합은 bootstrap 전에 명확한 error로 실패한다.
+
+완료 기록:
+
+- `scripts/support/query_ssl_peft/runners/consistency.py`에
+  `_validate_query_ssl_runner_capabilities(...)`를 추가했다.
+- runner capability validation은 method 이름이 아니라 descriptor
+  `runtime_requirements`만 본다.
+- 현재 PEFT Query SSL runner는 `logits`, `pooled_features`, `single_loss_step`,
+  `auxiliary_trainable_module`, `input_transform=none`, `teacher_state=none`만 지원하고,
+  다른 capability는 training 진입 전에 명확한 `ValueError`로 실패한다.
+- CoMatch runner smoke가 `comatch_usb_v1` override에서 `usb_weak_strong_pair` loader를
+  통해 `strong_0_*`, `strong_1_*` batch를 받는지 검증한다.
+- `tests/architecture/test_layer_dependencies.py`가 runner에 `comatch`, `simmatch`,
+  `softmatch`, concrete `usb_weak_strong_pair` branch가 생기지 않도록 guard한다.
+- `tests/unit/test_peft_fixmatch_runner.py`가 unsupported future model output capability가
+  bootstrap 전에 실패하는지 검증한다.
 
 ### Step 8. Generality probe method 선택
 

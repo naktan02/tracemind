@@ -13,7 +13,16 @@ from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.adaptation.query_text_views.query_ssl_views import (
     build_query_ssl_unlabeled_dataloader,
 )
-from methods.ssl.base import QuerySslAlgorithmDescriptor
+from methods.ssl.base import (
+    QUERY_SSL_INPUT_TRANSFORM_NONE,
+    QUERY_SSL_MODEL_OUTPUT_LOGITS,
+    QUERY_SSL_MODEL_OUTPUT_POOLED_FEATURES,
+    QUERY_SSL_OPTIMIZER_LIFECYCLE_AUXILIARY_TRAINABLE_MODULE,
+    QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,
+    QUERY_SSL_TEACHER_STATE_NONE,
+    QuerySslAlgorithmDescriptor,
+)
+from methods.ssl.model_capabilities import require_pooled_feature_classifier
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from scripts.support.query_ssl_peft.io.artifacts import write_run_artifacts
 from scripts.support.query_ssl_peft.query_ssl.common import (
@@ -99,6 +108,10 @@ def run_consistency_query_ssl_peft_baseline(
         categories_override=categories_override,
         trainer_version_prefix=_build_trainer_version_prefix(descriptor),
         algorithm_name=descriptor.display_name,
+    )
+    _validate_query_ssl_runner_capabilities(
+        descriptor=descriptor,
+        model=context.model,
     )
     unlabeled_loader = _build_unlabeled_loader(
         cfg=cfg,
@@ -203,6 +216,55 @@ def _resolve_max_train_steps(cfg: Any) -> int | None:
     if raw_value is None:
         return None
     return int(raw_value)
+
+
+def _validate_query_ssl_runner_capabilities(
+    *,
+    descriptor: QuerySslAlgorithmDescriptor,
+    model: Any,
+) -> None:
+    """현재 PEFT Query SSL runner가 지원하는 descriptor capability를 검증한다."""
+
+    requirements = descriptor.runtime_requirements
+    supported_model_outputs = frozenset(
+        {
+            QUERY_SSL_MODEL_OUTPUT_LOGITS,
+            QUERY_SSL_MODEL_OUTPUT_POOLED_FEATURES,
+        }
+    )
+    unsupported_model_outputs = requirements.model_outputs - supported_model_outputs
+    if unsupported_model_outputs:
+        raise ValueError(
+            "Unsupported Query SSL model outputs for PEFT runner: "
+            f"{sorted(unsupported_model_outputs)}."
+        )
+    if QUERY_SSL_MODEL_OUTPUT_POOLED_FEATURES in requirements.model_outputs:
+        require_pooled_feature_classifier(model)
+
+    supported_optimizer_lifecycle = frozenset(
+        {
+            QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,
+            QUERY_SSL_OPTIMIZER_LIFECYCLE_AUXILIARY_TRAINABLE_MODULE,
+        }
+    )
+    unsupported_optimizer_lifecycle = (
+        requirements.optimizer_lifecycle - supported_optimizer_lifecycle
+    )
+    if unsupported_optimizer_lifecycle:
+        raise ValueError(
+            "Unsupported Query SSL optimizer lifecycle for PEFT runner: "
+            f"{sorted(unsupported_optimizer_lifecycle)}."
+        )
+    if requirements.input_transform_surface != QUERY_SSL_INPUT_TRANSFORM_NONE:
+        raise ValueError(
+            "Unsupported Query SSL input transform for PEFT runner: "
+            f"{requirements.input_transform_surface!r}."
+        )
+    if requirements.teacher_state != QUERY_SSL_TEACHER_STATE_NONE:
+        raise ValueError(
+            "Unsupported Query SSL teacher state for PEFT runner: "
+            f"{requirements.teacher_state!r}."
+        )
 
 
 def _estimate_query_ssl_training_example_count(
