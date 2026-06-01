@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import pkgutil
 from collections.abc import Callable, Mapping
 from typing import Any
@@ -75,9 +76,12 @@ def load_builtin_query_ssl_algorithms() -> None:
                 continue
             if not module_info.ispkg:
                 continue
-            importlib.import_module(
+            entrypoint_module = (
                 f"{_QUERY_SSL_ALGORITHMS_PACKAGE}.{module_info.name}.{module_info.name}"
             )
+            if importlib.util.find_spec(entrypoint_module) is None:
+                continue
+            importlib.import_module(entrypoint_module)
 
     _BUILTIN_QUERY_SSL_ALGORITHMS_LOADED = True
 

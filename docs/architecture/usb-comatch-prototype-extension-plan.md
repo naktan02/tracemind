@@ -702,6 +702,8 @@ uv run pytest tests/unit/test_peft_encoder_training_core.py
 
 ### Step 5. Queue DA와 memory bank primitive 추가
 
+상태: 완료 (2026-06-01)
+
 목표:
 
 - SemiLearn의 `DistAlignEMAHook`/`DistAlignQueueHook` 차이를 TraceMind hook surface로
@@ -729,6 +731,24 @@ uv run pytest tests/unit/test_methods_ssl_hooks.py tests/unit/test_methods_comat
 - queue DA state가 export/load 가능하다.
 - memory bank pointer, feature queue, probability queue가 deterministic unit test로
   검증된다.
+
+완료 기록:
+
+- `methods/ssl/hooks/distribution_alignment.py`에 USB `DistAlignQueueHook` 의미를
+  옮긴 `QueueDistributionAlignmentHook`을 추가했다.
+- queue DA는 batch probability 평균을 `p_model` queue에 저장하고,
+  `p_target.mean() / p_model.mean()`으로 unlabeled probability를 정렬한다.
+- queue DA `export_state()`/`load_state(...)`가 `p_model`, `p_model_ptr`, `p_target`,
+  `p_target_ptr`를 checkpoint-safe tensor state로 roundtrip한다.
+- `methods/ssl/algorithms/comatch/memory_bank.py`를 CoMatch method-local primitive로
+  추가했다. 아직 `comatch` algorithm registry entry는 열지 않는다.
+- `CoMatchMemoryBank`가 feature/probability queue, ring-buffer pointer, memory smoothing,
+  state export/load를 소유한다.
+- registry builtin loader는 method package에 같은 이름 entrypoint가 없으면 건너뛴다.
+  따라서 `comatch/memory_bank.py` 같은 method-local primitive를 먼저 둘 수 있고,
+  실제 `comatch.py` 등록은 Step 6에서 한다.
+- `tests/unit/test_methods_ssl_hooks.py`와 `tests/unit/test_methods_comatch.py`가 queue DA
+  state, memory bank pointer/wrap, probability smoothing, state roundtrip을 검증한다.
 
 ### Step 6. CoMatch tensor core와 algorithm adapter 구현
 
