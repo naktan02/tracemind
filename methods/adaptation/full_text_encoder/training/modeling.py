@@ -65,6 +65,7 @@ def build_model(
         local_files_only=bool(cfg.runtime.local_files_only),
         trust_remote_code=bool(cfg.paper_backbone.trust_remote_code),
     )
+    backbone.float()
     set_module_trainable(backbone, trainable=True)
     model = TextEncoderWithLinearHead(
         backbone=backbone,
@@ -90,6 +91,7 @@ def build_model(
         "full_text_encoder_config": {
             "encoder_trainable": True,
             "classifier_head_trainable": True,
+            "train_dtype": "float32",
         },
         "initial_checkpoint": {
             "classifier_path": initial_classifier_path or None,

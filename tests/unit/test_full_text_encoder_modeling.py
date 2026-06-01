@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+import torch
 from omegaconf import OmegaConf
 from torch import nn
 
@@ -24,6 +25,12 @@ class _FakeAutoModel:
     @staticmethod
     def from_pretrained(*_args, **_kwargs):
         return _TinyBackbone()
+
+
+class _HalfFakeAutoModel:
+    @staticmethod
+    def from_pretrained(*_args, **_kwargs):
+        return _TinyBackbone().half()
 
 
 class _FakeAutoTokenizer:
@@ -89,10 +96,32 @@ def test_build_full_text_encoder_model_marks_backbone_trainable(monkeypatch) -> 
     assert summary["full_text_encoder_config"] == {
         "encoder_trainable": True,
         "classifier_head_trainable": True,
+        "train_dtype": "float32",
     }
     assert (
         summary["parameter_counts"]["trainable"] == summary["parameter_counts"]["total"]
     )
+
+
+def test_build_full_text_encoder_model_promotes_backbone_to_float32(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        modeling,
+        "require_transformer_auto_stack",
+        lambda: (_HalfFakeAutoModel, _FakeAutoTokenizer),
+    )
+
+    model, _tokenizer, summary = modeling.build_model(
+        cfg=_build_cfg(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+    )
+
+    assert {parameter.dtype for parameter in model.backbone.parameters()} == {
+        torch.float32
+    }
+    assert summary["full_text_encoder_config"]["train_dtype"] == "float32"
 
 
 def test_build_full_text_encoder_model_rejects_initial_adapter(monkeypatch) -> None:
