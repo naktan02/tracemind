@@ -12,6 +12,10 @@ import torch
 from torch import nn
 
 from methods.ssl.base import QuerySslAlgorithm
+from methods.ssl.model_capabilities import (
+    load_query_ssl_auxiliary_module_state_dicts,
+    query_ssl_auxiliary_module_state_dicts,
+)
 from methods.ssl.state import (
     export_query_ssl_algorithm_state,
     load_query_ssl_algorithm_state,
@@ -37,6 +41,7 @@ def load_query_ssl_training_checkpoint(
     algorithm: QuerySslAlgorithm,
     categories: list[str],
     device: str,
+    auxiliary_modules: Mapping[str, nn.Module] | None = None,
 ) -> QuerySslTrainingResumeState:
     """Query SSL local trainer checkpoint를 복원한다."""
 
@@ -58,6 +63,10 @@ def load_query_ssl_training_checkpoint(
         raise ValueError("Checkpoint categories do not match current dataset.")
 
     model.load_state_dict(checkpoint["model_state_dict"])
+    load_query_ssl_auxiliary_module_state_dicts(
+        {} if auxiliary_modules is None else auxiliary_modules,
+        checkpoint.get("auxiliary_module_state_dicts", {}),
+    )
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     load_query_ssl_algorithm_state(algorithm, checkpoint.get("algorithm_state", {}))
     restore_query_ssl_rng_state(checkpoint.get("rng_state", {}))
@@ -80,6 +89,7 @@ def save_query_ssl_training_checkpoint(
     history: list[dict[str, Any]],
     best_checkpoint_state: dict[str, Any],
     categories: list[str],
+    auxiliary_modules: Mapping[str, nn.Module] | None = None,
 ) -> None:
     """Query SSL local trainer checkpoint를 latest file로 저장한다."""
 
@@ -93,6 +103,9 @@ def save_query_ssl_training_checkpoint(
             "completed_steps": int(completed_steps),
             "total_train_steps": int(total_train_steps),
             "model_state_dict": model.state_dict(),
+            "auxiliary_module_state_dicts": query_ssl_auxiliary_module_state_dicts(
+                {} if auxiliary_modules is None else auxiliary_modules
+            ),
             "optimizer_state_dict": optimizer.state_dict(),
             "algorithm_state": dict(export_query_ssl_algorithm_state(algorithm)),
             "rng_state": capture_query_ssl_rng_state(),

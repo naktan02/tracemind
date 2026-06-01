@@ -1,0 +1,131 @@
+"""Query SSL model forward capability와 auxiliary module 계약."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any, Protocol, cast
+
+from torch import Tensor, nn
+
+from methods.ssl.base import QuerySslAlgorithm, TextBatchClassifier
+
+
+class FeatureReturningTextBatchClassifier(TextBatchClassifier, Protocol):
+    """logits path와 dropout 전 pooled feature path를 함께 제공하는 classifier."""
+
+    def extract_pooled_features(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+    ) -> Tensor:
+        """tokenized text batch의 pooled representation을 반환한다."""
+
+
+def require_pooled_feature_classifier(
+    model: TextBatchClassifier,
+) -> FeatureReturningTextBatchClassifier:
+    """pooled feature capability가 없는 model이면 bootstrap 전에 실패시킨다."""
+
+    extract_pooled_features = getattr(model, "extract_pooled_features", None)
+    if not callable(extract_pooled_features):
+        raise TypeError(
+            "Query SSL model output capability requires extract_pooled_features()."
+        )
+    return cast(FeatureReturningTextBatchClassifier, model)
+
+
+def build_query_ssl_auxiliary_modules(
+    algorithm: QuerySslAlgorithm,
+    *,
+    model: TextBatchClassifier,
+) -> dict[str, nn.Module]:
+    """algorithm이 선택적으로 제공하는 auxiliary trainable module을 만든다."""
+
+    module_builder = getattr(algorithm, "build_auxiliary_modules", None)
+    if callable(module_builder):
+        return normalize_query_ssl_auxiliary_modules(module_builder(model=model))
+
+    module_mapping = getattr(algorithm, "auxiliary_modules", None)
+    if callable(module_mapping):
+        module_mapping = module_mapping()
+    return normalize_query_ssl_auxiliary_modules(module_mapping)
+
+
+def normalize_query_ssl_auxiliary_modules(
+    modules: object,
+) -> dict[str, nn.Module]:
+    """checkpoint 가능한 이름 -> nn.Module mapping으로 정규화한다."""
+
+    if modules is None:
+        return {}
+    if not isinstance(modules, Mapping):
+        raise TypeError(
+            "Query SSL auxiliary modules must be a mapping of name to nn.Module."
+        )
+    normalized: dict[str, nn.Module] = {}
+    for raw_name, module in modules.items():
+        name = _require_auxiliary_module_name(raw_name)
+        if not isinstance(module, nn.Module):
+            raise TypeError(
+                "Query SSL auxiliary module must be nn.Module; "
+                f"got {type(module).__name__} for {name!r}."
+            )
+        normalized[name] = module
+    return dict(sorted(normalized.items()))
+
+
+def query_ssl_auxiliary_trainable_parameters(
+    auxiliary_modules: Mapping[str, nn.Module],
+) -> tuple[nn.Parameter, ...]:
+    """auxiliary module 중 gradient update 대상 parameter만 반환한다."""
+
+    return tuple(
+        parameter
+        for module in auxiliary_modules.values()
+        for parameter in module.parameters()
+        if parameter.requires_grad
+    )
+
+
+def query_ssl_auxiliary_module_state_dicts(
+    auxiliary_modules: Mapping[str, nn.Module],
+) -> dict[str, dict[str, Any]]:
+    """checkpoint payload에 넣을 auxiliary module state dict를 만든다."""
+
+    return {
+        name: dict(module.state_dict())
+        for name, module in sorted(auxiliary_modules.items())
+    }
+
+
+def load_query_ssl_auxiliary_module_state_dicts(
+    auxiliary_modules: Mapping[str, nn.Module],
+    state_dicts: object,
+) -> None:
+    """checkpoint의 auxiliary module state를 현재 module mapping에 복원한다."""
+
+    if state_dicts is None:
+        return
+    if not isinstance(state_dicts, Mapping):
+        raise TypeError("auxiliary_module_state_dicts must be a mapping.")
+    if not state_dicts:
+        return
+    missing = sorted(str(name) for name in set(state_dicts) - set(auxiliary_modules))
+    if missing:
+        raise ValueError(
+            "Checkpoint contains auxiliary modules not provided by current "
+            f"algorithm: {missing[:5]}."
+        )
+    for name, state_dict in sorted(state_dicts.items()):
+        module = auxiliary_modules[str(name)]
+        if not isinstance(state_dict, Mapping):
+            raise TypeError(f"Auxiliary module state for {name!r} must be a mapping.")
+        module.load_state_dict(state_dict)
+
+
+def _require_auxiliary_module_name(raw_name: object) -> str:
+    name = str(raw_name).strip()
+    if not name:
+        raise ValueError("Query SSL auxiliary module name must not be empty.")
+    return name

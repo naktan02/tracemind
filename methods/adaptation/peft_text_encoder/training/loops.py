@@ -41,6 +41,10 @@ from .batching import (
 from .modeling import PeftTextEncoderWithLinearHead
 from .optimizer_step import run_optimizer_loss_step
 from .scalar_metrics import ScalarMetricAccumulator
+from .ssl_model_extensions import (
+    build_peft_query_ssl_model_extensions,
+    set_peft_query_ssl_auxiliary_modules_train,
+)
 from .step_budget import (
     remaining_effective_epochs,
     resolve_epoch_distributed_step_budget,
@@ -149,7 +153,23 @@ def train_query_ssl_classifier(
         classifier_learning_rate=classifier_learning_rate,
         weight_decay=weight_decay,
     )
+    model_extensions = build_peft_query_ssl_model_extensions(
+        algorithm=algorithm,
+        model=model,
+        device=device,
+    )
+    if model_extensions.auxiliary_trainable_parameters:
+        optimizer.add_param_group(
+            {
+                "params": list(model_extensions.auxiliary_trainable_parameters),
+                "lr": learning_rate,
+                "weight_decay": weight_decay,
+            }
+        )
     trainable_parameters = trainable_model_parameters(model)
+    optimizer_step_parameters = (
+        trainable_parameters + model_extensions.auxiliary_trainable_parameters
+    )
     fedprox = prepare_fedprox_regularizer(
         proximal_mu=proximal_mu,
         trainable_parameters=trainable_parameters,
@@ -162,6 +182,7 @@ def train_query_ssl_classifier(
         algorithm=algorithm,
         categories=categories,
         device=device,
+        auxiliary_modules=model_extensions.auxiliary_modules,
     )
     completed_steps = resume_state.completed_steps
     initial_history = resume_state.history
@@ -186,6 +207,10 @@ def train_query_ssl_classifier(
         nonlocal completed_steps
 
         model.train()
+        set_peft_query_ssl_auxiliary_modules_train(
+            model_extensions,
+            training=True,
+        )
         step_total_loss_sum = 0.0
         component_metrics = ScalarMetricAccumulator()
         step_metrics = ScalarMetricAccumulator()
@@ -249,7 +274,7 @@ def train_query_ssl_classifier(
 
             total_loss = run_optimizer_loss_step(
                 optimizer=optimizer,
-                trainable_parameters=trainable_parameters,
+                trainable_parameters=optimizer_step_parameters,
                 max_grad_norm=max_grad_norm,
                 compute_loss=compute_total_loss,
             )
@@ -318,6 +343,7 @@ def train_query_ssl_classifier(
             history=history,
             best_checkpoint_state=best_checkpoint_state,
             categories=categories,
+            auxiliary_modules=model_extensions.auxiliary_modules,
         )
 
     history, best_selection_report = run_selection_tracked_training_loop(

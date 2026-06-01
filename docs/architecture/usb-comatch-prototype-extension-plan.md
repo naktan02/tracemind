@@ -644,6 +644,8 @@ uv run pytest tests/unit/test_query_text_views_data.py \
 
 ### Step 4. Model output capability와 auxiliary module lifecycle 추가
 
+상태: 완료 (2026-06-01)
+
 목표:
 
 - logits-only model protocol은 유지한다.
@@ -679,6 +681,24 @@ uv run pytest tests/unit/test_peft_encoder_training_core.py
 - projection head parameter가 optimizer step으로 변한다.
 - checkpoint roundtrip 후 auxiliary module state가 복원된다.
 - update payload extraction test에서 projection head가 payload에 섞이지 않는다.
+
+완료 기록:
+
+- `methods/ssl/model_capabilities.py`에 pooled feature classifier capability와
+  algorithm-local auxiliary module provider 계약을 추가했다.
+- `methods/adaptation/peft_text_encoder/training/ssl_model_extensions.py`가 PEFT Query SSL
+  trainer에서 auxiliary module을 device, optimizer parameter, train/eval lifecycle에
+  연결한다.
+- `train_query_ssl_classifier(...)`는 model parameter와 auxiliary parameter를 함께
+  optimizer/gradient clipping 대상으로 다루되, FedProx 기준 snapshot은 기존 update family
+  model parameter에만 적용한다.
+- Query SSL resume checkpoint가 `auxiliary_module_state_dicts`를 저장/복원한다.
+- auxiliary module은 PEFT model submodule으로 등록하지 않는다. 따라서 기존
+  PEFT/classifier delta extraction과 server update payload에는 projection head가 섞이지
+  않는다.
+- `tests/unit/test_query_ssl_model_capabilities.py`와
+  `tests/unit/test_peft_encoder_training_core.py`가 pooled feature capability, auxiliary
+  parameter update, checkpoint roundtrip, payload 분리를 검증한다.
 
 ### Step 5. Queue DA와 memory bank primitive 추가
 
