@@ -5,8 +5,8 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig
 
-from scripts.support.query_ssl_peft.runners.full_text_encoder_supervised import (
-    run_full_text_encoder_supervised_baseline,
+from scripts.support.query_ssl_text_encoder.runners import (
+    full_text_encoder_supervised as full_text_encoder_supervised_runner,
 )
 
 
@@ -16,7 +16,7 @@ from scripts.support.query_ssl_peft.runners.full_text_encoder_supervised import 
     config_name="entrypoints/central/ssl_control/run_full_text_encoder_supervised_control",
 )
 def main(cfg: DictConfig) -> None:
-    run_full_text_encoder_supervised_baseline(cfg)
+    full_text_encoder_supervised_runner.run_full_text_encoder_supervised_baseline(cfg)
 
 
 if __name__ == "__main__":

@@ -6,11 +6,11 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
-from scripts.support.query_ssl_peft.runtime_context import (
-    evaluate_supervised_peft_run_context,
-    prepare_supervised_peft_run_context,
+from scripts.support.query_ssl_text_encoder.runtime_context import (
+    evaluate_supervised_text_encoder_run_context,
+    prepare_supervised_text_encoder_run_context,
 )
-from scripts.support.query_ssl_peft.runtime_metrics import (
+from scripts.support.query_ssl_text_encoder.runtime_metrics import (
     run_with_training_runtime_metrics,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
@@ -36,7 +36,7 @@ def run_supervised_text_encoder_baseline(
 ) -> dict[str, str]:
     """중앙 supervised text encoder baseline 공통 실행 흐름."""
 
-    context = prepare_supervised_peft_run_context(
+    context = prepare_supervised_text_encoder_run_context(
         cfg,
         train_rows=train_rows,
         eval_rows_by_name=eval_rows_by_name,
@@ -76,7 +76,7 @@ def run_supervised_text_encoder_baseline(
         device=context.training_device,
     )
 
-    results = evaluate_supervised_peft_run_context(
+    results = evaluate_supervised_text_encoder_run_context(
         model=model,
         eval_loaders=context.eval_loaders,
         categories=context.categories,

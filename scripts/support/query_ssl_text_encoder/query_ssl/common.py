@@ -9,10 +9,10 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from scripts.support.query_ssl_peft.runtime_context import (
-    PeftLabeledRunContext,
-    evaluate_peft_labeled_run_context,
-    prepare_labeled_peft_run_context,
+from scripts.support.query_ssl_text_encoder.runtime_context import (
+    LabeledTextEncoderRunContext,
+    evaluate_labeled_text_encoder_run_context,
+    prepare_labeled_text_encoder_run_context,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
@@ -99,7 +99,7 @@ def prepare_query_ssl_run_context(
     if not effective_unlabeled_rows:
         raise ValueError(f"{algorithm_name} unlabeled_rows must not be empty.")
 
-    base_context = prepare_labeled_peft_run_context(
+    base_context = prepare_labeled_text_encoder_run_context(
         cfg,
         train_rows=train_rows,
         eval_rows_by_name=eval_rows_by_name,
@@ -123,7 +123,7 @@ def evaluate_query_ssl_run_context(
 ) -> dict[str, Any]:
     """학습이 끝난 Query SSL 모델을 모든 eval set에서 평가한다."""
 
-    return evaluate_peft_labeled_run_context(
+    return evaluate_labeled_text_encoder_run_context(
         model=model,
         eval_loaders=eval_loaders,
         categories=categories,
@@ -133,7 +133,7 @@ def evaluate_query_ssl_run_context(
 
 def _build_query_ssl_run_context(
     *,
-    base_context: PeftLabeledRunContext,
+    base_context: LabeledTextEncoderRunContext,
     effective_unlabeled_rows: list[LabeledQueryRow],
 ) -> QuerySslRunContext:
     return QuerySslRunContext(

@@ -1,4 +1,4 @@
-"""Query PEFT 학습 비용 지표 측정 helper."""
+"""Query text encoder 학습 비용 지표 측정 helper."""
 
 from __future__ import annotations
 

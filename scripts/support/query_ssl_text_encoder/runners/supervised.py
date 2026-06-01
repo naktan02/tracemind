@@ -9,8 +9,8 @@ from typing import Any
 from methods.adaptation.peft_text_encoder.training.loops import (
     train_classifier as train_query_peft_classifier,
 )
-from scripts.support.query_ssl_peft.io.artifacts import write_run_artifacts
-from scripts.support.query_ssl_peft.runners.supervised_text_encoder import (
+from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
+from scripts.support.query_ssl_text_encoder.runners.supervised_text_encoder import (
     run_supervised_text_encoder_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

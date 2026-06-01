@@ -20,7 +20,7 @@
 |---|---|---|
 | Dataset/source/view | `execution_context/*`, `query_data_selection.*` | dataset scripts, shared row contract |
 | Central SSL method | `strategy_axes/ssl_objective/consistency_method` | `methods/ssl/algorithms/*` |
-| Central replay/bootstrap workflow | explicit central SSL entrypoint | `scripts/support/query_ssl_peft/runners/*` |
+| Central replay/bootstrap workflow | explicit central SSL entrypoint | `scripts/support/query_ssl_text_encoder/runners/*` |
 | Central trainable surface | `strategy_axes/model_architecture/trainable_surface` | `methods/adaptation/{peft_text_encoder,full_text_encoder}` trainer |
 | PEFT adapter mechanism | `strategy_axes/model_architecture/peft` | `methods/adaptation/peft_adapters/*` |
 | Trainable update family | `strategy_axes/model_architecture/update_family`, `round_runtime.update_family_name` | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*` |

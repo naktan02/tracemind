@@ -120,7 +120,7 @@ def test_fl_simulation_config_callable_loading_is_centralized() -> None:
         / "final_projection.py",
         SCRIPTS_SRC
         / "support"
-        / "query_ssl_peft"
+        / "query_ssl_text_encoder"
         / "query_ssl"
         / "view_preparation.py",
         SCRIPTS_SRC

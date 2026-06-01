@@ -140,7 +140,7 @@ Reddit Labeled Data
 | PEFT supervised entrypoint | `scripts/experiments/central/ssl_control/run_peft_supervised_control.py` |
 | Full text encoder supervised entrypoint | `scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py` |
 | PEFT SSL entrypoint | `scripts/experiments/central/ssl_control/run_peft_ssl_control.py` |
-| 중앙/FL 공통 PEFT SSL runtime support | `scripts/support/query_ssl_peft/*` |
+| 중앙/FL 공통 text encoder SSL runtime support | `scripts/support/query_ssl_text_encoder/*` |
 | trainer core | `methods/adaptation/query_text_views/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | evaluation metric core | `methods/evaluation/*` |
 | query buffer repository | `agent/src/infrastructure/repositories/query_buffer_repository.py` |

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from omegaconf import OmegaConf
 
-from scripts.support.query_ssl_peft.config.initial_checkpoint import (
+from scripts.support.query_ssl_text_encoder.config.initial_checkpoint import (
     resolve_query_adaptation_initial_checkpoint,
 )
 

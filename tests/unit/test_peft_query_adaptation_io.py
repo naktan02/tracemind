@@ -12,7 +12,7 @@ from agent.src.services.training.datasets.query_adaptation_dataset_service impor
     QueryAdaptationDatasetExample,
     QueryAdaptationDatasetProvenance,
 )
-from scripts.support.query_ssl_peft.io.query_adaptation import (
+from scripts.support.query_ssl_text_encoder.io.query_adaptation import (
     QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION,
     QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION,
     build_labeled_rows_from_query_adaptation_dataset,

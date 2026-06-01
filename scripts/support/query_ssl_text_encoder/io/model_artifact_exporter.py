@@ -6,7 +6,7 @@ from typing import Any
 
 import torch
 
-from scripts.support.query_ssl_peft.io.artifact_paths import (
+from scripts.support.query_ssl_text_encoder.io.artifact_paths import (
     QueryPeftRunArtifactPaths,
 )
 

@@ -14,7 +14,7 @@ from agent.src.services.training.datasets.query_adaptation_dataset_service impor
     QueryAdaptationDatasetExample,
     QueryAdaptationDatasetProvenance,
 )
-from scripts.support.query_ssl_peft.runners.pseudo_label import (
+from scripts.support.query_ssl_text_encoder.runners.pseudo_label import (
     prepare_pseudo_label_self_training_run,
     run_pseudo_label_self_training,
 )
@@ -203,7 +203,7 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
         }
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.pseudo_label."
+        "scripts.support.query_ssl_text_encoder.runners.pseudo_label."
         "run_supervised_peft_baseline",
         _fake_runner,
     )

@@ -10,12 +10,12 @@ from typing import Any
 
 from omegaconf import DictConfig
 
-from scripts.support.query_ssl_peft.io.query_adaptation import (
+from scripts.support.query_ssl_text_encoder.io.query_adaptation import (
     QueryAdaptationPeftExportArtifacts,
     build_labeled_rows_from_query_adaptation_dataset,
     write_query_adaptation_peft_dataset,
 )
-from scripts.support.query_ssl_peft.runners.supervised import (
+from scripts.support.query_ssl_text_encoder.runners.supervised import (
     run_supervised_peft_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

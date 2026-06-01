@@ -29,9 +29,9 @@ SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
-QUERY_SSL_PEFT_SRC = SCRIPTS_SRC / "support" / "query_ssl_peft"
-QUERY_SSL_PEFT_CONFIG_SRC = QUERY_SSL_PEFT_SRC / "config"
-QUERY_SSL_PEFT_IO_SRC = QUERY_SSL_PEFT_SRC / "io"
+QUERY_SSL_TEXT_ENCODER_SRC = SCRIPTS_SRC / "support" / "query_ssl_text_encoder"
+QUERY_SSL_TEXT_ENCODER_CONFIG_SRC = QUERY_SSL_TEXT_ENCODER_SRC / "config"
+QUERY_SSL_TEXT_ENCODER_IO_SRC = QUERY_SSL_TEXT_ENCODER_SRC / "io"
 PROTOTYPE_STRATEGY_SRC = (
     SCRIPTS_SRC / "experiments" / "prototype_analysis" / "prototype_strategy"
 )
@@ -502,8 +502,10 @@ def test_query_text_views_stays_input_glue_only() -> None:
 
 
 def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
-    legacy_script_path = QUERY_SSL_PEFT_SRC / "query_ssl" / "augmentation.py"
-    view_preparation_path = QUERY_SSL_PEFT_SRC / "query_ssl" / "view_preparation.py"
+    legacy_script_path = QUERY_SSL_TEXT_ENCODER_SRC / "query_ssl" / "augmentation.py"
+    view_preparation_path = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "query_ssl" / "view_preparation.py"
+    )
     source = view_preparation_path.read_text(encoding="utf-8")
     forbidden_snippets = (
         'view_builder_name == "usb_multiview"',
@@ -523,16 +525,16 @@ def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
         "runtime callable 주입만 맡긴다."
     )
     assert not violations, (
-        "query_ssl_peft script adapter는 USB view builder나 augmentation source "
-        "정책을 직접 분기하지 않는다.\n"
+        "query_ssl_text_encoder script adapter는 USB view builder나 "
+        "augmentation source 정책을 직접 분기하지 않는다.\n"
         f"violations={violations}"
     )
 
 
-def test_query_ssl_peft_runner_stays_descriptor_capability_driven() -> None:
-    runner_source = (QUERY_SSL_PEFT_SRC / "runners" / "consistency.py").read_text(
-        encoding="utf-8"
-    )
+def test_query_ssl_text_encoder_runner_stays_descriptor_capability_driven() -> None:
+    runner_source = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "consistency.py"
+    ).read_text(encoding="utf-8")
     forbidden_snippets = (
         'algorithm_name == "comatch"',
         'algorithm_name == "simmatch"',
@@ -545,8 +547,8 @@ def test_query_ssl_peft_runner_stays_descriptor_capability_driven() -> None:
     violations = [snippet for snippet in forbidden_snippets if snippet in runner_source]
 
     assert not violations, (
-        "query_ssl_peft consistency runner는 method 이름이나 concrete view 이름으로 "
-        "분기하지 않는다. Descriptor required_views/runtime_requirements와 "
+        "query_ssl_text_encoder consistency runner는 method 이름이나 concrete view "
+        "이름으로 분기하지 않는다. Descriptor required_views/runtime_requirements와 "
         "methods-owned view builder를 통해 capability를 해석해야 한다.\n"
         f"violations={violations}"
     )
@@ -656,7 +658,7 @@ def test_dataset_pipeline_prototype_input_ref_is_structured() -> None:
 
 
 def test_query_peft_artifact_paths_do_not_branch_on_ssl_input_mode_names() -> None:
-    path = QUERY_SSL_PEFT_IO_SRC / "artifact_paths.py"
+    path = QUERY_SSL_TEXT_ENCODER_IO_SRC / "artifact_paths.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         'ssl_input_mode != "consistency"',
@@ -768,7 +770,7 @@ def test_central_ssl_entrypoint_does_not_compose_input_mode_strategy_axis() -> N
 
 def test_query_peft_support_does_not_emit_ssl_input_mode_manifest_field() -> None:
     search_roots = (
-        QUERY_SSL_PEFT_SRC,
+        QUERY_SSL_TEXT_ENCODER_SRC,
         SCRIPTS_SRC / "experiments" / "central" / "ssl_control",
         CONF_SRC / "entrypoints" / "central" / "ssl_control",
     )
@@ -812,7 +814,7 @@ def test_central_ssl_pseudo_label_selection_strategy_axis_group_is_removed() -> 
 
 
 def test_query_peft_pseudo_label_replay_row_semantics_live_in_methods() -> None:
-    legacy_path = QUERY_SSL_PEFT_SRC / "runners" / "pseudo_label_inputs.py"
+    legacy_path = QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "pseudo_label_inputs.py"
     owner_path = METHODS_SSL_SRC / "pseudo_label_replay.py"
 
     assert not legacy_path.exists(), (
@@ -827,7 +829,7 @@ def test_query_peft_pseudo_label_replay_row_semantics_live_in_methods() -> None:
 
 
 def test_query_peft_teacher_bootstrap_compatibility_tree_is_removed() -> None:
-    legacy_root = QUERY_SSL_PEFT_SRC / "compatibility" / "teacher_bootstrap"
+    legacy_root = QUERY_SSL_TEXT_ENCODER_SRC / "compatibility" / "teacher_bootstrap"
 
     assert not legacy_root.exists(), (
         "teacher_bootstrap은 scripts owner가 아닌 fixed-classifier compatibility "
@@ -1575,12 +1577,15 @@ def test_partitioned_peft_execution_primitive_uses_adapter_linear_head_names() -
     )
 
 
-def test_scripts_use_query_ssl_peft_runtime_support_package_path() -> None:
+def test_scripts_use_query_ssl_text_encoder_runtime_support_package_path() -> None:
     legacy_root = SCRIPTS_SRC / "experiments" / "query_lora_ssl"
+    legacy_peft_support_root = SCRIPTS_SRC / "support" / "query_ssl_peft"
     checked_roots = (SCRIPTS_SRC, REPO_ROOT / "tests")
     forbidden_snippets = (
         "scripts.experiments." + "query_lora_ssl",
         "scripts/experiments/" + "query_lora_ssl",
+        "scripts.support." + "query_ssl_peft",
+        "scripts/support/" + "query_ssl_peft",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
@@ -1592,12 +1597,17 @@ def test_scripts_use_query_ssl_peft_runtime_support_package_path() -> None:
     ]
 
     assert (
-        QUERY_SSL_PEFT_SRC.is_dir() and not legacy_root.exists() and not violations
+        QUERY_SSL_TEXT_ENCODER_SRC.is_dir()
+        and not legacy_root.exists()
+        and not legacy_peft_support_root.exists()
+        and not violations
     ), (
-        "중앙 Query SSL runtime support package 경로는 query_ssl_peft를 사용한다. "
-        "LoRA는 PEFT adapter mechanism 또는 v1 artifact/contract 이름으로만 "
-        "남기고, scripts package boundary 이름으로 재도입하지 않는다.\n"
+        "중앙 Query SSL runtime support package 경로는 text encoder scaffold 기준인 "
+        "query_ssl_text_encoder를 사용한다. LoRA/PEFT는 adapter mechanism, "
+        "entrypoint 이름, artifact/contract 이름으로만 남기고 scripts support "
+        "package boundary 이름으로 재도입하지 않는다.\n"
         f"legacy_exists={legacy_root.exists()}\n"
+        f"legacy_peft_support_exists={legacy_peft_support_root.exists()}\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
@@ -1681,7 +1691,7 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         SCRIPTS_SRC / "README.md",
         SCRIPTS_SRC / "experiments" / "README.md",
         SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "README.md",
-        SCRIPTS_SRC / "support" / "query_ssl_peft" / "README.md",
+        SCRIPTS_SRC / "support" / "query_ssl_text_encoder" / "README.md",
     )
     forbidden_snippets = (
         "train_lora_ssl_classifier",
@@ -1746,7 +1756,7 @@ def test_central_peft_entrypoints_do_not_write_lora_named_artifact_roots() -> No
     )
 
 
-def test_query_ssl_peft_runtime_support_uses_peft_helper_names() -> None:
+def test_query_ssl_text_encoder_runtime_support_keeps_surface_names_separated() -> None:
     forbidden_snippets = (
         "query_" + "lora",
         "Query" + "Lora",
@@ -1761,18 +1771,23 @@ def test_query_ssl_peft_runtime_support_uses_peft_helper_names() -> None:
         "query_adapt_lora",
         "lora_bootstrap",
         "lora_clf",
+        "SupervisedPeftRunContext",
+        "PeftLabeledRunContext",
+        "prepare_supervised_peft_run_context",
+        "evaluate_supervised_peft_run_context",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
-        for path in _iter_python_files(QUERY_SSL_PEFT_SRC)
+        for path in _iter_python_files(QUERY_SSL_TEXT_ENCODER_SRC)
         for snippet in forbidden_snippets
         if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
-        "query_ssl_peft runtime support 내부 helper/type 이름은 PEFT 기준을 사용한다. "
-        "LoRA는 adapter mechanism이나 old-run artifact/entrypoint compatibility "
-        "표면에만 남긴다.\n"
+        "query_ssl_text_encoder runtime support 내부 공통 helper/type 이름은 "
+        "trainable surface와 PEFT adapter mechanism 이름을 섞지 않는다. "
+        "PEFT는 PEFT entrypoint/runner/artifact 이름에만, LoRA는 adapter mechanism이나 "
+        "old-run artifact/entrypoint compatibility 표면에만 남긴다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
@@ -3605,12 +3620,12 @@ def test_lora_classifier_update_package_does_not_keep_one_use_helper_files() -> 
 
 
 def test_query_peft_run_artifacts_do_not_keep_writer_exporter_monolith() -> None:
-    orchestrator_path = QUERY_SSL_PEFT_IO_SRC / "artifacts.py"
+    orchestrator_path = QUERY_SSL_TEXT_ENCODER_IO_SRC / "artifacts.py"
     expected_responsibility_files = (
-        QUERY_SSL_PEFT_IO_SRC / "artifact_paths.py",
-        QUERY_SSL_PEFT_IO_SRC / "artifact_writer.py",
-        QUERY_SSL_PEFT_IO_SRC / "manifest_builder.py",
-        QUERY_SSL_PEFT_IO_SRC / "model_artifact_exporter.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "artifact_paths.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "artifact_writer.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "manifest_builder.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "model_artifact_exporter.py",
     )
     source = orchestrator_path.read_text(encoding="utf-8")
     forbidden_snippets = (
@@ -3639,11 +3654,19 @@ def test_query_peft_run_artifacts_do_not_keep_writer_exporter_monolith() -> None
 
 
 def test_query_peft_teacher_pseudo_label_does_not_keep_exporter_monolith() -> None:
-    legacy_exporter_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_exporter.py"
-    legacy_builder_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_builder.py"
-    legacy_algorithm_path = QUERY_SSL_PEFT_CONFIG_SRC / "pseudo_label_algorithm.py"
+    legacy_exporter_path = (
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_exporter.py"
+    )
+    legacy_builder_path = (
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_builder.py"
+    )
+    legacy_algorithm_path = (
+        QUERY_SSL_TEXT_ENCODER_CONFIG_SRC / "pseudo_label_algorithm.py"
+    )
     methods_builder_path = METHODS_SSL_SRC / "teacher_pseudo_label.py"
-    writer_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
+    writer_path = (
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
+    )
     builder_source = methods_builder_path.read_text(encoding="utf-8")
     builder_forbidden_snippets = (
         "json.dumps(",

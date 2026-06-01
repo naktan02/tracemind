@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from scripts.support.query_ssl_peft.io.artifact_paths import (
+from scripts.support.query_ssl_text_encoder.io.artifact_paths import (
     QueryPeftRunArtifactPaths,
 )
 

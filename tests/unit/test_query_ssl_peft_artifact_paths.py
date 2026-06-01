@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from hydra import compose, initialize_config_module
 from omegaconf import OmegaConf
 
-from scripts.support.query_ssl_peft.io.artifact_paths import (
+from scripts.support.query_ssl_text_encoder.io.artifact_paths import (
     build_query_peft_run_artifact_paths,
 )
 

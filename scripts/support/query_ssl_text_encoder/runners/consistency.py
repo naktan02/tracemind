@@ -24,19 +24,19 @@ from methods.ssl.base import (
 )
 from methods.ssl.model_capabilities import require_pooled_feature_classifier
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
-from scripts.support.query_ssl_peft.io.artifacts import write_run_artifacts
-from scripts.support.query_ssl_peft.query_ssl.common import (
+from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
+from scripts.support.query_ssl_text_encoder.query_ssl.common import (
     QuerySslRunContext,
     build_query_ssl_method_manifest,
     build_query_ssl_method_parameters,
     evaluate_query_ssl_run_context,
     prepare_query_ssl_run_context,
 )
-from scripts.support.query_ssl_peft.query_ssl.view_preparation import (
+from scripts.support.query_ssl_text_encoder.query_ssl.view_preparation import (
     build_query_ssl_augmenter_manifest,
     prepare_query_ssl_unlabeled_rows,
 )
-from scripts.support.query_ssl_peft.runtime_metrics import (
+from scripts.support.query_ssl_text_encoder.runtime_metrics import (
     run_with_training_runtime_metrics,
 )
 from shared.src.contracts.labeled_query_row_contracts import (

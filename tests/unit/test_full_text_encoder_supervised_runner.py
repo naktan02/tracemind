@@ -3,8 +3,8 @@ from __future__ import annotations
 import torch
 from omegaconf import OmegaConf
 
-from scripts.support.query_ssl_peft.runners.full_text_encoder_supervised import (
-    run_full_text_encoder_supervised_baseline,
+from scripts.support.query_ssl_text_encoder.runners import (
+    full_text_encoder_supervised as full_text_encoder_supervised_runner,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -126,17 +126,17 @@ def test_run_full_text_encoder_supervised_baseline_uses_common_context(
         }
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.full_text_encoder_supervised."
+        "scripts.support.query_ssl_text_encoder.runners.full_text_encoder_supervised."
         "build_full_text_encoder_model",
         _fake_build_model,
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.full_text_encoder_supervised."
+        "scripts.support.query_ssl_text_encoder.runners.full_text_encoder_supervised."
         "train_text_encoder_classifier",
         _fake_train_classifier,
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.evaluate_query_peft_classifier",
+        "scripts.support.query_ssl_text_encoder.runtime_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -149,19 +149,21 @@ def test_run_full_text_encoder_supervised_baseline_uses_common_context(
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.full_text_encoder_supervised."
+        "scripts.support.query_ssl_text_encoder.runners.full_text_encoder_supervised."
         "write_full_text_encoder_run_artifacts",
         _fake_write_artifacts,
     )
 
-    outputs = run_full_text_encoder_supervised_baseline(
-        cfg=_build_cfg(),
-        train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
-        eval_rows_by_name={
-            "validation": [_labeled_row("v1", "anxiety", "검증")],
-            "test": [_labeled_row("t1", "depression", "테스트")],
-        },
-        extra_manifest={"experiment_family": "full_supervised"},
+    outputs = (
+        full_text_encoder_supervised_runner.run_full_text_encoder_supervised_baseline(
+            cfg=_build_cfg(),
+            train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
+            eval_rows_by_name={
+                "validation": [_labeled_row("v1", "anxiety", "검증")],
+                "test": [_labeled_row("t1", "depression", "테스트")],
+            },
+            extra_manifest={"experiment_family": "full_supervised"},
+        )
     )
 
     assert outputs["output_dir"] == "runs/fake_full_supervised"

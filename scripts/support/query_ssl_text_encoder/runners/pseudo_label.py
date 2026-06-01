@@ -14,14 +14,14 @@ from methods.ssl.pseudo_label_replay import build_pseudo_label_replay_rows
 from methods.ssl.teacher_pseudo_label import (
     build_pseudo_label_algorithm_manifest,
 )
-from scripts.support.query_ssl_peft.io.query_adaptation import (
-    build_labeled_rows_from_query_adaptation_dataset,
-)
-from scripts.support.query_ssl_peft.io.labeled_row_export import (
+from scripts.support.query_ssl_text_encoder.io.labeled_row_export import (
     LabeledRowExportArtifacts,
     write_labeled_row_export,
 )
-from scripts.support.query_ssl_peft.runners.supervised import (
+from scripts.support.query_ssl_text_encoder.io.query_adaptation import (
+    build_labeled_rows_from_query_adaptation_dataset,
+)
+from scripts.support.query_ssl_text_encoder.runners.supervised import (
     run_supervised_peft_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import (

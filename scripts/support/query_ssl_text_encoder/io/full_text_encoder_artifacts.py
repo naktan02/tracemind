@@ -8,17 +8,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from scripts.support.query_ssl_peft.io.artifact_paths import (
+from scripts.support.query_ssl_text_encoder.io.artifact_paths import (
     build_query_text_run_output_dir,
 )
-from scripts.support.query_ssl_peft.io.artifact_writer import (
-    QueryPeftRunArtifactWriter,
+from scripts.support.query_ssl_text_encoder.io.artifact_writer import (
+    QueryTextEncoderRunArtifactWriter,
 )
-from scripts.support.query_ssl_peft.io.manifest_builder import (
+from scripts.support.query_ssl_text_encoder.io.manifest_builder import (
     build_query_text_encoder_eval_report,
     build_query_text_encoder_run_manifest,
 )
-from scripts.support.query_ssl_peft.io.model_artifact_exporter import (
+from scripts.support.query_ssl_text_encoder.io.model_artifact_exporter import (
     save_classifier_head_artifact,
 )
 
@@ -106,7 +106,9 @@ def write_full_text_encoder_run_artifacts(
         manifest=manifest,
         results=results,
     )
-    QueryPeftRunArtifactWriter().write(paths=paths, manifest=manifest, report=report)
+    QueryTextEncoderRunArtifactWriter().write(
+        paths=paths, manifest=manifest, report=report
+    )
     return paths.to_output_mapping()
 
 

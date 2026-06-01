@@ -1,4 +1,4 @@
-"""Query-domain PEFT SSL runner 공통 scaffolding."""
+"""Query-domain text encoder runner 공통 scaffolding."""
 
 from __future__ import annotations
 
@@ -10,23 +10,23 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from methods.adaptation.peft_text_encoder.training.loops import (
-    evaluate_classifier as evaluate_query_peft_classifier,
-)
-from methods.adaptation.peft_text_encoder.training.loops import (
-    set_seed as set_query_peft_seed,
-)
 from methods.adaptation.peft_text_encoder.training.modeling import (
     build_model as build_query_peft_model,
 )
 from methods.adaptation.query_text_views.data import (
-    build_dataloader as build_query_peft_dataloader,
+    build_dataloader as build_query_text_dataloader,
 )
 from methods.adaptation.query_text_views.data import (
-    build_label_index as build_query_peft_label_index,
+    build_label_index as build_query_text_label_index,
+)
+from methods.adaptation.text_encoder_classifier.training import (
+    evaluate_classifier as evaluate_text_encoder_classifier,
+)
+from methods.adaptation.text_encoder_classifier.training import (
+    set_seed as set_text_encoder_seed,
 )
 from scripts.runtime_adapters.embedding_runtime import resolve_runtime_device_name
-from scripts.support.query_ssl_peft.config.initial_checkpoint import (
+from scripts.support.query_ssl_text_encoder.config.initial_checkpoint import (
     resolve_query_adaptation_initial_checkpoint,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
@@ -40,8 +40,8 @@ from shared.src.domain.services.classification_report import (
 
 
 @dataclass(slots=True)
-class SupervisedPeftRunContext:
-    """Supervised PEFT runner가 공유하는 실행 컨텍스트."""
+class TextEncoderRunContext:
+    """Supervised text encoder runner가 공유하는 실행 컨텍스트."""
 
     cfg: Any
     effective_selection_set: str
@@ -61,10 +61,10 @@ class SupervisedPeftRunContext:
     selection_loader: Any
 
 
-PeftLabeledRunContext = SupervisedPeftRunContext
+LabeledTextEncoderRunContext = TextEncoderRunContext
 
 
-def prepare_supervised_peft_run_context(
+def prepare_supervised_text_encoder_run_context(
     cfg,
     *,
     train_rows: list[LabeledQueryRow] | None,
@@ -76,8 +76,8 @@ def prepare_supervised_peft_run_context(
     eval_set_refs: Mapping[str, str | Path] | None = None,
     trainer_version_override: str | None = None,
     trainer_version_prefix: str = "peft_clf",
-) -> SupervisedPeftRunContext:
-    """Supervised PEFT runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
+) -> TextEncoderRunContext:
+    """Supervised text encoder runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
 
     effective_selection_set = str(selection_set_name or cfg.selection_set)
     effective_train_jsonl_ref = str(
@@ -95,7 +95,7 @@ def prepare_supervised_peft_run_context(
             f"selection_set '{effective_selection_set}' is not included in eval_sets."
         )
 
-    set_query_peft_seed(int(cfg.seed))
+    set_text_encoder_seed(int(cfg.seed))
     effective_train_rows = (
         load_labeled_query_rows(Path(effective_train_jsonl_ref))
         if train_rows is None
@@ -137,7 +137,7 @@ def prepare_supervised_peft_run_context(
         flush=True,
     )
 
-    train_loader = build_query_peft_dataloader(
+    train_loader = build_query_text_dataloader(
         rows=effective_train_rows,
         label_to_index=label_to_index,
         tokenizer=tokenizer,
@@ -154,7 +154,7 @@ def prepare_supervised_peft_run_context(
         tokenizer=tokenizer,
     )
 
-    return SupervisedPeftRunContext(
+    return TextEncoderRunContext(
         cfg=effective_cfg,
         effective_selection_set=effective_selection_set,
         eval_set_map=eval_set_map,
@@ -174,7 +174,7 @@ def prepare_supervised_peft_run_context(
     )
 
 
-def prepare_labeled_peft_run_context(
+def prepare_labeled_text_encoder_run_context(
     cfg,
     *,
     train_rows: list[LabeledQueryRow] | None,
@@ -186,10 +186,10 @@ def prepare_labeled_peft_run_context(
     eval_set_refs: Mapping[str, str | Path] | None = None,
     trainer_version_override: str | None = None,
     trainer_version_prefix: str = "peft_clf",
-) -> PeftLabeledRunContext:
-    """Labeled PEFT family runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
+) -> LabeledTextEncoderRunContext:
+    """Labeled text encoder family runner 공통 입력과 dataloader를 준비한다."""
 
-    return prepare_supervised_peft_run_context(
+    return prepare_supervised_text_encoder_run_context(
         cfg,
         train_rows=train_rows,
         eval_rows_by_name=eval_rows_by_name,
@@ -229,7 +229,7 @@ def build_eval_loaders(
             if eval_row_map is None
             else eval_row_map[dataset_name]
         )
-        eval_loaders[dataset_name] = build_query_peft_dataloader(
+        eval_loaders[dataset_name] = build_query_text_dataloader(
             rows=rows,
             label_to_index=label_to_index,
             tokenizer=tokenizer,
@@ -242,18 +242,18 @@ def build_eval_loaders(
     return eval_loaders
 
 
-def evaluate_supervised_peft_run_context(
+def evaluate_supervised_text_encoder_run_context(
     *,
     model: Any,
     eval_loaders: Mapping[str, Any],
     categories: list[str],
     device: str,
 ) -> dict[str, Any]:
-    """학습이 끝난 supervised PEFT 모델을 모든 eval set에서 평가한다."""
+    """학습이 끝난 supervised text encoder 모델을 모든 eval set에서 평가한다."""
 
     results: dict[str, Any] = {}
     for dataset_name, dataloader in eval_loaders.items():
-        report = evaluate_query_peft_classifier(
+        report = evaluate_text_encoder_classifier(
             model=model,
             dataloader=dataloader,
             categories=categories,
@@ -285,16 +285,16 @@ def evaluate_supervised_peft_run_context(
     return results
 
 
-def evaluate_peft_labeled_run_context(
+def evaluate_labeled_text_encoder_run_context(
     *,
     model: Any,
     eval_loaders: Mapping[str, Any],
     categories: list[str],
     device: str,
 ) -> dict[str, Any]:
-    """Labeled PEFT family 모델을 모든 eval set에서 평가한다."""
+    """Labeled text encoder family 모델을 모든 eval set에서 평가한다."""
 
-    return evaluate_supervised_peft_run_context(
+    return evaluate_supervised_text_encoder_run_context(
         model=model,
         eval_loaders=eval_loaders,
         categories=categories,
@@ -347,7 +347,7 @@ def _resolve_categories(
         ]
 
     if effective_categories_override is None:
-        return build_query_peft_label_index(rows)
+        return build_query_text_label_index(rows)
 
     categories = list(
         dict.fromkeys(str(category) for category in effective_categories_override)

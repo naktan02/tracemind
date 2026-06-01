@@ -1,4 +1,4 @@
-"""Query-domain PEFT SSL JSON 산출물 writer."""
+"""Query-domain text encoder JSON 산출물 writer."""
 
 from __future__ import annotations
 
@@ -6,18 +6,14 @@ import json
 from pathlib import Path
 from typing import Any
 
-from scripts.support.query_ssl_peft.io.artifact_paths import (
-    QueryPeftRunArtifactPaths,
-)
 
-
-class QueryPeftRunArtifactWriter:
+class QueryTextEncoderRunArtifactWriter:
     """manifest/report JSON 쓰기만 담당한다."""
 
     def write(
         self,
         *,
-        paths: QueryPeftRunArtifactPaths,
+        paths,
         manifest: dict[str, Any],
         report: dict[str, Any],
     ) -> None:

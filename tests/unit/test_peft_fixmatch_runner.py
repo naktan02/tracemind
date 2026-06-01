@@ -9,7 +9,7 @@ from methods.ssl.base import (
     QuerySslRequiredViews,
     QuerySslRuntimeRequirements,
 )
-from scripts.support.query_ssl_peft.runners.consistency import (
+from scripts.support.query_ssl_text_encoder.runners.consistency import (
     run_consistency_query_ssl_peft_baseline,
     run_query_ssl_peft_baseline,
 )
@@ -162,7 +162,7 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
         }
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.build_query_peft_model",
+        "scripts.support.query_ssl_text_encoder.runtime_context.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -170,12 +170,12 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency."
+        "scripts.support.query_ssl_text_encoder.runners.consistency."
         "train_query_ssl_peft_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.evaluate_query_peft_classifier",
+        "scripts.support.query_ssl_text_encoder.runtime_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -188,7 +188,7 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
         _fake_write_run_artifacts,
     )
 
@@ -274,7 +274,7 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
         )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.build_query_peft_model",
+        "scripts.support.query_ssl_text_encoder.runtime_context.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -282,12 +282,12 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency."
+        "scripts.support.query_ssl_text_encoder.runners.consistency."
         "train_query_ssl_peft_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.evaluate_query_peft_classifier",
+        "scripts.support.query_ssl_text_encoder.runtime_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -300,7 +300,7 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
         lambda **_kwargs: {
             "output_dir": "runs/fake_fixmatch",
             "report_json": "runs/fake_fixmatch/report.json",
@@ -371,7 +371,7 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
         )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.build_query_peft_model",
+        "scripts.support.query_ssl_text_encoder.runtime_context.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -379,12 +379,12 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency."
+        "scripts.support.query_ssl_text_encoder.runners.consistency."
         "train_query_ssl_peft_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.evaluate_query_peft_classifier",
+        "scripts.support.query_ssl_text_encoder.runtime_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -397,7 +397,7 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
         lambda **_kwargs: {
             "output_dir": "runs/fake_flexmatch",
             "report_json": "runs/fake_flexmatch/report.json",
@@ -483,7 +483,7 @@ def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
         )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.build_query_peft_model",
+        "scripts.support.query_ssl_text_encoder.runtime_context.build_query_peft_model",
         lambda **_kwargs: (
             _DummyFeatureModel(),
             _DummyTokenizer(),
@@ -491,12 +491,12 @@ def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency."
+        "scripts.support.query_ssl_text_encoder.runners.consistency."
         "train_query_ssl_peft_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.evaluate_query_peft_classifier",
+        "scripts.support.query_ssl_text_encoder.runtime_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -509,7 +509,7 @@ def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
         lambda **_kwargs: {
             "output_dir": "runs/fake_comatch",
             "report_json": "runs/fake_comatch/report.json",
@@ -567,7 +567,7 @@ def test_query_ssl_peft_runner_rejects_unsupported_descriptor_capability(
     )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.build_query_peft_model",
+        "scripts.support.query_ssl_text_encoder.runtime_context.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -647,7 +647,7 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
         }
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.build_query_peft_model",
+        "scripts.support.query_ssl_text_encoder.runtime_context.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -655,12 +655,12 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency."
+        "scripts.support.query_ssl_text_encoder.runners.consistency."
         "train_query_ssl_peft_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runtime_context.evaluate_query_peft_classifier",
+        "scripts.support.query_ssl_text_encoder.runtime_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -673,7 +673,7 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_peft.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
         _fake_write_run_artifacts,
     )
 

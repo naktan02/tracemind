@@ -22,7 +22,7 @@
 - `prototype_analysis/`
   - prototype 전략 비교와 threshold sweep entrypoint를 둔다.
 
-공용 PEFT SSL runner/helper는 `scripts/support/query_ssl_peft/`, dataset/prototype
+공용 text encoder SSL runner/helper는 `scripts/support/query_ssl_text_encoder/`, dataset/prototype
 pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
 
 ## 직접 실행하는 entrypoint
@@ -57,7 +57,7 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
     `strategy_axes/model_architecture/initial_checkpoint` selector다.
     현재 augmentation reader는 entrypoint의 `query_ssl_augmenter` 고정 설정으로
     precomputed USB candidates만 사용한다.
-- `scripts/support/query_ssl_peft/`
+- `scripts/support/query_ssl_text_encoder/`
   - `runners/{supervised,full_text_encoder_supervised,consistency,pseudo_label,query_adaptation}.py`가 query-domain
     central supervised/SSL scaffold를 실행한다.
   - Query SSL family 공통 scaffolding은 `query_ssl/common.py`, strict USB NLP
@@ -97,8 +97,8 @@ central PEFT / SSL control:
 
 1. `central/ssl_control/run_peft_supervised_control.py`
 2. `central/ssl_control/run_peft_ssl_control.py`
-3. `../support/query_ssl_peft/runners/supervised.py`
-4. 필요하면 `../support/query_ssl_peft/runners/{consistency,query_adaptation,pseudo_label}.py`
+3. `../support/query_ssl_text_encoder/runners/supervised.py`
+4. 필요하면 `../support/query_ssl_text_encoder/runners/{consistency,query_adaptation,pseudo_label}.py`
 
 중앙 PEFT/SSL warm-start와 method별 실행 명령은
 `central/ssl_control/README.md`와 각 entrypoint의 `--cfg job` preview를 기준으로 본다.

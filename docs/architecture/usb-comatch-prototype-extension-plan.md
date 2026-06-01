@@ -346,7 +346,7 @@ class QuerySslStepContext:
 
 - 기존 FixMatch/FreeMatch/FlexMatch/AdaMatch unit tests가 유지된다.
 - unsupported feature method를 현재 runner에 올리면 명확한 error로 실패한다.
-- `scripts/support/query_ssl_peft/runners/consistency.py`는 method 이름으로 분기하지 않고
+- `scripts/support/query_ssl_text_encoder/runners/consistency.py`는 method 이름으로 분기하지 않고
   descriptor capability만 읽는다.
 
 ### Phase 2. Query view surface 확장
@@ -832,13 +832,13 @@ uv run pytest tests/unit/test_peft_fixmatch_runner.py \
 
 완료 기준:
 
-- `scripts/support/query_ssl_peft/runners/consistency.py`에 `comatch`, `simmatch`,
+- `scripts/support/query_ssl_text_encoder/runners/consistency.py`에 `comatch`, `simmatch`,
   `softmatch` 같은 method-name branch가 없다.
 - unsupported capability 조합은 bootstrap 전에 명확한 error로 실패한다.
 
 완료 기록:
 
-- `scripts/support/query_ssl_peft/runners/consistency.py`에
+- `scripts/support/query_ssl_text_encoder/runners/consistency.py`에
   `_validate_query_ssl_runner_capabilities(...)`를 추가했다.
 - runner capability validation은 method 이름이 아니라 descriptor
   `runtime_requirements`만 본다.
@@ -895,6 +895,10 @@ uv run pytest tests/unit/test_peft_fixmatch_runner.py \
   못하게 guard한다.
 - 축/adapter/runtime 점검 결과, PEFT family 자체가 owner인
   `methods/adaptation/peft_text_encoder`의 PEFT 명칭은 정상으로 봤다. 다만
+  중앙 script support package는 full text encoder control도 함께 쓰는 공통 surface라
+  `scripts/support/query_ssl_text_encoder`로 중립화했다. PEFT-specific runner,
+  artifact, entrypoint 이름만 PEFT leaf에 남긴다.
+- agent runtime 쪽은
   `agent/src/services/training/execution/query_ssl_local_training_service.py`의
   PEFT-specific request/service 이름은 full/backbone-fixed FL Query SSL runtime을 열 때
   별도 family-neutral interface로 일반화할 후보로 남긴다.

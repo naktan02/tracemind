@@ -25,5 +25,5 @@
 - Hydra config loading
 - run artifact 저장
 
-위 실행 조립은 `scripts/support/query_ssl_peft/query_ssl/`와 해당
+위 실행 조립은 `scripts/support/query_ssl_text_encoder/query_ssl/`와 해당
 entrypoint가 담당한다.

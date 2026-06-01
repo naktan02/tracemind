@@ -12,10 +12,10 @@ from methods.adaptation.full_text_encoder.training.modeling import (
 from methods.adaptation.text_encoder_classifier.training import (
     train_classifier as train_text_encoder_classifier,
 )
-from scripts.support.query_ssl_peft.io.full_text_encoder_artifacts import (
+from scripts.support.query_ssl_text_encoder.io.full_text_encoder_artifacts import (
     write_full_text_encoder_run_artifacts,
 )
-from scripts.support.query_ssl_peft.runners.supervised_text_encoder import (
+from scripts.support.query_ssl_text_encoder.runners.supervised_text_encoder import (
     run_supervised_text_encoder_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

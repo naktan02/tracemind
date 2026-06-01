@@ -5,7 +5,7 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig
 
-from scripts.support.query_ssl_peft.runners.consistency import (
+from scripts.support.query_ssl_text_encoder.runners.consistency import (
     run_query_ssl_peft_baseline,
 )
 

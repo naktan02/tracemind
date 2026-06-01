@@ -74,7 +74,7 @@ Central SSL:
 5. `scripts/experiments/central/ssl_control/README.md`
 6. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
 7. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
-8. `scripts/support/query_ssl_peft/*`
+8. `scripts/support/query_ssl_text_encoder/*`
 9. `methods/ssl/hooks/teacher.py` (teacher source hook 변경 시)
 10. `methods/adaptation/peft_text_encoder/*`
 11. `methods/evaluation/*`

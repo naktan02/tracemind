@@ -11,8 +11,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from scripts.support.query_ssl_peft.io.artifacts import write_run_artifacts
-from scripts.support.query_ssl_peft.io.full_text_encoder_artifacts import (
+from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
+from scripts.support.query_ssl_text_encoder.io.full_text_encoder_artifacts import (
     write_full_text_encoder_run_artifacts,
 )
 

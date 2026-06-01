@@ -73,7 +73,7 @@ central fixed embedding + classifier seed
 - PEFT supervised seed step과 final projection core는
   `methods/adaptation/peft_text_encoder/simulation_runtime/`가 소유하고,
   scripts runtime adapter는 runtime bridge만 맡는다.
-- `scripts/support/query_ssl_peft`의 teacher bootstrap compatibility subtree와
+- `scripts/support/query_ssl_text_encoder`의 teacher bootstrap compatibility subtree와
   fixed embedding classifier helper는 scripts canonical surface에서 제거했다.
 - 중앙 SSL `input_mode` strategy axis와 `ssl_input_mode` manifest 표식은 제거했다.
 - 중앙 SSL `pseudo_label_selection` strategy group은 제거했고, pseudo-label replay row

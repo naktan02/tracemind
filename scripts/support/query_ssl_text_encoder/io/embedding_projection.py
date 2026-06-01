@@ -8,7 +8,7 @@ from typing import Any
 from methods.adaptation.peft_text_encoder.projection_artifacts import (
     write_peft_encoder_projection_artifacts,
 )
-from scripts.support.query_ssl_peft.io.artifact_paths import (
+from scripts.support.query_ssl_text_encoder.io.artifact_paths import (
     QueryPeftRunArtifactPaths,
 )
 
