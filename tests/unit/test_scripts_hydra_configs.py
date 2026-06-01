@@ -528,6 +528,28 @@ def test_run_peft_ssl_control_supports_comatch_method_override() -> None:
     assert cfg.query_ssl_method.require_weak_strong_pair is True
 
 
+def test_run_peft_ssl_control_supports_softmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=softmatch_usb_v1",
+                "query_ssl_method.ema_p=0.9",
+                "query_ssl_method.n_sigma=3.0",
+                "query_ssl_method.per_class=true",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "softmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "softmatch"
+    assert cfg.query_ssl_method.ema_p == 0.9
+    assert cfg.query_ssl_method.n_sigma == 3.0
+    assert cfg.query_ssl_method.per_class is True
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
 def test_run_peft_ssl_control_uses_entrypoint_precomputed_query_views() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(

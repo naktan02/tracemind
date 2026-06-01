@@ -16,39 +16,45 @@ class DistributionAlignmentStateReceiver(Protocol):
     p_target: Tensor | None
 
 
-class AdaMatchDistAlignHook:
-    """USB `DistAlignEMAHook(..., p_target_type='model')`의 EMA state."""
+class EmaDistributionAlignmentHook:
+    """USB `DistAlignEMAHook`의 non-distributed EMA state."""
 
-    hook_name: str = "adamatch_dist_align_ema"
+    hook_name: str = "ema_distribution_alignment"
 
     def __init__(
         self,
         *,
         num_classes: int,
         momentum: float = 0.999,
+        p_target_type: str = "uniform",
+        p_target: Tensor | None = None,
     ) -> None:
         if num_classes <= 0:
             raise ValueError("num_classes must be positive.")
         self.num_classes = int(num_classes)
         self.m = float(momentum)
+        self.p_target_type = _normalize_p_target_type(p_target_type)
+        self.update_p_target, self.p_target = self._build_p_target(
+            p_target_type=self.p_target_type,
+            p_target=p_target,
+        )
         self.p_model: Tensor | None = None
-        self.p_target = torch.ones((self.num_classes,)) / self.num_classes
 
     @torch.no_grad()
     def dist_align(
         self,
         *,
         probs_x_ulb: Tensor,
-        probs_x_lb: Tensor,
+        probs_x_lb: Tensor | None = None,
         algorithm: DistributionAlignmentStateReceiver | None = None,
     ) -> Tensor:
-        """USB AdaMatch distribution alignment를 적용한 unlabeled probability."""
+        """EMA distribution alignment를 적용한 unlabeled probability."""
 
         self._move_state_to_device(probs_x_ulb.device)
         self.update_p(probs_x_ulb=probs_x_ulb, probs_x_lb=probs_x_lb)
 
         if self.p_model is None:  # pragma: no cover - defensive
-            raise RuntimeError("AdaMatch distribution alignment state was not updated.")
+            raise RuntimeError("EMA distribution alignment state was not updated.")
 
         aligned_probs = probs_x_ulb * (self.p_target + 1e-6) / (self.p_model + 1e-6)
         aligned_probs = aligned_probs / aligned_probs.sum(dim=-1, keepdim=True)
@@ -63,7 +69,7 @@ class AdaMatchDistAlignHook:
         self,
         *,
         probs_x_ulb: Tensor,
-        probs_x_lb: Tensor,
+        probs_x_lb: Tensor | None = None,
     ) -> None:
         """USB `DistAlignEMAHook.update_p`의 non-distributed EMA update."""
 
@@ -74,7 +80,31 @@ class AdaMatchDistAlignHook:
             self.p_model = self.p_model * self.m + probs_x_ulb.mean(dim=0) * (
                 1 - self.m
             )
-        self.p_target = self.p_target * self.m + probs_x_lb.mean(dim=0) * (1 - self.m)
+        if self.update_p_target:
+            if probs_x_lb is None:
+                raise ValueError(
+                    "model target distribution alignment requires probs_x_lb."
+                )
+            self.p_target = self.p_target * self.m + probs_x_lb.mean(dim=0) * (
+                1 - self.m
+            )
+
+    def _build_p_target(
+        self,
+        *,
+        p_target_type: str,
+        p_target: Tensor | None,
+    ) -> tuple[bool, Tensor]:
+        if p_target_type == "uniform":
+            return False, torch.ones((self.num_classes,)) / self.num_classes
+        if p_target_type == "model":
+            return True, torch.ones((self.num_classes,)) / self.num_classes
+        if p_target is None:
+            raise ValueError("gt EMA distribution alignment requires p_target.")
+        normalized = p_target.detach().to(dtype=torch.float32).reshape(-1)
+        if normalized.numel() != self.num_classes:
+            raise ValueError("p_target size must match num_classes.")
+        return False, normalized
 
     def _move_state_to_device(self, device: torch.device) -> None:
         if self.p_target.device != device:

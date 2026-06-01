@@ -17,7 +17,7 @@ from ...base import (
 from ...common import compute_prob
 from ...hooks.adaptive_thresholding import RelativeConfidenceThresholdingHook
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
-from ...hooks.distribution_alignment import AdaMatchDistAlignHook
+from ...hooks.distribution_alignment import EmaDistributionAlignmentHook
 from ...hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
     PseudoLabelingConfig,
@@ -37,6 +37,24 @@ from ..usb_consistency import (
 )
 
 AdaMatchThresholdingHook = RelativeConfidenceThresholdingHook
+
+
+class AdaMatchDistAlignHook(EmaDistributionAlignmentHook):
+    """USB AdaMatch가 쓰는 EMA distribution alignment 조합."""
+
+    hook_name: str = "adamatch_dist_align_ema"
+
+    def __init__(
+        self,
+        *,
+        num_classes: int,
+        momentum: float = 0.999,
+    ) -> None:
+        super().__init__(
+            num_classes=num_classes,
+            momentum=momentum,
+            p_target_type="model",
+        )
 
 
 class AdaMatchAlgorithm:

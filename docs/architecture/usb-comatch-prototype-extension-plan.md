@@ -854,6 +854,8 @@ uv run pytest tests/unit/test_peft_fixmatch_runner.py \
 
 ### Step 8. Generality probe method 선택
 
+상태: 완료 (2026-06-01)
+
 목표:
 
 - CoMatch 구현 직후 구조가 CoMatch 전용이 아닌지 검증한다.
@@ -870,6 +872,38 @@ uv run pytest tests/unit/test_peft_fixmatch_runner.py \
 - 두 번째 method 추가가 `methods/ssl/algorithms/<method>/`, Hydra leaf, unit test 중심으로
   닫힌다.
 - 새 capability가 필요하면 그 owner만 확장하고 runner method branch는 만들지 않는다.
+
+완료 기록:
+
+- Generality probe method는 `SoftMatch`로 선택했다. CoMatch가 연 projection/head
+  lifecycle을 다시 쓰지 않고, stateful EMA distribution alignment와 truncated Gaussian
+  weighting state만으로 두 번째 method가 닫히는지 확인하기 위해서다.
+- `methods/ssl/algorithms/softmatch/`에 `softmatch.py`, `weighting.py`,
+  `original_spec.py`, `README.md`를 추가했다.
+- `SoftMatchAlgorithm`은 weak/strong logits surface와 `logits` model output만 요구한다.
+  pseudo-label target은 USB 원본처럼 distribution-aligned probability가 아니라 원본 weak
+  logits에서 만든다.
+- `QUERY_SSL_ALGORITHM_STATE_WEIGHTING_EMA = "weighting_ema"`를 추가했다. 이는 실제
+  SoftMatch producer/consumer/test가 생긴 state capability라서 상수화했다.
+- `conf/strategy_axes/ssl_objective/consistency_method/softmatch_usb_v1.yaml`을 추가했다.
+  Hydra leaf는 parameter와 조합만 소유한다.
+- `methods/ssl/hooks` 공통 계층에 남아 있던 method-specific hook 이름을 정리했다.
+  `AdaMatchDistAlignHook`, `FreeMatchThresholdingHook`, `FlexMatchThresholdingHook`,
+  `SoftMatchWeightingHook` 같은 단일 method 조합은 각 method package가 소유한다.
+- `tests/architecture/test_layer_dependencies.py`가 `methods/ssl/hooks/*.py`에
+  AdaMatch/FreeMatch/FlexMatch/CoMatch/SoftMatch 같은 method 이름이 다시 들어오지
+  못하게 guard한다.
+- 축/adapter/runtime 점검 결과, PEFT family 자체가 owner인
+  `methods/adaptation/peft_text_encoder`의 PEFT 명칭은 정상으로 봤다. 다만
+  `agent/src/services/training/execution/query_ssl_local_training_service.py`의
+  PEFT-specific request/service 이름은 full/backbone-fixed FL Query SSL runtime을 열 때
+  별도 family-neutral interface로 일반화할 후보로 남긴다.
+- `tests/unit/test_methods_softmatch.py`,
+  `tests/unit/test_query_ssl_runtime_requirements.py`,
+  `tests/unit/test_scripts_hydra_configs.py`,
+  `tests/architecture/test_layer_dependencies.py`가 SoftMatch registry, descriptor
+  capability, tensor core, state roundtrip, Hydra override, common hook ownership guard를
+  검증한다.
 
 ## Guardrails
 

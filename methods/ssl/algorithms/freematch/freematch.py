@@ -15,10 +15,6 @@ from ...base import (
     QuerySslStepResult,
     TextBatchClassifier,
 )
-from ...hooks.adaptive_thresholding import (
-    FreeMatchThresholdingHook,
-    replace_inf_to_zero,
-)
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
 from ...hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
@@ -39,6 +35,7 @@ from ..usb_consistency import (
     compute_unlabeled_weak_strong_logits,
     validate_usb_consistency_loaders,
 )
+from .thresholding import FreeMatchThresholdingHook, replace_inf_to_zero
 
 
 def entropy_loss(

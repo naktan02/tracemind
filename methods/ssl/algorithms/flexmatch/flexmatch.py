@@ -15,7 +15,6 @@ from ...base import (
     TextBatchClassifier,
 )
 from ...common import compute_prob
-from ...hooks.adaptive_thresholding import FlexMatchThresholdingHook
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
 from ...hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
@@ -36,6 +35,7 @@ from ..usb_consistency import (
     compute_unlabeled_weak_strong_logits,
     validate_usb_consistency_loaders,
 )
+from .thresholding import FlexMatchThresholdingHook
 
 
 class FlexMatchAlgorithm:

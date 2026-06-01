@@ -10,6 +10,7 @@ from methods.ssl.base import (
     QUERY_SSL_ALGORITHM_STATE_PROBABILITY_QUEUE,
     QUERY_SSL_ALGORITHM_STATE_STATELESS,
     QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER,
+    QUERY_SSL_ALGORITHM_STATE_WEIGHTING_EMA,
     QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
     QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
     QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR,
@@ -67,6 +68,12 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
                 QUERY_SSL_ALGORITHM_STATE_PROBABILITY_QUEUE,
             }
         ),
+        "softmatch": frozenset(
+            {
+                QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA,
+                QUERY_SSL_ALGORITHM_STATE_WEIGHTING_EMA,
+            }
+        ),
     }
     expected_batch_surfaces = {
         "fixmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
@@ -75,6 +82,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         "freematch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "pseudo_label": QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
         "comatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR,
+        "softmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
     }
 
     for algorithm_name, expected_state_surface in expected_state_surfaces.items():

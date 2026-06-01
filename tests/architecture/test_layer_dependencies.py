@@ -552,6 +552,36 @@ def test_query_ssl_peft_runner_stays_descriptor_capability_driven() -> None:
     )
 
 
+def test_common_ssl_hooks_do_not_own_method_specific_hooks() -> None:
+    method_fragments = (
+        "AdaMatch",
+        "CoMatch",
+        "FixMatch",
+        "FlexMatch",
+        "FreeMatch",
+        "SoftMatch",
+        "adamatch",
+        "comatch",
+        "fixmatch",
+        "flexmatch",
+        "freematch",
+        "softmatch",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {fragment}"
+        for path in _iter_python_files(METHODS_SSL_SRC / "hooks")
+        for fragment in method_fragments
+        if fragment in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "methods/ssl/hooks는 여러 SSL algorithm에서 안정적으로 공유되는 mechanism만 "
+        "소유한다. 단일 method 이름이 붙은 hook/state 조합은 "
+        "methods/ssl/algorithms/<method>/ 아래에 둔다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_central_ssl_consistency_entrypoint_imports_runner_directly() -> None:
     entrypoint_path = (
         SCRIPTS_SRC

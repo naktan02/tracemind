@@ -9,7 +9,7 @@ from methods.ssl.algorithms.flexmatch.flexmatch import (
     FlexMatchAlgorithm,
     compute_flexmatch_step,
 )
-from methods.ssl.hooks.adaptive_thresholding import FlexMatchThresholdingHook
+from methods.ssl.algorithms.flexmatch.thresholding import FlexMatchThresholdingHook
 from methods.ssl.registry import (
     build_query_ssl_algorithm,
     resolve_query_ssl_algorithm_descriptor,
