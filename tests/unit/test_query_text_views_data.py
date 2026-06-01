@@ -5,14 +5,19 @@ from __future__ import annotations
 from methods.adaptation.query_text_views.data import (
     TextMultiviewDataset,
     TextWeakDataset,
+    TextWeakStrongPairDataset,
     build_multiview_dataloader,
     build_weak_dataloader,
+    build_weak_strong_pair_dataloader,
 )
 from methods.adaptation.query_text_views.query_ssl_views import (
     build_query_ssl_unlabeled_dataloader,
 )
 from methods.adaptation.query_text_views.tokenization import (
     TextTokenizationCache,
+)
+from methods.adaptation.query_text_views.view_rows import (
+    row_supports_query_ssl_view_builder,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -88,6 +93,21 @@ def test_text_multiview_dataset_keeps_legacy_weak_strong_compatibility() -> None
     assert item["strong_text"] == "strong::I feel low."
 
 
+def test_text_weak_strong_pair_dataset_exposes_both_usb_aug_candidates() -> None:
+    row = _row("q1", "I feel anxious today.")
+    row["aug_0"] = "I feel nervous today."
+    row["aug_1"] = "Today I feel uneasy."
+
+    dataset = TextWeakStrongPairDataset(rows=[row], task_prefix="label: ")
+    item = dataset[0]
+
+    assert item["query_id"] == "q1"
+    assert item["row_index"] == 0
+    assert item["weak_text"] == "label: I feel anxious today."
+    assert item["strong_0_text"] == "label: I feel nervous today."
+    assert item["strong_1_text"] == "label: Today I feel uneasy."
+
+
 def test_text_weak_dataset_uses_original_text_as_usb_weak_view() -> None:
     row = _row("q3", "I feel anxious today.")
 
@@ -138,6 +158,47 @@ def test_multiview_dataloader_emits_stable_row_indices() -> None:
     assert batch["row_indices"].tolist() == [0, 1]
 
 
+def test_weak_strong_pair_dataloader_emits_both_strong_views() -> None:
+    class _Tokenizer:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def __call__(self, texts, **_kwargs):
+            import torch
+
+            self.calls.append(list(texts))
+            return {
+                "input_ids": torch.ones((len(texts), 2), dtype=torch.long),
+                "attention_mask": torch.ones((len(texts), 2), dtype=torch.long),
+            }
+
+    row = _row("q1", "base")
+    row["aug_0"] = "first strong"
+    row["aug_1"] = "second strong"
+    tokenizer = _Tokenizer()
+
+    loader = build_weak_strong_pair_dataloader(
+        rows=[row],
+        tokenizer=tokenizer,
+        batch_size=1,
+        max_length=8,
+        task_prefix="prompt: ",
+        shuffle=False,
+    )
+    batch = next(iter(loader))
+
+    assert tokenizer.calls == [
+        ["prompt: base"],
+        ["prompt: first strong"],
+        ["prompt: second strong"],
+    ]
+    assert batch["query_ids"] == ["q1"]
+    assert batch["row_indices"].tolist() == [0]
+    assert "strong_input_ids" not in batch
+    assert "strong_0_input_ids" in batch
+    assert "strong_1_input_ids" in batch
+
+
 def test_query_ssl_unlabeled_loader_dispatches_multiview_surface() -> None:
     class _Tokenizer:
         def __call__(self, texts, **_kwargs):
@@ -168,6 +229,37 @@ def test_query_ssl_unlabeled_loader_dispatches_multiview_surface() -> None:
     assert "strong_input_ids" in batch
 
 
+def test_query_ssl_unlabeled_loader_dispatches_weak_strong_pair_surface() -> None:
+    class _Tokenizer:
+        def __call__(self, texts, **_kwargs):
+            import torch
+
+            return {
+                "input_ids": torch.ones((len(texts), 2), dtype=torch.long),
+                "attention_mask": torch.ones((len(texts), 2), dtype=torch.long),
+            }
+
+    row = _row("q1", "base")
+    row["aug_0"] = "first strong"
+    row["aug_1"] = "second strong"
+
+    loader = build_query_ssl_unlabeled_dataloader(
+        rows=[row],
+        tokenizer=_Tokenizer(),
+        batch_size=1,
+        max_length=8,
+        task_prefix="",
+        shuffle=False,
+        view_builder_name="usb_weak_strong_pair",
+    )
+    batch = next(iter(loader))
+
+    assert batch["query_ids"] == ["q1"]
+    assert "strong_0_input_ids" in batch
+    assert "strong_1_input_ids" in batch
+    assert "strong_input_ids" not in batch
+
+
 def test_query_ssl_unlabeled_loader_dispatches_weak_surface() -> None:
     class _Tokenizer:
         def __call__(self, texts, **_kwargs):
@@ -192,6 +284,24 @@ def test_query_ssl_unlabeled_loader_dispatches_weak_surface() -> None:
     assert batch["query_ids"] == ["q1"]
     assert "weak_input_ids" in batch
     assert "strong_input_ids" not in batch
+
+
+def test_weak_strong_pair_view_builder_requires_strict_usb_candidates() -> None:
+    strict_row = _row("q1", "base")
+    strict_row["aug_0"] = "first strong"
+    strict_row["aug_1"] = "second strong"
+    legacy_row = _row("q2", "base")
+    legacy_row["weak_text"] = "weak"
+    legacy_row["strong_text"] = "strong"
+
+    assert row_supports_query_ssl_view_builder(
+        row=strict_row,
+        view_builder_name="usb_weak_strong_pair",
+    )
+    assert not row_supports_query_ssl_view_builder(
+        row=legacy_row,
+        view_builder_name="usb_weak_strong_pair",
+    )
 
 
 def test_text_tokenization_cache_reuses_selected_texts() -> None:

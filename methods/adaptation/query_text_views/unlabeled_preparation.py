@@ -13,6 +13,7 @@ from pathlib import Path
 from methods.adaptation.query_text_views.view_rows import (
     USB_MULTIVIEW_BUILDER_NAME,
     USB_WEAK_BUILDER_NAME,
+    USB_WEAK_STRONG_PAIR_BUILDER_NAME,
     QuerySslBacktranslationPair,
     attach_usb_multiview_candidate_pair,
     rows_have_usb_multiview_candidates,
@@ -135,7 +136,10 @@ def prepare_query_ssl_unlabeled_rows(
 ) -> PreparedQuerySslUnlabeledRows:
     """algorithm view surface에 맞춰 중앙 unlabeled rows를 준비한다."""
 
-    if view_builder_name == USB_MULTIVIEW_BUILDER_NAME:
+    if view_builder_name in {
+        USB_MULTIVIEW_BUILDER_NAME,
+        USB_WEAK_STRONG_PAIR_BUILDER_NAME,
+    }:
         return _prepare_usb_multiview_unlabeled_rows(
             rows=rows,
             source_jsonl=source_jsonl,

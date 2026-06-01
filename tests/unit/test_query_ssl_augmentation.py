@@ -5,7 +5,10 @@ from methods.adaptation.query_text_views.unlabeled_preparation import (
     QuerySslAugmenterSettings,
     prepare_query_ssl_unlabeled_rows,
 )
-from methods.adaptation.query_text_views.view_rows import USB_MULTIVIEW_BUILDER_NAME
+from methods.adaptation.query_text_views.view_rows import (
+    USB_MULTIVIEW_BUILDER_NAME,
+    USB_WEAK_STRONG_PAIR_BUILDER_NAME,
+)
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
@@ -99,3 +102,25 @@ def test_prepare_usb_multiview_unlabeled_rows_generates_and_caches(
     assert cached.mode == "cache_hit"
     assert cached.cache_hit is True
     assert cached.rows[0]["aug_0"] == "de::I feel anxious today."
+
+
+def test_prepare_weak_strong_pair_unlabeled_rows_reuses_usb_candidate_preparation(
+    tmp_path,
+) -> None:
+    settings = _augmenter_settings(str(tmp_path))
+    rows = [_row("u1", "I feel anxious today.")]
+
+    prepared = prepare_query_ssl_unlabeled_rows(
+        view_builder_name=USB_WEAK_STRONG_PAIR_BUILDER_NAME,
+        algorithm_name="comatch",
+        rows=rows,
+        source_jsonl=None,
+        augmenter_settings=settings,
+        candidate_pair_builder=lambda texts: (
+            _FakeBacktranslationAugmenter().build_candidate_pairs(texts=texts)
+        ),
+    )
+
+    assert prepared.uses_strong_view_candidates is True
+    assert prepared.rows[0]["aug_0"] == "de::I feel anxious today."
+    assert prepared.rows[0]["aug_1"] == "fr::I feel anxious today."

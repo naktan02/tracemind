@@ -507,6 +507,7 @@ def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
     source = view_preparation_path.read_text(encoding="utf-8")
     forbidden_snippets = (
         'view_builder_name == "usb_multiview"',
+        'view_builder_name == "usb_weak_strong_pair"',
         'view_builder_name == "usb_weak"',
         'augmenter_type == "precomputed_usb_candidates"',
         'augmenter_type != "nllb_backtranslation"',

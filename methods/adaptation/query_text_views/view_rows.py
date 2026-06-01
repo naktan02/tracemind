@@ -11,6 +11,7 @@ from shared.src.contracts.training_example_backends import (
 )
 
 USB_MULTIVIEW_BUILDER_NAME = "usb_multiview"
+USB_WEAK_STRONG_PAIR_BUILDER_NAME = "usb_weak_strong_pair"
 USB_WEAK_BUILDER_NAME = "usb_weak"
 
 
@@ -137,6 +138,8 @@ def row_supports_query_ssl_view_builder(
 
     if view_builder_name == USB_MULTIVIEW_BUILDER_NAME:
         return _has_strict_usb_multiview_fields(row) or _has_legacy_pair_fields(row)
+    if view_builder_name == USB_WEAK_STRONG_PAIR_BUILDER_NAME:
+        return _has_strict_usb_multiview_fields(row)
     if view_builder_name == USB_WEAK_BUILDER_NAME:
         return bool(
             _optional_row_value(row, "weak_text") or _optional_row_value(row, "text")

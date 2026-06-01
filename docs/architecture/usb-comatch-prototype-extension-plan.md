@@ -583,6 +583,8 @@ uv run pytest tests/unit/test_peft_encoder_training_core.py
 
 ### Step 3. Query view surface를 weak/strong pair까지 확장
 
+상태: 완료 (2026-06-01)
+
 목표:
 
 - `usb_multiview`는 기존 compatibility로 유지한다.
@@ -625,6 +627,20 @@ uv run pytest tests/unit/test_query_text_views_data.py \
 
 - 기존 FixMatch류는 `strong_input_ids` batch를 계속 받는다.
 - CoMatch/SimMatch류 descriptor가 `usb_weak_strong_pair`를 요구할 수 있다.
+
+완료 기록:
+
+- `USB_WEAK_STRONG_PAIR_BUILDER_NAME = "usb_weak_strong_pair"` view builder를
+  `methods/adaptation/query_text_views` owner 안에 추가했다.
+- 새 `TextWeakStrongPairDataset`과 `build_weak_strong_pair_dataloader(...)`는 strict
+  USB `text/aug_0/aug_1` row만 받아 `weak_*`, `strong_0_*`, `strong_1_*` batch key를
+  만든다.
+- 기존 `usb_multiview`는 legacy `weak_text/strong_text` compatibility와
+  `strong_input_ids` batch를 그대로 유지한다.
+- augmentation preparation은 `usb_multiview`와 `usb_weak_strong_pair` 모두 strict USB
+  candidate preparation을 재사용한다.
+- `tests/architecture/test_layer_dependencies.py`가 script adapter에
+  `usb_weak_strong_pair` method/view 분기가 새지 않도록 guard한다.
 
 ### Step 4. Model output capability와 auxiliary module lifecycle 추가
 
