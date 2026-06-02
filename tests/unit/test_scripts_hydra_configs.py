@@ -465,6 +465,26 @@ def test_run_peft_ssl_control_supports_flexmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
+def test_run_peft_ssl_control_supports_refixmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=refixmatch_usb_v1",
+                "query_ssl_method.p_cutoff=0.9",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "refixmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "refixmatch"
+    assert cfg.query_ssl_method.temperature == 0.5
+    assert cfg.query_ssl_method.p_cutoff == 0.9
+    assert cfg.query_ssl_method.hard_label is True
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
 def test_run_peft_ssl_control_supports_freematch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(

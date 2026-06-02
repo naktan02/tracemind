@@ -70,7 +70,7 @@ methods/
     query_text_views/
     privacy_guards/
     local_objective_regularizers/
-  ssl/algorithms/{fixmatch,flexmatch,freematch,adamatch,dash,simmatch,mixmatch,pseudolabel}/
+  ssl/algorithms/{fixmatch,refixmatch,flexmatch,freematch,adamatch,dash,simmatch,mixmatch,pseudolabel}/
   ssl/hooks/
   federated/{aggregation/fedavg,participation.py,shard_policy}/
   federated_ssl/

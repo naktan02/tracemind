@@ -71,6 +71,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
 ## 하위 패키지 지도
 
 - `methods/ssl/algorithms/fixmatch/`: USB 스타일 FixMatch objective core
+- `methods/ssl/algorithms/refixmatch/`: USB 스타일 ReFixMatch low-confidence KL
+  objective core
 - `methods/ssl/algorithms/freematch/`: USB 스타일 FreeMatch adaptive threshold
   objective core
 - `methods/ssl/algorithms/adamatch/`: USB 스타일 AdaMatch distribution alignment

@@ -1,7 +1,7 @@
 # SSL Algorithms
 
-`methods/ssl/algorithms/`는 PseudoLabel, PiModel, MeanTeacher, FixMatch, FlexMatch,
-FreeMatch, AdaMatch, Dash, UDA, SoftMatch, CoMatch, SimMatch, MixMatch 같은
+`methods/ssl/algorithms/`는 PseudoLabel, PiModel, MeanTeacher, FixMatch, ReFixMatch,
+FlexMatch, FreeMatch, AdaMatch, Dash, UDA, SoftMatch, CoMatch, SimMatch, MixMatch 같은
 SSL objective 구현을 method-specific module로 둔다.
 
 공유 가능한 tensor-level subroutine은 `methods/ssl/hooks/`에 둔다.

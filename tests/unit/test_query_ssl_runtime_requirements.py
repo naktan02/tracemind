@@ -51,6 +51,7 @@ def test_runtime_requirements_accept_future_capability_strings() -> None:
 def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
     expected_state_surfaces = {
         "fixmatch": frozenset({QUERY_SSL_ALGORITHM_STATE_STATELESS}),
+        "refixmatch": frozenset({QUERY_SSL_ALGORITHM_STATE_STATELESS}),
         "flexmatch": frozenset(
             {
                 QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
@@ -102,6 +103,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
     }
     expected_batch_surfaces = {
         "fixmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
+        "refixmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "flexmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "adamatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "dash": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
