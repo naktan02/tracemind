@@ -62,6 +62,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
             }
         ),
         "pseudo_label": frozenset({QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER}),
+        "pimodel": frozenset({QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER}),
         "uda": frozenset({QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER}),
         "comatch": frozenset(
             {
@@ -82,6 +83,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         "adamatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "freematch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "pseudo_label": QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
+        "pimodel": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "uda": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "comatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR,
         "softmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
