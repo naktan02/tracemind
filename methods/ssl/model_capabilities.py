@@ -64,10 +64,40 @@ def extract_classifier_input_features(
     """model forward와 같은 classifier 직전 feature를 반환한다."""
 
     classifier_model = require_feature_mixing_classifier(model)
-    features = classifier_model.extract_pooled_features(
+    pooled_features = classifier_model.extract_pooled_features(
         input_ids=input_ids,
         attention_mask=attention_mask,
     )
+    return prepare_classifier_input_features(classifier_model, pooled_features)
+
+
+def forward_logits_and_pooled_features_once(
+    model: TextBatchClassifier,
+    *,
+    input_ids: Tensor,
+    attention_mask: Tensor,
+) -> tuple[Tensor, Tensor]:
+    """한 번 추출한 pooled feature에서 logits와 feature consumer 출력을 함께 만든다."""
+
+    classifier_model = require_feature_mixing_classifier(model)
+    pooled_features = classifier_model.extract_pooled_features(
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+    )
+    classifier_features = prepare_classifier_input_features(
+        classifier_model,
+        pooled_features,
+    )
+    return classifier_model.classifier(classifier_features), pooled_features
+
+
+def prepare_classifier_input_features(
+    model: TextBatchClassifier,
+    features: Tensor,
+) -> Tensor:
+    """pooled feature에 forward path와 같은 classifier 직전 변환을 적용한다."""
+
+    classifier_model = require_feature_mixing_classifier(model)
     dropout = getattr(classifier_model, "dropout", None)
     if isinstance(dropout, nn.Module):
         features = dropout(features)

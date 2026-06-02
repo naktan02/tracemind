@@ -22,21 +22,19 @@ class _FeatureClassifier(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.classifier = nn.Linear(2, 2, bias=False)
+        self.extract_call_count = 0
         with torch.no_grad():
             self.classifier.weight.copy_(torch.eye(2))
 
     def extract_pooled_features(self, *, input_ids, attention_mask):
         del attention_mask
+        self.extract_call_count += 1
         values = input_ids.float()
         return torch.stack([values[:, 0], values[:, 1]], dim=1)
 
     def forward(self, *, input_ids, attention_mask):
-        return self.classifier(
-            self.extract_pooled_features(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-            )
-        )
+        del input_ids, attention_mask
+        raise AssertionError("SimMatch must derive logits from pooled features once.")
 
 
 class _IdentityProjection(nn.Module):
@@ -169,6 +167,38 @@ def test_simmatch_first_epoch_disables_similarity_loss_like_usb() -> None:
 
     assert torch.isclose(output.loss_components["in_loss"], torch.tensor(0.0))
     assert output.metrics["similarity_smoothing_applied"] == 0.0
+
+
+def test_simmatch_reuses_single_pooled_feature_pass_per_view() -> None:
+    model = _FeatureClassifier()
+    projection = _IdentityProjection()
+    memory_bank = SimMatchMemoryBank(
+        bank_size=2,
+        feature_dim=2,
+        device="cpu",
+    )
+    memory_bank.feature_bank = torch.eye(2)
+    memory_bank.labels_bank = torch.tensor([0, 1], dtype=torch.long)
+
+    compute_simmatch_step(
+        model=model,
+        projection_head=projection,
+        labeled_batch=_labeled_batch(),
+        unlabeled_batch=_unlabeled_batch(),
+        dist_align_hook=QueueDistributionAlignmentHook(
+            num_classes=2,
+            queue_length=2,
+            p_target_type="uniform",
+        ),
+        memory_bank=memory_bank,
+        temperature=0.5,
+        p_cutoff=0.0,
+        smoothing_alpha=0.9,
+        ema_bank=0.0,
+        apply_similarity_smoothing=True,
+    )
+
+    assert model.extract_call_count == 3
 
 
 def test_simmatch_algorithm_state_roundtrips_memory_bank() -> None:

@@ -30,18 +30,20 @@ class _FeatureMapModel(nn.Module):
         features_by_token: dict[int, torch.Tensor],
     ) -> None:
         super().__init__()
-        self.classifier = nn.Linear(2, 2)
-        self._logits_by_token = logits_by_token
+        del logits_by_token
+        self.classifier = nn.Linear(2, 2, bias=False)
         self._features_by_token = features_by_token
+        self.extract_call_count = 0
+        with torch.no_grad():
+            self.classifier.weight.copy_(torch.eye(2))
 
     def forward(self, *, input_ids, attention_mask):
-        del attention_mask
-        return torch.stack(
-            [self._logits_by_token[int(row[0].item())] for row in input_ids]
-        )
+        del input_ids, attention_mask
+        raise AssertionError("CoMatch must derive logits from pooled features once.")
 
     def extract_pooled_features(self, *, input_ids, attention_mask):
         del attention_mask
+        self.extract_call_count += 1
         return torch.stack(
             [self._features_by_token[int(row[0].item())] for row in input_ids]
         )
@@ -348,6 +350,57 @@ def test_compute_comatch_step_can_delay_memory_smoothing() -> None:
 
     assert delayed.metrics["memory_smoothing_applied"].item() == 0.0
     assert applied.metrics["memory_smoothing_applied"].item() == 1.0
+
+
+def test_comatch_reuses_single_pooled_feature_pass_per_view() -> None:
+    model = _FeatureMapModel(
+        logits_by_token={
+            1: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            2: torch.tensor([0.0, 1.0], dtype=torch.float32),
+            3: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            4: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            5: torch.tensor([0.0, 1.0], dtype=torch.float32),
+        },
+        features_by_token={
+            1: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            2: torch.tensor([0.0, 1.0], dtype=torch.float32),
+            3: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            4: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            5: torch.tensor([0.0, 1.0], dtype=torch.float32),
+        },
+    )
+    projection_head = nn.Linear(2, 2, bias=False)
+    with torch.no_grad():
+        projection_head.weight.copy_(torch.eye(2))
+
+    compute_comatch_step(
+        model=model,
+        projection_head=projection_head,
+        labeled_batch={
+            "input_ids": torch.tensor([[1], [2]], dtype=torch.long),
+            "attention_mask": torch.tensor([[1], [1]], dtype=torch.long),
+            "labels": torch.tensor([0, 1], dtype=torch.long),
+        },
+        unlabeled_batch={
+            "weak_input_ids": torch.tensor([[3]], dtype=torch.long),
+            "weak_attention_mask": torch.tensor([[1]], dtype=torch.long),
+            "strong_0_input_ids": torch.tensor([[4]], dtype=torch.long),
+            "strong_0_attention_mask": torch.tensor([[1]], dtype=torch.long),
+            "strong_1_input_ids": torch.tensor([[5]], dtype=torch.long),
+            "strong_1_attention_mask": torch.tensor([[1]], dtype=torch.long),
+        },
+        dist_align_hook=QueueDistributionAlignmentHook(
+            num_classes=2,
+            queue_length=2,
+        ),
+        memory_bank=CoMatchMemoryBank(queue_size=4, feature_dim=2, num_classes=2),
+        temperature=0.5,
+        p_cutoff=0.0,
+        contrast_p_cutoff=0.0,
+        smoothing_alpha=0.9,
+    )
+
+    assert model.extract_call_count == 4
 
 
 def test_comatch_algorithm_state_roundtrips_memory_bank() -> None:

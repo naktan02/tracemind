@@ -31,8 +31,9 @@ from ...hooks.consistency import CrossEntropyConsistencyLossHook
 from ...hooks.distribution_alignment import QueueDistributionAlignmentHook
 from ...hooks.masking import FixedThresholdMaskingHook
 from ...model_capabilities import (
-    FeatureReturningTextBatchClassifier,
-    require_pooled_feature_classifier,
+    FeatureMixingTextBatchClassifier,
+    forward_logits_and_pooled_features_once,
+    require_feature_mixing_classifier,
 )
 from ...primitives.probability import compute_prob
 from ...primitives.projection import SslProjectionHead
@@ -141,7 +142,7 @@ class CoMatchAlgorithm:
         *,
         model: TextBatchClassifier,
     ) -> dict[str, nn.Module]:
-        classifier = require_pooled_feature_classifier(model)
+        classifier = require_feature_mixing_classifier(model)
         input_dim = int(getattr(classifier.classifier, "in_features", 0))
         if input_dim <= 0:
             raise ValueError("CoMatch requires classifier.in_features.")
@@ -196,7 +197,7 @@ class CoMatchAlgorithm:
             device=next(self.projection_head.parameters()).device
         )
         return compute_comatch_step(
-            model=require_pooled_feature_classifier(model),
+            model=require_feature_mixing_classifier(model),
             projection_head=self.projection_head,
             labeled_batch=labeled_batch,
             unlabeled_batch=unlabeled_batch,
@@ -327,7 +328,7 @@ class CoMatchAlgorithm:
 
 def compute_comatch_step(
     *,
-    model: FeatureReturningTextBatchClassifier,
+    model: FeatureMixingTextBatchClassifier,
     projection_head: nn.Module,
     labeled_batch: dict[str, Tensor] | None,
     unlabeled_batch: dict[str, Tensor],
@@ -485,13 +486,13 @@ def comatch_contrastive_loss(
 
 def _forward_logits_and_projected_features(
     *,
-    model: FeatureReturningTextBatchClassifier,
+    model: FeatureMixingTextBatchClassifier,
     projection_head: nn.Module,
     input_ids: Tensor,
     attention_mask: Tensor,
 ) -> tuple[Tensor, Tensor]:
-    logits = model(input_ids=input_ids, attention_mask=attention_mask)
-    pooled_features = model.extract_pooled_features(
+    logits, pooled_features = forward_logits_and_pooled_features_once(
+        model,
         input_ids=input_ids,
         attention_mask=attention_mask,
     )
