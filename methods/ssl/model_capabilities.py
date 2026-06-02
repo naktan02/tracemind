@@ -22,6 +22,12 @@ class FeatureReturningTextBatchClassifier(TextBatchClassifier, Protocol):
         """tokenized text batch의 pooled representation을 반환한다."""
 
 
+class FeatureMixingTextBatchClassifier(FeatureReturningTextBatchClassifier, Protocol):
+    """classifier 직전 feature를 직접 classification할 수 있는 classifier."""
+
+    classifier: nn.Module
+
+
 def require_pooled_feature_classifier(
     model: TextBatchClassifier,
 ) -> FeatureReturningTextBatchClassifier:
@@ -33,6 +39,57 @@ def require_pooled_feature_classifier(
             "Query SSL model output capability requires extract_pooled_features()."
         )
     return cast(FeatureReturningTextBatchClassifier, model)
+
+
+def require_feature_mixing_classifier(
+    model: TextBatchClassifier,
+) -> FeatureMixingTextBatchClassifier:
+    """feature-level MixUp에 필요한 classifier head capability를 검증한다."""
+
+    feature_classifier = require_pooled_feature_classifier(model)
+    classifier_head = getattr(feature_classifier, "classifier", None)
+    if not isinstance(classifier_head, nn.Module):
+        raise TypeError(
+            "Query SSL feature mixing requires model.classifier to be nn.Module."
+        )
+    return cast(FeatureMixingTextBatchClassifier, feature_classifier)
+
+
+def extract_classifier_input_features(
+    model: TextBatchClassifier,
+    *,
+    input_ids: Tensor,
+    attention_mask: Tensor,
+) -> Tensor:
+    """model forward와 같은 classifier 직전 feature를 반환한다."""
+
+    classifier_model = require_feature_mixing_classifier(model)
+    features = classifier_model.extract_pooled_features(
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+    )
+    dropout = getattr(classifier_model, "dropout", None)
+    if isinstance(dropout, nn.Module):
+        features = dropout(features)
+    classifier_dtype = _module_parameter_dtype(classifier_model.classifier)
+    if classifier_dtype is None:
+        return features
+    return features.to(classifier_dtype)
+
+
+def classify_classifier_input_features(
+    model: TextBatchClassifier,
+    features: Tensor,
+) -> Tensor:
+    """classifier 직전 feature를 classifier head에 직접 통과시킨다."""
+
+    classifier_model = require_feature_mixing_classifier(model)
+    classifier_head = classifier_model.classifier
+    classifier_dtype = _module_parameter_dtype(classifier_head)
+    classifier_features = (
+        features if classifier_dtype is None else features.to(classifier_dtype)
+    )
+    return classifier_head(classifier_features)
 
 
 def build_query_ssl_auxiliary_modules(
@@ -129,3 +186,10 @@ def _require_auxiliary_module_name(raw_name: object) -> str:
     if not name:
         raise ValueError("Query SSL auxiliary module name must not be empty.")
     return name
+
+
+def _module_parameter_dtype(module: nn.Module) -> Any:
+    parameter = next(module.parameters(), None)
+    if parameter is None:
+        return None
+    return parameter.dtype

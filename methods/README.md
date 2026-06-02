@@ -78,6 +78,7 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
 - `methods/ssl/algorithms/dash/`: USB 스타일 Dash dynamic threshold objective core
 - `methods/ssl/algorithms/simmatch/`: USB 스타일 SimMatch memory-bank similarity
   objective core
+- `methods/ssl/algorithms/mixmatch/`: USB NLP 스타일 manifold MixMatch objective core
 - `methods/ssl/algorithms/pseudolabel/`: USB 스타일 PseudoLabel objective core
 - `methods/ssl/hooks/`: 중앙/FL SSL이 공유하는 pseudo-labeling, masking,
   selection hook

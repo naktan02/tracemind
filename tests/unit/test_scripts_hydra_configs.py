@@ -631,6 +631,28 @@ def test_run_peft_ssl_control_supports_simmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
+def test_run_peft_ssl_control_supports_mixmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=mixmatch_usb_v1",
+                "query_ssl_method.unsup_warm_up=0.2",
+                "query_ssl_method.mixup_alpha=0.7",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "mixmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "mixmatch"
+    assert cfg.query_ssl_method.T == 0.5
+    assert cfg.query_ssl_method.unsup_warm_up == 0.2
+    assert cfg.query_ssl_method.mixup_alpha == 0.7
+    assert cfg.query_ssl_method.mixup_manifold is True
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
 def test_run_peft_ssl_control_supports_softmatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
