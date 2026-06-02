@@ -3,6 +3,7 @@ import {
   COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
   COLLECTOR_STATUS_STORAGE_KEY,
   LAST_TYPING_SEGMENT_STORAGE_KEY,
+  TYPING_SEGMENT_HISTORY_STORAGE_KEY,
 } from "../extension/storageKeys";
 
 type ChromeExtensionApi = {
@@ -165,8 +166,8 @@ if (extensionApi === null) {
       <div>
         <h1>Collector Debug</h1>
         <p>
-          debug 저장을 켠 뒤 fixture 페이지에서 입력하면 마지막 TypingSegment
-          JSON이 여기에 표시됩니다.
+          debug 저장을 켠 뒤 입력하면 마지막 TypingSegment와 최근 segment
+          history가 여기에 표시됩니다.
         </p>
       </div>
       <div>
@@ -183,6 +184,10 @@ if (extensionApi === null) {
         <h2>Last TypingSegmentPayload</h2>
         <pre id="last-segment">아직 저장된 segment가 없습니다.</pre>
       </section>
+      <section class="panel">
+        <h2>Recent TypingSegment History</h2>
+        <pre id="segment-history">아직 저장된 history가 없습니다.</pre>
+      </section>
     </div>
   </div>
 `;
@@ -191,6 +196,7 @@ const toggleButton = getElement("toggle-debug", HTMLButtonElement);
 const refreshButton = getElement("refresh-debug", HTMLButtonElement);
 const statusPre = getElement("collector-status", HTMLPreElement);
 const segmentPre = getElement("last-segment", HTMLPreElement);
+const historyPre = getElement("segment-history", HTMLPreElement);
 
 toggleButton.addEventListener("click", () => {
   void toggleDebug();
@@ -214,6 +220,7 @@ async function refreshDebugView(): Promise<void> {
   const items = await storageGet([
     COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
     LAST_TYPING_SEGMENT_STORAGE_KEY,
+    TYPING_SEGMENT_HISTORY_STORAGE_KEY,
     COLLECTOR_STATUS_STORAGE_KEY,
   ]);
   const enabled = items[COLLECTOR_DEBUG_ENABLED_STORAGE_KEY] === true;
@@ -234,6 +241,21 @@ async function refreshDebugView(): Promise<void> {
   segmentPre.textContent = isTypingSegment(lastSegment)
     ? JSON.stringify(lastSegment, null, 2)
     : "아직 저장된 segment가 없습니다.";
+  const history = items[TYPING_SEGMENT_HISTORY_STORAGE_KEY];
+  historyPre.textContent = isTypingSegmentArray(history)
+    ? JSON.stringify(
+        history.map((segment) => ({
+          segment_id: segment.segment_id,
+          ended_at: segment.ended_at,
+          surface_type: segment.surface_type,
+          field_hint: segment.field_hint,
+          final_text: segment.final_text,
+          deleted_text: segment.deleted_text,
+        })),
+        null,
+        2,
+      )
+    : "아직 저장된 history가 없습니다.";
 }
 
 async function loadDebugEnabled(): Promise<boolean> {
@@ -284,4 +306,8 @@ function isTypingSegment(value: unknown): value is TypingSegmentPayload {
     value.schema_version === "typing_segment.v1" &&
     typeof value.segment_id === "string"
   );
+}
+
+function isTypingSegmentArray(value: unknown): value is TypingSegmentPayload[] {
+  return Array.isArray(value) && value.every(isTypingSegment);
 }

@@ -9,6 +9,7 @@ export type SegmentBuildContext = {
   elementId: string;
   snapshot: TextSurfaceSnapshot;
   now: Date;
+  eventType?: string;
   inputType: string | null;
   insertedText: string | null;
   isCompositionUpdate: boolean;
@@ -24,7 +25,12 @@ type SegmentState = {
   elementId: string;
   startedAt: Date;
   lastUpdatedAt: Date;
+  baselineText: string;
   lastText: string;
+  bestText: string;
+  typedText: string;
+  lastCompositionText: string | null;
+  lastCompositionAtMs: number | null;
   deletedTextParts: string[];
   surfaceType: TypingSurfaceType;
   captureConfidence: TypingSegmentPayload["capture_confidence"];
@@ -36,6 +42,7 @@ type SegmentState = {
 
 export class SegmentBuffer {
   private readonly states = new Map<string, SegmentState>();
+  private readonly baselineTexts = new Map<string, string>();
 
   constructor(
     private readonly config: SegmentBufferConfig,
@@ -44,11 +51,35 @@ export class SegmentBuffer {
 
   observe(context: SegmentBuildContext): void {
     const previous = this.states.get(context.elementId);
-    const state = previous ?? createInitialState(context);
+    const state =
+      previous ??
+      createInitialState(
+        context,
+        this.baselineTexts.get(context.elementId) ?? "",
+      );
     const diff = diffText(state.lastText, context.snapshot.text);
-    const shouldTrackTextDiff = !context.isCompositionUpdate;
+    const shouldTrackTextDiff =
+      context.eventType !== "beforeinput" && !context.isCompositionUpdate;
+    const isDeletionEvent = (context.inputType ?? "").startsWith("delete");
+    const shouldSuppressImeDeletion = isLikelyImePhantomDeletion(
+      context,
+      state,
+      diff,
+      isDeletionEvent,
+    );
+    const committedInsertedText = readCommittedInsertedText(context, diff);
 
-    state.lastText = context.snapshot.text;
+    state.lastText = shouldSuppressImeDeletion
+      ? state.lastText
+      : context.snapshot.text;
+    state.bestText =
+      shouldTrackTextDiff && isDeletionEvent && !shouldSuppressImeDeletion
+        ? state.lastText
+        : chooseBetterSnapshotText(
+            state.baselineText,
+            state.bestText,
+            state.lastText,
+          );
     state.lastUpdatedAt = context.now;
     state.surfaceType = context.snapshot.surfaceType;
     state.captureConfidence = context.snapshot.captureConfidence;
@@ -57,11 +88,29 @@ export class SegmentBuffer {
     state.stats.insert_count +=
       shouldTrackTextDiff && diff.inserted.length > 0 ? 1 : 0;
     state.stats.delete_count +=
-      shouldTrackTextDiff && diff.deleted.length > 0 ? 1 : 0;
+      shouldTrackTextDiff &&
+      isDeletionEvent &&
+      !shouldSuppressImeDeletion &&
+      diff.deleted.length > 0
+        ? 1
+        : 0;
     state.stats.paste_count += context.inputType === "insertFromPaste" ? 1 : 0;
     state.stats.composition_count += context.isCompositionUpdate ? 1 : 0;
-    if (shouldTrackTextDiff && diff.deleted.length > 0) {
+    if (
+      shouldTrackTextDiff &&
+      isDeletionEvent &&
+      !shouldSuppressImeDeletion &&
+      diff.deleted.length > 0
+    ) {
       state.deletedTextParts.push(diff.deleted);
+      state.typedText = removeDeletedSuffix(state.typedText, diff.deleted);
+    }
+    if (committedInsertedText !== null && committedInsertedText !== "") {
+      state.typedText = `${state.typedText}${committedInsertedText}`;
+      if (isCompositionCommit(context)) {
+        state.lastCompositionText = committedInsertedText;
+        state.lastCompositionAtMs = context.now.getTime();
+      }
     }
 
     this.states.set(context.elementId, state);
@@ -96,8 +145,14 @@ export class SegmentBuffer {
     if (state.timerId !== null) {
       window.clearTimeout(state.timerId);
     }
-    const finalText = state.lastText.trim();
+    const finalText = chooseFinalText(
+      state.baselineText.trim(),
+      state.lastText.trim(),
+      state.bestText.trim(),
+      state.typedText.trim(),
+    );
     const deletedText = state.deletedTextParts.join(" ").trim();
+    this.baselineTexts.set(elementId, state.lastText);
     if (!finalText && !deletedText) {
       return;
     }
@@ -122,12 +177,20 @@ export class SegmentBuffer {
   }
 }
 
-function createInitialState(context: SegmentBuildContext): SegmentState {
+function createInitialState(
+  context: SegmentBuildContext,
+  baselineText: string,
+): SegmentState {
   return {
     elementId: context.elementId,
     startedAt: context.now,
     lastUpdatedAt: context.now,
-    lastText: "",
+    baselineText,
+    lastText: baselineText,
+    bestText: baselineText,
+    typedText: "",
+    lastCompositionText: null,
+    lastCompositionAtMs: null,
     deletedTextParts: [],
     surfaceType: context.snapshot.surfaceType,
     captureConfidence: context.snapshot.captureConfidence,
@@ -141,6 +204,111 @@ function createInitialState(context: SegmentBuildContext): SegmentState {
     },
     timerId: null,
   };
+}
+
+const IME_PHANTOM_DELETE_GRACE_MS = 150;
+
+function isLikelyImePhantomDeletion(
+  context: SegmentBuildContext,
+  state: SegmentState,
+  diff: { inserted: string; deleted: string },
+  isDeletionEvent: boolean,
+): boolean {
+  if (
+    !isDeletionEvent ||
+    context.eventType !== "input" ||
+    context.isCompositionUpdate ||
+    diff.deleted === "" ||
+    diff.inserted !== "" ||
+    state.lastCompositionText === null ||
+    state.lastCompositionAtMs === null
+  ) {
+    return false;
+  }
+  if (context.now.getTime() - state.lastCompositionAtMs > IME_PHANTOM_DELETE_GRACE_MS) {
+    return false;
+  }
+  return (
+    state.lastText.trim() === state.typedText.trim() &&
+    state.lastCompositionText.endsWith(diff.deleted)
+  );
+}
+
+function readCommittedInsertedText(
+  context: SegmentBuildContext,
+  diff: { inserted: string; deleted: string },
+): string | null {
+  if (context.eventType === "compositionend") {
+    return context.insertedText;
+  }
+  if (context.eventType !== "input" || context.isCompositionUpdate) {
+    return null;
+  }
+  if (context.inputType === "insertFromPaste") {
+    return context.insertedText ?? diff.inserted;
+  }
+  if ((context.inputType ?? "").startsWith("insert")) {
+    return context.insertedText ?? diff.inserted;
+  }
+  return null;
+}
+
+function isCompositionCommit(context: SegmentBuildContext): boolean {
+  return (
+    context.eventType === "compositionend" ||
+    (context.eventType === "input" &&
+      !context.isCompositionUpdate &&
+      (context.inputType ?? "").includes("Composition"))
+  );
+}
+
+function chooseFinalText(
+  baselineText: string,
+  snapshotText: string,
+  bestText: string,
+  typedText: string,
+): string {
+  const snapshotCandidate = readSnapshotCandidate(baselineText, snapshotText);
+  const bestCandidate = readSnapshotCandidate(baselineText, bestText);
+  const bestObservedCandidate =
+    bestCandidate.length >= snapshotCandidate.length
+      ? bestCandidate
+      : snapshotCandidate;
+  if (bestObservedCandidate && bestObservedCandidate.length > typedText.length) {
+    return bestObservedCandidate;
+  }
+  if (typedText) {
+    return typedText;
+  }
+  return bestObservedCandidate;
+}
+
+function readSnapshotCandidate(baselineText: string, snapshotText: string): string {
+  if (!baselineText) {
+    return snapshotText;
+  }
+  const diff = diffText(baselineText, snapshotText);
+  if (diff.inserted) {
+    return diff.inserted.trim();
+  }
+  return "";
+}
+
+function chooseBetterSnapshotText(
+  baselineText: string,
+  currentBestText: string,
+  nextText: string,
+): string {
+  const currentCandidate = readSnapshotCandidate(baselineText, currentBestText);
+  const nextCandidate = readSnapshotCandidate(baselineText, nextText);
+  return nextCandidate.length > currentCandidate.length ? nextText : currentBestText;
+}
+
+function removeDeletedSuffix(text: string, deletedText: string): string {
+  if (deletedText !== "" && text.endsWith(deletedText)) {
+    return text.slice(0, text.length - deletedText.length);
+  }
+  return Array.from(text).slice(0, -1).join("");
 }
 
 function diffText(

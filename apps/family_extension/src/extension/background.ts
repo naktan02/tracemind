@@ -1,11 +1,15 @@
 import { buildAgentApiUrl } from "../common/agentClient";
 import type { TypingSegmentPayload } from "../contracts/generated";
-import { isTypingSegmentCapturedMessage } from "./messages";
+import {
+  isCollectorContentStatusMessage,
+  isTypingSegmentCapturedMessage,
+} from "./messages";
 import {
   COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
   COLLECTOR_STATUS_STORAGE_KEY,
   LAST_TYPING_SEGMENT_STORAGE_KEY,
   PENDING_TYPING_SEGMENTS_STORAGE_KEY,
+  TYPING_SEGMENT_HISTORY_STORAGE_KEY,
 } from "./storageKeys";
 
 type RuntimeMessageSender = {
@@ -38,6 +42,10 @@ declare const chrome: {
 let isFlushing = false;
 
 chrome.runtime.onMessage.addListener((message) => {
+  if (isCollectorContentStatusMessage(message)) {
+    void saveStatusPatch(message.status);
+    return;
+  }
   if (!isTypingSegmentCapturedMessage(message)) {
     return;
   }
@@ -51,7 +59,7 @@ async function enqueueSegment(segment: TypingSegmentPayload): Promise<void> {
   queue.push(segment);
   await saveQueue(queue);
   await saveLastSegmentForDebug(segment);
-  await saveStatus({
+  await saveStatusPatch({
     pending_count: queue.length,
     last_segment_at: segment.ended_at,
     last_error: null,
@@ -71,14 +79,14 @@ async function flushQueue(): Promise<void> {
       await postSegment(nextSegment);
       queue = remaining;
       await saveQueue(queue);
-      await saveStatus({
+      await saveStatusPatch({
         pending_count: queue.length,
         last_sent_at: nextSegment.ended_at,
         last_error: null,
       });
     }
   } catch (error) {
-    await saveStatus({
+    await saveStatusPatch({
       pending_count: (await loadQueue()).length,
       last_error: error instanceof Error ? error.message : "segment 전송 실패",
     });
@@ -110,18 +118,34 @@ function saveQueue(queue: TypingSegmentPayload[]): Promise<void> {
   return storageSet({ [PENDING_TYPING_SEGMENTS_STORAGE_KEY]: queue });
 }
 
-function saveStatus(status: Record<string, unknown>): Promise<void> {
-  return storageSet({ [COLLECTOR_STATUS_STORAGE_KEY]: status });
+async function saveStatusPatch(status: Record<string, unknown>): Promise<void> {
+  const items = await storageGet([COLLECTOR_STATUS_STORAGE_KEY]);
+  const previous = items[COLLECTOR_STATUS_STORAGE_KEY];
+  const mergedStatus =
+    typeof previous === "object" && previous !== null
+      ? { ...(previous as Record<string, unknown>), ...status }
+      : status;
+  return storageSet({ [COLLECTOR_STATUS_STORAGE_KEY]: mergedStatus });
 }
 
 async function saveLastSegmentForDebug(
   segment: TypingSegmentPayload,
 ): Promise<void> {
-  const items = await storageGet([COLLECTOR_DEBUG_ENABLED_STORAGE_KEY]);
+  const items = await storageGet([
+    COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
+    TYPING_SEGMENT_HISTORY_STORAGE_KEY,
+  ]);
   if (items[COLLECTOR_DEBUG_ENABLED_STORAGE_KEY] !== true) {
     return;
   }
-  await storageSet({ [LAST_TYPING_SEGMENT_STORAGE_KEY]: segment });
+  const rawHistory = items[TYPING_SEGMENT_HISTORY_STORAGE_KEY];
+  const history = Array.isArray(rawHistory)
+    ? (rawHistory as TypingSegmentPayload[])
+    : [];
+  await storageSet({
+    [LAST_TYPING_SEGMENT_STORAGE_KEY]: segment,
+    [TYPING_SEGMENT_HISTORY_STORAGE_KEY]: [segment, ...history].slice(0, 20),
+  });
 }
 
 function storageGet(keys: string[]): Promise<Record<string, unknown>> {

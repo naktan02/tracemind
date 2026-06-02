@@ -5,6 +5,7 @@ import {
   COLLECTOR_STATUS_STORAGE_KEY,
   LAST_TYPING_SEGMENT_STORAGE_KEY,
   PENDING_TYPING_SEGMENTS_STORAGE_KEY,
+  TYPING_SEGMENT_HISTORY_STORAGE_KEY,
 } from "../extension/storageKeys";
 
 type ChromeExtensionApi = {
@@ -153,6 +154,10 @@ root.innerHTML = `
         <p id="last-error" class="value">없음</p>
       </section>
       <section class="panel">
+        <p class="label">Content Script</p>
+        <p id="content-status" class="value">아직 감지 없음</p>
+      </section>
+      <section class="panel">
         <p class="label">Last Segment</p>
         <p id="last-segment" class="value">없음</p>
       </section>
@@ -171,6 +176,7 @@ root.innerHTML = `
 const pendingCount = getElement("pending-count");
 const debugState = getElement("debug-state");
 const lastError = getElement("last-error");
+const contentStatus = getElement("content-status");
 const lastSegment = getElement("last-segment");
 const toggleDebugButton = getElement("toggle-debug", HTMLButtonElement);
 const openDebugButton = getElement("open-debug", HTMLButtonElement);
@@ -218,9 +224,34 @@ async function refreshPopup(): Promise<void> {
   toggleDebugButton.className = isDebugEnabled ? "secondary" : "";
   lastError.textContent =
     typeof status.last_error === "string" ? status.last_error : "없음";
+  contentStatus.textContent = formatContentStatus(status);
   lastSegment.textContent = isTypingSegment(segment)
     ? formatSegmentSummary(segment)
     : "없음";
+}
+
+function formatContentStatus(status: Record<string, unknown>): string {
+  const observedAt = status.last_surface_observed_at;
+  const scriptAt = status.last_content_script_at;
+  const flushAt = status.last_flush_attempt_at;
+  if (typeof flushAt === "string") {
+    return `flush ${formatStatusTime(flushAt)}`;
+  }
+  if (typeof observedAt === "string") {
+    return `surface ${formatStatusTime(observedAt)}`;
+  }
+  if (typeof scriptAt === "string") {
+    return `injected ${formatStatusTime(scriptAt)}`;
+  }
+  return "아직 감지 없음";
+}
+
+function formatStatusTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleTimeString();
 }
 
 async function toggleDebug(): Promise<void> {
@@ -239,6 +270,8 @@ async function clearQueue(): Promise<void> {
   }
   await storageSet({
     [PENDING_TYPING_SEGMENTS_STORAGE_KEY]: [],
+    [TYPING_SEGMENT_HISTORY_STORAGE_KEY]: [],
+    [LAST_TYPING_SEGMENT_STORAGE_KEY]: null,
     [COLLECTOR_STATUS_STORAGE_KEY]: {
       pending_count: 0,
       last_error: null,
