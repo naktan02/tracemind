@@ -76,8 +76,8 @@ central fixed embedding + classifier seed
 - `scripts/support/query_ssl_text_encoder`의 teacher bootstrap compatibility subtree와
   fixed embedding classifier helper는 scripts canonical surface에서 제거했다.
 - 중앙 SSL `input_mode` strategy axis와 `ssl_input_mode` manifest 표식은 제거했다.
-- 중앙 SSL `pseudo_label_selection` strategy group은 제거했고, pseudo-label replay row
-  의미는 `methods/ssl/pseudo_label_replay.py`가 소유한다.
+- 중앙 SSL `pseudo_label_selection` strategy group과 offline pseudo-label
+  replay/self-training workflow는 제거했다.
 - FSSL method-owned FedMatch는 `local_update_profile`을 descriptor recipe와
   맞지 않으면 실패시키고, `fedmatch_agreement` 실행에서는 Query SSL
   `consistency_method` objective payload를 request/report protocol에 싣지 않는다.

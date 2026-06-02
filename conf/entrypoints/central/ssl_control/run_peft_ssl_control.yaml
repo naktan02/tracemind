@@ -16,9 +16,6 @@ defaults:
 
 group_by_query_ssl_method: true
 
-pseudo_label_jsonl: null
-pseudo_label_export_root: data/artifacts/query_peft_pseudo_label
-include_seed_train_rows: false
 output_dir: ${central_ssl_budget.output_root}/run_peft_ssl_control/${query_data_selection_slug}
 fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}

@@ -63,9 +63,8 @@ teacher hook이나 명시된 checkpoint artifact로 연결한다.
 bootstrap/pseudo-label source를 명시할 때만 연결한다.
 
 `fixed_embedding_classifier`는 canonical central SSL method나 별도 active stage가
-아니다. 기존 scripts teacher bootstrap compatibility workflow는 제거했다. 현재
-teacher prediction -> pseudo-label export 의미와 pseudo-label acceptance preset
-해석은 `methods/ssl/teacher_pseudo_label.py`가 소유한다.
+아니다. 기존 scripts teacher bootstrap compatibility workflow와 offline pseudo-label
+replay/self-training workflow는 중앙 online SSL canonical surface에서 제거했다.
 
 ## canonical scaffold
 
@@ -103,7 +102,7 @@ Query Buffer (raw text)
 같은 PEFT text encoder adaptation scaffold 위에서 아래를 우선 비교한다.
 
 1. `supervised adaptation`
-2. `pseudo-label self-training`
+2. USB `PseudoLabel`
 3. `FixMatch`
 4. `R-Drop`
 5. `MixText`

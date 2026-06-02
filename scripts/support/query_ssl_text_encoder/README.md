@@ -13,7 +13,6 @@ query-domain SSL text encoder runtime support를 둔다. PEFT text encoder contr
   - `supervised_text_encoder.py`: 중앙 supervised text encoder train/eval 공통 흐름.
   - `supervised.py`: frozen backbone + PEFT text encoder + linear head supervised baseline.
   - `full_text_encoder_supervised.py`: full encoder + linear head supervised-only baseline.
-  - `pseudo_label.py`: pseudo-label replay/self-training helper.
   - `consistency.py`: USB PseudoLabel, FixMatch 등 Query SSL runner.
   - `query_adaptation.py`: agent-local query adaptation dataset runner wrapper.
 - `runtime_context.py`
@@ -26,7 +25,6 @@ query-domain SSL text encoder runtime support를 둔다. PEFT text encoder contr
   - `model_artifact_exporter.py`: adapter/tokenizer/classifier 파일 export.
   - `manifest_builder.py`: manifest/report payload 조립.
   - `artifact_writer.py`: manifest/report JSON 쓰기.
-  - `teacher_pseudo_label_artifact_writer.py`: teacher prediction trace/summary JSON artifact 저장.
   - query adaptation dataset export.
 - `config/`
   - Hydra initial checkpoint metadata helper.
@@ -62,8 +60,7 @@ compatibility workflow와 fixed-classifier fallback은 scripts surface에서 제
 
 | 분류 | 대상 | 판단 |
 |---|---|---|
-| `methods 이동 완료` | `methods/ssl/teacher_pseudo_label.py` | pseudo-label acceptance preset 해석과 teacher prediction -> pseudo-label export 의미를 `methods` owner로 이동했다. |
-| `methods 이동 완료` | `methods/ssl/pseudo_label_replay.py` | pseudo-label replay row 결합/검증 의미를 `methods` owner로 이동했다. 파일 source와 dataset 변환은 runner가 맡는다. |
+| `삭제 완료` | `runners/pseudo_label.py`, `methods/ssl/teacher_pseudo_label.py`, `methods/ssl/pseudo_label_replay.py` | offline pseudo-label replay/self-training workflow는 중앙 online SSL canonical surface가 아니므로 제거했다. |
 | `methods 이동 검토` | `query_ssl/common.py`, `query_ssl/view_preparation.py` | Query SSL method 공통 준비 로직이 scripts helper를 넘어 method scaffolding이면 `methods/ssl` 또는 adaptation helper로 승격한다. |
 | `scripts 유지` | `runners/consistency.py` | central SSL canonical experiment runner다. 다만 method 분기 없이 thin orchestration만 유지한다. |
 | `scripts 유지` | `runners/supervised_text_encoder.py`, `runners/supervised.py`, `runners/full_text_encoder_supervised.py` | central supervised control entrypoint가 호출하는 runner다. 공통 train/eval 흐름은 `supervised_text_encoder.py`가 소유한다. |
@@ -72,7 +69,6 @@ compatibility workflow와 fixed-classifier fallback은 scripts surface에서 제
 | `scripts 유지` | `io/query_adaptation.py`, `io/query_adaptation_multiview.py`, `io/labeled_row_export.py` | dataset export와 run artifact write에 가깝다. |
 | `scripts 유지` | `config/initial_checkpoint.py` | Hydra initial checkpoint surface 해석과 manifest bridge다. |
 | `삭제 완료` | teacher bootstrap compatibility subtree | active method family가 아니고 scripts owner가 아니므로 제거했다. |
-| `보류` | `runners/pseudo_label.py` | pseudo-label self-training이 central control family에 남는지, 아니면 method recipe/helper로 내려갈지 먼저 결정이 필요하다. |
 | `보류` | `runners/query_adaptation.py` | agent-local query adaptation bridge라 central SSL cleanup과 분리해서 판단해야 한다. |
 
 권장 순서:

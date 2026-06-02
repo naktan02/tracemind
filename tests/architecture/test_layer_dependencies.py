@@ -786,7 +786,7 @@ def test_query_peft_support_does_not_emit_ssl_input_mode_manifest_field() -> Non
     assert not violations, (
         "`ssl_input_mode`는 제거된 input_mode strategy axis의 legacy manifest "
         "표식이다. "
-        "workflow-specific metadata는 `pseudo_label_replay`처럼 이름 있는 payload로 "
+        "workflow-specific metadata가 필요하면 active runner의 이름 있는 payload로 "
         "남긴다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
@@ -813,18 +813,20 @@ def test_central_ssl_pseudo_label_selection_strategy_axis_group_is_removed() -> 
     )
 
 
-def test_query_peft_pseudo_label_replay_row_semantics_live_in_methods() -> None:
-    legacy_path = QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "pseudo_label_inputs.py"
-    owner_path = METHODS_SSL_SRC / "pseudo_label_replay.py"
-
-    assert not legacy_path.exists(), (
-        "pseudo-label replay row 결합/overlap 검증 의미는 scripts runner helper가 "
-        "아니라 methods/ssl owner에 둔다.\n"
-        f"legacy path={_relative_repo_path(legacy_path)}"
+def test_query_peft_offline_pseudo_label_replay_workflow_is_removed() -> None:
+    removed_paths = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "pseudo_label.py",
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "pseudo_label_inputs.py",
+        METHODS_SSL_SRC / "pseudo_label_replay.py",
+        METHODS_SSL_SRC / "teacher_pseudo_label.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_artifact_writer.py",
     )
-    assert owner_path.exists(), (
-        "pseudo-label replay row 의미 owner 파일이 필요하다.\n"
-        f"missing path={_relative_repo_path(owner_path)}"
+    existing_paths = [path for path in removed_paths if path.exists()]
+
+    assert not existing_paths, (
+        "offline pseudo-label replay/self-training workflow는 중앙 online SSL "
+        "canonical surface가 아니다.\n"
+        f"{chr(10).join(f'- {_relative_repo_path(path)}' for path in existing_paths)}"
     )
 
 
@@ -3674,7 +3676,7 @@ def test_query_peft_run_artifacts_do_not_keep_writer_exporter_monolith() -> None
     )
 
 
-def test_query_peft_teacher_pseudo_label_does_not_keep_exporter_monolith() -> None:
+def test_query_peft_teacher_pseudo_label_export_surface_is_removed() -> None:
     legacy_exporter_path = (
         QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_exporter.py"
     )
@@ -3688,44 +3690,18 @@ def test_query_peft_teacher_pseudo_label_does_not_keep_exporter_monolith() -> No
     writer_path = (
         QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
     )
-    builder_source = methods_builder_path.read_text(encoding="utf-8")
-    builder_forbidden_snippets = (
-        "json.dumps(",
-        ".write_text(",
-        ".open(",
-        ".mkdir(",
+    removed_paths = (
+        legacy_exporter_path,
+        legacy_builder_path,
+        legacy_algorithm_path,
+        methods_builder_path,
+        writer_path,
     )
-    violations = [
-        snippet for snippet in builder_forbidden_snippets if snippet in builder_source
-    ]
+    existing_paths = [path for path in removed_paths if path.exists()]
 
-    assert not legacy_exporter_path.exists(), (
-        "teacher pseudo-label 경로는 builder/writer를 직접 조합한다. "
-        "단순 compatibility exporter facade를 다시 만들지 않는다.\n"
-        f"legacy path={_relative_repo_path(legacy_exporter_path)}"
-    )
-    assert not legacy_builder_path.exists(), (
-        "teacher prediction -> pseudo-label export 의미는 scripts IO owner가 아니라 "
-        "methods/ssl이 소유한다.\n"
-        f"legacy path={_relative_repo_path(legacy_builder_path)}"
-    )
-    assert not legacy_algorithm_path.exists(), (
-        "pseudo-label acceptance preset 해석은 scripts config helper가 아니라 "
-        "methods/ssl owner가 소유한다.\n"
-        f"legacy path={_relative_repo_path(legacy_algorithm_path)}"
-    )
-    assert methods_builder_path.exists(), (
-        "teacher pseudo-label selection/export 의미는 methods/ssl owner 파일에 둔다. "
-        f"missing path={_relative_repo_path(methods_builder_path)}"
-    )
-    assert writer_path.exists(), (
-        "teacher pseudo-label artifact 저장은 전용 writer가 맡는다. "
-        f"missing writer={_relative_repo_path(writer_path)}"
-    )
-    assert not violations, (
-        "TeacherPseudoLabelBuilder는 pseudo-label row와 diagnostics payload만 만든다. "
-        "JSON serialization과 파일 write는 TeacherPseudoLabelArtifactWriter가 맡는다.\n"
-        f"violations={violations}"
+    assert not existing_paths, (
+        "teacher pseudo-label export는 active 중앙 online SSL workflow가 아니다.\n"
+        f"{chr(10).join(f'- {_relative_repo_path(path)}' for path in existing_paths)}"
     )
 
 

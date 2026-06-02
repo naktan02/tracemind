@@ -66,8 +66,8 @@ policy 의미는 `methods/federated_ssl/fedmatch/`가 소유한다.
 | 원래 번호 | 축 | 상태 | 권장 순서 | 다음 작업 |
 |---:|---|---|---:|---|
 | 1 | `input_mode` | 완료 | - | 중앙 SSL public strategy axis와 `ssl_input_mode` manifest 표식을 제거했다. |
-| 5 | `teacher_*`, `teacher_bootstrap` | 완료 | - | `teacher_provider` strategy axis와 scripts teacher bootstrap subtree를 제거했다. teacher pseudo-label export 의미는 `methods/ssl/teacher_pseudo_label.py`가 소유한다. |
-| 3 | `pseudo_label_selection` | 완료 | - | public Hydra group을 제거했고, pseudo-label replay row 의미는 `methods/ssl/pseudo_label_replay.py`로 이동했다. |
+| 5 | `teacher_*`, `teacher_bootstrap` | 완료 | - | `teacher_provider` strategy axis와 scripts teacher bootstrap subtree를 제거했다. |
+| 3 | `pseudo_label_selection` | 완료 | - | public Hydra group과 offline pseudo-label replay/self-training workflow를 제거했다. |
 | 11 | `local_update_profile` | 완료 | - | manual baseline에는 유지하고, method-owned에서는 descriptor recipe의 supported profile과 다르면 실패한다. |
 | 13 | `consistency_method` | 완료 | - | central SSL/manual baseline에는 유지하고, FSSL method-owned request/report protocol에서는 Query SSL objective payload로 싣지 않는다. |
 | 6 | `update_partition` | FedMatch 범위 완료 | 6 | manual baseline/ablation 전용 guard를 유지한다. |
@@ -106,8 +106,8 @@ policy 의미는 `methods/federated_ssl/fedmatch/`가 소유한다.
 
 정리 방향:
 
-1. `consistency`, `pseudo_label_replay`, `teacher_bootstrap`은 같은 레벨의 전략 축이 아니라
-   method recipe 또는 workflow helper로 해석한다.
+1. `consistency`는 중앙 online SSL method surface이고, `pseudo_label_replay`와
+   `teacher_bootstrap`은 active 중앙 SSL workflow가 아니다.
 2. teacher는 독립 selector가 아니라 method recipe 내부 artifact source로 해석한다.
 3. teacher bootstrap workflow를 scripts compatibility helper로 되살리지 않는다.
    method-neutral teacher 의미는 `methods/ssl/hooks/teacher.py` 근처로 올리고,
@@ -175,8 +175,8 @@ threshold 수치, budget policy, 논문 원본 파라미터 사용 여부다.
 
 1. `input_mode` strategy axis와 `ssl_input_mode` manifest 표식을 제거했다.
 2. `teacher_bootstrap`을 central SSL public surface와 scripts helper에서 제거했다.
-3. `pseudo_label_selection` public Hydra group을 제거하고, replay row 의미를
-   `methods/ssl/pseudo_label_replay.py`로 이동했다.
+3. `pseudo_label_selection` public Hydra group과 offline pseudo-label replay
+   workflow를 제거했다.
 4. central SSL public method surface를 다시 정의한다.
 5. fixed embedding classifier bootstrap compatibility 구현은 stable core가 아니므로
    삭제했다.
