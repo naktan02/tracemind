@@ -99,9 +99,31 @@ const contentEditableSurfaceAdapter: TextSurfaceAdapter = {
   },
 };
 
+const textboxRoleSurfaceAdapter: TextSurfaceAdapter = {
+  matches(target): target is HTMLElement {
+    const element = resolveEventTargetElement(target);
+    return element !== null && findTextboxRoleRoot(element) !== null;
+  },
+  read(element) {
+    const root = findTextboxRoleRoot(element);
+    if (root === null || isSensitiveTextSurface(root)) {
+      return null;
+    }
+    return {
+      text: readElementText(root),
+      surfaceType: "rich_editor",
+      captureConfidence: "medium",
+      fieldHint: readFieldHint(root),
+    };
+  },
+};
+
 const DEFAULT_SURFACE_ADAPTERS: TextSurfaceAdapter[] = [
   inputSurfaceAdapter,
   textareaSurfaceAdapter,
+  richEditorSurfaceAdapter,
+  contentEditableSurfaceAdapter,
+  textboxRoleSurfaceAdapter,
 ];
 
 export function readTextSurfaceSnapshot(
@@ -145,6 +167,9 @@ function normalizeSurfaceElement(
   }
   if (adapter === contentEditableSurfaceAdapter) {
     return findContentEditableRoot(target) ?? target;
+  }
+  if (adapter === textboxRoleSurfaceAdapter) {
+    return findTextboxRoleRoot(target) ?? target;
   }
   return target;
 }
@@ -190,6 +215,22 @@ function findContentEditableRoot(target: HTMLElement): HTMLElement | null {
     parent = parent.parentElement;
   }
   return root;
+}
+
+function findTextboxRoleRoot(target: HTMLElement): HTMLElement | null {
+  const candidates: HTMLElement[] = [];
+  let current: HTMLElement | null = target;
+  while (current !== null && current !== current.ownerDocument.body) {
+    if (
+      current.matches("[role='textbox'], [aria-multiline='true']") &&
+      !(current instanceof HTMLInputElement) &&
+      !(current instanceof HTMLTextAreaElement)
+    ) {
+      candidates.push(current);
+    }
+    current = current.parentElement;
+  }
+  return candidates.length > 0 ? candidates[candidates.length - 1] : null;
 }
 
 function findEditableDocumentRoot(target: HTMLElement): HTMLElement | null {
@@ -259,8 +300,18 @@ function isSensitiveTextSurface(element: HTMLElement): boolean {
   if (isInsidePasswordForm(element)) {
     return true;
   }
+  if (!shouldApplySensitiveKeywordGuard(element)) {
+    return false;
+  }
   return SENSITIVE_FIELD_KEYWORDS.some((keyword) =>
     readSensitiveFieldText(element).includes(keyword),
+  );
+}
+
+function shouldApplySensitiveKeywordGuard(element: HTMLElement): boolean {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement
   );
 }
 

@@ -8,8 +8,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test:collector": "node scripts/collector-unit.mjs && node scripts/surface-detector-unit.mjs",
-    "smoke:collector": "npm run build && node scripts/collector-smoke.mjs"
+    "test:collector": "node tests/collector/collector-unit.mjs && node tests/collector/collector-replay-unit.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -19,7 +18,6 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",
-    "playwright": "^1.60.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.10"
   }

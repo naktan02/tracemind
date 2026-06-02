@@ -35,6 +35,7 @@ type DeferredInputObservation = {
 };
 
 document.addEventListener("input", handleInputLikeEvent, false);
+document.addEventListener("compositionend", handleInputLikeEvent, false);
 document.addEventListener("search", handleSurfaceFlushEvent, false);
 document.addEventListener("submit", handleSubmitFlushEvent, false);
 window.addEventListener("pagehide", () => segmentBuffer.flushAll());
@@ -51,10 +52,6 @@ sendCollectorStatus({
 });
 
 function handleInputLikeEvent(event: InputEvent | CompositionEvent | Event): void {
-  const path = event.composedPath();
-  if (containsRichTextSurface(event.target, path)) {
-    return;
-  }
   const observation: DeferredInputObservation = {
     eventType: event.type,
     inputType: readInputType(event),
@@ -64,7 +61,7 @@ function handleInputLikeEvent(event: InputEvent | CompositionEvent | Event): voi
     locale: document.documentElement.lang || navigator.language || "ko",
     observedAt: new Date(),
     target: event.target,
-    path,
+    path: event.composedPath(),
     targetDescription: event.type,
   };
   window.setTimeout(() => observeDeferredInput(observation), 0);
@@ -156,49 +153,6 @@ function readDeferredTextSurfaceSnapshot(
     }
   }
   return null;
-}
-
-function containsRichTextSurface(
-  target: EventTarget | null,
-  path: EventTarget[],
-): boolean {
-  for (const candidate of [target, ...path]) {
-    if (!(candidate instanceof HTMLElement)) {
-      continue;
-    }
-    if (candidate instanceof HTMLInputElement || candidate instanceof HTMLTextAreaElement) {
-      return false;
-    }
-    if (isRichTextCandidate(candidate)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function isRichTextCandidate(element: HTMLElement): boolean {
-  if (element.isContentEditable) {
-    return true;
-  }
-  const contentEditable = element.getAttribute("contenteditable");
-  if (contentEditable !== null && contentEditable.trim().toLowerCase() !== "false") {
-    return true;
-  }
-  return element.matches(
-    [
-      "[data-lexical-editor='true']",
-      "[data-slate-editor='true']",
-      "[data-contents='true']",
-      ".ProseMirror",
-      ".ql-editor",
-      ".DraftEditor-root",
-      ".codex-editor__redactor",
-      ".se-main-container",
-      ".se-section-document",
-      ".se-component-content",
-      ".se-module-text",
-    ].join(","),
-  );
 }
 
 function describeEventTarget(event: Event): string {
