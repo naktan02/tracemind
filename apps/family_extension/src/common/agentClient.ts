@@ -48,3 +48,7 @@ export async function requestAgentJson<T>(
 
   return (await response.json()) as T;
 }
+
+export function buildAgentApiUrl(path: string): string {
+  return `${getAgentApiBaseUrl()}${path}`;
+}

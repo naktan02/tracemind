@@ -47,6 +47,8 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | POST | `/api/v1/ingest/event` | 단일 텍스트 이벤트를 inference pipeline으로 처리 | `agent/src/api/ingest.py` |
 | POST | `/api/v1/ingest/batch` | 최대 100개 이벤트 일괄 처리 | `agent/src/api/ingest.py` |
 | GET | `/api/v1/ingest/status` | 저장된 scored event 수 조회 | `agent/src/api/ingest.py` |
+| POST | `/api/v1/typing-segments` | 브라우저 확장 typing segment를 agent-local inference pipeline으로 처리 | `agent/src/api/typing_segments.py` |
+| POST | `/api/v1/typing-segments/batch` | 최대 100개 typing segment 일괄 처리 | `agent/src/api/typing_segments.py` |
 
 주요 payload:
 
@@ -55,6 +57,12 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | `IngestEventRequest` | `agent/src/api/ingest.py` |
 | `IngestEventResponse` | `agent/src/api/ingest.py` |
 | `QueryEvent` | `shared/src/domain/entities/inference/events.py` |
+| `TypingSegmentPayload` | `shared/src/contracts/typing_segment_contracts.py` |
+| `TypingSegmentIngestResponsePayload` | `shared/src/contracts/typing_segment_contracts.py` |
+
+`TypingSegmentPayload`는 extension/collector -> local agent 전용 raw segment 계약이다.
+`final_text`, `deleted_text`, `field_hint`, page context는 main_server API나 FL update
+envelope으로 전달하지 않는다.
 
 ### Agent Sync
 

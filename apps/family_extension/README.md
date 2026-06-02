@@ -6,7 +6,7 @@
 
 ## 현재 포함하는 것
 
-1. popup용 기본 entry
+1. 확장 아이콘용 compact popup entry
 2. parent detail용 별도 entry
 3. `/setup`, `/gate`, `/child/unlock`, `/parent/unlock`, `/child`, `/parent` route shell
 4. `family_access`와 `wellbeing_signal` contract를 같이 소비하는 client layer
@@ -28,8 +28,11 @@
 향후 입력 수집 runtime은 같은 manifest에 묶이지만, 코드 책임은 분리한다.
 
 - `src/ui/`
-  - popup, parent detail, route, React component, UI 전용 API client를 둔다.
+  - child/parent detail, route, React component, UI 전용 API client를 둔다.
   - wellbeing/child-support 의미를 재정의하지 않고 agent API payload를 표시한다.
+- `src/popup/`
+  - 확장 아이콘을 눌렀을 때 뜨는 compact 상태 popup을 둔다.
+  - collector status, debug toggle, debug page 진입만 보여준다.
 - `src/common/`
   - UI, background service worker, content script가 함께 쓸 수 있는 얇은 공통
     helper를 둔다.
@@ -38,10 +41,28 @@
   - generated contract type만 둔다.
   - shared contract 변경 뒤 codegen으로 갱신한다.
 
-향후 typing collector를 추가하면 `src/collector/`에는 content script의 입력 surface
-감시와 segment 생성만 두고, `src/extension/`에는 background service worker의 queue,
-local agent 전달, popup 상태 메시지를 둔다. 위험 추론, 카테고리 판단, 학습 buffer는
-계속 agent가 소유한다.
+`src/collector/`에는 content script의 입력 surface 감시와 segment 생성만 두고,
+`src/extension/`에는 background service worker의 queue, local agent 전달, extension
+storage key를 둔다. 위험 추론, 카테고리 판단, 학습 buffer는 계속 agent가 소유한다.
+
+현재 collector runtime:
+
+- `src/collector/content.ts`
+  - `input`, `textarea`, `contenteditable` surface를 감지한다.
+  - `beforeinput`, `input`, `compositionend` 이벤트를 snapshot/diff 기반 segment로
+    만든다.
+  - raw key event stream을 수집하지 않는다.
+- `src/extension/background.ts`
+  - content script가 보낸 segment를 `chrome.storage.local` queue에 저장한다.
+  - `http://127.0.0.1:8001/api/v1/typing-segments`로 local agent에 전송한다.
+  - agent가 꺼져 있으면 queue를 유지하고 collector status에 오류를 남긴다.
+- `collector-debug.html`
+  - 개발용 extension page다.
+  - debug 저장을 켠 경우 마지막 `TypingSegmentPayload` JSON을 보여준다.
+  - raw segment를 보여주는 화면이므로 배포용 UI와 섞지 않는다.
+- `collector-fixture.html`
+  - Vite dev server에서 여는 개발용 입력 fixture다.
+  - content script 주입 확인용으로 `input`, `textarea`, `contenteditable`을 제공한다.
 
 ## 아직 포함하지 않는 것
 
@@ -97,14 +118,54 @@ uvicorn agent.src.api.main:app --reload --port 8001
 ## 확장 entry
 
 - `index.html`
-  - popup entry
+  - 아이용/가족용 React app entry
   - 초기 setup 전에는 `/setup`
   - setup 완료 후 잠금 상태면 `/gate`
+- `popup.html`
+  - 확장 아이콘 compact popup entry
+  - collector status와 debug 진입을 제공한다
 - `parent.html`
   - 부모용 상세 entry
   - 세션이 없으면 `/gate` 또는 `/parent/unlock` 흐름으로 정규화된다
+- `assets/content.js`
+  - 웹페이지 입력 surface에 주입되는 content script
+- `assets/background.js`
+  - segment queue와 local agent 전송을 맡는 background service worker
+- `collector-debug.html`
+  - 개발 중 마지막 segment JSON을 확인하는 debug page
 
-두 entry는 모두 `src/ui/main.tsx`를 사용한다.
+`index.html`과 `parent.html`은 `src/ui/main.tsx`를 사용하고, `popup.html`은
+`src/popup/popup.ts`를 사용한다.
+
+## Collector 개발 점검
+
+1. agent API를 실행한다.
+
+```bash
+uv run uvicorn agent.src.api.main:app --reload --host 127.0.0.1 --port 8001
+```
+
+2. 확장을 빌드하고 `dist`를 Load unpacked로 로드한다.
+
+```bash
+cd apps/family_extension
+npm run build
+```
+
+3. fixture page를 HTTP로 연다.
+
+```bash
+cd apps/family_extension
+npm run dev
+```
+
+브라우저에서 `http://localhost:5174/collector-fixture.html`을 열고 입력한다.
+
+4. 확장 아이콘 popup에서 `debug 켜기`를 누르고 `debug 열기`로 debug page를 연다.
+
+debug 저장을 켠 뒤 fixture page에서 다시 입력하면 마지막 segment JSON을 확인할 수
+있다. segment는 5초 idle 후 생성된다. agent에 inference pipeline이 아직 연결되지
+않은 실행에서는 agent 응답이 503으로 남고, 수집 여부는 popup/debug page에서 확인한다.
 
 Chrome extension manifest는 `public/manifest.json`을 source로 사용한다.
 

@@ -11,6 +11,7 @@ from pydantic import BaseModel, TypeAdapter
 
 import shared.src.contracts.child_support_contracts as child_support_contracts
 import shared.src.contracts.family_access_contracts as family_access_contracts
+import shared.src.contracts.typing_segment_contracts as typing_segment_contracts
 import shared.src.contracts.wellbeing_signal_contracts as wellbeing_signal_contracts
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -93,6 +94,32 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
     (
         "ParentUnlockResponsePayload",
         wellbeing_signal_contracts.ParentUnlockResponsePayload,
+    ),
+    (
+        "TypingSegmentSourceType",
+        typing_segment_contracts.TypingSegmentSourceType,
+    ),
+    ("TypingSurfaceType", typing_segment_contracts.TypingSurfaceType),
+    (
+        "TypingCaptureConfidence",
+        typing_segment_contracts.TypingCaptureConfidence,
+    ),
+    (
+        "TypingSegmentStatsPayload",
+        typing_segment_contracts.TypingSegmentStatsPayload,
+    ),
+    ("TypingSegmentPayload", typing_segment_contracts.TypingSegmentPayload),
+    (
+        "TypingSegmentIngestResponsePayload",
+        typing_segment_contracts.TypingSegmentIngestResponsePayload,
+    ),
+    (
+        "TypingSegmentBatchIngestRequestPayload",
+        typing_segment_contracts.TypingSegmentBatchIngestRequestPayload,
+    ),
+    (
+        "TypingSegmentBatchIngestResponsePayload",
+        typing_segment_contracts.TypingSegmentBatchIngestResponsePayload,
     ),
 )
 

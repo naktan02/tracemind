@@ -181,6 +181,26 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 - `ParentUnlockResponsePayload`
   - 부모용 상세 화면 접근 결과와 세션 메타데이터
 
+### `typing_segment_contracts.py`
+
+브라우저 확장 프로그램이나 future desktop collector가 로컬 agent로 보내는
+typing segment 계약을 정의한다.
+
+중요:
+
+- 이 계약은 extension/collector -> agent local ingest 전용이다.
+- `final_text`, `deleted_text`, 입력 surface hint는 raw text 또는 raw-text-adjacent
+  값이므로 main_server API나 FL update envelope으로 전달하지 않는다.
+- 수집 surface가 늘어나도 producer는 `TypingSegmentPayload` canonical shape로
+  정규화해서 agent에 보낸다.
+
+- `TypingSegmentPayload`
+  - `source_type`, `surface_type`, `capture_confidence`로 수집 계층과 복원 품질을
+    명시한다
+  - `stats`에는 insert/delete/paste/composition count 같은 편집 event 요약만 둔다
+- `TypingSegmentIngestResponsePayload`
+  - agent가 segment를 inference pipeline으로 처리한 결과의 최소 응답이다
+
 ### `family_access_contracts.py`
 
 가족용 확장 프로그램의 app-level setup/auth 경계를 정의한다.

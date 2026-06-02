@@ -124,3 +124,53 @@ export interface ParentUnlockResponsePayload {
   remaining_attempts: number | null;
   locked_until: string | null;
 }
+
+export type TypingSegmentSourceType = "browser_extension" | "desktop_app" | "manual" | "unknown";
+
+export type TypingSurfaceType = "input" | "textarea" | "contenteditable" | "rich_editor" | "unknown";
+
+export type TypingCaptureConfidence = "high" | "medium" | "low";
+
+export interface TypingSegmentStatsPayload {
+  insert_count: number;
+  delete_count: number;
+  paste_count: number;
+  composition_count: number;
+}
+
+export interface TypingSegmentPayload {
+  schema_version: string;
+  segment_id: string;
+  source_type: TypingSegmentSourceType;
+  surface_type: TypingSurfaceType;
+  capture_confidence: TypingCaptureConfidence;
+  page_origin: string | null;
+  page_url: string | null;
+  field_hint: string | null;
+  started_at: string;
+  ended_at: string;
+  idle_ms: number;
+  locale: string;
+  final_text: string | null;
+  deleted_text: string | null;
+  stats: TypingSegmentStatsPayload;
+}
+
+export interface TypingSegmentIngestResponsePayload {
+  schema_version: string;
+  segment_id: string;
+  query_id: string;
+  top_category: string | null;
+  top_score: number | null;
+  message: string;
+}
+
+export interface TypingSegmentBatchIngestRequestPayload {
+  segments: TypingSegmentPayload[];
+}
+
+export interface TypingSegmentBatchIngestResponsePayload {
+  schema_version: string;
+  processed: number;
+  results: TypingSegmentIngestResponsePayload[];
+}
