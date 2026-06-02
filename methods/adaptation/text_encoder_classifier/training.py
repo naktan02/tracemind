@@ -221,6 +221,7 @@ def train_classifier(
         return SelectionTrackedEpochResult(
             train_loss_total=epoch_loss_total,
             train_loss_denominator=epoch_rows,
+            step=completed_steps,
         )
 
     def evaluate_selection() -> dict[str, Any]:

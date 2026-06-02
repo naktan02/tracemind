@@ -122,6 +122,7 @@ class ConfusionMatrixCellRecord:
 class EpochMetricRecord:
     run_id: str
     epoch: int
+    step: int | None
     train_loss: float | None
     train_sup_loss: float | None
     train_unsup_loss: float | None

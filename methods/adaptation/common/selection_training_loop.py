@@ -21,6 +21,7 @@ class SelectionTrackedEpochResult:
 
     train_loss_total: float
     train_loss_denominator: int
+    step: int | None = None
     extra_train_metrics: Mapping[str, float] | None = None
 
 
@@ -58,6 +59,7 @@ def run_selection_tracked_training_loop(
         selection_report = evaluate_selection()
         epoch_record = build_selection_epoch_record(
             epoch=epoch_number,
+            step=train_result.step,
             train_loss_total=train_result.train_loss_total,
             train_loss_denominator=train_result.train_loss_denominator,
             selection_report=selection_report,

@@ -2935,7 +2935,7 @@ function renderComparisonChart(rows) {
   const metric = state.comparisonMetric;
   elements.comparisonIncludeInitial.checked = state.comparisonIncludeInitial;
   if (!metric) {
-    elements.comparisonChart.innerHTML = `<p class="empty">비교할 epoch metric을 선택하세요.</p>`;
+    elements.comparisonChart.innerHTML = `<p class="empty">비교할 step metric을 선택하세요.</p>`;
     return;
   }
   if (selectedRows.length === 0) {
@@ -2967,7 +2967,7 @@ function drawGroupedHorizontalComparison(selectedRows, metric) {
     .map((row) => centralLatestMetricValue(row.run_id, metric))
     .filter((value) => value !== null);
   if (values.length === 0) {
-    return `<p class="empty">선택한 run에 ${metricLabel(metric)} epoch history가 없습니다.</p>`;
+    return `<p class="empty">선택한 run에 ${metricLabel(metric)} step history가 없습니다.</p>`;
   }
   const max = Math.max(...values, 0.000001);
   return selectedRows
@@ -3003,7 +3003,7 @@ function drawVerticalBarComparison(selectedRows, metric) {
     .map((record) => record.value)
     .filter((value) => value !== null);
   if (values.length === 0) {
-    return `<p class="empty">선택한 run에 ${metricLabel(metric)} epoch history가 없습니다.</p>`;
+    return `<p class="empty">선택한 run에 ${metricLabel(metric)} step history가 없습니다.</p>`;
   }
   const width = Math.max(760, selectedRows.length * 128 + 140);
   const height = 360;
@@ -3084,15 +3084,15 @@ function drawMetricLineComparison(selectedRows, metric) {
     .filter((item) => item.points.length > 0);
   const values = series.flatMap((item) => item.points.map((point) => point.value));
   if (values.length === 0) {
-    return `<p class="empty">선택한 run에 ${metricLabel(metric)} epoch history가 없습니다.</p>`;
+    return `<p class="empty">선택한 run에 ${metricLabel(metric)} step history가 없습니다.</p>`;
   }
-  return drawCentralEpochLineChart(series, metric);
+  return drawCentralStepLineChart(series, metric);
 }
 
-function drawCentralEpochLineChart(series, metric) {
+function drawCentralStepLineChart(series, metric) {
   const allPoints = series.flatMap((item) => item.points);
-  const epochIndexes = uniqueValues(
-    allPoints.map((point) => point.epoch),
+  const stepIndexes = uniqueValues(
+    allPoints.map((point) => point.step),
   ).sort((a, b) => a - b);
   const width = 1040;
   const height = 460;
@@ -3100,9 +3100,9 @@ function drawCentralEpochLineChart(series, metric) {
   const chartHeight = height - pad.top - pad.bottom;
   const pointInset = 36;
   const chartWidth = width - pad.left - pad.right - pointInset * 2;
-  const minEpoch = Math.min(...allPoints.map((point) => point.epoch));
-  const maxEpoch = Math.max(...allPoints.map((point) => point.epoch));
-  const epochRange = Math.max(maxEpoch - minEpoch, 1);
+  const minStep = Math.min(...allPoints.map((point) => point.step));
+  const maxStep = Math.max(...allPoints.map((point) => point.step));
+  const stepRange = Math.max(maxStep - minStep, 1);
   const minValue = Math.min(...allPoints.map((point) => point.value));
   const maxValue = Math.max(...allPoints.map((point) => point.value));
   const valuePadding = Math.max((maxValue - minValue) * 0.08, 0.02);
@@ -3115,7 +3115,7 @@ function drawCentralEpochLineChart(series, metric) {
   const valueRange = Math.max(axisMax - axisMin, 0.000001);
   const colors = seriesColors(series, seriesColorOverrides("central_compare"));
   const xForPoint = (point) =>
-    pad.left + pointInset + ((point.epoch - minEpoch) / epochRange) * chartWidth;
+    pad.left + pointInset + ((point.step - minStep) / stepRange) * chartWidth;
   const yForValue = (value) =>
     pad.top + chartHeight - ((value - axisMin) / valueRange) * chartHeight;
   const lines = series
@@ -3128,7 +3128,7 @@ function drawCentralEpochLineChart(series, metric) {
         .map(
           (point) => `
             <circle cx="${xForPoint(point)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}" data-series-color-key="${escapeHtml(item.colorKey ?? item.label)}">
-              <title>${escapeHtml(item.label)} · epoch ${point.epoch} · ${formatMetric(point.value)}</title>
+              <title>${escapeHtml(item.label)} · step ${point.step}${point.epoch === null ? "" : ` · epoch ${point.epoch}`} · ${formatMetric(point.value)}</title>
             </circle>
           `,
         )
@@ -3136,19 +3136,19 @@ function drawCentralEpochLineChart(series, metric) {
       return `<polyline points="${path}" fill="none" style="--series-color:${color}" data-series-color-key="${escapeHtml(item.colorKey ?? item.label)}" />${dots}`;
     })
     .join("");
-  const labels = epochIndexes
+  const labels = stepIndexes
     .filter(
-      (_epoch, index) =>
+      (_step, index) =>
         index === 0 ||
-        index === epochIndexes.length - 1 ||
-        epochIndexes.length <= 12 ||
-        index % Math.ceil(epochIndexes.length / 10) === 0,
+        index === stepIndexes.length - 1 ||
+        stepIndexes.length <= 12 ||
+        index % Math.ceil(stepIndexes.length / 10) === 0,
     )
-    .map((epoch) => {
-      const x = xForPoint({ epoch });
+    .map((step) => {
+      const x = xForPoint({ step });
       return `
         <text class="axis-label" x="${x}" y="${height - 24}" text-anchor="middle">
-          ${epoch}
+          ${formatStepTick(step)}
         </text>
       `;
     })
@@ -3163,7 +3163,7 @@ function drawCentralEpochLineChart(series, metric) {
     })
     .join("");
   return `
-    <p class="chart-subtitle">${metricLabel(metric)} · x-axis: epoch${seriesHasEpochZero(series) ? " · epoch 0=initial eval" : ""}</p>
+    <p class="chart-subtitle">${metricLabel(metric)} · x-axis: optimizer step${seriesHasStepZero(series) ? " · step 0=initial eval" : ""}</p>
     ${renderSeriesLegend(series, colors, "central_compare")}
     <div class="chart-scroll line-chart central-epoch-line-chart">
       <svg viewBox="0 0 ${width} ${height}" role="img">
@@ -3178,14 +3178,16 @@ function drawCentralEpochLineChart(series, metric) {
 }
 
 function centralEpochPoints(runId, metric) {
+  const run = state.bundle.runs.find((candidate) => candidate.run_id === runId);
   return (state.bundle.epoch_metrics ?? [])
     .filter((row) => row.run_id === runId)
     .map((row) => ({
       epoch: numberOrNull(row.epoch),
+      step: centralHistoryStep(row, run),
       value: numberOrNull(row[metric]),
     }))
-    .filter((point) => point.epoch !== null && point.value !== null)
-    .sort((left, right) => left.epoch - right.epoch);
+    .filter((point) => point.step !== null && point.value !== null)
+    .sort((left, right) => left.step - right.step);
 }
 
 function centralLinePoints(row, metric) {
@@ -3194,10 +3196,10 @@ function centralLinePoints(row, metric) {
     return points;
   }
   const initialPoint = centralInitialEpochPoint(row, metric);
-  if (!initialPoint || points.some((point) => point.epoch === 0)) {
+  if (!initialPoint || points.some((point) => point.step === 0)) {
     return points;
   }
-  return [initialPoint, ...points].sort((left, right) => left.epoch - right.epoch);
+  return [initialPoint, ...points].sort((left, right) => left.step - right.step);
 }
 
 function centralInitialEpochPoint(row, metric) {
@@ -3205,7 +3207,7 @@ function centralInitialEpochPoint(row, metric) {
   if (value === null) {
     return null;
   }
-  return { epoch: 0, value };
+  return { epoch: 0, step: 0, value };
 }
 
 function centralInitialMetricValue(row, metric, evalSet) {
@@ -3248,13 +3250,34 @@ function samePeftAdapterConfig(left, right) {
   return keys.every((key) => String(left[key] ?? "") === String(right[key] ?? ""));
 }
 
-function seriesHasEpochZero(series) {
-  return series.some((item) => item.points.some((point) => point.epoch === 0));
+function seriesHasStepZero(series) {
+  return series.some((item) => item.points.some((point) => point.step === 0));
 }
 
 function centralLatestMetricValue(runId, metric) {
   const points = centralEpochPoints(runId, metric);
   return points.length > 0 ? points[points.length - 1].value : null;
+}
+
+function centralHistoryStep(row, run) {
+  const explicitStep = numberOrNull(row.step);
+  if (explicitStep !== null) return explicitStep;
+  const epoch = numberOrNull(row.epoch);
+  if (epoch === null) return null;
+  const totalSteps = numberOrNull(run?.max_train_steps);
+  const epochs = numberOrNull(run?.epochs);
+  if (totalSteps !== null && epochs !== null && epochs > 0) {
+    const stepsPerEpoch = Math.ceil(totalSteps / epochs);
+    return Math.min(totalSteps, epoch * stepsPerEpoch);
+  }
+  return epoch;
+}
+
+function formatStepTick(step) {
+  if (step >= 1000) {
+    return `${Number((step / 1000).toFixed(step % 1000 === 0 ? 0 : 1))}k`;
+  }
+  return String(step);
 }
 
 function centralRunAxisLabel(row) {

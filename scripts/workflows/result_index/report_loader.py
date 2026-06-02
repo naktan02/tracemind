@@ -284,6 +284,7 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
             EpochMetricRecord(
                 run_id=trainer_version,
                 epoch=epoch,
+                step=optional_int(history_record.get("step")),
                 train_loss=optional_float(history_record.get("train_loss")),
                 train_sup_loss=optional_float(history_record.get("train_sup_loss")),
                 train_unsup_loss=optional_float(history_record.get("train_unsup_loss")),

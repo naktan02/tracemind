@@ -12,6 +12,7 @@ from methods.ssl.algorithms.comatch.comatch import (
     compute_comatch_step,
 )
 from methods.ssl.algorithms.comatch.memory_bank import CoMatchMemoryBank
+from methods.ssl.base import QuerySslStepContext
 from methods.ssl.hooks.distribution_alignment import QueueDistributionAlignmentHook
 from methods.ssl.registry import (
     build_query_ssl_algorithm,
@@ -169,6 +170,29 @@ def test_comatch_memory_bank_smooths_probabilities_from_active_queue() -> None:
     assert torch.allclose(smoothed, expected)
 
 
+def test_comatch_algorithm_derives_memory_capacity_from_batching() -> None:
+    algorithm = CoMatchAlgorithm(
+        temperature=0.5,
+        p_cutoff=0.95,
+        contrast_p_cutoff=0.8,
+        queue_batch=4,
+        smoothing_alpha=0.9,
+        da_len=2,
+        proj_size=2,
+    )
+    model = _FeatureMapModel(
+        logits_by_token={1: torch.tensor([1.0, 0.0])},
+        features_by_token={1: torch.tensor([1.0, 0.0])},
+    )
+
+    algorithm.configure_dataset(num_classes=2, unlabeled_row_count=8)
+    algorithm.configure_batching(labeled_batch_size=2, unlabeled_batch_size=3)
+    algorithm.build_auxiliary_modules(model=model)
+
+    assert algorithm.memory_bank is not None
+    assert algorithm.memory_bank.queue_size == 20
+
+
 def test_comatch_memory_bank_roundtrips_state() -> None:
     bank = CoMatchMemoryBank(queue_size=2, feature_dim=2, num_classes=2)
     bank.update(
@@ -251,6 +275,81 @@ def test_compute_comatch_step_updates_memory_bank_and_reports_losses() -> None:
     assert output.metrics["util_ratio"].item() == 1.0
 
 
+def test_compute_comatch_step_can_delay_memory_smoothing() -> None:
+    model = _FeatureMapModel(
+        logits_by_token={
+            3: torch.tensor([2.5, 0.0], dtype=torch.float32),
+            4: torch.tensor([2.0, 0.0], dtype=torch.float32),
+            5: torch.tensor([0.0, 2.0], dtype=torch.float32),
+        },
+        features_by_token={
+            3: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            4: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            5: torch.tensor([0.0, 1.0], dtype=torch.float32),
+        },
+    )
+    unlabeled_batch = {
+        "weak_input_ids": torch.tensor([[3]], dtype=torch.long),
+        "weak_attention_mask": torch.tensor([[1]], dtype=torch.long),
+        "strong_0_input_ids": torch.tensor([[4]], dtype=torch.long),
+        "strong_0_attention_mask": torch.tensor([[1]], dtype=torch.long),
+        "strong_1_input_ids": torch.tensor([[5]], dtype=torch.long),
+        "strong_1_attention_mask": torch.tensor([[1]], dtype=torch.long),
+    }
+    projection_head = nn.Linear(2, 2, bias=False)
+    with torch.no_grad():
+        projection_head.weight.copy_(torch.eye(2))
+
+    warm_bank = CoMatchMemoryBank(queue_size=4, feature_dim=2, num_classes=2)
+    warm_bank.update(
+        features=torch.tensor([[1.0, 0.0]], dtype=torch.float32),
+        probabilities=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
+    )
+    delayed = compute_comatch_step(
+        model=model,
+        projection_head=projection_head,
+        labeled_batch=None,
+        unlabeled_batch=unlabeled_batch,
+        dist_align_hook=QueueDistributionAlignmentHook(
+            num_classes=2,
+            queue_length=2,
+        ),
+        memory_bank=warm_bank,
+        temperature=0.5,
+        p_cutoff=0.1,
+        contrast_p_cutoff=0.0,
+        smoothing_alpha=0.0,
+        apply_memory_smoothing=False,
+        supervised_loss_weight=0.0,
+    )
+
+    smooth_bank = CoMatchMemoryBank(queue_size=4, feature_dim=2, num_classes=2)
+    smooth_bank.update(
+        features=torch.tensor([[1.0, 0.0]], dtype=torch.float32),
+        probabilities=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
+    )
+    applied = compute_comatch_step(
+        model=model,
+        projection_head=projection_head,
+        labeled_batch=None,
+        unlabeled_batch=unlabeled_batch,
+        dist_align_hook=QueueDistributionAlignmentHook(
+            num_classes=2,
+            queue_length=2,
+        ),
+        memory_bank=smooth_bank,
+        temperature=0.5,
+        p_cutoff=0.1,
+        contrast_p_cutoff=0.0,
+        smoothing_alpha=0.0,
+        apply_memory_smoothing=True,
+        supervised_loss_weight=0.0,
+    )
+
+    assert delayed.metrics["memory_smoothing_applied"].item() == 0.0
+    assert applied.metrics["memory_smoothing_applied"].item() == 1.0
+
+
 def test_comatch_algorithm_state_roundtrips_memory_bank() -> None:
     algorithm = CoMatchAlgorithm(
         temperature=0.5,
@@ -266,6 +365,7 @@ def test_comatch_algorithm_state_roundtrips_memory_bank() -> None:
         features_by_token={1: torch.tensor([1.0, 0.0])},
     )
     algorithm.configure_dataset(num_classes=2, unlabeled_row_count=8)
+    algorithm.configure_batching(labeled_batch_size=2, unlabeled_batch_size=2)
     algorithm.build_auxiliary_modules(model=model)
     assert algorithm.memory_bank is not None
     algorithm.memory_bank.update(
@@ -284,6 +384,7 @@ def test_comatch_algorithm_state_roundtrips_memory_bank() -> None:
         proj_size=2,
     )
     restored.configure_dataset(num_classes=2, unlabeled_row_count=8)
+    restored.configure_batching(labeled_batch_size=2, unlabeled_batch_size=2)
     restored.build_auxiliary_modules(model=model)
     restored.load_state(state)
 
@@ -293,3 +394,74 @@ def test_comatch_algorithm_state_roundtrips_memory_bank() -> None:
         restored.memory_bank.feature_queue,
         algorithm.memory_bank.feature_queue,
     )
+
+
+def test_comatch_algorithm_uses_step_context_for_smoothing_warmup() -> None:
+    algorithm = CoMatchAlgorithm(
+        temperature=0.5,
+        p_cutoff=0.1,
+        contrast_p_cutoff=0.0,
+        queue_batch=2,
+        smoothing_alpha=0.0,
+        da_len=2,
+        proj_size=2,
+        supervised_loss_weight=0.0,
+    )
+    model = _FeatureMapModel(
+        logits_by_token={
+            3: torch.tensor([2.5, 0.0], dtype=torch.float32),
+            4: torch.tensor([2.0, 0.0], dtype=torch.float32),
+            5: torch.tensor([0.0, 2.0], dtype=torch.float32),
+        },
+        features_by_token={
+            3: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            4: torch.tensor([1.0, 0.0], dtype=torch.float32),
+            5: torch.tensor([0.0, 1.0], dtype=torch.float32),
+        },
+    )
+    unlabeled_batch = {
+        "weak_input_ids": torch.tensor([[3]], dtype=torch.long),
+        "weak_attention_mask": torch.tensor([[1]], dtype=torch.long),
+        "strong_0_input_ids": torch.tensor([[4]], dtype=torch.long),
+        "strong_0_attention_mask": torch.tensor([[1]], dtype=torch.long),
+        "strong_1_input_ids": torch.tensor([[5]], dtype=torch.long),
+        "strong_1_attention_mask": torch.tensor([[1]], dtype=torch.long),
+    }
+    algorithm.configure_dataset(num_classes=2, unlabeled_row_count=8)
+    algorithm.configure_batching(labeled_batch_size=0, unlabeled_batch_size=1)
+    algorithm.build_auxiliary_modules(model=model)
+    assert algorithm.memory_bank is not None
+    algorithm.memory_bank.update(
+        features=torch.tensor([[1.0, 0.0]], dtype=torch.float32),
+        probabilities=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
+    )
+
+    warmup_output = algorithm.compute_step_with_context(
+        model=model,
+        labeled_batch=None,
+        unlabeled_batch=unlabeled_batch,
+        step_context=QuerySslStepContext(
+            epoch_index=1,
+            step_index=1,
+            global_step=2,
+            total_train_steps=4,
+            num_classes=2,
+            device=torch.device("cpu"),
+        ),
+    )
+    active_output = algorithm.compute_step_with_context(
+        model=model,
+        labeled_batch=None,
+        unlabeled_batch=unlabeled_batch,
+        step_context=QuerySslStepContext(
+            epoch_index=1,
+            step_index=3,
+            global_step=3,
+            total_train_steps=4,
+            num_classes=2,
+            device=torch.device("cpu"),
+        ),
+    )
+
+    assert warmup_output.metrics["memory_smoothing_applied"].item() == 0.0
+    assert active_output.metrics["memory_smoothing_applied"].item() == 1.0

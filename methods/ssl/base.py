@@ -134,6 +134,26 @@ def configure_query_ssl_algorithm_training(
         configure_training(num_train_iter=num_train_iter)
 
 
+def configure_query_ssl_algorithm_batching(
+    algorithm: QuerySslAlgorithm,
+    *,
+    labeled_batch_size: int,
+    unlabeled_batch_size: int,
+) -> None:
+    """algorithm이 필요로 할 때만 labeled/unlabeled batch 크기를 전달한다."""
+
+    if labeled_batch_size < 0:
+        raise ValueError("labeled_batch_size must not be negative.")
+    if unlabeled_batch_size <= 0:
+        raise ValueError("unlabeled_batch_size must be positive.")
+    configure_batching = getattr(algorithm, "configure_batching", None)
+    if callable(configure_batching):
+        configure_batching(
+            labeled_batch_size=labeled_batch_size,
+            unlabeled_batch_size=unlabeled_batch_size,
+        )
+
+
 def configure_query_ssl_algorithm_dataset(
     algorithm: QuerySslAlgorithm,
     *,

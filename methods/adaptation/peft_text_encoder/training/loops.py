@@ -26,6 +26,7 @@ from methods.ssl.base import (
     QuerySslStepContext,
     QuerySslStepResult,
     compute_query_ssl_algorithm_step,
+    configure_query_ssl_algorithm_batching,
     configure_query_ssl_algorithm_dataset,
     configure_query_ssl_algorithm_training,
 )
@@ -126,11 +127,6 @@ def train_query_ssl_classifier(
             "initial_query_ssl_algorithm_state and resume_checkpoint_path cannot "
             "both be provided."
         )
-    if initial_query_ssl_algorithm_state:
-        load_query_ssl_algorithm_state(
-            algorithm,
-            initial_query_ssl_algorithm_state,
-        )
     full_epoch_steps = (
         max(len(train_loader), len(unlabeled_loader))
         if labeled_updates_enabled
@@ -146,6 +142,26 @@ def train_query_ssl_classifier(
         algorithm,
         num_train_iter=max(1, step_budget.total_train_steps),
     )
+    configure_query_ssl_algorithm_batching(
+        algorithm,
+        labeled_batch_size=(
+            _require_loader_batch_size(
+                train_loader,
+                loader_name="train_loader",
+            )
+            if labeled_updates_enabled
+            else 0
+        ),
+        unlabeled_batch_size=_require_loader_batch_size(
+            unlabeled_loader,
+            loader_name="unlabeled_loader",
+        ),
+    )
+    if initial_query_ssl_algorithm_state:
+        load_query_ssl_algorithm_state(
+            algorithm,
+            initial_query_ssl_algorithm_state,
+        )
 
     optimizer = build_optimizer(
         model=model,
@@ -301,6 +317,7 @@ def train_query_ssl_classifier(
         return SelectionTrackedEpochResult(
             train_loss_total=step_total_loss_sum,
             train_loss_denominator=step_count,
+            step=completed_steps,
             extra_train_metrics={
                 **component_metrics.average_record(
                     denominator=step_count,
@@ -360,3 +377,17 @@ def train_query_ssl_classifier(
         after_epoch=save_resume_checkpoint_after_epoch,
     )
     return model, history, best_selection_report
+
+
+def _require_loader_batch_size(
+    loader: DataLoader[dict[str, Any]],
+    *,
+    loader_name: str,
+) -> int:
+    batch_size = getattr(loader, "batch_size", None)
+    if batch_size is None:
+        raise ValueError(f"{loader_name}.batch_size is required.")
+    normalized = int(batch_size)
+    if normalized <= 0:
+        raise ValueError(f"{loader_name}.batch_size must be positive.")
+    return normalized

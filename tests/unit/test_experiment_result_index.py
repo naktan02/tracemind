@@ -56,6 +56,7 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.eval_metrics[0].macro_f1 == 0.78
     assert records.per_class_metrics[0].category == "anxiety"
     assert records.confusion_matrix_cells[0].actual_category == "anxiety"
+    assert records.epoch_metrics[0].step == 2000
     assert records.epoch_metrics[0].selection_macro_f1 == 0.74
     normal_epoch_metric = next(
         metric
@@ -745,6 +746,7 @@ def _sample_report(projection_dir: Path) -> dict:
             "history": [
                 {
                     "epoch": 1,
+                    "step": 2000,
                     "train_loss": 0.5,
                     "train_sup_loss": 0.4,
                     "train_unsup_loss": 0.1,

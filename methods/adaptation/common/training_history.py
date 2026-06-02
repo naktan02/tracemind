@@ -18,6 +18,7 @@ _OPTIONAL_SELECTION_METRICS = (
 def build_selection_epoch_record(
     *,
     epoch: int,
+    step: int | None = None,
     train_loss_total: float,
     train_loss_denominator: int,
     selection_report: Mapping[str, Any],
@@ -32,6 +33,8 @@ def build_selection_epoch_record(
             6,
         ),
     }
+    if step is not None:
+        record["step"] = int(step)
     if extra_train_metrics:
         record.update(extra_train_metrics)
     record.update(

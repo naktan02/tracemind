@@ -113,7 +113,7 @@
               <div class="card-header">
                 <div>
                   <p class="eyebrow">Graph Compare</p>
-                  <h3>선택한 run의 epoch 지표를 그래프로 비교</h3>
+                  <h3>선택한 run의 step 지표를 그래프로 비교</h3>
                 </div>
               </div>
               <div class="compare-controls">
@@ -135,12 +135,12 @@
                 </label>
               </div>
               <p class="filter-hint dark">
-                Line은 가로축을 epoch로 두고 학습 history를 비교한다. Bar 계열은
-                선택 metric의 마지막 epoch 값을 run별로 비교한다.
+                Line은 가로축을 optimizer step으로 두고 학습 history를 비교한다.
+                Bar 계열은 선택 metric의 마지막 기록 값을 run별로 비교한다.
               </p>
               <div class="comparison-picker-grid">
                 <section>
-                  <h4>Epoch Metric</h4>
+                  <h4>Step Metric</h4>
                   <div id="metric-picker" class="metric-tabs"></div>
                 </section>
                 <section>

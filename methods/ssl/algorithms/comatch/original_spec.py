@@ -26,7 +26,10 @@ def comatch_original_parameter_mapping() -> dict[str, str]:
 COMATCH_V1_INTENTIONAL_DEVIATIONS = (
     "USB AlgorithmBase, distributed concat_all_gather, EMA model, EPASS "
     "multi-projection은 v1 범위에서 제외한다.",
-    "TraceMind v1은 queue_batch를 memory bank row capacity로 해석한다.",
+    "TraceMind는 text Query SSL batch metadata로 queue_batch * "
+    "(labeled_batch_size + unlabeled_batch_size) memory row capacity를 계산한다.",
+    "TraceMind는 USB의 초기 iteration warm-up을 global optimizer step 기준 "
+    "global_step > queue_batch로 옮긴다.",
     "Projection head는 public classifier/update family가 아니라 algorithm-local "
     "auxiliary trainable module로 checkpoint한다.",
 )

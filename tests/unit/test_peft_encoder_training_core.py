@@ -345,7 +345,7 @@ def test_query_ssl_training_loads_initial_state_after_dataset_config() -> None:
         },
     )
 
-    assert algorithm.events[:3] == ["dataset", "load", "training"]
+    assert algorithm.events[:3] == ["dataset", "training", "load"]
     assert algorithm.steps == 5
 
 

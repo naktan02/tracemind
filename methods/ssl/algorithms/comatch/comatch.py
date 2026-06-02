@@ -109,10 +109,36 @@ class CoMatchAlgorithm:
         self.dist_align_hook: QueueDistributionAlignmentHook | None = None
         self.memory_bank: CoMatchMemoryBank | None = None
         self._pending_memory_bank_state: Mapping[str, Any] | None = None
+        self.labeled_batch_size = 0
+        self.unlabeled_batch_size = 1
 
     @property
     def uses_labeled_batches(self) -> bool:
         return self.supervised_loss_weight > 0
+
+    def configure_batching(
+        self,
+        *,
+        labeled_batch_size: int,
+        unlabeled_batch_size: int,
+    ) -> None:
+        """USB `queue_batch` 의미에 맞춰 실제 memory row capacity 입력을 받는다."""
+
+        if labeled_batch_size < 0:
+            raise ValueError("labeled_batch_size must not be negative.")
+        if unlabeled_batch_size <= 0:
+            raise ValueError("unlabeled_batch_size must be positive.")
+        self.labeled_batch_size = (
+            int(labeled_batch_size) if self.uses_labeled_batches else 0
+        )
+        self.unlabeled_batch_size = int(unlabeled_batch_size)
+        if (
+            self.memory_bank is not None
+            and self.memory_bank.queue_size != self._memory_bank_queue_size()
+        ):
+            raise RuntimeError(
+                "CoMatch batching must be configured before memory bank creation."
+            )
 
     def configure_dataset(
         self,
@@ -180,7 +206,6 @@ class CoMatchAlgorithm:
         unlabeled_batch: dict[str, Tensor],
         step_context: QuerySslStepContext | None,
     ) -> QuerySslStepResult:
-        del step_context
         if self.dist_align_hook is None:
             raise RuntimeError("CoMatch must be configured with dataset metadata.")
         if self.projection_head is None:
@@ -199,6 +224,7 @@ class CoMatchAlgorithm:
             p_cutoff=self.p_cutoff,
             contrast_p_cutoff=self.contrast_p_cutoff,
             smoothing_alpha=self.smoothing_alpha,
+            apply_memory_smoothing=self._should_apply_memory_smoothing(step_context),
             lambda_u=self.lambda_u,
             lambda_c=self.lambda_c,
             supervised_loss_weight=self.supervised_loss_weight,
@@ -214,6 +240,11 @@ class CoMatchAlgorithm:
             metadata={
                 "num_classes": self.num_classes,
                 "queue_batch": self.queue_batch,
+                "queue_size": None
+                if self.memory_bank is None
+                else self.memory_bank.queue_size,
+                "labeled_batch_size": self.labeled_batch_size,
+                "unlabeled_batch_size": self.unlabeled_batch_size,
                 "proj_size": self.proj_size,
                 "da_len": self.da_len,
                 "dist_align": None
@@ -246,6 +277,12 @@ class CoMatchAlgorithm:
             state=effective_state,
             field_name="queue_batch",
             expected=self.queue_batch,
+            algorithm_name=self.algorithm_name,
+        )
+        require_matching_int_state_value(
+            state=effective_state,
+            field_name="queue_size",
+            expected=self._memory_bank_queue_size(),
             algorithm_name=self.algorithm_name,
         )
         require_matching_int_state_value(
@@ -284,7 +321,7 @@ class CoMatchAlgorithm:
             raise RuntimeError("CoMatch requires configure_dataset before training.")
         if self.memory_bank is None:
             self.memory_bank = CoMatchMemoryBank(
-                queue_size=self.queue_batch,
+                queue_size=self._memory_bank_queue_size(),
                 feature_dim=self.proj_size,
                 num_classes=self.num_classes,
                 device=device,
@@ -294,6 +331,16 @@ class CoMatchAlgorithm:
                 self._pending_memory_bank_state = None
         self.memory_bank.to(device)
         return self.memory_bank
+
+    def _memory_bank_queue_size(self) -> int:
+        per_step_rows = self.unlabeled_batch_size + self.labeled_batch_size
+        return self.queue_batch * max(1, per_step_rows)
+
+    def _should_apply_memory_smoothing(
+        self,
+        step_context: QuerySslStepContext | None,
+    ) -> bool:
+        return step_context is not None and step_context.global_step > self.queue_batch
 
 
 def compute_comatch_step(
@@ -308,6 +355,7 @@ def compute_comatch_step(
     p_cutoff: float,
     contrast_p_cutoff: float,
     smoothing_alpha: float,
+    apply_memory_smoothing: bool = True,
     lambda_u: float = 1.0,
     lambda_c: float = 1.0,
     supervised_loss_weight: float = 1.0,
@@ -355,7 +403,10 @@ def compute_comatch_step(
     probs = compute_prob(logits_x_ulb_w.detach())
     probs = dist_align_hook.dist_align(probs_x_ulb=probs.detach())
     probs_orig = probs.detach().clone()
-    if memory_bank.filled_size > 0:
+    memory_smoothing_applied = bool(
+        apply_memory_smoothing and memory_bank.filled_size > 0
+    )
+    if memory_smoothing_applied:
         probs = memory_bank.smooth_probabilities(
             features=feats_x_ulb_w.detach(),
             probabilities=probs,
@@ -405,6 +456,12 @@ def compute_comatch_step(
             "util_ratio": mask.float().mean(),
             "memory_bank_filled_size": logits_x_ulb_s_0.new_tensor(
                 float(memory_bank.filled_size)
+            ),
+            "memory_bank_queue_size": logits_x_ulb_s_0.new_tensor(
+                float(memory_bank.queue_size)
+            ),
+            "memory_smoothing_applied": logits_x_ulb_s_0.new_tensor(
+                float(memory_smoothing_applied)
             ),
         },
         debug_tensors={

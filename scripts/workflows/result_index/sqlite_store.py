@@ -10,6 +10,7 @@ from typing import Any
 
 from scripts.workflows.result_index.models import ResultIndexRecords
 from scripts.workflows.result_index.schema import (
+    EPOCH_METRIC_COLUMN_MIGRATIONS,
     EXPERIMENT_RUN_COLUMN_MIGRATIONS,
     SCHEMA_STATEMENTS,
 )
@@ -34,6 +35,7 @@ def initialize_database(db_path: Path) -> None:
                 continue
             connection.execute(statement)
         _ensure_experiment_run_columns(connection)
+        _ensure_epoch_metric_columns(connection)
         for statement in index_statements:
             connection.execute(statement)
 
@@ -98,14 +100,35 @@ def write_result_index_records(
 
 
 def _ensure_experiment_run_columns(connection: sqlite3.Connection) -> None:
+    _ensure_columns(
+        connection,
+        table="experiment_runs",
+        column_migrations=EXPERIMENT_RUN_COLUMN_MIGRATIONS,
+    )
+
+
+def _ensure_epoch_metric_columns(connection: sqlite3.Connection) -> None:
+    _ensure_columns(
+        connection,
+        table="epoch_metrics",
+        column_migrations=EPOCH_METRIC_COLUMN_MIGRATIONS,
+    )
+
+
+def _ensure_columns(
+    connection: sqlite3.Connection,
+    *,
+    table: str,
+    column_migrations: Sequence[tuple[str, str]],
+) -> None:
     existing_columns = {
         str(row[1])
-        for row in connection.execute("pragma table_info(experiment_runs)").fetchall()
+        for row in connection.execute(f"pragma table_info({table})").fetchall()
     }
-    for column_name, column_type in EXPERIMENT_RUN_COLUMN_MIGRATIONS:
+    for column_name, column_type in column_migrations:
         if column_name not in existing_columns:
             connection.execute(
-                f"alter table experiment_runs add column {column_name} {column_type}"
+                f"alter table {table} add column {column_name} {column_type}"
             )
 
 

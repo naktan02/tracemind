@@ -123,6 +123,7 @@ SCHEMA_STATEMENTS = (
     create table if not exists epoch_metrics (
         run_id text not null,
         epoch integer not null,
+        step integer,
         train_loss real,
         train_sup_loss real,
         train_unsup_loss real,
@@ -225,4 +226,8 @@ EXPERIMENT_RUN_COLUMN_MIGRATIONS = (
     ("embedding_device", "text"),
     ("local_trainer_device", "text"),
     ("created_at", "text"),
+)
+
+EPOCH_METRIC_COLUMN_MIGRATIONS = (
+    ("step", "integer"),
 )
