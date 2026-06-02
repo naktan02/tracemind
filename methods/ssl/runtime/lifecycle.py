@@ -82,6 +82,22 @@ def configure_query_ssl_algorithm_model(
         configure_model(model=model, device=device)
 
 
+def configure_query_ssl_algorithm_initial_selection_loss(
+    algorithm: QuerySslAlgorithm,
+    *,
+    selection_loss: float,
+) -> None:
+    """algorithm이 필요로 할 때만 초기 selection loss를 전달한다."""
+
+    configure_initial_selection_loss = getattr(
+        algorithm,
+        "configure_initial_selection_loss",
+        None,
+    )
+    if callable(configure_initial_selection_loss):
+        configure_initial_selection_loss(selection_loss=selection_loss)
+
+
 def compute_query_ssl_algorithm_step(
     algorithm: QuerySslAlgorithm,
     *,

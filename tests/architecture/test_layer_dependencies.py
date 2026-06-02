@@ -71,6 +71,7 @@ RUNTIME_LAYER_METHOD_NAME_FRAGMENTS = (
     "freematch",
     "flexmatch",
     "comatch",
+    "dash",
     "mixtext",
     "rdrop",
 )
@@ -558,12 +559,14 @@ def test_common_ssl_hooks_do_not_own_method_specific_hooks() -> None:
     method_fragments = (
         "AdaMatch",
         "CoMatch",
+        "Dash",
         "FixMatch",
         "FlexMatch",
         "FreeMatch",
         "SoftMatch",
         "adamatch",
         "comatch",
+        "dash",
         "fixmatch",
         "flexmatch",
         "freematch",
@@ -2850,6 +2853,7 @@ def test_payload_adapter_federated_ssl_files_do_not_multiply_by_method_name() ->
         "fixmatch",
         "flexmatch",
         "freematch",
+        "dash",
     )
     violations: list[Path] = []
     for family_dir in sorted((METHODS_SRC / "adaptation").iterdir()):

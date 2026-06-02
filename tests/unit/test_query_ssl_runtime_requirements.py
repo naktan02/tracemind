@@ -58,6 +58,12 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
             }
         ),
         "adamatch": frozenset({QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA}),
+        "dash": frozenset(
+            {
+                QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
+                QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER,
+            }
+        ),
         "freematch": frozenset(
             {
                 QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
@@ -90,6 +96,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         "fixmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "flexmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "adamatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
+        "dash": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "freematch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "pseudo_label": QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
         "pimodel": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,

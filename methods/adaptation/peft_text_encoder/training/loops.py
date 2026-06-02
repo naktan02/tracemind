@@ -31,6 +31,7 @@ from methods.ssl.runtime.lifecycle import (
     compute_query_ssl_algorithm_step,
     configure_query_ssl_algorithm_batching,
     configure_query_ssl_algorithm_dataset,
+    configure_query_ssl_algorithm_initial_selection_loss,
     configure_query_ssl_algorithm_model,
     configure_query_ssl_algorithm_training,
 )
@@ -170,6 +171,17 @@ def train_query_ssl_classifier(
         load_query_ssl_algorithm_state(
             algorithm,
             initial_query_ssl_algorithm_state,
+        )
+    if bool(getattr(algorithm, "needs_initial_selection_loss", False)):
+        initial_selection_report = evaluate_classifier(
+            model=model,
+            dataloader=selection_loader,
+            categories=categories,
+            device=device,
+        )
+        configure_query_ssl_algorithm_initial_selection_loss(
+            algorithm,
+            selection_loss=float(initial_selection_report["loss"]),
         )
 
     optimizer = build_optimizer(

@@ -507,6 +507,28 @@ def test_run_peft_ssl_control_supports_adamatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
+def test_run_peft_ssl_control_supports_dash_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=dash_usb_v1",
+                "query_ssl_method.gamma=1.5",
+                "query_ssl_method.C=1.1",
+                "query_ssl_method.rho_min=0.1",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "dash_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "dash"
+    assert cfg.query_ssl_method.gamma == 1.5
+    assert cfg.query_ssl_method.C == 1.1
+    assert cfg.query_ssl_method.rho_min == 0.1
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
 def test_run_peft_ssl_control_supports_uda_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(

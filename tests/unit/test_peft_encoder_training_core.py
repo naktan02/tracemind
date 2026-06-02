@@ -233,6 +233,29 @@ class _ContextAwareCountingQuerySslAlgorithm(_CountingQuerySslAlgorithm):
         )
 
 
+class _InitialSelectionLossQuerySslAlgorithm(_CountingQuerySslAlgorithm):
+    algorithm_name = "initial_selection_loss_counting"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.initial_selection_loss: float | None = None
+
+    @property
+    def needs_initial_selection_loss(self) -> bool:
+        return self.initial_selection_loss is None
+
+    def configure_initial_selection_loss(self, *, selection_loss: float) -> None:
+        self.initial_selection_loss = float(selection_loss)
+
+    def compute_step(self, *, model, labeled_batch, unlabeled_batch):
+        assert self.initial_selection_loss is not None
+        return super().compute_step(
+            model=model,
+            labeled_batch=labeled_batch,
+            unlabeled_batch=unlabeled_batch,
+        )
+
+
 class _AuxiliaryProjectionQuerySslAlgorithm(_CountingQuerySslAlgorithm):
     algorithm_name = "auxiliary_projection"
 
@@ -402,6 +425,38 @@ def test_query_ssl_training_passes_step_context_to_context_aware_algorithm() -> 
     assert {context.total_train_steps for context in algorithm.step_contexts} == {2}
     assert {context.num_classes for context in algorithm.step_contexts} == {2}
     assert {context.device.type for context in algorithm.step_contexts} == {"cpu"}
+
+
+def test_query_ssl_training_injects_initial_selection_loss_when_required() -> None:
+    torch.manual_seed(7)
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _InitialSelectionLossQuerySslAlgorithm()
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=1,
+        max_train_steps=1,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+    )
+
+    assert algorithm.initial_selection_loss is not None
+    assert algorithm.initial_selection_loss > 0
+    assert algorithm.steps == 1
 
 
 def test_query_ssl_training_runs_algorithm_post_optimizer_step_hook() -> None:
