@@ -830,6 +830,23 @@ def test_query_peft_offline_pseudo_label_replay_workflow_is_removed() -> None:
     )
 
 
+def test_query_peft_agent_local_query_adaptation_export_bridge_is_removed() -> None:
+    removed_paths = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "query_adaptation.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "query_adaptation.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "query_adaptation_multiview.py",
+    )
+    existing_paths = [path for path in removed_paths if path.exists()]
+
+    assert not existing_paths, (
+        "agent-local query adaptation export bridge는 중앙 지도/중앙 SSL/FSSL "
+        "canonical experiment surface가 아니다. "
+        "agent-local adaptation dataset runtime은 agent owner에 남기고, 중앙 "
+        "실험은 supervised/consistency runner와 Hydra initial_checkpoint로 연결한다.\n"
+        f"{chr(10).join(f'- {_relative_repo_path(path)}' for path in existing_paths)}"
+    )
+
+
 def test_query_peft_teacher_bootstrap_compatibility_tree_is_removed() -> None:
     legacy_root = QUERY_SSL_TEXT_ENCODER_SRC / "compatibility" / "teacher_bootstrap"
 

@@ -58,14 +58,13 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
     현재 augmentation reader는 entrypoint의 `query_ssl_augmenter` 고정 설정으로
     precomputed USB candidates만 사용한다.
 - `scripts/support/query_ssl_text_encoder/`
-  - `runners/{supervised,full_text_encoder_supervised,consistency,pseudo_label,query_adaptation}.py`가 query-domain
+  - `runners/{supervised,full_text_encoder_supervised,consistency}.py`가 query-domain
     central supervised/SSL scaffold를 실행한다.
   - Query SSL family 공통 scaffolding은 `query_ssl/common.py`, strict USB NLP
-    view preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
-  - bootstrap teacher와 pseudo-label replay helper는 public experiment entrypoint가
-    아니라 내부 workflow/helper 표면으로만 남긴다.
-  - agent-local query adaptation export는 `io/query_adaptation*.py`가 담당하고,
-    `source_row.query_id`를 single source of truth로 쓴다.
+    view preparation/cache는 `query_ssl/view_preparation.py`가 담당한다.
+  - bootstrap teacher, pseudo-label replay, agent-local query adaptation export
+    helper는 중앙 지도/중앙 SSL/FSSL canonical experiment surface가 아니므로
+    제거했다.
 
 ## 공통 Helper
 
@@ -98,7 +97,7 @@ central PEFT / SSL control:
 1. `central/ssl_control/run_peft_supervised_control.py`
 2. `central/ssl_control/run_peft_ssl_control.py`
 3. `../support/query_ssl_text_encoder/runners/supervised.py`
-4. 필요하면 `../support/query_ssl_text_encoder/runners/{consistency,query_adaptation,pseudo_label}.py`
+4. 필요하면 `../support/query_ssl_text_encoder/runners/consistency.py`
 
 중앙 PEFT/SSL warm-start와 method별 실행 명령은
 `central/ssl_control/README.md`와 각 entrypoint의 `--cfg job` preview를 기준으로 본다.

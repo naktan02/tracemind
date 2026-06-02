@@ -14,7 +14,6 @@ query-domain SSL text encoder runtime support를 둔다. PEFT text encoder contr
   - `supervised.py`: frozen backbone + PEFT text encoder + linear head supervised baseline.
   - `full_text_encoder_supervised.py`: full encoder + linear head supervised-only baseline.
   - `consistency.py`: USB PseudoLabel, FixMatch 등 Query SSL runner.
-  - `query_adaptation.py`: agent-local query adaptation dataset runner wrapper.
 - `runtime_context.py`
   - text encoder model/data/eval 공통 scaffolding. 기본 model builder는 현재
     PEFT text encoder control을 가리키고, full encoder runner는 별도 builder를 주입한다.
@@ -25,7 +24,6 @@ query-domain SSL text encoder runtime support를 둔다. PEFT text encoder contr
   - `model_artifact_exporter.py`: adapter/tokenizer/classifier 파일 export.
   - `manifest_builder.py`: manifest/report payload 조립.
   - `artifact_writer.py`: manifest/report JSON 쓰기.
-  - query adaptation dataset export.
 - `config/`
   - Hydra initial checkpoint metadata helper.
 - `query_ssl/`
@@ -66,10 +64,10 @@ compatibility workflow와 fixed-classifier fallback은 scripts surface에서 제
 | `scripts 유지` | `runners/supervised_text_encoder.py`, `runners/supervised.py`, `runners/full_text_encoder_supervised.py` | central supervised control entrypoint가 호출하는 runner다. 공통 train/eval 흐름은 `supervised_text_encoder.py`가 소유한다. |
 | `scripts 유지` | `runtime_context.py`, `runtime_metrics.py` | 실험 실행 context/metric bridge다. |
 | `scripts 유지` | `io/artifacts.py`, `io/full_text_encoder_artifacts.py`, `artifact_paths.py`, `artifact_writer.py`, `manifest_builder.py`, `model_artifact_exporter.py` | artifact write/export/orchestration IO다. |
-| `scripts 유지` | `io/query_adaptation.py`, `io/query_adaptation_multiview.py`, `io/labeled_row_export.py` | dataset export와 run artifact write에 가깝다. |
+| `scripts 유지` | `io/labeled_row_export.py` | labeled JSONL export helper다. |
 | `scripts 유지` | `config/initial_checkpoint.py` | Hydra initial checkpoint surface 해석과 manifest bridge다. |
 | `삭제 완료` | teacher bootstrap compatibility subtree | active method family가 아니고 scripts owner가 아니므로 제거했다. |
-| `보류` | `runners/query_adaptation.py` | agent-local query adaptation bridge라 central SSL cleanup과 분리해서 판단해야 한다. |
+| `삭제 완료` | `runners/query_adaptation.py`, `io/query_adaptation.py`, `io/query_adaptation_multiview.py` | agent-local query adaptation export bridge는 중앙 지도/중앙 SSL/FSSL canonical experiment surface가 아니므로 제거했다. |
 
 권장 순서:
 
