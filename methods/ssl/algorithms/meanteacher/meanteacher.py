@@ -7,6 +7,7 @@ from typing import Any
 
 import torch
 from torch import Tensor, nn
+from torch.func import functional_call
 from torch.nn import functional as F
 
 from ...base import (
@@ -194,10 +195,15 @@ def compute_meanteacher_step(
         input_ids=labeled_batch["input_ids"],
         attention_mask=labeled_batch["attention_mask"],
     )
-    with torch.no_grad(), ema_teacher.use_shadow_weights(model):
-        logits_x_ulb_w = model(
-            input_ids=unlabeled_batch["weak_input_ids"],
-            attention_mask=unlabeled_batch["weak_attention_mask"],
+    with torch.no_grad():
+        logits_x_ulb_w = functional_call(
+            model,
+            ema_teacher.shadow_parameter_mapping(model),
+            args=(),
+            kwargs={
+                "input_ids": unlabeled_batch["weak_input_ids"],
+                "attention_mask": unlabeled_batch["weak_attention_mask"],
+            },
         )
     logits_x_ulb_s = model(
         input_ids=unlabeled_batch["strong_input_ids"],

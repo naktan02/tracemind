@@ -27,6 +27,18 @@ class _TokenSumClassifier(nn.Module):
         return features @ self.weight
 
 
+class _TrainableFeatureClassifier(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Linear(2, 1024, bias=False)
+        self.classifier = nn.Linear(1024, 4, bias=False)
+
+    def forward(self, *, input_ids, attention_mask):
+        del attention_mask
+        features = self.encoder(input_ids.float())
+        return self.classifier(features)
+
+
 def _labeled_batch() -> dict[str, torch.Tensor]:
     return {
         "input_ids": torch.tensor([[1, 0], [0, 1]], dtype=torch.long),
@@ -120,6 +132,29 @@ def test_compute_meanteacher_step_uses_teacher_weak_student_strong_mse() -> None
         output.total_loss,
         expected_sup_loss + expected_unsup_loss * 0.5,
     )
+
+
+def test_compute_meanteacher_step_backpropagates_through_trainable_features() -> None:
+    model = _TrainableFeatureClassifier()
+    teacher = EmaTrainableParameterTeacher(model=model, momentum=0.5)
+    with torch.no_grad():
+        for parameter in model.parameters():
+            parameter.add_(0.1)
+
+    output = compute_meanteacher_step(
+        model=model,
+        ema_teacher=teacher,
+        labeled_batch=_labeled_batch(),
+        unlabeled_batch=_unlabeled_batch(),
+        iteration=2,
+        num_train_iter=10,
+        unsup_warm_up=0.4,
+        lambda_u=1.0,
+    )
+    output.total_loss.backward()
+
+    assert model.encoder.weight.grad is not None
+    assert model.classifier.weight.grad is not None
 
 
 def test_meanteacher_algorithm_state_roundtrips_iteration_and_ema() -> None:

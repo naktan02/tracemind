@@ -96,6 +96,19 @@ class EmaTrainableParameterTeacher:
                 alpha=1.0 - self.momentum,
             )
 
+    def shadow_parameter_mapping(self, model: nn.Module) -> dict[str, Tensor]:
+        """functional teacher forward에 사용할 shadow parameter mapping을 만든다."""
+
+        parameters = self._named_trainable_parameters(model)
+        self._require_matching_names(parameters)
+        return {
+            name: self._shadow[name].to(
+                device=parameter.device,
+                dtype=parameter.dtype,
+            )
+            for name, parameter in parameters.items()
+        }
+
     @contextmanager
     def use_shadow_weights(self, model: nn.Module) -> Iterator[None]:
         """teacher forward 동안 trainable parameter를 shadow 값으로 잠시 교체한다."""
