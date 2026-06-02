@@ -2,8 +2,8 @@ import type {
   WellbeingSignalRange,
   WellbeingSignalSummaryPayload,
   WellbeingSignalTimeseriesPayload,
-} from "../contracts/generated";
-import { requestAgentJson } from "./client";
+} from "../../contracts/generated";
+import { requestAgentJson } from "../../common/agentClient";
 
 export async function fetchWellbeingSummary(): Promise<WellbeingSignalSummaryPayload> {
   return requestAgentJson("/api/v1/wellbeing/summary");

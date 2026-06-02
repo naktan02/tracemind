@@ -1,7 +1,7 @@
 import type {
   WellbeingSignalRange,
   WellbeingSignalTimeseriesPayload,
-} from "../contracts/generated";
+} from "../../contracts/generated";
 import { formatComputedAtLabel, formatRangeLabel } from "../lib/formatters";
 
 type WellbeingSignalTrendChartProps = {

@@ -22,6 +22,27 @@
 14. scored event -> wellbeing snapshot projection을 통한 실제 로컬 출력 연결
 15. role 화면 이탈 시 즉시 재잠금
 
+## 내부 구조
+
+`apps/family_extension`는 하나의 Chrome extension 패키지로 유지한다. UI와
+향후 입력 수집 runtime은 같은 manifest에 묶이지만, 코드 책임은 분리한다.
+
+- `src/ui/`
+  - popup, parent detail, route, React component, UI 전용 API client를 둔다.
+  - wellbeing/child-support 의미를 재정의하지 않고 agent API payload를 표시한다.
+- `src/common/`
+  - UI, background service worker, content script가 함께 쓸 수 있는 얇은 공통
+    helper를 둔다.
+  - 현재는 local agent API 호출 helper를 소유한다.
+- `src/contracts/`
+  - generated contract type만 둔다.
+  - shared contract 변경 뒤 codegen으로 갱신한다.
+
+향후 typing collector를 추가하면 `src/collector/`에는 content script의 입력 surface
+감시와 segment 생성만 두고, `src/extension/`에는 background service worker의 queue,
+local agent 전달, popup 상태 메시지를 둔다. 위험 추론, 카테고리 판단, 학습 buffer는
+계속 agent가 소유한다.
+
 ## 아직 포함하지 않는 것
 
 1. 장기 기록용 별도 부모 웹 대시보드
@@ -82,6 +103,8 @@ uvicorn agent.src.api.main:app --reload --port 8001
 - `parent.html`
   - 부모용 상세 entry
   - 세션이 없으면 `/gate` 또는 `/parent/unlock` 흐름으로 정규화된다
+
+두 entry는 모두 `src/ui/main.tsx`를 사용한다.
 
 Chrome extension manifest는 `public/manifest.json`을 source로 사용한다.
 

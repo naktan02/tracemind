@@ -4,8 +4,8 @@ import type {
   FamilySetupResponsePayload,
   FamilySetupStatusPayload,
   FamilyUnlockResponsePayload,
-} from "../contracts/generated";
-import { requestAgentJson } from "./client";
+} from "../../contracts/generated";
+import { requestAgentJson } from "../../common/agentClient";
 
 export async function fetchFamilySetupStatus(): Promise<FamilySetupStatusPayload> {
   return requestAgentJson("/api/v1/family/setup/status");

@@ -1,4 +1,4 @@
-import type { WellbeingSignalSummaryPayload } from "../contracts/generated";
+import type { WellbeingSignalSummaryPayload } from "../../contracts/generated";
 import {
   formatComputedAtLabel,
   formatConfidenceLabel,

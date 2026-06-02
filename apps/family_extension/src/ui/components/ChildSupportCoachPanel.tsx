@@ -7,7 +7,7 @@ import {
 import type {
   ChildSupportConversationResponsePayload,
   ChildSupportSuggestionPayload,
-} from "../contracts/generated";
+} from "../../contracts/generated";
 
 type CoachMessage = {
   id: string;

@@ -2,8 +2,8 @@ import type {
   ChildSupportConversationRequestPayload,
   ChildSupportConversationResponsePayload,
   ChildSupportProactivePromptPayload,
-} from "../contracts/generated";
-import { requestAgentJson } from "./client";
+} from "../../contracts/generated";
+import { requestAgentJson } from "../../common/agentClient";
 
 export async function createChildSupportMessage(
   payload: ChildSupportConversationRequestPayload,

@@ -1,4 +1,4 @@
-import { getAgentApiBaseUrl } from "../api/client";
+import { getAgentApiBaseUrl } from "../../common/agentClient";
 import type { LocalProgramHealthState } from "../hooks/useLocalProgramHealth";
 
 type ConnectionStateBannerProps = {

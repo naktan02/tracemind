@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { fetchWellbeingSummary } from "../api/wellbeing";
-import type { WellbeingSignalSummaryPayload } from "../contracts/generated";
+import type { WellbeingSignalSummaryPayload } from "../../contracts/generated";
 
 export type WellbeingSummaryLoadState =
   | { status: "loading"; summary: null; errorMessage: null }

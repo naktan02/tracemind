@@ -3,7 +3,7 @@ import type {
   WellbeingSignalLevel,
   WellbeingSignalRange,
   WellbeingSignalTrend,
-} from "../contracts/generated";
+} from "../../contracts/generated";
 
 export function formatComputedAtLabel(value: string): string {
   const date = new Date(value);

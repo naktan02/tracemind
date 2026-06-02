@@ -1,5 +1,5 @@
 import { PinPad } from "../../components/PinPad";
-import type { FamilyAccessRole } from "../../contracts/generated";
+import type { FamilyAccessRole } from "../../../contracts/generated";
 import { formatComputedAtLabel } from "../../lib/formatters";
 import type { FamilyUnlockState } from "../../hooks/useFamilyAccess";
 

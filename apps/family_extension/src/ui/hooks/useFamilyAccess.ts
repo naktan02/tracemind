@@ -10,7 +10,7 @@ import type {
   FamilySetupResponsePayload,
   FamilySetupStatusPayload,
   FamilyUnlockResponsePayload,
-} from "../contracts/generated";
+} from "../../contracts/generated";
 
 export type FamilySetupStatusPhase = "loading" | "loaded" | "error";
 export type FamilySetupSubmissionPhase =

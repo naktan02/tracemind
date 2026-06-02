@@ -4,7 +4,7 @@ import { fetchWellbeingTimeseries } from "../api/wellbeing";
 import type {
   WellbeingSignalRange,
   WellbeingSignalTimeseriesPayload,
-} from "../contracts/generated";
+} from "../../contracts/generated";
 
 export type WellbeingTimeseriesLoadState =
   | { status: "loading"; timeseries: null; errorMessage: null }

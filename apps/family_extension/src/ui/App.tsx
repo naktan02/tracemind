@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { ConnectionStateBanner } from "./components/ConnectionStateBanner";
-import { getAgentApiBaseUrl } from "./api/client";
+import { getAgentApiBaseUrl } from "../common/agentClient";
 import { useFamilyAccess } from "./hooks/useFamilyAccess";
 import { useLocalProgramHealth } from "./hooks/useLocalProgramHealth";
 import { GatePage } from "./pages/gate/GatePage";

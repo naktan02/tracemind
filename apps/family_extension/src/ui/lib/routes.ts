@@ -1,4 +1,4 @@
-import type { FamilyAccessRole } from "../contracts/generated";
+import type { FamilyAccessRole } from "../../contracts/generated";
 
 export const APP_ROUTES = [
   "/setup",
