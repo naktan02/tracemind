@@ -146,6 +146,19 @@ def test_compute_flexmatch_step_matches_usb_adaptive_threshold_flow() -> None:
     assert torch.isclose(output.loss_components["unsup_loss"], expected_unsup_loss)
     assert torch.isclose(output.total_loss, expected_sup_loss + expected_unsup_loss)
     assert torch.isclose(output.metrics["util_ratio"], torch.tensor(1.0))
+    assert torch.isclose(output.metrics["high_conf_ratio"], torch.tensor(0.5))
+    assert torch.isclose(
+        output.metrics["selected_label_coverage"],
+        torch.tensor(0.25),
+    )
+    assert torch.isclose(
+        output.metrics["classwise_acc_mean"],
+        torch.tensor(1.0 / 6.0),
+    )
+    assert torch.isclose(
+        output.metrics["classwise_acc_max"],
+        torch.tensor(1.0 / 3.0),
+    )
     assert torch.allclose(
         output.debug_tensors["classwise_acc"],
         algorithm.masking_hook.classwise_acc,

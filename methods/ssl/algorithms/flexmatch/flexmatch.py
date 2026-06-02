@@ -219,6 +219,8 @@ def compute_flexmatch_step(
         sup_loss = logits_x_ulb_s.new_zeros(())
 
     probs_x_ulb_w = compute_prob(logits_x_ulb_w.detach())
+    max_probs, _ = probs_x_ulb_w.max(dim=-1)
+    high_conf_mask = max_probs.ge(p_cutoff)
     masking_algorithm = algorithm or _FlexMatchMaskingAlgorithm(p_cutoff=p_cutoff)
     mask = masking_hook.masking(
         masking_algorithm,
@@ -251,7 +253,13 @@ def compute_flexmatch_step(
             "sup_loss": sup_loss,
             "unsup_loss": unsup_loss,
         },
-        metrics={"util_ratio": mask.float().mean()},
+        metrics={
+            "util_ratio": mask.float().mean(),
+            "high_conf_ratio": high_conf_mask.float().mean(),
+            "selected_label_coverage": masking_hook.selected_label.ge(0).float().mean(),
+            "classwise_acc_mean": masking_hook.classwise_acc.float().mean(),
+            "classwise_acc_max": masking_hook.classwise_acc.float().max(),
+        },
         debug_tensors={
             "mask": mask,
             "classwise_acc": masking_hook.classwise_acc,
