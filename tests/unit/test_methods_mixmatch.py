@@ -9,10 +9,10 @@ from torch import nn
 from methods.ssl.algorithms.mixmatch.mixmatch import (
     MixMatchAlgorithm,
     compute_mixmatch_step,
-    sharpen_probabilities,
 )
-from methods.ssl.algorithms.mixmatch.mixup import mixup_one_target
 from methods.ssl.base import QuerySslStepContext
+from methods.ssl.primitives.mixup import mixup_one_target
+from methods.ssl.primitives.probability import sharpen_probabilities
 from methods.ssl.registry import (
     build_query_ssl_algorithm,
     resolve_query_ssl_algorithm_descriptor,

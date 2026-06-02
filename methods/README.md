@@ -86,6 +86,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
 - `methods/ssl/algorithms/pseudolabel/`: USB 스타일 PseudoLabel objective core
 - `methods/ssl/hooks/`: 중앙/FL SSL이 공유하는 pseudo-labeling, masking,
   selection hook
+- `methods/ssl/primitives/`: SSL algorithm들이 공유하는 probability transform,
+  soft-target loss, MixUp, projection head 같은 순수 tensor/module primitive
 - `methods/adaptation/peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와
   registry
 - `methods/adaptation/local_objective_regularizers/`: FedProx처럼 payload/update family와

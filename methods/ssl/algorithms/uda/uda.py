@@ -17,10 +17,10 @@ from ...base import (
     QuerySslStepResult,
     TextBatchClassifier,
 )
-from ...common import compute_prob
 from ...hooks.consistency import CrossEntropyConsistencyLossHook
 from ...hooks.masking import FixedThresholdMaskingHook
 from ...hooks.pseudo_labeling import HardOrSoftPseudoLabelingHook, PseudoLabelingConfig
+from ...primitives.probability import compute_prob
 from ...registry import register_query_ssl_algorithm
 from ...state import (
     build_query_ssl_algorithm_state,

@@ -8,7 +8,6 @@ from typing import Any
 from torch import Tensor
 
 from ...base import QuerySslStepResult, TextBatchClassifier
-from ...common import compute_prob
 from ...hooks.consistency import CrossEntropyConsistencyLossHook
 from ...hooks.masking import FixedThresholdMaskingHook
 from ...hooks.objective import SslObjectiveHooks
@@ -17,6 +16,7 @@ from ...hooks.pseudo_labeling import (
     PseudoLabelingConfig,
 )
 from ...hooks.supervised import compute_labeled_cross_entropy_loss
+from ...primitives.probability import compute_prob
 from ...registry import register_query_ssl_algorithm
 from ..usb_consistency import (
     USB_MULTIVIEW_REQUIRED_VIEWS,

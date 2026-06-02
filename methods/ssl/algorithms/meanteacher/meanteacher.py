@@ -21,7 +21,7 @@ from ...base import (
     QuerySslStepResult,
     TextBatchClassifier,
 )
-from ...common import compute_prob
+from ...primitives.probability import compute_prob
 from ...registry import register_query_ssl_algorithm
 from ...runtime.ema import EmaTrainableParameterTeacher
 from ...runtime.schedules import compute_linear_warmup

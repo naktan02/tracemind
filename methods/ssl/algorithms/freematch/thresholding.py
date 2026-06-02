@@ -7,7 +7,7 @@ from typing import Protocol
 import torch
 from torch import Tensor
 
-from methods.ssl.common import compute_prob
+from methods.ssl.primitives.probability import compute_prob
 
 
 class FreeMatchThresholdingAlgorithm(Protocol):

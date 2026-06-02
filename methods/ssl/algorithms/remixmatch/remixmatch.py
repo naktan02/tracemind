@@ -25,12 +25,14 @@ from ...base import (
     QuerySslStepResult,
     TextBatchClassifier,
 )
-from ...common import compute_prob
 from ...hooks.distribution_alignment import EmaDistributionAlignmentHook
 from ...model_capabilities import (
     classify_classifier_input_features,
     extract_classifier_input_features,
 )
+from ...primitives.losses import probability_mse_loss, soft_cross_entropy_loss
+from ...primitives.mixup import mixup_one_target
+from ...primitives.probability import compute_prob, sharpen_probabilities
 from ...registry import register_query_ssl_algorithm
 from ...runtime.schedules import compute_linear_warmup
 from ...state import (
@@ -40,12 +42,6 @@ from ...state import (
     require_matching_int_state_value,
     require_query_ssl_algorithm_state,
 )
-from ..mixmatch.mixmatch import (
-    probability_mse_loss,
-    sharpen_probabilities,
-    soft_cross_entropy_loss,
-)
-from ..mixmatch.mixup import mixup_one_target
 from ..usb_consistency import validate_usb_consistency_loaders
 
 REMIXMATCH_REQUIRED_VIEWS = QuerySslRequiredViews(

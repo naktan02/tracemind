@@ -23,7 +23,6 @@ from ...base import (
     QuerySslStepResult,
     TextBatchClassifier,
 )
-from ...common import compute_prob
 from ...hooks.consistency import CrossEntropyConsistencyLossHook
 from ...hooks.distribution_alignment import QueueDistributionAlignmentHook
 from ...hooks.masking import FixedThresholdMaskingHook
@@ -31,7 +30,8 @@ from ...model_capabilities import (
     FeatureReturningTextBatchClassifier,
     require_pooled_feature_classifier,
 )
-from ...projection import SslProjectionHead
+from ...primitives.probability import compute_prob
+from ...primitives.projection import SslProjectionHead
 from ...registry import register_query_ssl_algorithm
 from ...state import (
     build_query_ssl_algorithm_state,

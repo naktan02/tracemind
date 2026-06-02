@@ -72,6 +72,7 @@ methods/
     local_objective_regularizers/
   ssl/algorithms/{fixmatch,refixmatch,flexmatch,freematch,adamatch,dash,simmatch,mixmatch,remixmatch,pseudolabel}/
   ssl/hooks/
+  ssl/primitives/
   federated/{aggregation/fedavg,participation.py,shard_policy}/
   federated_ssl/
     {execution_plan,capability_axes,compatibility_validator}.py

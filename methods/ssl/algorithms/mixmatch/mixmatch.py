@@ -20,18 +20,19 @@ from ...base import (
     QuerySslStepResult,
     TextBatchClassifier,
 )
-from ...common import compute_prob
 from ...model_capabilities import (
     classify_classifier_input_features,
     extract_classifier_input_features,
 )
+from ...primitives.losses import probability_mse_loss, soft_cross_entropy_loss
+from ...primitives.mixup import mixup_one_target
+from ...primitives.probability import compute_prob, sharpen_probabilities
 from ...registry import register_query_ssl_algorithm
 from ...runtime.schedules import compute_linear_warmup
 from ..usb_consistency import (
     USB_MULTIVIEW_REQUIRED_VIEWS,
     validate_usb_consistency_loaders,
 )
-from .mixup import mixup_one_target
 
 
 class MixMatchAlgorithm:
@@ -280,29 +281,6 @@ def compute_mixmatch_step(
             "mixed_targets": mixed_y.detach(),
         },
     )
-
-
-def sharpen_probabilities(probs: Tensor, *, temperature: float) -> Tensor:
-    """MixMatch temperature sharpening 수식."""
-
-    if temperature <= 0:
-        raise ValueError("temperature must be positive.")
-    sharpened = probs ** (1.0 / float(temperature))
-    return sharpened / sharpened.sum(dim=-1, keepdim=True).clamp_min(1e-12)
-
-
-def soft_cross_entropy_loss(*, logits: Tensor, targets: Tensor) -> Tensor:
-    """USB CELoss soft-target branch와 같은 CE 평균."""
-
-    log_probs = F.log_softmax(logits, dim=-1)
-    return -(targets * log_probs).sum(dim=-1).mean()
-
-
-def probability_mse_loss(*, logits: Tensor, targets: Tensor) -> Tensor:
-    """USB ConsistencyLoss(name='mse')와 같은 sample-wise MSE 평균."""
-
-    probs = compute_prob(logits)
-    return F.mse_loss(probs, targets, reduction="none").mean(dim=1).mean()
 
 
 def _require_positive_float(value: float, field_name: str) -> float:

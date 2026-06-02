@@ -54,6 +54,7 @@ PROTOTYPE_SRC = REPO_ROOT / "methods" / "prototype"
 PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
 METHODS_SSL_SRC = METHODS_SRC / "ssl"
+METHODS_SSL_ALGORITHMS_SRC = METHODS_SSL_SRC / "algorithms"
 PEFT_TEXT_ENCODER_SRC = METHODS_SRC / "adaptation" / "peft_text_encoder"
 PEFT_TEXT_ENCODER_AGGREGATION_SRC = PEFT_TEXT_ENCODER_SRC / "aggregation"
 LINEAR_HEAD_CLASSIFICATION_SRC = METHODS_SRC / "classification" / "linear_head"
@@ -148,6 +149,53 @@ def test_shared_layer_does_not_import_runtime_layers() -> None:
         ),
     )
     assert not violations, _format_violations(violations)
+
+
+def test_ssl_root_keeps_framework_surface_not_primitives() -> None:
+    allowed_root_files = {
+        "NEW_METHOD.md",
+        "README.md",
+        "__init__.py",
+        "base.py",
+        "model_capabilities.py",
+        "registry.py",
+        "state.py",
+    }
+    actual_root_files = {
+        path.name
+        for path in METHODS_SSL_SRC.iterdir()
+        if path.is_file() and path.suffix in {".py", ".md"}
+    }
+
+    assert actual_root_files <= allowed_root_files, (
+        "`methods/ssl` 바로 아래에는 framework surface만 둔다. "
+        "여러 algorithm이 공유하는 tensor/module helper는 "
+        "`methods/ssl/primitives/`에 둔다.\n"
+        f"unexpected={sorted(actual_root_files - allowed_root_files)}"
+    )
+    assert (METHODS_SSL_SRC / "primitives" / "README.md").exists()
+
+
+def test_ssl_algorithms_do_not_reuse_method_local_helper_packages() -> None:
+    forbidden_prefixes = ("methods.ssl.algorithms.mixmatch",)
+    violations = _find_forbidden_imports(
+        root=METHODS_SSL_ALGORITHMS_SRC,
+        forbidden_prefixes=forbidden_prefixes,
+        ignored_roots=(METHODS_SSL_ALGORITHMS_SRC / "mixmatch",),
+    )
+    relative_violations = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(METHODS_SSL_ALGORITHMS_SRC)
+        if not path.is_relative_to(METHODS_SSL_ALGORITHMS_SRC / "mixmatch")
+        and "from ..mixmatch" in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations and not relative_violations, (
+        "다른 SSL algorithm이 MixMatch method-local helper를 직접 가져다 쓰지 않는다. "
+        "공유 의미가 안정된 helper는 `methods/ssl/primitives/`로 승격한다.\n"
+        f"{_format_violations(violations)}\n"
+        f"relative_violations={relative_violations}"
+    )
 
 
 def test_shared_contracts_do_not_keep_central_payload_adapter_metadata_catalog() -> (

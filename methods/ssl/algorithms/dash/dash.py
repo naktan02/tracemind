@@ -23,13 +23,13 @@ from ...base import (
     QuerySslStepResult,
     TextBatchClassifier,
 )
-from ...common import compute_prob
 from ...hooks.consistency import consistency_cross_entropy_loss
 from ...hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
     PseudoLabelingConfig,
 )
 from ...hooks.supervised import compute_labeled_cross_entropy_loss
+from ...primitives.probability import compute_prob
 from ...registry import register_query_ssl_algorithm
 from ...state import (
     build_query_ssl_algorithm_state,

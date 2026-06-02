@@ -1,4 +1,4 @@
-"""Query SSL feature projection primitives."""
+"""SSL feature projection primitives."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""MixMatch류 feature/target MixUp primitive."""
+"""SSL feature/target MixUp primitive."""
 
 from __future__ import annotations
 

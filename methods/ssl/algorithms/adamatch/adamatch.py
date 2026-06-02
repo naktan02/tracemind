@@ -14,7 +14,6 @@ from ...base import (
     QuerySslStepResult,
     TextBatchClassifier,
 )
-from ...common import compute_prob
 from ...hooks.adaptive_thresholding import RelativeConfidenceThresholdingHook
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
 from ...hooks.distribution_alignment import EmaDistributionAlignmentHook
@@ -23,6 +22,7 @@ from ...hooks.pseudo_labeling import (
     PseudoLabelingConfig,
     PseudoLabelingHook,
 )
+from ...primitives.probability import compute_prob
 from ...registry import register_query_ssl_algorithm
 from ...state import (
     build_query_ssl_algorithm_state,
