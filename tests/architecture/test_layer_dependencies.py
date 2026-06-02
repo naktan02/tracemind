@@ -1813,8 +1813,8 @@ def test_query_ssl_text_encoder_runtime_support_keeps_surface_names_separated() 
 
 def test_query_ssl_text_encoder_common_context_does_not_default_to_peft() -> None:
     checked_paths = (
-        QUERY_SSL_TEXT_ENCODER_SRC / "runtime_context.py",
-        QUERY_SSL_TEXT_ENCODER_SRC / "query_ssl" / "common.py",
+        QUERY_SSL_TEXT_ENCODER_SRC / "text_encoder_run_context.py",
+        QUERY_SSL_TEXT_ENCODER_SRC / "query_ssl" / "run_context.py",
         QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "supervised_text_encoder.py",
     )
     forbidden_snippet = "methods.adaptation.peft_text_encoder"

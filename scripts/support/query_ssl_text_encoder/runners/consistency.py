@@ -30,7 +30,7 @@ from methods.ssl.base import (
 from methods.ssl.model_capabilities import require_pooled_feature_classifier
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
-from scripts.support.query_ssl_text_encoder.query_ssl.common import (
+from scripts.support.query_ssl_text_encoder.query_ssl.run_context import (
     QuerySslRunContext,
     build_query_ssl_method_manifest,
     build_query_ssl_method_parameters,

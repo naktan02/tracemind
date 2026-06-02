@@ -14,7 +14,7 @@ query-domain SSL text encoder runtime support를 둔다. PEFT text encoder contr
   - `supervised.py`: frozen backbone + PEFT text encoder + linear head supervised baseline.
   - `full_text_encoder_supervised.py`: full encoder + linear head supervised-only baseline.
   - `consistency.py`: USB PseudoLabel, FixMatch 등 Query SSL runner.
-- `runtime_context.py`
+- `text_encoder_run_context.py`
   - text encoder model/data/eval 공통 scaffolding. 기본 model builder는 현재
     PEFT text encoder control을 가리키고, full encoder runner는 별도 builder를 주입한다.
 - `io/`
@@ -59,10 +59,10 @@ compatibility workflow와 fixed-classifier fallback은 scripts surface에서 제
 | 분류 | 대상 | 판단 |
 |---|---|---|
 | `삭제 완료` | `runners/pseudo_label.py`, `methods/ssl/teacher_pseudo_label.py`, `methods/ssl/pseudo_label_replay.py` | offline pseudo-label replay/self-training workflow는 중앙 online SSL canonical surface가 아니므로 제거했다. |
-| `methods 이동 검토` | `query_ssl/common.py`, `query_ssl/view_preparation.py` | Query SSL method 공통 준비 로직이 scripts helper를 넘어 method scaffolding이면 `methods/ssl` 또는 adaptation helper로 승격한다. |
+| `methods 이동 검토` | `query_ssl/run_context.py`, `query_ssl/view_preparation.py` | Query SSL method 공통 준비 로직이 scripts helper를 넘어 method scaffolding이면 `methods/ssl` 또는 adaptation helper로 승격한다. |
 | `scripts 유지` | `runners/consistency.py` | central SSL canonical experiment runner다. 다만 method 분기 없이 thin orchestration만 유지한다. |
 | `scripts 유지` | `runners/supervised_text_encoder.py`, `runners/supervised.py`, `runners/full_text_encoder_supervised.py` | central supervised control entrypoint가 호출하는 runner다. 공통 train/eval 흐름은 `supervised_text_encoder.py`가 소유한다. |
-| `scripts 유지` | `runtime_context.py`, `runtime_metrics.py` | 실험 실행 context/metric bridge다. |
+| `scripts 유지` | `text_encoder_run_context.py`, `runtime_metrics.py` | 실험 실행 context/metric bridge다. |
 | `scripts 유지` | `io/artifacts.py`, `io/full_text_encoder_artifacts.py`, `artifact_paths.py`, `artifact_writer.py`, `manifest_builder.py`, `model_artifact_exporter.py` | artifact write/export/orchestration IO다. |
 | `scripts 유지` | `io/labeled_row_export.py` | labeled JSONL export helper다. |
 | `scripts 유지` | `config/initial_checkpoint.py` | Hydra initial checkpoint surface 해석과 manifest bridge다. |

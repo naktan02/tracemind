@@ -136,7 +136,7 @@ def test_run_full_text_encoder_supervised_baseline_uses_common_context(
         _fake_train_classifier,
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runtime_context.evaluate_text_encoder_classifier",
+        "scripts.support.query_ssl_text_encoder.text_encoder_run_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,

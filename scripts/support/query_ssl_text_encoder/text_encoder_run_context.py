@@ -1,4 +1,4 @@
-"""Query-domain text encoder runner 공통 scaffolding."""
+"""Query-domain text encoder runner context 준비."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ from shared.src.domain.services.classification_report import (
 
 @dataclass(slots=True)
 class TextEncoderRunContext:
-    """Supervised text encoder runner가 공유하는 실행 컨텍스트."""
+    """Text encoder runner가 공유하는 실행 컨텍스트."""
 
     cfg: Any
     effective_selection_set: str
@@ -58,10 +58,7 @@ class TextEncoderRunContext:
     selection_loader: Any
 
 
-LabeledTextEncoderRunContext = TextEncoderRunContext
-
-
-def prepare_supervised_text_encoder_run_context(
+def prepare_text_encoder_run_context(
     cfg,
     *,
     train_rows: list[LabeledQueryRow] | None,
@@ -74,7 +71,7 @@ def prepare_supervised_text_encoder_run_context(
     trainer_version_override: str | None = None,
     trainer_version_prefix: str = "peft_clf",
 ) -> TextEncoderRunContext:
-    """Supervised text encoder runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
+    """Text encoder runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
 
     effective_selection_set = str(selection_set_name or cfg.selection_set)
     effective_train_jsonl_ref = str(
@@ -168,35 +165,6 @@ def prepare_supervised_text_encoder_run_context(
     )
 
 
-def prepare_labeled_text_encoder_run_context(
-    cfg,
-    *,
-    train_rows: list[LabeledQueryRow] | None,
-    eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None,
-    selection_set_name: str | None,
-    categories_override: list[str] | tuple[str, ...] | None,
-    model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]],
-    train_jsonl_ref: str | Path | None = None,
-    eval_set_refs: Mapping[str, str | Path] | None = None,
-    trainer_version_override: str | None = None,
-    trainer_version_prefix: str = "peft_clf",
-) -> LabeledTextEncoderRunContext:
-    """Labeled text encoder family runner 공통 입력과 dataloader를 준비한다."""
-
-    return prepare_supervised_text_encoder_run_context(
-        cfg,
-        train_rows=train_rows,
-        eval_rows_by_name=eval_rows_by_name,
-        selection_set_name=selection_set_name,
-        categories_override=categories_override,
-        model_builder=model_builder,
-        train_jsonl_ref=train_jsonl_ref,
-        eval_set_refs=eval_set_refs,
-        trainer_version_override=trainer_version_override,
-        trainer_version_prefix=trainer_version_prefix,
-    )
-
-
 def build_eval_loaders(
     *,
     cfg,
@@ -236,14 +204,14 @@ def build_eval_loaders(
     return eval_loaders
 
 
-def evaluate_supervised_text_encoder_run_context(
+def evaluate_text_encoder_run_context(
     *,
     model: Any,
     eval_loaders: Mapping[str, Any],
     categories: list[str],
     device: str,
 ) -> dict[str, Any]:
-    """학습이 끝난 supervised text encoder 모델을 모든 eval set에서 평가한다."""
+    """학습이 끝난 text encoder 모델을 모든 eval set에서 평가한다."""
 
     results: dict[str, Any] = {}
     for dataset_name, dataloader in eval_loaders.items():
@@ -277,23 +245,6 @@ def evaluate_supervised_text_encoder_run_context(
         )
         print()
     return results
-
-
-def evaluate_labeled_text_encoder_run_context(
-    *,
-    model: Any,
-    eval_loaders: Mapping[str, Any],
-    categories: list[str],
-    device: str,
-) -> dict[str, Any]:
-    """Labeled text encoder family 모델을 모든 eval set에서 평가한다."""
-
-    return evaluate_supervised_text_encoder_run_context(
-        model=model,
-        eval_loaders=eval_loaders,
-        categories=categories,
-        device=device,
-    )
 
 
 def _resolve_eval_set_map(

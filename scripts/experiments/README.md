@@ -60,7 +60,7 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
 - `scripts/support/query_ssl_text_encoder/`
   - `runners/{supervised,full_text_encoder_supervised,consistency}.py`가 query-domain
     central supervised/SSL scaffold를 실행한다.
-  - Query SSL family 공통 scaffolding은 `query_ssl/common.py`, strict USB NLP
+  - Query SSL family run context scaffolding은 `query_ssl/run_context.py`, strict USB NLP
     view preparation/cache는 `query_ssl/view_preparation.py`가 담당한다.
   - bootstrap teacher, pseudo-label replay, agent-local query adaptation export
     helper는 중앙 지도/중앙 SSL/FSSL canonical experiment surface가 아니므로
