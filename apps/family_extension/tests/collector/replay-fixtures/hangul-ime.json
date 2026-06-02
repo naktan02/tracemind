@@ -124,6 +124,35 @@
       ]
     },
     {
+      "name": "non-composing-trailing-placeholder-with-editor-sentinel-before-kkang",
+      "expectedFinalTexts": ["너무무서워아아앙깡"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "너무무서워아아앙",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "너무무서워아아앙",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "너무무서워아아앙ㄲ\u200b",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄲ",
+          "isCompositionUpdate": false,
+          "flushAfter": true
+        },
+        {
+          "snapshotText": "너무무서워아아앙ㄲ\u200b",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "깡",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
       "name": "non-composing-null-data-before-yeon",
       "expectedFinalTexts": ["과연"],
       "expectedDeletedTexts": [null],

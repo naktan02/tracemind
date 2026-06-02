@@ -92,15 +92,18 @@ function createHarness(): {
 
 {
   const harness = createHarness();
-  for (const part of ["난", " ", "너가", " ", "보고", " ", "싶다", " ", "아"]) {
-    if (part === " ") {
-      harness.observe("", "input", "insertText", part, false);
-    } else {
-      harness.observe(part, "compositionend", null, part, false);
-    }
-  }
-  harness.observe("", "input", "deleteContentBackward", null, false);
-  harness.observe("바다", "compositionend", null, "바다", false);
+  harness.observe("난", "compositionend", null, "난", false);
+  harness.observe("난 ", "input", "insertText", " ", false);
+  harness.observe("난 너가", "compositionend", null, "너가", false);
+  harness.observe("난 너가 ", "input", "insertText", " ", false);
+  harness.observe("난 너가 보고", "compositionend", null, "보고", false);
+  harness.observe("난 너가 보고 ", "input", "insertText", " ", false);
+  harness.observe("난 너가 보고 싶다", "compositionend", null, "싶다", false);
+  harness.observe("난 너가 보고 싶다 ", "input", "insertText", " ", false);
+  harness.observe("난 너가 보고 싶다 아", "compositionend", null, "아", false);
+  harness.advance(500);
+  harness.observe("난 너가 보고 싶다 ", "input", "deleteContentBackward", null, false);
+  harness.observe("난 너가 보고 싶다 바다", "compositionend", null, "바다", false);
   harness.flush();
 
   assert.equal(harness.emitted.length, 1);

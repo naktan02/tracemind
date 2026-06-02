@@ -9,6 +9,7 @@ declare const chrome: {
 };
 
 const DEFAULT_IDLE_MS = 5000;
+const EDITOR_SETTLE_MS = 80;
 const TYPING_SEGMENT_CAPTURED_MESSAGE = "tracemind.typingSegmentCaptured";
 const COLLECTOR_CONTENT_STATUS_MESSAGE = "tracemind.collectorContentStatus";
 const surfaceElementIds = new WeakMap<HTMLElement, string>();
@@ -64,7 +65,10 @@ function handleInputLikeEvent(event: InputEvent | CompositionEvent | Event): voi
     path: event.composedPath(),
     targetDescription: event.type,
   };
-  window.setTimeout(() => observeDeferredInput(observation), 0);
+  window.setTimeout(
+    () => observeDeferredInput(observation),
+    readDeferredObservationDelayMs(event),
+  );
 }
 
 function observeDeferredInput(observation: DeferredInputObservation): void {
@@ -214,6 +218,20 @@ function isLineBreakCommitEvent(event: Event): boolean {
     event.inputType === "insertParagraph" ||
     event.inputType === "insertLineBreak"
   );
+}
+
+function readDeferredObservationDelayMs(event: Event): number {
+  if (event instanceof CompositionEvent && event.type === "compositionend") {
+    return EDITOR_SETTLE_MS;
+  }
+  if (
+    event instanceof InputEvent &&
+    !event.isComposing &&
+    event.inputType.includes("Composition")
+  ) {
+    return EDITOR_SETTLE_MS;
+  }
+  return 0;
 }
 
 function sendSegment(segment: TypingSegmentPayload): void {
