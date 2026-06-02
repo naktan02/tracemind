@@ -95,6 +95,71 @@
       ]
     },
     {
+      "name": "non-composing-trailing-placeholder-before-kkang",
+      "expectedFinalTexts": ["과연너무뺄까될깡"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "과연너무뺄까될",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "과연너무뺄까될",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "과연너무뺄까될ㄲ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄲ",
+          "isCompositionUpdate": false,
+          "flushAfter": true
+        },
+        {
+          "snapshotText": "과연너무뺄까될ㄲ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "깡",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "non-composing-null-data-before-yeon",
+      "expectedFinalTexts": ["과연"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "과",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "과",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "과여",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "여",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "과여",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": null,
+          "isCompositionUpdate": false,
+          "flushAfter": true
+        },
+        {
+          "snapshotText": "과여",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "연",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
       "name": "space-preserved-eodeonde",
       "expectedFinalTexts": ["넌 어던데"],
       "expectedDeletedTexts": [null],

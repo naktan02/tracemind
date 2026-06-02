@@ -66,6 +66,13 @@ export class SegmentBuffer {
       this.reschedule(context.elementId, state);
       return;
     }
+    if (shouldKeepPendingComposition(context, state)) {
+      state.compositionDraftText = context.snapshot.text;
+      state.stats.composition_count += 1;
+      this.states.set(context.elementId, state);
+      this.reschedule(context.elementId, state);
+      return;
+    }
 
     const observedText = readObservedStableText(context, state);
     const diff = diffText(state.lastText, observedText);
@@ -288,6 +295,33 @@ function readCommittedInsertedText(
   return null;
 }
 
+function shouldKeepPendingComposition(
+  context: SegmentBuildContext,
+  state: SegmentState,
+): boolean {
+  if (
+    context.eventType !== "input" ||
+    context.isCompositionUpdate ||
+    !(context.inputType ?? "").includes("Composition")
+  ) {
+    return false;
+  }
+  const hasUnreliableCommittedText =
+    context.insertedText === null ||
+    context.insertedText === "" ||
+    containsOnlyKoreanCompositionPlaceholders(context.insertedText);
+  if (!hasUnreliableCommittedText) {
+    return false;
+  }
+  if (hasRemovableCompositionPlaceholder(context.snapshot.text)) {
+    return false;
+  }
+  return (
+    endsWithKoreanCompositionPlaceholder(context.snapshot.text) ||
+    state.compositionDraftText !== null
+  );
+}
+
 function readObservedStableText(
   context: SegmentBuildContext,
   state: SegmentState,
@@ -323,7 +357,8 @@ function synthesizeCompositionEndText(
   const snapshotDiff = diffText(stableText, snapshotText);
   if (
     snapshotDiff.inserted !== "" &&
-    !containsKoreanCompositionPlaceholder(snapshotDiff.inserted)
+    !containsKoreanCompositionPlaceholder(snapshotDiff.inserted) &&
+    snapshotText !== draftText
   ) {
     return snapshotText;
   }
@@ -384,6 +419,10 @@ function normalizeCommittedCompositionSnapshot(snapshotText: string): string {
     normalizedChars.push(currentChar);
   }
   return normalizedChars.join("");
+}
+
+function hasRemovableCompositionPlaceholder(snapshotText: string): boolean {
+  return normalizeCommittedCompositionSnapshot(snapshotText) !== snapshotText;
 }
 
 function readStableOverlapCompositionText(
@@ -538,6 +577,14 @@ function containsOnlyKoreanCompositionPlaceholders(text: string): boolean {
 function containsKoreanCompositionPlaceholder(text: string): boolean {
   return Array.from(text).some((char) =>
     isKoreanCompositionPlaceholder(char),
+  );
+}
+
+function endsWithKoreanCompositionPlaceholder(text: string): boolean {
+  const chars = Array.from(text);
+  return (
+    chars.length > 0 &&
+    isKoreanCompositionPlaceholder(chars[chars.length - 1])
   );
 }
 

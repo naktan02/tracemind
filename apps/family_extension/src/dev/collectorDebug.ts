@@ -22,6 +22,7 @@ const root = document.getElementById("root");
 if (!(root instanceof HTMLElement)) {
   throw new Error("collector debug root element를 찾지 못했습니다.");
 }
+const debugRoot = root;
 
 const extensionApi = getChromeExtensionApi();
 
@@ -142,9 +143,25 @@ if (extensionApi === null) {
       padding: 16px;
     }
 
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
     .panel h2 {
-      margin: 0 0 10px;
+      margin: 0;
       font-size: 18px;
+    }
+
+    .copy-button {
+      border-color: #bac4d2;
+      padding: 6px 10px;
+      color: #2251a7;
+      background: #ffffff;
+      font-size: 13px;
     }
 
     pre {
@@ -159,6 +176,7 @@ if (extensionApi === null) {
       line-height: 1.55;
       white-space: pre-wrap;
       word-break: break-word;
+      user-select: text;
     }
   </style>
   <div class="debug-shell">
@@ -177,15 +195,24 @@ if (extensionApi === null) {
     </div>
     <div class="debug-grid">
       <section class="panel">
-        <h2>Collector Status</h2>
+        <div class="panel-header">
+          <h2>Collector Status</h2>
+          <button id="copy-status" class="copy-button" type="button">복사</button>
+        </div>
         <pre id="collector-status">{}</pre>
       </section>
       <section class="panel">
-        <h2>Last TypingSegmentPayload</h2>
+        <div class="panel-header">
+          <h2>Last TypingSegmentPayload</h2>
+          <button id="copy-segment" class="copy-button" type="button">복사</button>
+        </div>
         <pre id="last-segment">아직 저장된 segment가 없습니다.</pre>
       </section>
       <section class="panel">
-        <h2>Recent TypingSegment History</h2>
+        <div class="panel-header">
+          <h2>Recent TypingSegment History</h2>
+          <button id="copy-history" class="copy-button" type="button">복사</button>
+        </div>
         <pre id="segment-history">아직 저장된 history가 없습니다.</pre>
       </section>
     </div>
@@ -194,6 +221,9 @@ if (extensionApi === null) {
 
 const toggleButton = getElement("toggle-debug", HTMLButtonElement);
 const refreshButton = getElement("refresh-debug", HTMLButtonElement);
+const copyStatusButton = getElement("copy-status", HTMLButtonElement);
+const copySegmentButton = getElement("copy-segment", HTMLButtonElement);
+const copyHistoryButton = getElement("copy-history", HTMLButtonElement);
 const statusPre = getElement("collector-status", HTMLPreElement);
 const segmentPre = getElement("last-segment", HTMLPreElement);
 const historyPre = getElement("segment-history", HTMLPreElement);
@@ -204,10 +234,21 @@ toggleButton.addEventListener("click", () => {
 refreshButton.addEventListener("click", () => {
   void refreshDebugView();
 });
+copyStatusButton.addEventListener("click", () => {
+  void copyPreText(statusPre, copyStatusButton);
+});
+copySegmentButton.addEventListener("click", () => {
+  void copyPreText(segmentPre, copySegmentButton);
+});
+copyHistoryButton.addEventListener("click", () => {
+  void copyPreText(historyPre, copyHistoryButton);
+});
 
 void refreshDebugView();
 window.setInterval(() => {
-  void refreshDebugView();
+  if (!hasActiveDebugSelection()) {
+    void refreshDebugView();
+  }
 }, 1000);
 
 async function toggleDebug(): Promise<void> {
@@ -273,6 +314,33 @@ function storageSet(items: Record<string, unknown>): Promise<void> {
   return new Promise((resolve) => {
     activeExtensionApi.storage.local.set(items, () => resolve());
   });
+}
+
+async function copyPreText(
+  preElement: HTMLPreElement,
+  button: HTMLButtonElement,
+): Promise<void> {
+  const originalText = button.textContent ?? "복사";
+  try {
+    await navigator.clipboard.writeText(preElement.textContent ?? "");
+    button.textContent = "복사됨";
+  } catch {
+    button.textContent = "실패";
+  }
+  window.setTimeout(() => {
+    button.textContent = originalText;
+  }, 1200);
+}
+
+function hasActiveDebugSelection(): boolean {
+  const selection = window.getSelection();
+  if (selection === null || selection.isCollapsed || selection.rangeCount === 0) {
+    return false;
+  }
+  const container = selection.getRangeAt(0).commonAncestorContainer;
+  const element =
+    container instanceof HTMLElement ? container : container.parentElement;
+  return element !== null && debugRoot.contains(element);
 }
 }
 

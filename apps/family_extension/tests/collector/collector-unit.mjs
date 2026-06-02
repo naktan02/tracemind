@@ -450,6 +450,63 @@ function createHarness(): {
 
 {
   const harness = createHarness();
+  harness.observe(
+    "과연너무뺄까될",
+    "compositionend",
+    null,
+    "과연너무뺄까될",
+    false,
+  );
+  harness.observe(
+    "과연너무뺄까될ㄲ",
+    "input",
+    "insertCompositionText",
+    "ㄲ",
+    false,
+  );
+  harness.flush();
+  assert.equal(harness.emitted.length, 0);
+  harness.observe(
+    "과연너무뺄까될ㄲ",
+    "compositionend",
+    null,
+    "깡",
+    false,
+  );
+  harness.flush();
+
+  assert.equal(harness.emitted.length, 1);
+  const segment = harness.emitted[0] as {
+    final_text: string | null;
+    deleted_text: string | null;
+  };
+
+  assert.equal(segment.final_text, "과연너무뺄까될깡");
+  assert.equal(segment.deleted_text, null);
+}
+
+{
+  const harness = createHarness();
+  harness.observe("과", "compositionend", null, "과", false);
+  harness.observe("과여", "input", "insertCompositionText", "여", true);
+  harness.observe("과여", "input", "insertCompositionText", null, false);
+  harness.flush();
+  assert.equal(harness.emitted.length, 0);
+  harness.observe("과여", "compositionend", null, "연", false);
+  harness.flush();
+
+  assert.equal(harness.emitted.length, 1);
+  const segment = harness.emitted[0] as {
+    final_text: string | null;
+    deleted_text: string | null;
+  };
+
+  assert.equal(segment.final_text, "과연");
+  assert.equal(segment.deleted_text, null);
+}
+
+{
+  const harness = createHarness();
   harness.observe("좋", "compositionend", null, "좋", false);
   harness.observe("좋ㅇ", "input", "insertCompositionText", "ㅇ", true);
   harness.observe("좋ㅇ은데", "input", "insertCompositionText", null, false);
@@ -611,6 +668,8 @@ console.log(
         "non-composing-insert-composition-text-preserves-space",
         "non-composing-insert-composition-text-normalizes-null-data",
         "pending-composition-flush-waits-for-commit",
+        "non-composing-trailing-placeholder-waits-for-commit",
+        "non-composing-null-data-waits-for-syllable-replacement",
       ],
     },
     null,
