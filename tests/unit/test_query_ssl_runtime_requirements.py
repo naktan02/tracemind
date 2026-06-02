@@ -80,6 +80,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
             }
         ),
         "mixmatch": frozenset({QUERY_SSL_ALGORITHM_STATE_STATELESS}),
+        "remixmatch": frozenset({QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA}),
         "simmatch": frozenset(
             {
                 QUERY_SSL_ALGORITHM_STATE_DATASET_STATE,
@@ -112,6 +113,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         "pimodel": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "meanteacher": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "mixmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
+        "remixmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR,
         "simmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "uda": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "comatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR,
@@ -124,7 +126,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
 
         assert requirements.batch_surface == expected_batch_surfaces[algorithm_name]
         expected_model_outputs = frozenset({QUERY_SSL_MODEL_OUTPUT_LOGITS})
-        if algorithm_name in {"comatch", "mixmatch", "simmatch"}:
+        if algorithm_name in {"comatch", "mixmatch", "remixmatch", "simmatch"}:
             expected_model_outputs = frozenset(
                 {
                     QUERY_SSL_MODEL_OUTPUT_LOGITS,

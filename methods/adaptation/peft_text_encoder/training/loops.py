@@ -33,6 +33,7 @@ from methods.ssl.runtime.lifecycle import (
     configure_query_ssl_algorithm_dataset,
     configure_query_ssl_algorithm_initial_selection_loss,
     configure_query_ssl_algorithm_labeled_dataset,
+    configure_query_ssl_algorithm_labeled_distribution,
     configure_query_ssl_algorithm_model,
     configure_query_ssl_algorithm_training,
 )
@@ -132,6 +133,15 @@ def train_query_ssl_classifier(
         algorithm,
         labeled_row_count=len(train_loader.dataset),
     )
+    labeled_class_distribution = _loader_labeled_class_distribution(
+        train_loader,
+        num_classes=len(categories),
+    )
+    if labeled_class_distribution is not None:
+        configure_query_ssl_algorithm_labeled_distribution(
+            algorithm,
+            class_distribution=labeled_class_distribution,
+        )
     if initial_query_ssl_algorithm_state and resume_checkpoint_path is not None:
         raise ValueError(
             "initial_query_ssl_algorithm_state and resume_checkpoint_path cannot "
@@ -422,3 +432,23 @@ def _require_loader_batch_size(
     if normalized <= 0:
         raise ValueError(f"{loader_name}.batch_size must be positive.")
     return normalized
+
+
+def _loader_labeled_class_distribution(
+    loader: DataLoader[dict[str, Any]],
+    *,
+    num_classes: int,
+) -> torch.Tensor | None:
+    dataset = getattr(loader, "dataset", None)
+    label_histogram = getattr(dataset, "label_histogram", None)
+    if not callable(label_histogram):
+        return None
+    counts = label_histogram(num_classes=num_classes)
+    if not isinstance(counts, torch.Tensor):
+        raise TypeError("label_histogram must return a torch.Tensor.")
+    if counts.shape != (num_classes,):
+        raise ValueError("label_histogram shape must match num_classes.")
+    total = counts.sum()
+    if float(total.item()) <= 0:
+        raise ValueError("label_histogram must have positive mass.")
+    return counts.to(dtype=torch.float32) / total

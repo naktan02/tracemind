@@ -46,6 +46,19 @@ class TextLabelDataset(Dataset[dict[str, Any]]):
     def __len__(self) -> int:
         return len(self._rows)
 
+    def label_histogram(self, *, num_classes: int) -> torch.Tensor:
+        """labeled dataset 전체의 class 분포 계산용 label count를 반환한다."""
+
+        if num_classes <= 0:
+            raise ValueError("num_classes must be positive.")
+        counts = torch.zeros((num_classes,), dtype=torch.float32)
+        for row in self._rows:
+            label = self._label_to_index[str(row["mapped_label_4"])]
+            if label < 0 or label >= num_classes:
+                raise ValueError("label index is outside num_classes.")
+            counts[label] += 1.0
+        return counts
+
     def __getitem__(self, index: int) -> dict[str, Any]:
         row = self._rows[index]
         text = str(row["text"])

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import torch
 from torch import Tensor
 from torch import device as TorchDevice
 
@@ -81,6 +82,30 @@ def configure_query_ssl_algorithm_labeled_dataset(
     configure_labeled_dataset = getattr(algorithm, "configure_labeled_dataset", None)
     if callable(configure_labeled_dataset):
         configure_labeled_dataset(labeled_row_count=labeled_row_count)
+
+
+def configure_query_ssl_algorithm_labeled_distribution(
+    algorithm: QuerySslAlgorithm,
+    *,
+    class_distribution: Tensor,
+) -> None:
+    """algorithm이 필요로 할 때만 labeled class distribution을 전달한다."""
+
+    if class_distribution.ndim != 1:
+        raise ValueError("class_distribution must be a 1D tensor.")
+    if class_distribution.numel() <= 0:
+        raise ValueError("class_distribution must not be empty.")
+    if torch.any(class_distribution < 0):
+        raise ValueError("class_distribution must not contain negative values.")
+    if float(class_distribution.sum().item()) <= 0:
+        raise ValueError("class_distribution must have positive mass.")
+    configure_labeled_distribution = getattr(
+        algorithm,
+        "configure_labeled_distribution",
+        None,
+    )
+    if callable(configure_labeled_distribution):
+        configure_labeled_distribution(class_distribution=class_distribution)
 
 
 def configure_query_ssl_algorithm_model(

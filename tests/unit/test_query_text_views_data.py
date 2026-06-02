@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from methods.adaptation.query_text_views.data import (
+    TextLabelDataset,
     TextMultiviewDataset,
     TextWeakDataset,
     TextWeakStrongPairDataset,
@@ -80,6 +81,24 @@ def test_text_multiview_dataset_can_alternate_usb_aug_candidate_by_row() -> None
 
     assert dataset[0]["strong_text"] == "de::first"
     assert dataset[1]["strong_text"] == "fr::second"
+
+
+def test_text_label_dataset_exposes_label_histogram() -> None:
+    rows = [
+        _row("q1", "I feel anxious."),
+        _row("q2", "I feel low."),
+        _row("q3", "I feel better."),
+    ]
+    rows[1]["mapped_label_4"] = "depression"
+    rows[2]["mapped_label_4"] = "anxiety"
+
+    dataset = TextLabelDataset(
+        rows=rows,
+        label_to_index={"anxiety": 0, "depression": 1},
+        task_prefix="",
+    )
+
+    assert dataset.label_histogram(num_classes=2).tolist() == [2.0, 1.0]
 
 
 def test_text_multiview_dataset_keeps_legacy_weak_strong_compatibility() -> None:
