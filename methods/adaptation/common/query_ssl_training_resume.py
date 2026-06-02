@@ -16,6 +16,7 @@ from methods.ssl.model_capabilities import (
     load_query_ssl_auxiliary_module_state_dicts,
     query_ssl_auxiliary_module_state_dicts,
 )
+from methods.ssl.runtime.lifecycle import configure_query_ssl_algorithm_model
 from methods.ssl.state import (
     export_query_ssl_algorithm_state,
     load_query_ssl_algorithm_state,
@@ -66,6 +67,11 @@ def load_query_ssl_training_checkpoint(
     load_query_ssl_auxiliary_module_state_dicts(
         {} if auxiliary_modules is None else auxiliary_modules,
         checkpoint.get("auxiliary_module_state_dicts", {}),
+    )
+    configure_query_ssl_algorithm_model(
+        algorithm,
+        model=model,
+        device=torch.device(device),
     )
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     load_query_ssl_algorithm_state(algorithm, checkpoint.get("algorithm_state", {}))

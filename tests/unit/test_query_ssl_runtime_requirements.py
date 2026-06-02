@@ -10,6 +10,7 @@ from methods.ssl.base import (
     QUERY_SSL_ALGORITHM_STATE_PROBABILITY_QUEUE,
     QUERY_SSL_ALGORITHM_STATE_STATELESS,
     QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER,
+    QUERY_SSL_ALGORITHM_STATE_TEACHER_EMA,
     QUERY_SSL_ALGORITHM_STATE_WEIGHTING_EMA,
     QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
     QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
@@ -18,7 +19,9 @@ from methods.ssl.base import (
     QUERY_SSL_MODEL_OUTPUT_LOGITS,
     QUERY_SSL_MODEL_OUTPUT_POOLED_FEATURES,
     QUERY_SSL_OPTIMIZER_LIFECYCLE_AUXILIARY_TRAINABLE_MODULE,
+    QUERY_SSL_OPTIMIZER_LIFECYCLE_POST_STEP_HOOK,
     QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,
+    QUERY_SSL_TEACHER_STATE_EMA_TRAINABLE,
     QUERY_SSL_TEACHER_STATE_NONE,
     QuerySslRuntimeRequirements,
 )
@@ -63,6 +66,12 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         ),
         "pseudo_label": frozenset({QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER}),
         "pimodel": frozenset({QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER}),
+        "meanteacher": frozenset(
+            {
+                QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER,
+                QUERY_SSL_ALGORITHM_STATE_TEACHER_EMA,
+            }
+        ),
         "uda": frozenset({QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER}),
         "comatch": frozenset(
             {
@@ -84,6 +93,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         "freematch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "pseudo_label": QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
         "pimodel": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
+        "meanteacher": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "uda": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "comatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR,
         "softmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
@@ -115,5 +125,15 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
                     QUERY_SSL_OPTIMIZER_LIFECYCLE_AUXILIARY_TRAINABLE_MODULE,
                 }
             )
+        if algorithm_name == "meanteacher":
+            expected_optimizer_lifecycle = frozenset(
+                {
+                    QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,
+                    QUERY_SSL_OPTIMIZER_LIFECYCLE_POST_STEP_HOOK,
+                }
+            )
         assert requirements.optimizer_lifecycle == expected_optimizer_lifecycle
-        assert requirements.teacher_state == QUERY_SSL_TEACHER_STATE_NONE
+        expected_teacher_state = QUERY_SSL_TEACHER_STATE_NONE
+        if algorithm_name == "meanteacher":
+            expected_teacher_state = QUERY_SSL_TEACHER_STATE_EMA_TRAINABLE
+        assert requirements.teacher_state == expected_teacher_state

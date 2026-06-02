@@ -71,12 +71,12 @@ from methods.federated_ssl.local_supervision import (
     FederatedSslLocalSupervisionRegime,
     require_rows_match_local_supervision_regime,
 )
-from methods.ssl.base import (
-    QuerySslAlgorithm,
+from methods.ssl.base import QuerySslAlgorithm
+from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
+from methods.ssl.runtime.lifecycle import (
     configure_query_ssl_algorithm_dataset,
     configure_query_ssl_algorithm_training,
 )
-from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from methods.ssl.state import (
     export_query_ssl_algorithm_state,
     load_query_ssl_algorithm_state,

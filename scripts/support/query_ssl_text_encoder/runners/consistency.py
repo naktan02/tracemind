@@ -21,7 +21,9 @@ from methods.ssl.base import (
     QUERY_SSL_MODEL_OUTPUT_LOGITS,
     QUERY_SSL_MODEL_OUTPUT_POOLED_FEATURES,
     QUERY_SSL_OPTIMIZER_LIFECYCLE_AUXILIARY_TRAINABLE_MODULE,
+    QUERY_SSL_OPTIMIZER_LIFECYCLE_POST_STEP_HOOK,
     QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,
+    QUERY_SSL_TEACHER_STATE_EMA_TRAINABLE,
     QUERY_SSL_TEACHER_STATE_NONE,
     QuerySslAlgorithmDescriptor,
 )
@@ -249,6 +251,7 @@ def _validate_query_ssl_runner_capabilities(
         {
             QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,
             QUERY_SSL_OPTIMIZER_LIFECYCLE_AUXILIARY_TRAINABLE_MODULE,
+            QUERY_SSL_OPTIMIZER_LIFECYCLE_POST_STEP_HOOK,
         }
     )
     unsupported_optimizer_lifecycle = (
@@ -264,7 +267,13 @@ def _validate_query_ssl_runner_capabilities(
             "Unsupported Query SSL input transform for PEFT runner: "
             f"{requirements.input_transform_surface!r}."
         )
-    if requirements.teacher_state != QUERY_SSL_TEACHER_STATE_NONE:
+    supported_teacher_states = frozenset(
+        {
+            QUERY_SSL_TEACHER_STATE_NONE,
+            QUERY_SSL_TEACHER_STATE_EMA_TRAINABLE,
+        }
+    )
+    if requirements.teacher_state not in supported_teacher_states:
         raise ValueError(
             "Unsupported Query SSL teacher state for PEFT runner: "
             f"{requirements.teacher_state!r}."

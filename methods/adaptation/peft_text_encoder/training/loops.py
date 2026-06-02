@@ -25,9 +25,13 @@ from methods.ssl.base import (
     QuerySslAlgorithm,
     QuerySslStepContext,
     QuerySslStepResult,
+)
+from methods.ssl.runtime.lifecycle import (
+    after_query_ssl_optimizer_step,
     compute_query_ssl_algorithm_step,
     configure_query_ssl_algorithm_batching,
     configure_query_ssl_algorithm_dataset,
+    configure_query_ssl_algorithm_model,
     configure_query_ssl_algorithm_training,
 )
 from methods.ssl.state import load_query_ssl_algorithm_state
@@ -156,6 +160,11 @@ def train_query_ssl_classifier(
             unlabeled_loader,
             loader_name="unlabeled_loader",
         ),
+    )
+    configure_query_ssl_algorithm_model(
+        algorithm,
+        model=model,
+        device=torch.device(device),
     )
     if initial_query_ssl_algorithm_state:
         load_query_ssl_algorithm_state(
@@ -295,6 +304,11 @@ def train_query_ssl_classifier(
                 compute_loss=compute_total_loss,
             )
             assert step_output is not None
+            after_query_ssl_optimizer_step(
+                algorithm,
+                model=model,
+                step_context=step_context,
+            )
 
             step_count += 1
             completed_steps += 1

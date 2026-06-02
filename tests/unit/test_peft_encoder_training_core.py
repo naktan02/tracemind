@@ -266,6 +266,28 @@ class _AuxiliaryProjectionQuerySslAlgorithm(_CountingQuerySslAlgorithm):
         )
 
 
+class _PostStepHookQuerySslAlgorithm(_CountingQuerySslAlgorithm):
+    algorithm_name = "post_step_hook"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.model_configured = False
+        self.post_step_weight_norms: list[float] = []
+        self.post_step_global_steps: list[int] = []
+
+    def configure_model(self, *, model, device) -> None:
+        del device
+        self.model_configured = True
+        assert isinstance(model, PeftTextEncoderWithLinearHead)
+
+    def after_optimizer_step(self, *, model, step_context) -> None:
+        assert self.model_configured
+        self.post_step_weight_norms.append(
+            float(model.classifier.weight.detach().norm())
+        )
+        self.post_step_global_steps.append(int(step_context.global_step))
+
+
 def _build_unlabeled_loader() -> DataLoader[dict[str, torch.Tensor]]:
     rows = [
         {
@@ -380,6 +402,38 @@ def test_query_ssl_training_passes_step_context_to_context_aware_algorithm() -> 
     assert {context.total_train_steps for context in algorithm.step_contexts} == {2}
     assert {context.num_classes for context in algorithm.step_contexts} == {2}
     assert {context.device.type for context in algorithm.step_contexts} == {"cpu"}
+
+
+def test_query_ssl_training_runs_algorithm_post_optimizer_step_hook() -> None:
+    torch.manual_seed(7)
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _PostStepHookQuerySslAlgorithm()
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=2,
+        max_train_steps=2,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+    )
+
+    assert algorithm.model_configured is True
+    assert algorithm.post_step_global_steps == [1, 2]
+    assert len(algorithm.post_step_weight_norms) == 2
 
 
 def test_query_ssl_training_updates_algorithm_auxiliary_module() -> None:

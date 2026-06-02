@@ -546,6 +546,26 @@ def test_run_peft_ssl_control_supports_pimodel_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
+def test_run_peft_ssl_control_supports_meanteacher_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=meanteacher_usb_v1",
+                "query_ssl_method.ema_m=0.9",
+                "query_ssl_method.unsup_warm_up=0.2",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "meanteacher_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "meanteacher"
+    assert cfg.query_ssl_method.ema_m == 0.9
+    assert cfg.query_ssl_method.unsup_warm_up == 0.2
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
 def test_run_peft_ssl_control_supports_comatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
