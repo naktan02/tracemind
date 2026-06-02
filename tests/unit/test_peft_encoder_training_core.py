@@ -188,6 +188,10 @@ class _StatefulCountingQuerySslAlgorithm(_CountingQuerySslAlgorithm):
         self.dataset_configured = True
         self.events.append("dataset")
 
+    def configure_labeled_dataset(self, *, labeled_row_count: int) -> None:
+        assert labeled_row_count == 2
+        self.events.append("labeled_dataset")
+
     def configure_training(self, *, num_train_iter: int) -> None:
         self.events.append("training")
         super().configure_training(num_train_iter=num_train_iter)
@@ -390,7 +394,7 @@ def test_query_ssl_training_loads_initial_state_after_dataset_config() -> None:
         },
     )
 
-    assert algorithm.events[:3] == ["dataset", "training", "load"]
+    assert algorithm.events[:4] == ["dataset", "labeled_dataset", "training", "load"]
     assert algorithm.steps == 5
 
 

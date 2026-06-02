@@ -69,6 +69,20 @@ def configure_query_ssl_algorithm_dataset(
         )
 
 
+def configure_query_ssl_algorithm_labeled_dataset(
+    algorithm: QuerySslAlgorithm,
+    *,
+    labeled_row_count: int,
+) -> None:
+    """algorithm이 필요로 할 때만 labeled dataset row 수를 전달한다."""
+
+    if labeled_row_count < 0:
+        raise ValueError("labeled_row_count must not be negative.")
+    configure_labeled_dataset = getattr(algorithm, "configure_labeled_dataset", None)
+    if callable(configure_labeled_dataset):
+        configure_labeled_dataset(labeled_row_count=labeled_row_count)
+
+
 def configure_query_ssl_algorithm_model(
     algorithm: QuerySslAlgorithm,
     *,

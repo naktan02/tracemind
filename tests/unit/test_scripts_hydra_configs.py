@@ -609,6 +609,28 @@ def test_run_peft_ssl_control_supports_comatch_method_override() -> None:
     assert cfg.query_ssl_method.require_weak_strong_pair is True
 
 
+def test_run_peft_ssl_control_supports_simmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=simmatch_usb_v1",
+                "query_ssl_method.proj_size=4",
+                "query_ssl_method.da_len=8",
+                "query_ssl_method.in_loss_ratio=0.5",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "simmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "simmatch"
+    assert cfg.query_ssl_method.proj_size == 4
+    assert cfg.query_ssl_method.da_len == 8
+    assert cfg.query_ssl_method.in_loss_ratio == 0.5
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
 def test_run_peft_ssl_control_supports_softmatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(

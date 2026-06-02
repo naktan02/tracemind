@@ -32,6 +32,7 @@ from methods.ssl.runtime.lifecycle import (
     configure_query_ssl_algorithm_batching,
     configure_query_ssl_algorithm_dataset,
     configure_query_ssl_algorithm_initial_selection_loss,
+    configure_query_ssl_algorithm_labeled_dataset,
     configure_query_ssl_algorithm_model,
     configure_query_ssl_algorithm_training,
 )
@@ -126,6 +127,10 @@ def train_query_ssl_classifier(
         algorithm,
         num_classes=len(categories),
         unlabeled_row_count=len(unlabeled_loader.dataset),
+    )
+    configure_query_ssl_algorithm_labeled_dataset(
+        algorithm,
+        labeled_row_count=len(train_loader.dataset),
     )
     if initial_query_ssl_algorithm_state and resume_checkpoint_path is not None:
         raise ValueError(

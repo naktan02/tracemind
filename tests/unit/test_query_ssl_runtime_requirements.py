@@ -78,6 +78,13 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
                 QUERY_SSL_ALGORITHM_STATE_TEACHER_EMA,
             }
         ),
+        "simmatch": frozenset(
+            {
+                QUERY_SSL_ALGORITHM_STATE_DATASET_STATE,
+                QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA,
+                QUERY_SSL_ALGORITHM_STATE_FEATURE_QUEUE,
+            }
+        ),
         "uda": frozenset({QUERY_SSL_ALGORITHM_STATE_STEP_COUNTER}),
         "comatch": frozenset(
             {
@@ -101,6 +108,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         "pseudo_label": QUERY_SSL_BATCH_SURFACE_WEAK_ONLY,
         "pimodel": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "meanteacher": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
+        "simmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "uda": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
         "comatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG_PAIR,
         "softmatch": QUERY_SSL_BATCH_SURFACE_WEAK_STRONG,
@@ -112,7 +120,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
 
         assert requirements.batch_surface == expected_batch_surfaces[algorithm_name]
         expected_model_outputs = frozenset({QUERY_SSL_MODEL_OUTPUT_LOGITS})
-        if algorithm_name == "comatch":
+        if algorithm_name in {"comatch", "simmatch"}:
             expected_model_outputs = frozenset(
                 {
                     QUERY_SSL_MODEL_OUTPUT_LOGITS,
@@ -125,7 +133,7 @@ def test_builtin_descriptors_expose_current_runtime_capabilities() -> None:
         expected_optimizer_lifecycle = frozenset(
             {QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP}
         )
-        if algorithm_name == "comatch":
+        if algorithm_name in {"comatch", "simmatch"}:
             expected_optimizer_lifecycle = frozenset(
                 {
                     QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,

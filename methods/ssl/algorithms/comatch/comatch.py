@@ -35,6 +35,7 @@ from ...model_capabilities import (
     FeatureReturningTextBatchClassifier,
     require_pooled_feature_classifier,
 )
+from ...projection import SslProjectionHead
 from ...registry import register_query_ssl_algorithm
 from ...state import (
     build_query_ssl_algorithm_state,
@@ -48,25 +49,6 @@ COMATCH_REQUIRED_VIEWS = QuerySslRequiredViews(
     view_names=("text", "aug_0", "aug_1"),
     view_builder_name=USB_WEAK_STRONG_PAIR_BUILDER_NAME,
 )
-
-
-class CoMatchProjectionHead(nn.Module):
-    """CoMatch contrastive graph regularization용 projection head."""
-
-    def __init__(self, *, input_dim: int, proj_size: int) -> None:
-        super().__init__()
-        if input_dim <= 0:
-            raise ValueError("input_dim must be positive.")
-        if proj_size <= 0:
-            raise ValueError("proj_size must be positive.")
-        self.layers = nn.Sequential(
-            nn.Linear(input_dim, input_dim),
-            nn.ReLU(inplace=False),
-            nn.Linear(input_dim, proj_size),
-        )
-
-    def forward(self, features: Tensor) -> Tensor:
-        return F.normalize(self.layers(features), dim=1)
 
 
 class CoMatchAlgorithm:
@@ -164,7 +146,7 @@ class CoMatchAlgorithm:
         if input_dim <= 0:
             raise ValueError("CoMatch requires classifier.in_features.")
         if self.projection_head is None:
-            self.projection_head = CoMatchProjectionHead(
+            self.projection_head = SslProjectionHead(
                 input_dim=input_dim,
                 proj_size=self.proj_size,
             )

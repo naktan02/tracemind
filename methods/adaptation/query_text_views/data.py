@@ -52,6 +52,7 @@ class TextLabelDataset(Dataset[dict[str, Any]]):
         if self._task_prefix:
             text = f"{self._task_prefix}{text}"
         return {
+            "row_index": int(index),
             "text": text,
             "label": self._label_to_index[str(row["mapped_label_4"])],
         }
@@ -215,6 +216,10 @@ def build_dataloader(
             tokenization_cache_namespace=tokenization_cache_namespace,
         )
         encoded["labels"] = torch.tensor(labels, dtype=torch.long)
+        encoded["row_indices"] = torch.tensor(
+            [int(item["row_index"]) for item in batch],
+            dtype=torch.long,
+        )
         return encoded
 
     return DataLoader(

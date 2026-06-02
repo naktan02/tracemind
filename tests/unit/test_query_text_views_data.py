@@ -6,6 +6,7 @@ from methods.adaptation.query_text_views.data import (
     TextMultiviewDataset,
     TextWeakDataset,
     TextWeakStrongPairDataset,
+    build_dataloader,
     build_multiview_dataloader,
     build_weak_dataloader,
     build_weak_strong_pair_dataloader,
@@ -155,6 +156,32 @@ def test_multiview_dataloader_emits_stable_row_indices() -> None:
     batch = next(iter(loader))
 
     assert batch["query_ids"] == ["q1", "q2"]
+    assert batch["row_indices"].tolist() == [0, 1]
+
+
+def test_labeled_dataloader_emits_stable_row_indices() -> None:
+    class _Tokenizer:
+        def __call__(self, texts, **_kwargs):
+            import torch
+
+            return {
+                "input_ids": torch.ones((len(texts), 2), dtype=torch.long),
+                "attention_mask": torch.ones((len(texts), 2), dtype=torch.long),
+            }
+
+    rows = [_row("q1", "first"), _row("q2", "second")]
+
+    loader = build_dataloader(
+        rows=rows,
+        label_to_index={"anxiety": 0},
+        tokenizer=_Tokenizer(),
+        batch_size=2,
+        max_length=8,
+        task_prefix="",
+        shuffle=False,
+    )
+    batch = next(iter(loader))
+
     assert batch["row_indices"].tolist() == [0, 1]
 
 

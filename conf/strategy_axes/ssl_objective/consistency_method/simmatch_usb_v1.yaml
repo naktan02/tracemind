@@ -1,0 +1,15 @@
+# @package query_ssl_method
+
+name: simmatch_usb_v1
+algorithm_name: simmatch
+T: 0.5
+p_cutoff: 0.95
+proj_size: 128
+smoothing_alpha: 0.9
+da_len: 256
+in_loss_ratio: 1.0
+lambda_u: 1.0
+supervised_loss_weight: 1.0
+ema_bank: 0.7
+unlabeled_batch_size: ${train_batch_size}
+require_multiview: true

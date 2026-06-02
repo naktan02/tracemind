@@ -72,6 +72,7 @@ RUNTIME_LAYER_METHOD_NAME_FRAGMENTS = (
     "flexmatch",
     "comatch",
     "dash",
+    "simmatch",
     "mixtext",
     "rdrop",
 )
@@ -563,6 +564,7 @@ def test_common_ssl_hooks_do_not_own_method_specific_hooks() -> None:
         "FixMatch",
         "FlexMatch",
         "FreeMatch",
+        "SimMatch",
         "SoftMatch",
         "adamatch",
         "comatch",
@@ -570,6 +572,7 @@ def test_common_ssl_hooks_do_not_own_method_specific_hooks() -> None:
         "fixmatch",
         "flexmatch",
         "freematch",
+        "simmatch",
         "softmatch",
     )
     violations = [
