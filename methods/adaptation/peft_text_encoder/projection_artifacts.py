@@ -28,8 +28,11 @@ def write_peft_encoder_projection_artifacts(
     projection_dir: Path,
     seed: int,
     schema_version: str,
+    projection_space: str = "final_peft_encoder_pooled_backbone_features",
+    title_prefix: str = "final PEFT encoder representation",
+    mark_incorrect: bool = False,
 ) -> dict[str, Any] | None:
-    """최종 PEFT encoder representation을 2D projection artifact로 저장한다."""
+    """최종 text encoder representation을 2D projection artifact로 저장한다."""
 
     if eval_loaders is None:
         return None
@@ -55,10 +58,8 @@ def write_peft_encoder_projection_artifacts(
         _draw_projection_figure(
             figure_path=figure_path,
             rows=projection["rows"],
-            title=(
-                f"{dataset_name} final PEFT encoder representation "
-                f"({projection['reducer']})"
-            ),
+            title=f"{dataset_name} {title_prefix} ({projection['reducer']})",
+            mark_incorrect=mark_incorrect,
         )
         projection_entries[dataset_name] = {
             "reducer": projection["reducer"],
@@ -70,7 +71,8 @@ def write_peft_encoder_projection_artifacts(
 
     manifest = {
         "schema_version": schema_version,
-        "projection_space": "final_peft_encoder_pooled_backbone_features",
+        "projection_space": projection_space,
+        "mark_incorrect": mark_incorrect,
         "datasets": projection_entries,
     }
     manifest_path = projection_dir / "projection_manifest.json"
@@ -143,6 +145,7 @@ def _draw_projection_figure(
     figure_path: Path,
     rows: list[dict[str, Any]],
     title: str,
+    mark_incorrect: bool = False,
 ) -> None:
     figure_path.parent.mkdir(parents=True, exist_ok=True)
     plt.figure(figsize=(10, 8))
@@ -159,7 +162,7 @@ def _draw_projection_figure(
         )
 
     incorrect_rows = [row for row in rows if not bool(row["is_correct"])]
-    if incorrect_rows:
+    if mark_incorrect and incorrect_rows:
         plt.scatter(
             [float(row["x"]) for row in incorrect_rows],
             [float(row["y"]) for row in incorrect_rows],

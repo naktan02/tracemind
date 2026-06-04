@@ -14,6 +14,9 @@ from scripts.support.query_ssl_text_encoder.io.artifact_paths import (
 from scripts.support.query_ssl_text_encoder.io.artifact_writer import (
     QueryTextEncoderRunArtifactWriter,
 )
+from scripts.support.query_ssl_text_encoder.io.embedding_projection import (
+    write_query_text_encoder_projection_artifacts,
+)
 from scripts.support.query_ssl_text_encoder.io.manifest_builder import (
     build_query_text_encoder_eval_report,
     build_query_text_encoder_run_manifest,
@@ -36,6 +39,7 @@ class FullTextEncoderRunArtifactPaths:
     classifier_manifest_path: Path
     report_path: Path
     logs_dir: Path
+    projections_dir: Path
 
     def ensure_directories(self) -> None:
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -43,6 +47,7 @@ class FullTextEncoderRunArtifactPaths:
         self.classifier_output_dir.mkdir(parents=True, exist_ok=True)
         self.report_path.parent.mkdir(parents=True, exist_ok=True)
         self.logs_dir.mkdir(parents=True, exist_ok=True)
+        self.projections_dir.mkdir(parents=True, exist_ok=True)
 
     def to_output_mapping(self) -> dict[str, str]:
         return {
@@ -51,6 +56,9 @@ class FullTextEncoderRunArtifactPaths:
             "classifier_path": str(self.classifier_path),
             "manifest": str(self.classifier_manifest_path),
             "report_json": str(self.report_path),
+            "projection_manifest": str(
+                self.projections_dir / "projection_manifest.json"
+            ),
         }
 
 
@@ -71,7 +79,6 @@ def write_full_text_encoder_run_artifacts(
     extra_manifest: Mapping[str, Any] | None = None,
     eval_loaders: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
-    del eval_loaders
     paths = build_full_text_encoder_run_artifact_paths(
         cfg=cfg,
         trainer_version=trainer_version,
@@ -85,6 +92,20 @@ def write_full_text_encoder_run_artifacts(
         categories=categories,
         classifier_path=paths.classifier_path,
     )
+    projection_artifacts = write_query_text_encoder_projection_artifacts(
+        model=model,
+        eval_loaders=eval_loaders,
+        categories=categories,
+        device=training_device,
+        projection_dir=paths.projections_dir,
+        seed=int(cfg.seed),
+        schema_version="query_full_text_encoder_projection_artifacts.v1",
+        projection_space="final_full_text_encoder_pooled_backbone_features",
+        title_prefix="final full text encoder representation",
+    )
+    effective_extra_manifest = dict(extra_manifest or {})
+    if projection_artifacts is not None:
+        effective_extra_manifest["projection_artifacts"] = projection_artifacts
     manifest = build_query_text_encoder_run_manifest(
         cfg=cfg,
         trainer_version=trainer_version,
@@ -98,7 +119,7 @@ def write_full_text_encoder_run_artifacts(
             "model_dir": str(paths.model_output_dir),
             "classifier_path": str(paths.classifier_path),
         },
-        extra_manifest=extra_manifest,
+        extra_manifest=effective_extra_manifest,
     )
     report = build_query_text_encoder_eval_report(
         schema_version=FULL_TEXT_ENCODER_REPORT_SCHEMA_VERSION,
@@ -135,4 +156,5 @@ def build_full_text_encoder_run_artifact_paths(
         / "classifier_head.manifest.json",
         report_path=output_dir / "reports" / "report.json",
         logs_dir=output_dir / "logs",
+        projections_dir=output_dir / "projections",
     )

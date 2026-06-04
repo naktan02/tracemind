@@ -100,6 +100,10 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
 맞춘 `test_balanced_validation_test_seed42.jsonl`이며, epoch별 best checkpoint
 선택과 final report 모두 같은 test eval set을 사용한다.
 
+중앙 text encoder run id와 `trainer_version`의 자동 timestamp는 한국시간
+(`Asia/Seoul`) 기준이다. PEFT/SSL뿐 아니라 full text encoder supervised도 최종
+`projections/test.projection.{png,jsonl}`와 `projection_manifest.json`을 저장한다.
+
 ## Method Projection Figure
 
 각 run이 종료될 때 저장되는 `projections/*.png`는 단일 run 진단용이다. 논문용으로
@@ -116,13 +120,15 @@ uv run python scripts/experiments/central/ssl_control/build_method_projection_fi
 기본 저장 위치는
 `runs/figures/central_ssl/method_projection/<YYYY_MM_DD_HHMMSS>/`이다. 산출물은
 `method_projection_manifest.json`과 split 폴더 아래 method별 PNG/`jsonl`/`npz`
-feature dump다. 예를 들어 `validation/simmatch.method_projection.png`,
-`test/mixmatch.method_projection.png`처럼 저장한다. 기본 split은 `test`이며,
+feature dump다. 예를 들어 `test/mixmatch.method_projection.png`처럼 저장한다.
+기본 split은 `test`이며,
 예전 report처럼 validation 산출물이 남아 있는 경우 `--split validation`을 명시할 수
 있다. reducer는 split별 전체 method
 feature에 한 번 fit하고, 저장만 method별로 나눠 같은 좌표계 비교를 유지한다.
-재현용 이름을 고정하려면 `--figure-version <name>`을 사용한다. `--output-dir`를
-주면 날짜 폴더를 만들지 않고 해당 경로에 바로 쓴다.
+재현용 이름을 붙이려면 `--figure-version <name>`을 사용한다. 이 경우에도 폴더명은
+`<YYYY_MM_DD_HHMMSS>_<name>`처럼 시간 prefix를 유지한다. 오분류 marker를 보고
+싶을 때만 `--mark-incorrect`를 추가한다. `--output-dir`를 주면 날짜 폴더를 만들지
+않고 해당 경로에 바로 쓴다.
 
 ## 경계와 Read Path
 

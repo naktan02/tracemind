@@ -186,6 +186,11 @@ def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None
     validation_projection = projection_manifest["datasets"]["validation"]
 
     assert manifest["projection_artifacts"]["enabled"] is True
+    assert (
+        projection_manifest["projection_space"]
+        == "final_peft_encoder_pooled_backbone_features"
+    )
+    assert projection_manifest["mark_incorrect"] is False
     assert validation_projection["row_count"] == 2
     assert Path(validation_projection["points_jsonl"]).exists()
     assert Path(validation_projection["figure_png"]).exists()
@@ -263,3 +268,75 @@ def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
     assert report["schema_version"] == "central_full_text_encoder_eval.v1"
     assert report["manifest"] == manifest
     assert report["results"] == {"test": {"accuracy": 0.8}}
+
+
+def test_write_full_text_encoder_run_artifacts_writes_projection_artifacts(
+    tmp_path: Path,
+) -> None:
+    cfg = SimpleNamespace(
+        output_dir=tmp_path / "runs",
+        train_jsonl=tmp_path / "train.jsonl",
+        selection_set="test",
+        seed=7,
+        epochs=1,
+        train_batch_size=2,
+        eval_batch_size=2,
+        learning_rate=0.00002,
+        classifier_learning_rate=0.0002,
+        weight_decay=0.01,
+        max_grad_norm=1.0,
+    )
+    eval_loader = DataLoader(
+        [
+            {
+                "input_ids": torch.tensor([2.0, 0.0]),
+                "attention_mask": torch.tensor([1, 1]),
+                "labels": torch.tensor(0),
+            },
+            {
+                "input_ids": torch.tensor([0.0, 3.0]),
+                "attention_mask": torch.tensor([1, 1]),
+                "labels": torch.tensor(1),
+            },
+        ],
+        batch_size=2,
+    )
+
+    outputs = write_full_text_encoder_run_artifacts(
+        cfg=cfg,
+        trainer_version="full-run-002",
+        created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        model=_ProjectionModel(),
+        tokenizer=_DummySaver("tokenizer.txt"),
+        categories=["alpha", "beta"],
+        eval_set_map={"test": tmp_path / "test.jsonl"},
+        training_device="cpu",
+        backbone_summary={
+            "name": "dummy-backbone",
+            "trainable_surface": {
+                "name": "full_text_encoder",
+                "trainable_state": "full_encoder_and_classifier_head",
+            },
+        },
+        history=[],
+        best_selection_report={"macro_f1": 1.0},
+        results={"test": {"accuracy_top_1": 1.0}},
+        eval_loaders={"test": eval_loader},
+    )
+
+    manifest = json.loads(Path(outputs["manifest"]).read_text(encoding="utf-8"))
+    projection_manifest_path = Path(outputs["projection_manifest"])
+    projection_manifest = json.loads(
+        projection_manifest_path.read_text(encoding="utf-8")
+    )
+    test_projection = projection_manifest["datasets"]["test"]
+
+    assert manifest["projection_artifacts"]["enabled"] is True
+    assert (
+        projection_manifest["projection_space"]
+        == "final_full_text_encoder_pooled_backbone_features"
+    )
+    assert projection_manifest["mark_incorrect"] is False
+    assert test_projection["row_count"] == 2
+    assert Path(test_projection["points_jsonl"]).exists()
+    assert Path(test_projection["figure_png"]).exists()

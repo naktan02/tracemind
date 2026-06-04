@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from omegaconf import OmegaConf
 
@@ -34,6 +35,8 @@ from shared.src.domain.services.classification_report import (
     render_confusion_table,
     render_per_category_table,
 )
+
+QUERY_TEXT_ENCODER_RUN_TIMEZONE = ZoneInfo("Asia/Seoul")
 
 
 @dataclass(slots=True)
@@ -102,7 +105,7 @@ def prepare_text_encoder_run_context(
     )
 
     training_device = resolve_runtime_device_name(str(cfg.runtime.device))
-    created_at = datetime.now(timezone.utc)
+    created_at = datetime.now(QUERY_TEXT_ENCODER_RUN_TIMEZONE)
     trainer_version = (
         trainer_version_override
         or cfg.trainer_version

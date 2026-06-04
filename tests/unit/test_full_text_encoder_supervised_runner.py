@@ -6,6 +6,9 @@ from omegaconf import OmegaConf
 from scripts.support.query_ssl_text_encoder.runners import (
     full_text_encoder_supervised as full_text_encoder_supervised_runner,
 )
+from scripts.support.query_ssl_text_encoder.text_encoder_run_context import (
+    QUERY_TEXT_ENCODER_RUN_TIMEZONE,
+)
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 VALIDATION_JSONL = (
@@ -180,3 +183,7 @@ def test_run_full_text_encoder_supervised_baseline_uses_common_context(
     runtime_metrics = captured["extra_manifest"]["runtime_metrics"]
     assert runtime_metrics["training_example_count"] == 1
     assert runtime_metrics["trainable_param_ratio"] == 1.0
+
+
+def test_text_encoder_run_context_uses_kst_for_generated_run_ids() -> None:
+    assert QUERY_TEXT_ENCODER_RUN_TIMEZONE.key == "Asia/Seoul"
