@@ -98,6 +98,7 @@ def main() -> None:
         "device": device,
         "seed": int(args.seed),
         "max_rows_per_run": args.max_rows_per_run,
+        "mark_incorrect": bool(args.mark_incorrect),
         "output_dir": str(output_dir),
         "figure_version": output_dir.name,
         "runs": [
@@ -132,6 +133,7 @@ def main() -> None:
             reducer_name=str(args.reducer),
             seed=int(args.seed),
             n_neighbors=int(args.n_neighbors),
+            mark_incorrect=bool(args.mark_incorrect),
         )
         outputs["splits"][split] = split_outputs
 
@@ -204,6 +206,7 @@ def write_split_projection_artifacts(
     reducer_name: str,
     seed: int,
     n_neighbors: int,
+    mark_incorrect: bool = False,
 ) -> dict[str, Any]:
     """한 split의 method feature를 합쳐 공통 2D projection 산출물을 쓴다."""
 
@@ -231,6 +234,7 @@ def write_split_projection_artifacts(
         categories=categories,
         axis_limits=axis_limits,
         reducer_name=projection.reducer,
+        mark_incorrect=mark_incorrect,
     )
     return {
         "reducer": projection.reducer,
@@ -276,10 +280,11 @@ def resolve_projection_output_dir(
 
     if output_dir is not None:
         return output_dir
-    if figure_version is not None and figure_version.strip():
-        return output_root / figure_version.strip()
     timestamp = created_at or datetime.now()
-    return output_root / timestamp.strftime("%Y_%m_%d_%H%M%S")
+    timestamp_slug = timestamp.strftime("%Y_%m_%d_%H%M%S")
+    if figure_version is not None and figure_version.strip():
+        return output_root / f"{timestamp_slug}_{figure_version.strip()}"
+    return output_root / timestamp_slug
 
 
 def _parse_args() -> argparse.Namespace:
@@ -298,7 +303,7 @@ def _parse_args() -> argparse.Namespace:
         "--split",
         action="append",
         choices=["validation", "test"],
-        help="Eval split to project. Defaults to validation and test.",
+        help="Eval split to project. Defaults to test.",
     )
     parser.add_argument(
         "--output-dir",
@@ -352,6 +357,11 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Optional feature extraction batch size override.",
+    )
+    parser.add_argument(
+        "--mark-incorrect",
+        action="store_true",
+        help="Overlay incorrect predictions with black hollow markers.",
     )
     return parser.parse_args()
 
@@ -582,6 +592,7 @@ def draw_method_figure(
     categories: list[str],
     title: str,
     axis_limits: tuple[tuple[float, float], tuple[float, float]],
+    mark_incorrect: bool = False,
 ) -> None:
     if not rows:
         raise ValueError("projection rows must not be empty.")
@@ -600,14 +611,15 @@ def draw_method_figure(
             label=category,
         )
     incorrect_rows = [row for row in rows if not bool(row["is_correct"])]
-    if incorrect_rows:
+    if mark_incorrect and incorrect_rows:
         axis.scatter(
             [float(row["x"]) for row in incorrect_rows],
             [float(row["y"]) for row in incorrect_rows],
-            s=34,
+            s=26,
             facecolors="none",
             edgecolors="black",
-            linewidths=0.7,
+            linewidths=0.45,
+            alpha=0.45,
             label="incorrect",
         )
     axis.set_title(title)
@@ -632,6 +644,7 @@ def _write_method_projection_artifacts(
     categories: list[str],
     axis_limits: tuple[tuple[float, float], tuple[float, float]],
     reducer_name: str,
+    mark_incorrect: bool,
 ) -> dict[str, Any]:
     outputs: dict[str, Any] = {}
     rows_by_method: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -660,6 +673,7 @@ def _write_method_projection_artifacts(
             categories=categories,
             title=f"{split_dir.name} {method_label} {reducer_name.upper()} projection",
             axis_limits=axis_limits,
+            mark_incorrect=mark_incorrect,
         )
         outputs[method_label] = {
             "row_count": len(method_rows),

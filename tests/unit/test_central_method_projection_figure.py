@@ -6,10 +6,12 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from PIL import Image
 
 from methods.adaptation.text_encoder_classifier.projection import reduce_features_2d
 from scripts.experiments.central.ssl_control.build_method_projection_figure import (
     MethodFeatureSet,
+    draw_method_figure,
     parse_run_specs,
     resolve_projection_output_dir,
     select_row_indices,
@@ -90,7 +92,7 @@ def test_resolve_projection_output_dir_uses_dated_child(tmp_path: Path) -> None:
             figure_version="paper_v1",
             created_at=created_at,
         )
-        == output_root / "paper_v1"
+        == output_root / "2026_06_04_010203_paper_v1"
     )
 
 
@@ -149,3 +151,33 @@ def test_write_split_projection_artifacts_writes_method_files(
     assert len(rows) == 2
     assert {row["method_label"] for row in rows} == {"fixmatch"}
     assert any(not row["is_correct"] for row in rows)
+
+
+def test_draw_method_figure_does_not_mark_incorrect_by_default(
+    tmp_path: Path,
+) -> None:
+    rows = [
+        {
+            "x": index * 0.01,
+            "y": index * 0.01,
+            "label": "anxiety",
+            "predicted_label": "normal",
+            "is_correct": False,
+            "top_1_probability": 0.7,
+        }
+        for index in range(80)
+    ]
+    figure_path = tmp_path / "default.png"
+
+    draw_method_figure(
+        figure_path=figure_path,
+        rows=rows,
+        categories=["anxiety", "normal"],
+        title="test",
+        axis_limits=((-0.1, 1.0), (-0.1, 1.0)),
+    )
+
+    pixels = np.asarray(Image.open(figure_path).convert("RGB"))
+    black_pixels = int(np.all(pixels < 20, axis=2).sum())
+
+    assert black_pixels / pixels.shape[0] / pixels.shape[1] < 0.015
