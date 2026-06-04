@@ -348,10 +348,8 @@ def test_run_full_text_encoder_supervised_control_supports_transfer_overrides() 
         "labeled1024_per_class_seed42_v1/test.jsonl"
     )
     assert cfg.output_dir == "runs/_smoke/central/supervised/full_text_encoder"
-    assert cfg.model_output_dir == "data/artifacts/full_text_encoder_models"
-    assert (
-        cfg.classifier_output_dir == "data/artifacts/full_text_encoder_classifier_heads"
-    )
+    assert "model_output_dir" not in cfg
+    assert "classifier_output_dir" not in cfg
     assert cfg.learning_rate == 0.00002
     assert cfg.classifier_learning_rate == 0.0002
 
@@ -1874,8 +1872,7 @@ def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:
     assert cfg.query_ssl_method.algorithm_name == "pseudolabel"
     assert cfg.query_ssl_method.require_multiview is False
     assert (
-        cfg.query_source.name
-        == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
+        cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
         "validation_ourafla_reddit_test_ourafla_reddit"
     )
     assert cfg.output_dir == "runs/run_peft_ssl_control_pseudolabel"

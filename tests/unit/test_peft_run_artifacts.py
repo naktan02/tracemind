@@ -54,8 +54,6 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
 ) -> None:
     cfg = SimpleNamespace(
         output_dir=tmp_path / "runs",
-        adapter_output_dir=tmp_path / "adapters",
-        classifier_output_dir=tmp_path / "classifiers",
         central_ssl_budget=SimpleNamespace(name="smoke", output_root="runs/_smoke"),
         train_jsonl=tmp_path / "train.jsonl",
         selection_set="validation",
@@ -106,6 +104,10 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
 
     assert Path(outputs["output_dir"]) == tmp_path / "runs" / "run-001"
     assert (Path(outputs["output_dir"]) / "logs").is_dir()
+    assert adapter_dir == Path(outputs["output_dir"]) / "artifacts" / "adapter"
+    assert classifier_path == (
+        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.pt"
+    )
     assert (adapter_dir / "backbone.txt").read_text(encoding="utf-8") == "saved\n"
     assert (adapter_dir / "tokenizer.txt").read_text(encoding="utf-8") == "saved\n"
     assert classifier_payload == {
@@ -133,8 +135,6 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
 def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None:
     cfg = SimpleNamespace(
         output_dir=tmp_path / "runs",
-        adapter_output_dir=tmp_path / "adapters",
-        classifier_output_dir=tmp_path / "classifiers",
         train_jsonl=tmp_path / "train.jsonl",
         selection_set="validation",
         seed=7,
@@ -196,8 +196,6 @@ def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
 ) -> None:
     cfg = SimpleNamespace(
         output_dir=tmp_path / "runs",
-        model_output_dir=tmp_path / "full_models",
-        classifier_output_dir=tmp_path / "classifiers",
         central_ssl_budget=SimpleNamespace(name="smoke", output_root="runs/_smoke"),
         train_jsonl=tmp_path / "train.jsonl",
         selection_set="validation",
@@ -248,6 +246,10 @@ def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
     assert "adapter_dir" not in outputs
     assert Path(outputs["output_dir"]) == tmp_path / "runs" / "full-run-001"
     assert (Path(outputs["output_dir"]) / "logs").is_dir()
+    assert model_dir == Path(outputs["output_dir"]) / "artifacts" / "model"
+    assert classifier_path == (
+        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.pt"
+    )
     assert (model_dir / "model.txt").read_text(encoding="utf-8") == "saved\n"
     assert (model_dir / "tokenizer.txt").read_text(encoding="utf-8") == "saved\n"
     assert torch.load(classifier_path, weights_only=False)["hidden_size"] == 384

@@ -56,16 +56,16 @@ def build_query_peft_run_artifact_paths(
         trainer_version=trainer_version,
         created_at=created_at,
     )
-    adapter_output_dir = Path(str(cfg.adapter_output_dir)) / trainer_version
-    classifier_output_dir = Path(str(cfg.classifier_output_dir))
+    artifacts_dir = output_dir / "artifacts"
+    adapter_output_dir = artifacts_dir / "adapter"
+    classifier_output_dir = artifacts_dir
     return QueryPeftRunArtifactPaths(
         output_dir=output_dir,
         adapter_output_dir=adapter_output_dir,
         classifier_output_dir=classifier_output_dir,
-        classifier_path=classifier_output_dir / f"{trainer_version}.pt",
-        classifier_manifest_path=(
-            classifier_output_dir / f"{trainer_version}.manifest.json"
-        ),
+        classifier_path=classifier_output_dir / "classifier_head.pt",
+        classifier_manifest_path=classifier_output_dir
+        / "classifier_head.manifest.json",
         report_path=output_dir / "reports" / "report.json",
         logs_dir=output_dir / "logs",
         projections_dir=output_dir / "projections",

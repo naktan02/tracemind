@@ -48,10 +48,6 @@ def _build_cfg() -> object:
             "max_grad_norm": 1.0,
             "log_every_steps": 10,
             "output_dir": "runs/run_full_text_encoder_supervised_control",
-            "model_output_dir": "data/artifacts/full_text_encoder_models",
-            "classifier_output_dir": (
-                "data/artifacts/full_text_encoder_classifier_heads"
-            ),
         }
     )
 

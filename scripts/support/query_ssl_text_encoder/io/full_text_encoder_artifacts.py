@@ -123,16 +123,16 @@ def build_full_text_encoder_run_artifact_paths(
         trainer_version=trainer_version,
         created_at=created_at,
     )
-    model_output_dir = Path(str(cfg.model_output_dir)) / trainer_version
-    classifier_output_dir = Path(str(cfg.classifier_output_dir))
+    artifacts_dir = output_dir / "artifacts"
+    model_output_dir = artifacts_dir / "model"
+    classifier_output_dir = artifacts_dir
     return FullTextEncoderRunArtifactPaths(
         output_dir=output_dir,
         model_output_dir=model_output_dir,
         classifier_output_dir=classifier_output_dir,
-        classifier_path=classifier_output_dir / f"{trainer_version}.pt",
-        classifier_manifest_path=(
-            classifier_output_dir / f"{trainer_version}.manifest.json"
-        ),
+        classifier_path=classifier_output_dir / "classifier_head.pt",
+        classifier_manifest_path=classifier_output_dir
+        / "classifier_head.manifest.json",
         report_path=output_dir / "reports" / "report.json",
         logs_dir=output_dir / "logs",
     )

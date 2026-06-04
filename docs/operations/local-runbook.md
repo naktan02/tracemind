@@ -234,7 +234,10 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
 이 경우 산출물은 `runs/_smoke/central/ssl/peft_classifier/...`,
 `runs/_smoke/central/supervised/peft_classifier`,
 `runs/_smoke/central/supervised/full_text_encoder` 아래에 저장되어 main run과
-섞이지 않는다. PEFT supervised baseline은 epoch마다
+섞이지 않는다. 중앙 supervised/SSL의 best 모델 artifact도 해당 run 폴더의
+`artifacts/` 아래에 저장한다. PEFT는 `artifacts/adapter/`와
+`artifacts/classifier_head.pt`, full text encoder는 `artifacts/model/`과
+`artifacts/classifier_head.pt`를 쓴다. PEFT supervised baseline은 epoch마다
 `checkpoints/epoch_000N_step_XXXXXX/manifest.json`을 남기며, 이 manifest는
 central SSL warm-start의 `query_adaptation_initial_checkpoint.manifest_path`로
 사용할 수 있다.

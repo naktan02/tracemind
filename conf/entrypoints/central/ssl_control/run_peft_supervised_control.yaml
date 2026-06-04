@@ -35,8 +35,6 @@ resume_checkpoint_output_dir: ${output_dir}/checkpoints
 resume_checkpoint_every_epochs: 0
 epoch_artifact_kind: peft_adapter_classifier
 epoch_artifact_every_epochs: 1
-adapter_output_dir: data/artifacts/peft_adapters
-classifier_output_dir: data/artifacts/peft_classifier_heads
 trainer_version: ""
 
 hydra:

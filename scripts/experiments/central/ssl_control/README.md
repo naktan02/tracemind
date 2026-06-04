@@ -74,6 +74,12 @@ consistency-family central SSL entrypoint다. pseudo-label replay나 teacher boo
 `run_full_text_encoder_supervised_control.py`는 중앙 supervised-only ablation이다.
 FL update family, shared payload, agent/main_server runtime을 열지 않는다.
 
+중앙 supervised/SSL run의 학습된 모델 산출물은 각 run 폴더 아래에 묶는다.
+PEFT run은 `artifacts/adapter/`와 `artifacts/classifier_head.pt`를 저장하고,
+full text encoder run은 `artifacts/model/`과 `artifacts/classifier_head.pt`를
+저장한다. `data/artifacts/**`는 canonical seed나 별도 migration 전 기존 산출물
+같은 run 외부 공유 artifact에만 남긴다.
+
 사용자가 고르는 public surface는 아래로 제한한다.
 
 - `strategy_axes/ssl_objective/consistency_method`
