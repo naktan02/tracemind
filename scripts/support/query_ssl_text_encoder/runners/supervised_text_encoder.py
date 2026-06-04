@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from scripts.support.query_ssl_text_encoder.io.artifact_paths import (
+    build_query_text_run_output_dir,
+)
+from scripts.support.query_ssl_text_encoder.io.supervised_epoch_checkpoints import (
+    write_peft_supervised_epoch_checkpoint,
+)
 from scripts.support.query_ssl_text_encoder.runtime_metrics import (
     run_with_training_runtime_metrics,
 )
@@ -49,6 +56,15 @@ def run_supervised_text_encoder_baseline(
         trainer_version_prefix=trainer_version_prefix,
     )
     max_train_steps = _resolve_max_train_steps(context.cfg)
+    epoch_checkpoint_records: list[dict[str, str]] = []
+    after_epoch = _build_epoch_checkpoint_callback(
+        cfg=context.cfg,
+        trainer_version=context.trainer_version,
+        created_at=context.created_at,
+        tokenizer=context.tokenizer,
+        categories=context.categories,
+        checkpoint_records=epoch_checkpoint_records,
+    )
     (
         (model, history, best_selection_report),
         runtime_metrics,
@@ -66,6 +82,7 @@ def run_supervised_text_encoder_baseline(
             weight_decay=float(context.cfg.weight_decay),
             max_grad_norm=float(context.cfg.max_grad_norm),
             log_every_steps=int(context.cfg.log_every_steps),
+            **({} if after_epoch is None else {"after_epoch": after_epoch}),
         ),
         training_example_count=_estimate_supervised_training_example_count(
             cfg=context.cfg,
@@ -85,6 +102,14 @@ def run_supervised_text_encoder_baseline(
 
     effective_extra_manifest = dict(context.initial_checkpoint_manifest)
     effective_extra_manifest["runtime_metrics"] = runtime_metrics
+    if epoch_checkpoint_records:
+        effective_extra_manifest["epoch_checkpoint_policy"] = {
+            "kind": str(getattr(context.cfg, "epoch_artifact_kind", "")),
+            "every_epochs": int(
+                getattr(context.cfg, "epoch_artifact_every_epochs", 0)
+            ),
+        }
+        effective_extra_manifest["epoch_checkpoints"] = epoch_checkpoint_records
     if extra_manifest:
         effective_extra_manifest.update(dict(extra_manifest))
 
@@ -114,6 +139,55 @@ def _resolve_max_train_steps(cfg: Any) -> int | None:
     if raw_value is None:
         return None
     return int(raw_value)
+
+
+def _build_epoch_checkpoint_callback(
+    *,
+    cfg: Any,
+    trainer_version: str,
+    created_at: datetime,
+    tokenizer: Any,
+    categories: list[str],
+    checkpoint_records: list[dict[str, str]],
+) -> Callable[[int, list[dict[str, Any]], dict[str, Any], Any], None] | None:
+    checkpoint_kind = str(getattr(cfg, "epoch_artifact_kind", "none") or "none")
+    checkpoint_every_epochs = int(
+        getattr(cfg, "epoch_artifact_every_epochs", 0) or 0
+    )
+    if checkpoint_kind == "none" or checkpoint_every_epochs <= 0:
+        return None
+    if checkpoint_kind != "peft_adapter_classifier":
+        raise ValueError(f"Unsupported epoch_artifact_kind: {checkpoint_kind}")
+
+    run_output_dir = build_query_text_run_output_dir(
+        cfg=cfg,
+        trainer_version=trainer_version,
+        created_at=created_at,
+    )
+    checkpoint_root = run_output_dir / "checkpoints"
+
+    def save_epoch_checkpoint(
+        epoch: int,
+        history: list[dict[str, Any]],
+        best_checkpoint_state: dict[str, Any],
+        model: Any,
+    ) -> None:
+        if epoch % checkpoint_every_epochs != 0:
+            return
+        checkpoint_records.append(
+            write_peft_supervised_epoch_checkpoint(
+                checkpoint_root=checkpoint_root,
+                trainer_version=trainer_version,
+                epoch=epoch,
+                model=model,
+                tokenizer=tokenizer,
+                categories=categories,
+                history=history,
+                best_checkpoint_state=best_checkpoint_state,
+            )
+        )
+
+    return save_epoch_checkpoint
 
 
 def _estimate_supervised_training_example_count(

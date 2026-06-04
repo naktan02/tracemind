@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from typing import Any
 
 import torch
@@ -149,6 +150,11 @@ def train_classifier(
     log_every_steps: int,
     max_train_steps: int | None = None,
     proximal_mu: float = 0.0,
+    after_epoch: Callable[
+        [int, list[dict[str, Any]], dict[str, Any], TextEncoderWithLinearHead],
+        None,
+    ]
+    | None = None,
     best_checkpoint_error_message: str = (
         "Text encoder classifier training did not produce a best checkpoint."
     ),
@@ -232,6 +238,15 @@ def train_classifier(
             device=device,
         )
 
+    def run_after_epoch(
+        epoch: int,
+        history: list[dict[str, Any]],
+        best_checkpoint_state: dict[str, Any],
+    ) -> None:
+        if after_epoch is None:
+            return
+        after_epoch(epoch, history, best_checkpoint_state, model)
+
     history, best_selection_report = run_selection_tracked_training_loop(
         model=model,
         epochs=step_budget.effective_epochs,
@@ -239,5 +254,6 @@ def train_classifier(
         evaluate_selection=evaluate_selection,
         best_checkpoint_error_message=best_checkpoint_error_message,
         log_epoch_summary=lambda message: print(message, flush=True),
+        after_epoch=run_after_epoch if after_epoch is not None else None,
     )
     return model, history, best_selection_report
