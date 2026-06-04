@@ -9,12 +9,14 @@ from pathlib import Path
 from typing import Any
 
 import matplotlib
-import numpy as np
-import torch
-from sklearn.decomposition import PCA
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+
+from methods.adaptation.text_encoder_classifier.projection import (
+    collect_pooled_classifier_features,
+    reduce_features_2d,
+)
 
 
 def write_peft_encoder_projection_artifacts(
@@ -92,20 +94,22 @@ def _build_dataset_projection(
     device: str,
     seed: int,
 ) -> dict[str, Any]:
-    features, labels, predicted_labels, confidences = _collect_features(
+    collected = collect_pooled_classifier_features(
         model=model,
         dataloader=dataloader,
         categories=categories,
         device=device,
     )
-    coordinates, reducer, fallback_reason = _reduce_features(
-        features=features,
+    projection = reduce_features_2d(
+        features=collected.features,
+        reducer_name="umap",
         seed=seed,
+        n_neighbors=15,
     )
     rows = []
-    for index, (x, y) in enumerate(coordinates):
-        true_label = labels[index]
-        predicted_label = predicted_labels[index]
+    for index, (x, y) in enumerate(projection.coordinates):
+        true_label = collected.labels[index]
+        predicted_label = collected.predicted_labels[index]
         rows.append(
             {
                 "row_index": index,
@@ -114,91 +118,17 @@ def _build_dataset_projection(
                 "label": true_label,
                 "predicted_label": predicted_label,
                 "is_correct": true_label == predicted_label,
-                "top_1_probability": round(float(confidences[index]), 6),
+                "top_1_probability": round(
+                    float(collected.top_1_probabilities[index]),
+                    6,
+                ),
             }
         )
     return {
         "rows": rows,
-        "reducer": reducer,
-        "fallback_reason": fallback_reason,
+        "reducer": projection.reducer,
+        "fallback_reason": projection.fallback_reason,
     }
-
-
-def _collect_features(
-    *,
-    model: Any,
-    dataloader: Any,
-    categories: list[str],
-    device: str,
-) -> tuple[np.ndarray, list[str], list[str], list[float]]:
-    model.eval()
-    features: list[np.ndarray] = []
-    labels: list[str] = []
-    predicted_labels: list[str] = []
-    confidences: list[float] = []
-    with torch.no_grad():
-        for batch in dataloader:
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
-            label_indices = batch["labels"].to(device)
-            pooled = model.extract_pooled_features(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-            )
-            logits = model.classifier(pooled)
-            probabilities = torch.softmax(logits, dim=-1)
-            top_values, top_indices = torch.topk(probabilities, k=1, dim=-1)
-            features.append(pooled.detach().float().cpu().numpy())
-            labels.extend(categories[index] for index in label_indices.cpu().tolist())
-            predicted_labels.extend(
-                categories[index] for index in top_indices[:, 0].cpu().tolist()
-            )
-            confidences.extend(top_values[:, 0].cpu().tolist())
-
-    if not features:
-        return np.zeros((0, 2), dtype=np.float32), [], [], []
-    return np.concatenate(features, axis=0), labels, predicted_labels, confidences
-
-
-def _reduce_features(
-    *,
-    features: np.ndarray,
-    seed: int,
-) -> tuple[np.ndarray, str, str | None]:
-    row_count = int(features.shape[0])
-    if row_count == 0:
-        return np.zeros((0, 2), dtype=np.float32), "none", "empty_dataset"
-    if row_count < 3:
-        return _zero_pad_projection(features), "identity_zero_pad", "row_count_lt_3"
-
-    try:
-        from umap import UMAP
-
-        reducer = UMAP(
-            n_components=2,
-            n_neighbors=max(2, min(15, row_count - 1)),
-            random_state=seed,
-        )
-        return reducer.fit_transform(features), "umap", None
-    except Exception as exc:  # pragma: no cover - fallback depends on optional stack
-        return _pca_projection(features, seed=seed), "pca", f"umap_failed:{exc}"
-
-
-def _pca_projection(features: np.ndarray, *, seed: int) -> np.ndarray:
-    row_count = int(features.shape[0])
-    feature_count = int(features.shape[1]) if features.ndim == 2 else 0
-    component_count = min(2, row_count, feature_count)
-    if component_count < 2:
-        return _zero_pad_projection(features)
-    return PCA(n_components=2, random_state=seed).fit_transform(features)
-
-
-def _zero_pad_projection(features: np.ndarray) -> np.ndarray:
-    row_count = int(features.shape[0])
-    coordinates = np.zeros((row_count, 2), dtype=np.float32)
-    if features.ndim == 2 and features.shape[1] > 0:
-        coordinates[:, 0] = features[:, 0]
-    return coordinates
 
 
 def _write_projection_points(path: Path, rows: list[dict[str, Any]]) -> None:
