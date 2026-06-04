@@ -838,8 +838,8 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.training_task.objective.privacy_guard_name == "noop"
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
-    assert cfg.training_task.batch_size == 12
-    assert cfg.train_batch_size == 12
+    assert cfg.training_task.batch_size == 8
+    assert cfg.train_batch_size == 8
     assert cfg.query_ssl_method.unlabeled_batch_size == cfg.training_task.batch_size
     assert cfg.query_ssl_strong_view_policy == "first_aug"
     assert cfg.training_task.objective.query_ssl.method_name == "fixmatch_usb_v1"
@@ -1571,8 +1571,8 @@ def test_federated_simulation_main_budget_fixes_main_comparison_budget() -> None
     assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
     assert cfg.sweep.output_dir == "runs/fl_ssl"
     assert cfg.training_task.local_epochs == 1
-    assert cfg.training_task.batch_size == 12
-    assert cfg.train_batch_size == 12
+    assert cfg.training_task.batch_size == 8
+    assert cfg.train_batch_size == 8
     assert cfg.training_task.max_steps == 20
 
 
@@ -1588,8 +1588,8 @@ def test_federated_simulation_reduced_budget_uses_5_rounds() -> None:
     assert cfg.federated_run_budget.rounds == 5
     assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
     assert cfg.sweep.output_dir == "runs/fl_ssl"
-    assert cfg.training_task.batch_size == 12
-    assert cfg.train_batch_size == 12
+    assert cfg.training_task.batch_size == 8
+    assert cfg.train_batch_size == 8
 
 
 def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> None:
@@ -1853,7 +1853,7 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     )
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
     assert cfg.query_ssl_strong_view_policy == "first_aug"
-    assert cfg.train_batch_size == 12
+    assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.drop_last_train_batches is True
     assert cfg.drop_last_unlabeled_batches is True

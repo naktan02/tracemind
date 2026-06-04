@@ -238,7 +238,8 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
 `checkpoints/epoch_000N_step_XXXXXX/manifest.json`을 남기며, 이 manifest는
 central SSL warm-start의 `query_adaptation_initial_checkpoint.manifest_path`로
 사용할 수 있다.
-중앙 SSL 학습 loader는 기본적으로 마지막 partial batch를 버린다
+중앙 supervised/SSL main preset의 train batch 기본값은 `8`이다. 중앙 SSL 학습
+loader는 기본적으로 마지막 partial batch를 버린다
 (`drop_last_train_batches=true`, `drop_last_unlabeled_batches=true`). 이는
 MixMatch처럼 labeled/unlabeled batch 크기 동일성이 필요한 method와 같은 조건을
 유지하기 위한 정책이며, eval loader에는 적용하지 않는다.
@@ -269,8 +270,9 @@ FL SSL runner는 accidental long run을 막기 위해 총 예정 communication r
 `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 같이 override한다.
 
 새 wiring이나 method 검증은 먼저 `1-round` smoke 또는 `5-round` reduced run으로
-확인한다. 현재 FL SSL reduced preset은 `run_controls/fl_ssl/budget=reduced`이며
-`10 clients`, `5 rounds`, `runs/fl_ssl` root를 쓴다. smoke preset 산출물은
+확인한다. 현재 FL SSL train batch 기본값은 `8`이고, reduced preset은
+`run_controls/fl_ssl/budget=reduced`이며 `10 clients`, `5 rounds`,
+`runs/fl_ssl` root를 쓴다. smoke preset 산출물은
 `runs/_smoke/fl_ssl` 아래에 쌓아 웹/논문용 run과 섞지 않는다. full-budget 실행은
 후보와 비교 조건을 명시한 뒤 `budget=main`과
 필요한 long-run ack를 함께 지정한다.
