@@ -177,6 +177,9 @@ def run_consistency_query_ssl_peft_baseline(
         if getattr(cfg, "unlabeled_jsonl", None) is None
         else str(cfg.unlabeled_jsonl),
         "unlabeled_row_count": len(context.effective_unlabeled_rows),
+        "drop_last_unlabeled_batches": bool(
+            getattr(cfg, "drop_last_unlabeled_batches", False)
+        ),
         "query_ssl_method": build_query_ssl_method_manifest(cfg),
         "query_ssl_resume": _build_query_ssl_resume_manifest(cfg),
         "runtime_metrics": runtime_metrics,
@@ -315,6 +318,7 @@ def _build_unlabeled_loader(
         shuffle=True,
         view_builder_name=descriptor.required_views.view_builder_name,
         strong_view_policy=_resolve_strong_view_policy(cfg),
+        drop_last=bool(getattr(cfg, "drop_last_unlabeled_batches", False)),
     )
 
 

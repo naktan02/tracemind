@@ -136,6 +136,7 @@ def prepare_text_encoder_run_context(
         max_length=int(effective_cfg.paper_backbone.max_length),
         task_prefix=str(effective_cfg.paper_backbone.task_prefix),
         shuffle=True,
+        drop_last=bool(getattr(effective_cfg, "drop_last_train_batches", False)),
     )
     eval_loaders = build_eval_loaders(
         cfg=effective_cfg,

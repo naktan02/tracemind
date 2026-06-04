@@ -71,6 +71,9 @@ def build_query_text_encoder_run_manifest(
         ),
         "train_batch_size": int(cfg.train_batch_size),
         "eval_batch_size": int(cfg.eval_batch_size),
+        "drop_last_train_batches": bool(
+            getattr(cfg, "drop_last_train_batches", False)
+        ),
         "learning_rate": float(cfg.learning_rate),
         "classifier_learning_rate": float(cfg.classifier_learning_rate),
         "weight_decay": float(cfg.weight_decay),

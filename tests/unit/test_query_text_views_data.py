@@ -204,6 +204,33 @@ def test_labeled_dataloader_emits_stable_row_indices() -> None:
     assert batch["row_indices"].tolist() == [0, 1]
 
 
+def test_labeled_dataloader_can_drop_partial_last_batch() -> None:
+    class _Tokenizer:
+        def __call__(self, texts, **_kwargs):
+            import torch
+
+            return {
+                "input_ids": torch.ones((len(texts), 2), dtype=torch.long),
+                "attention_mask": torch.ones((len(texts), 2), dtype=torch.long),
+            }
+
+    rows = [_row(f"q{index}", f"text {index}") for index in range(5)]
+
+    loader = build_dataloader(
+        rows=rows,
+        label_to_index={"anxiety": 0},
+        tokenizer=_Tokenizer(),
+        batch_size=2,
+        max_length=8,
+        task_prefix="",
+        shuffle=False,
+        drop_last=True,
+    )
+    batch_sizes = [int(batch["labels"].shape[0]) for batch in loader]
+
+    assert batch_sizes == [2, 2]
+
+
 def test_weak_strong_pair_dataloader_emits_both_strong_views() -> None:
     class _Tokenizer:
         def __init__(self) -> None:

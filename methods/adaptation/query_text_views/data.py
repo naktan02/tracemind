@@ -209,6 +209,7 @@ def build_dataloader(
     shuffle: bool,
     tokenization_cache: TextTokenizationCache | None = None,
     tokenization_cache_namespace: str | None = None,
+    drop_last: bool = False,
 ) -> DataLoader[dict[str, torch.Tensor]]:
     """Labeled row를 baseline trainer 입력 DataLoader로 변환한다."""
 
@@ -241,6 +242,7 @@ def build_dataloader(
         shuffle=shuffle,
         collate_fn=collate,
         pin_memory=_should_pin_memory(),
+        drop_last=drop_last,
     )
 
 
@@ -254,6 +256,7 @@ def build_weak_dataloader(
     shuffle: bool,
     tokenization_cache: TextTokenizationCache | None = None,
     tokenization_cache_namespace: str | None = None,
+    drop_last: bool = False,
 ) -> DataLoader[dict[str, Any]]:
     """weak/original unlabeled row를 Query SSL 입력 DataLoader로 변환한다."""
 
@@ -286,6 +289,7 @@ def build_weak_dataloader(
         shuffle=shuffle,
         collate_fn=collate,
         pin_memory=_should_pin_memory(),
+        drop_last=drop_last,
     )
 
 
@@ -300,6 +304,7 @@ def build_multiview_dataloader(
     strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY,
     tokenization_cache: TextTokenizationCache | None = None,
     tokenization_cache_namespace: str | None = None,
+    drop_last: bool = False,
 ) -> DataLoader[dict[str, Any]]:
     """weak/strong unlabeled row를 Query SSL 입력 DataLoader로 변환한다."""
 
@@ -343,6 +348,7 @@ def build_multiview_dataloader(
         shuffle=shuffle,
         collate_fn=collate,
         pin_memory=_should_pin_memory(),
+        drop_last=drop_last,
     )
 
 
@@ -356,6 +362,7 @@ def build_weak_strong_pair_dataloader(
     shuffle: bool,
     tokenization_cache: TextTokenizationCache | None = None,
     tokenization_cache_namespace: str | None = None,
+    drop_last: bool = False,
 ) -> DataLoader[dict[str, Any]]:
     """weak/strong_0/strong_1 row를 Query SSL 입력 DataLoader로 변환한다."""
 
@@ -408,6 +415,7 @@ def build_weak_strong_pair_dataloader(
         shuffle=shuffle,
         collate_fn=collate,
         pin_memory=_should_pin_memory(),
+        drop_last=drop_last,
     )
 
 
