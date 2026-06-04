@@ -14,7 +14,7 @@ defaults:
   - _self_
 
 train_jsonl: ${query_source.train_jsonl}
-output_dir: ${central_ssl_budget.output_root}/run_peft_supervised_control
+output_dir: ${central_ssl_budget.output_root}/central/supervised/peft_classifier
 fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
@@ -33,6 +33,8 @@ query_ssl_strong_view_policy: first_aug
 resume_checkpoint_path: null
 resume_checkpoint_output_dir: ${output_dir}/checkpoints
 resume_checkpoint_every_epochs: 0
+epoch_artifact_kind: peft_adapter_classifier
+epoch_artifact_every_epochs: 1
 adapter_output_dir: data/artifacts/peft_adapters
 classifier_output_dir: data/artifacts/peft_classifier_heads
 trainer_version: ""

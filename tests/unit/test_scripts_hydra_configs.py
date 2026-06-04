@@ -295,7 +295,7 @@ def test_run_peft_supervised_control_supports_source_and_budget_overrides() -> N
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
     assert cfg.central_ssl_budget.name == "smoke"
     assert cfg.central_ssl_budget.output_root == "runs/_smoke"
-    assert cfg.output_dir == "runs/_smoke/run_peft_supervised_control"
+    assert cfg.output_dir == "runs/_smoke/central/supervised/peft_classifier"
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
@@ -308,6 +308,8 @@ def test_run_peft_supervised_control_supports_source_and_budget_overrides() -> N
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
+    assert cfg.epoch_artifact_kind == "peft_adapter_classifier"
+    assert cfg.epoch_artifact_every_epochs == 1
 
 
 def test_run_full_text_encoder_supervised_control_supports_transfer_overrides() -> None:
@@ -345,7 +347,7 @@ def test_run_full_text_encoder_supervised_control_supports_transfer_overrides() 
         "data/datasets/ourafla_mental_health/query_ssl/"
         "labeled1024_per_class_seed42_v1/test.jsonl"
     )
-    assert cfg.output_dir == "runs/_smoke/run_full_text_encoder_supervised_control"
+    assert cfg.output_dir == "runs/_smoke/central/supervised/full_text_encoder"
     assert cfg.model_output_dir == "data/artifacts/full_text_encoder_models"
     assert (
         cfg.classifier_output_dir == "data/artifacts/full_text_encoder_classifier_heads"
@@ -394,7 +396,7 @@ def test_run_peft_ssl_control_supports_source_budget_and_leaf_overrides() -> Non
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
     assert cfg.central_ssl_budget.name == "smoke"
     assert cfg.central_ssl_budget.output_root == "runs/_smoke"
-    assert cfg.output_dir.startswith("runs/_smoke/run_peft_ssl_control/")
+    assert cfg.output_dir.startswith("runs/_smoke/central/ssl/peft_classifier/")
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
@@ -1788,8 +1790,10 @@ def test_run_peft_supervised_control_defaults_to_gpu_online_scaffold() -> None:
     assert cfg.trainable_surface.trainable_state == "peft_adapter_and_classifier_head"
     assert cfg.peft_adapter.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
-    assert cfg.output_dir == "runs/run_peft_supervised_control"
+    assert cfg.output_dir == "runs/central/supervised/peft_classifier"
     assert cfg.central_ssl_budget.output_root == "runs"
+    assert cfg.epoch_artifact_kind == "peft_adapter_classifier"
+    assert cfg.epoch_artifact_every_epochs == 1
 
 
 def test_run_full_text_encoder_supervised_control_defaults_to_gpu_online() -> None:
@@ -1809,7 +1813,7 @@ def test_run_full_text_encoder_supervised_control_defaults_to_gpu_online() -> No
     assert cfg.trainable_surface.trainable_state == "full_encoder_and_classifier_head"
     assert cfg.trainable_surface.supports_initial_adapter is False
     assert cfg.selection_set == "validation"
-    assert cfg.output_dir == "runs/run_full_text_encoder_supervised_control"
+    assert cfg.output_dir == "runs/central/supervised/full_text_encoder"
     assert cfg.central_ssl_budget.output_root == "runs"
 
 
@@ -1830,15 +1834,15 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
     assert (
-        cfg.query_source.name == "labeled_ourafla_reddit_unlabeled_ourafla_reddit_"
+        cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
         "validation_ourafla_reddit_test_ourafla_reddit"
     )
-    assert cfg.query_data_selection.labeled == "ourafla_reddit"
+    assert cfg.query_data_selection.labeled == "szegeelim_general4"
     assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
     assert cfg.query_data_selection.validation == "ourafla_reddit"
     assert cfg.query_data_selection.test == "ourafla_reddit"
     assert cfg.train_jsonl.endswith(
-        "data/datasets/ourafla_mental_health/views/"
+        "data/datasets/szegeelim_mental_health/views/"
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
     )
@@ -1851,6 +1855,9 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.query_ssl_strong_view_policy == "first_aug"
     assert cfg.train_batch_size == 12
     assert cfg.eval_batch_size == 32
+    assert cfg.drop_last_train_batches is True
+    assert cfg.drop_last_unlabeled_batches is True
+    assert cfg.resume_checkpoint_every_epochs == 0
 
 
 def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:
@@ -1867,7 +1874,8 @@ def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:
     assert cfg.query_ssl_method.algorithm_name == "pseudolabel"
     assert cfg.query_ssl_method.require_multiview is False
     assert (
-        cfg.query_source.name == "labeled_ourafla_reddit_unlabeled_ourafla_reddit_"
+        cfg.query_source.name
+        == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
         "validation_ourafla_reddit_test_ourafla_reddit"
     )
     assert cfg.output_dir == "runs/run_peft_ssl_control_pseudolabel"

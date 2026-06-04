@@ -13,7 +13,7 @@ defaults:
   - _self_
 
 train_jsonl: ${query_source.train_jsonl}
-output_dir: ${central_ssl_budget.output_root}/run_full_text_encoder_supervised_control
+output_dir: ${central_ssl_budget.output_root}/central/supervised/full_text_encoder
 fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
@@ -29,6 +29,8 @@ weight_decay: 0.01
 max_grad_norm: 1.0
 log_every_steps: 100
 query_ssl_strong_view_policy: first_aug
+epoch_artifact_kind: none
+epoch_artifact_every_epochs: 0
 model_output_dir: data/artifacts/full_text_encoder_models
 classifier_output_dir: data/artifacts/full_text_encoder_classifier_heads
 trainer_version: ""

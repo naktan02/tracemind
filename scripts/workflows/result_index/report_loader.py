@@ -380,6 +380,12 @@ def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:
     parts = set(report_path.parts)
     if "central_ssl_initial_eval" in parts:
         return "central_peft_initial_eval"
+    if {"central", "ssl", "peft_classifier"} <= parts:
+        return "central_peft_ssl"
+    if {"central", "supervised", "peft_classifier"} <= parts:
+        return "central_peft_supervised"
+    if {"central", "supervised", "full_text_encoder"} <= parts:
+        return "central_full_text_encoder_supervised"
     if CENTRAL_PEFT_SSL_CONTROL_PATH_NAMES & parts:
         return "central_peft_ssl"
     if CENTRAL_PEFT_SUPERVISED_CONTROL_PATH_NAMES & parts:
@@ -394,6 +400,8 @@ def _infer_method_family(payload: dict[str, Any]) -> str:
     schema_version = str(payload.get("schema_version") or "")
     if schema_version == "central_peft_classifier_eval.v1":
         return "peft_classifier"
+    if schema_version == "central_full_text_encoder_eval.v1":
+        return "full_text_encoder"
     return "unknown"
 
 

@@ -231,10 +231,17 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
 ```
 
 중앙 SSL smoke/test 실행은 `run_controls/central_ssl/budget=smoke`를 사용한다.
-이 경우 산출물은 `runs/_smoke/run_peft_ssl_control/...` 또는
-`runs/_smoke/run_peft_supervised_control`,
-`runs/_smoke/run_full_text_encoder_supervised_control` 아래에 저장되어 main run과
-섞이지 않는다.
+이 경우 산출물은 `runs/_smoke/central/ssl/peft_classifier/...`,
+`runs/_smoke/central/supervised/peft_classifier`,
+`runs/_smoke/central/supervised/full_text_encoder` 아래에 저장되어 main run과
+섞이지 않는다. PEFT supervised baseline은 epoch마다
+`checkpoints/epoch_000N_step_XXXXXX/manifest.json`을 남기며, 이 manifest는
+central SSL warm-start의 `query_adaptation_initial_checkpoint.manifest_path`로
+사용할 수 있다.
+중앙 SSL 학습 loader는 기본적으로 마지막 partial batch를 버린다
+(`drop_last_train_batches=true`, `drop_last_unlabeled_batches=true`). 이는
+MixMatch처럼 labeled/unlabeled batch 크기 동일성이 필요한 method와 같은 조건을
+유지하기 위한 정책이며, eval loader에는 적용하지 않는다.
 기본 dashboard/index ingest(`--runs-root runs`)는 `runs/_smoke/**` report를
 제외한다.
 

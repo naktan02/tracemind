@@ -13,7 +13,7 @@ query_data_sources:
     test_jsonl: data/datasets/szegeelim_mental_health/query_ssl/labeled1024_per_class_seed42_v1/test.jsonl
 
 query_data_selection:
-  labeled: ourafla_reddit
+  labeled: szegeelim_general4
   unlabeled: ourafla_reddit
   validation: ourafla_reddit
   test: ourafla_reddit

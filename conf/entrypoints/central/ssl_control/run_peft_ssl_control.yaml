@@ -16,7 +16,7 @@ defaults:
 
 group_by_query_ssl_method: true
 
-output_dir: ${central_ssl_budget.output_root}/run_peft_ssl_control/${query_data_selection_slug}
+output_dir: ${central_ssl_budget.output_root}/central/ssl/peft_classifier/${query_data_selection_slug}
 fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
@@ -24,6 +24,8 @@ selection_set: validation
 seed: 42
 train_batch_size: ${central_ssl_budget.train_batch_size}
 eval_batch_size: ${central_ssl_budget.eval_batch_size}
+drop_last_train_batches: true
+drop_last_unlabeled_batches: true
 epochs: ${central_ssl_budget.epochs}
 max_train_steps: ${central_ssl_budget.max_train_steps}
 learning_rate: 0.0002
