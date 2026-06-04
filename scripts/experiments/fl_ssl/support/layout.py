@@ -324,12 +324,12 @@ def _collect_objective_parameter_values(
 def _extract_manifest_component(manifest: str, *, prefix: str) -> str | None:
     if not manifest:
         return None
-    next_component = {
-        "labeled": "unlabeled",
-        "unlabeled": "validation",
-        "validation": "test",
-    }.get(prefix)
-    if next_component is not None:
+    next_components = {
+        "labeled": ("unlabeled",),
+        "unlabeled": ("validation", "test"),
+        "validation": ("test",),
+    }.get(prefix, ())
+    for next_component in next_components:
         match = re.search(
             rf"(?:^|[/_]){re.escape(prefix)}-(.+?)_"
             rf"{re.escape(next_component)}-",

@@ -20,7 +20,7 @@ output_dir: ${central_ssl_budget.output_root}/central/ssl/peft_classifier/${quer
 fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
-selection_set: validation
+selection_set: test
 seed: 42
 train_batch_size: ${central_ssl_budget.train_batch_size}
 eval_batch_size: ${central_ssl_budget.eval_batch_size}

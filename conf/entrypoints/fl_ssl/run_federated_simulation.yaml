@@ -36,8 +36,8 @@ defaults:
   - override /hydra/hydra_logging: disabled
 
 train_jsonl: ${dataset.train_jsonl}
-validation_jsonl: ${dataset.validation_jsonl}
-test_jsonl: ${dataset.test_jsonl}
+validation_jsonl: ${query_source.test_jsonl}
+test_jsonl: ${query_source.test_jsonl}
 published_model_id: tracemind-embed-sim
 seed: 42
 

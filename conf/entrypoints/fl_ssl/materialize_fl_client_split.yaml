@@ -16,7 +16,7 @@ fl_client_split_materialization:
   output_root: data/datasets/fl_client_splits
   source_labeled_jsonl: ${query_source.train_jsonl}
   source_unlabeled_jsonl: ${query_source.unlabeled_jsonl}
-  source_validation_jsonl: ${query_source.validation_jsonl}
+  source_validation_jsonl: ${query_source.test_jsonl}
   source_test_jsonl: ${query_source.test_jsonl}
   seed: ${seed}
   client_count: ${federated_run_budget.client_count}

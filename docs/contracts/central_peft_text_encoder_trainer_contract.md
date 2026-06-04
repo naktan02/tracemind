@@ -137,7 +137,9 @@ Query Buffer (raw text)
   `ourafla_ssl_labeled1024_per_class_seed42_v1`이다.
   `data/datasets/ourafla_mental_health/splits/ourafla_train_split.v1.train.jsonl`에서 각 class별
   1024개를 labeled train으로 뽑고, 나머지 train row 전체를 unlabeled pool로
-  둔다. validation/test는 합치지 않고 기존 validation/test split을 유지한다.
+  둔다. 중앙/FL 비교의 epoch/round selection 평가와 final 평가에는 기존
+  validation/test pool을 합친 뒤 class별 최소 수로 맞춘
+  `test_balanced_validation_test_seed42.jsonl`을 단일 `test` eval set으로 쓴다.
   unlabeled artifact에는 audit과 stratified metric을 위해 원 라벨 필드를 보존하지만,
   중앙 SSL unlabeled loader와 algorithm core는 이 라벨을 소비하지 않는다.
 - backtranslation strong view는 split과 분리된 artifact로 materialize한다.

@@ -42,7 +42,7 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.run.algorithm_name == "fixmatch"
     assert records.run.labeled_dataset_name == "ourafla_reddit"
     assert records.run.unlabeled_dataset_name == "szegeelim_general4"
-    assert records.run.validation_dataset_name == "ourafla_reddit"
+    assert records.run.validation_dataset_name is None
     assert records.run.test_dataset_name == "ourafla_reddit"
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs"
@@ -129,8 +129,7 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
     assert bundle["filters"]["run_control_budget_names"] == ["main"]
     assert bundle["filters"]["run_control_output_dirs"] == ["runs"]
     assert bundle["runs"][0]["selection_slug"] == (
-        "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
-        "validation-ourafla_reddit_test-ourafla_reddit"
+        "labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit"
     )
     assert bundle["projection_images"][0]["image_src"].startswith(
         "data/artifacts/peft_fixmatch_2026_05_13_143419/"
@@ -203,7 +202,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.algorithm_name == "fixmatch"
     assert records.run.selection_slug == (
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit_"
+        "test-ourafla_reddit_"
         "dirichlet_label_skew_clients10_seed42"
     )
     assert records.run.labeled_dataset_name == "ourafla_reddit"
@@ -489,10 +488,7 @@ def _write_report(tmp_path: Path) -> Path:
         / "runs"
         / "run_peft_ssl_control"
         / "consistency"
-        / (
-            "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
-            "validation-ourafla_reddit_test-ourafla_reddit"
-        )
+        / ("labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit")
         / "fixmatch_usb_v1"
         / "peft_fixmatch_2026_05_13_143419"
         / "reports"
@@ -517,10 +513,7 @@ def _write_peft_report(tmp_path: Path) -> Path:
         / "runs"
         / "run_peft_ssl_control"
         / "consistency"
-        / (
-            "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
-            "validation-ourafla_reddit_test-ourafla_reddit"
-        )
+        / ("labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit")
         / "fixmatch_usb_v1"
         / "peft_fixmatch_2026_05_13_143419"
         / "reports"
@@ -952,7 +945,7 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
             "fl_data_source": {
                 "split_id": (
                     "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-                    "validation-ourafla_reddit_test-ourafla_reddit_"
+                    "test-ourafla_reddit_"
                     "dirichlet_label_skew_clients10_seed42"
                 ),
                 "split_manifest_path": (

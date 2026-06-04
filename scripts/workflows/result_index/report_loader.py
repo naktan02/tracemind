@@ -353,8 +353,12 @@ def _parse_selection_slug(selection_slug: str | None) -> dict[str, str | None]:
             "_unlabeled-",
             1,
         )
-        unlabeled_part, rest = rest.split("_validation-", 1)
-        validation_part, test_part = rest.split("_test-", 1)
+        if "_validation-" in rest:
+            unlabeled_part, rest = rest.split("_validation-", 1)
+            validation_part, test_part = rest.split("_test-", 1)
+        else:
+            unlabeled_part, test_part = rest.split("_test-", 1)
+            validation_part = ""
     except ValueError:
         return names
     names.update(

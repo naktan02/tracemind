@@ -291,8 +291,9 @@ def test_run_peft_supervised_control_supports_source_and_budget_overrides() -> N
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
     )
-    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
+    assert cfg.selection_set == "test"
     assert cfg.central_ssl_budget.name == "smoke"
     assert cfg.central_ssl_budget.output_root == "runs/_smoke"
     assert cfg.output_dir == "runs/_smoke/central/supervised/peft_classifier"
@@ -339,14 +340,12 @@ def test_run_full_text_encoder_supervised_control_supports_transfer_overrides() 
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
     )
-    assert cfg.eval_sets.validation.endswith(
-        "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/validation.jsonl"
-    )
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test.endswith(
         "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/test.jsonl"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
     )
+    assert cfg.selection_set == "test"
     assert cfg.output_dir == "runs/_smoke/central/supervised/full_text_encoder"
     assert "model_output_dir" not in cfg
     assert "classifier_output_dir" not in cfg
@@ -390,8 +389,9 @@ def test_run_peft_ssl_control_supports_source_budget_and_leaf_overrides() -> Non
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
-    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
+    assert cfg.selection_set == "test"
     assert cfg.central_ssl_budget.name == "smoke"
     assert cfg.central_ssl_budget.output_root == "runs/_smoke"
     assert cfg.output_dir.startswith("runs/_smoke/central/ssl/peft_classifier/")
@@ -921,7 +921,11 @@ def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> 
     )
     assert cfg.fl_client_split_materialization.source_validation_jsonl.endswith(
         "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/validation.jsonl"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
+    )
+    assert cfg.fl_client_split_materialization.source_test_jsonl.endswith(
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
     )
     assert cfg.fl_client_split_materialization.client_count == 8
     assert cfg.fl_client_split_materialization.bootstrap_ratio == (
@@ -994,7 +998,7 @@ def test_fl_client_split_materialization_shared_seed_main_split_id_matches_docs(
     assert cfg.federated_run_budget.client_count == 10
     assert cfg.fl_client_split_materialization.split_id == (
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit_"
+        "test-ourafla_reddit_"
         "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
         "clients10_seed42"
     )
@@ -1099,7 +1103,7 @@ def test_federated_simulation_fl_client_split_context_selects_manifest() -> None
     assert cfg.fl_data.split_manifest == (
         "data/datasets/fl_client_splits/shared_client_labeled/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit_labels_pc100_"
+        "test-ourafla_reddit_labels_pc100_"
         "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
         "clients10_seed42/manifest.json"
     )
@@ -1595,7 +1599,7 @@ def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> N
         "data/datasets/fl_client_splits/"
         "shared_client_labeled/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit_"
+        "test-ourafla_reddit_"
         "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
         "clients10_seed42/manifest.json"
     )
@@ -1787,7 +1791,7 @@ def test_run_peft_supervised_control_defaults_to_gpu_online_scaffold() -> None:
     assert cfg.trainable_surface.name == "peft_text_encoder"
     assert cfg.trainable_surface.trainable_state == "peft_adapter_and_classifier_head"
     assert cfg.peft_adapter.target_modules == "all-linear"
-    assert cfg.selection_set == "validation"
+    assert cfg.selection_set == "test"
     assert cfg.output_dir == "runs/central/supervised/peft_classifier"
     assert cfg.central_ssl_budget.output_root == "runs"
     assert cfg.epoch_artifact_kind == "peft_adapter_classifier"
@@ -1810,7 +1814,7 @@ def test_run_full_text_encoder_supervised_control_defaults_to_gpu_online() -> No
     assert cfg.trainable_surface.name == "full_text_encoder"
     assert cfg.trainable_surface.trainable_state == "full_encoder_and_classifier_head"
     assert cfg.trainable_surface.supports_initial_adapter is False
-    assert cfg.selection_set == "validation"
+    assert cfg.selection_set == "test"
     assert cfg.output_dir == "runs/central/supervised/full_text_encoder"
     assert cfg.central_ssl_budget.output_root == "runs"
 
@@ -1833,7 +1837,7 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
     assert (
         cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
-        "validation_ourafla_reddit_test_ourafla_reddit"
+        "test_ourafla_reddit"
     )
     assert cfg.query_data_selection.labeled == "szegeelim_general4"
     assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
@@ -1873,7 +1877,7 @@ def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:
     assert cfg.query_ssl_method.require_multiview is False
     assert (
         cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
-        "validation_ourafla_reddit_test_ourafla_reddit"
+        "test_ourafla_reddit"
     )
     assert cfg.output_dir == "runs/run_peft_ssl_control_pseudolabel"
 
@@ -1892,7 +1896,7 @@ def test_run_peft_ssl_control_supports_general_labeled_reddit_pool() -> None:
 
     assert (
         cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
-        "validation_ourafla_reddit_test_ourafla_reddit"
+        "test_ourafla_reddit"
     )
     assert cfg.train_jsonl.endswith(
         "data/datasets/szegeelim_mental_health/views/"
@@ -1904,17 +1908,13 @@ def test_run_peft_ssl_control_supports_general_labeled_reddit_pool() -> None:
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
-    assert cfg.eval_sets.validation.endswith(
-        "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/validation.jsonl"
-    )
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test.endswith(
         "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/test.jsonl"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
     )
     assert cfg.output_dir.endswith(
-        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit"
     )
 
 
@@ -1933,7 +1933,7 @@ def test_run_peft_ssl_control_supports_general_pool_with_reddit_eval() -> None:
     assert (
         cfg.query_source.name
         == "labeled_szegeelim_general4_unlabeled_szegeelim_general4_"
-        "validation_ourafla_reddit_test_ourafla_reddit"
+        "test_ourafla_reddit"
     )
     assert cfg.train_jsonl.endswith(
         "data/datasets/szegeelim_mental_health/views/"
@@ -1945,21 +1945,17 @@ def test_run_peft_ssl_control_supports_general_pool_with_reddit_eval() -> None:
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
-    assert cfg.eval_sets.validation.endswith(
-        "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/validation.jsonl"
-    )
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test.endswith(
         "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/test.jsonl"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
     )
     assert cfg.output_dir.endswith(
-        "labeled-szegeelim_general4_unlabeled-szegeelim_general4_"
-        "validation-ourafla_reddit_test-ourafla_reddit"
+        "labeled-szegeelim_general4_unlabeled-szegeelim_general4_test-ourafla_reddit"
     )
 
 
-def test_run_peft_ssl_control_can_select_validation_and_test_independently() -> None:
+def test_run_peft_ssl_control_uses_test_only_eval_set() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
@@ -1969,14 +1965,12 @@ def test_run_peft_ssl_control_can_select_validation_and_test_independently() -> 
             ],
         )
 
-    assert cfg.eval_sets.validation.endswith(
-        "data/datasets/szegeelim_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/validation.jsonl"
-    )
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test.endswith(
         "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/test.jsonl"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
     )
+    assert cfg.selection_set == "test"
 
 
 def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:

@@ -95,7 +95,7 @@ def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
     assert str(paths.output_dir) == (
         "runs/_smoke/central/ssl/peft_classifier/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit/"
+        "test-ourafla_reddit/"
         "fixmatch_usb_v1/peft_smoke_2026_05_10_155954"
     )
     assert str(paths.report_path).startswith("runs/_smoke/central/ssl/peft_classifier/")

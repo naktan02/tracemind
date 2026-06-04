@@ -95,6 +95,35 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
   strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1
 ```
 
+기본 중앙 supervised/SSL 실행은 `selection_set=test`이고 `eval_sets`에는 단일
+`test`만 포함한다. 이 `test`는 기존 validation/test pool을 합쳐 class별 최소 수로
+맞춘 `test_balanced_validation_test_seed42.jsonl`이며, epoch별 best checkpoint
+선택과 final report 모두 같은 test eval set을 사용한다.
+
+## Method Projection Figure
+
+각 run이 종료될 때 저장되는 `projections/*.png`는 단일 run 진단용이다. 논문용으로
+여러 method representation을 같은 좌표계에서 비교할 때는 후처리 script가 split별
+feature를 모아 reducer를 한 번 fit한다.
+
+```bash
+uv run python scripts/experiments/central/ssl_control/build_method_projection_figure.py \
+  --run supervised=runs/central/supervised/peft_classifier/<run_id>/reports/report.json \
+  --run fixmatch=runs/central/ssl/peft_classifier/<selection>/<method>/<run_id>/reports/report.json \
+  --split test
+```
+
+기본 저장 위치는
+`runs/figures/central_ssl/method_projection/<YYYY_MM_DD_HHMMSS>/`이다. 산출물은
+`method_projection_manifest.json`과 split 폴더 아래 method별 PNG/`jsonl`/`npz`
+feature dump다. 예를 들어 `validation/simmatch.method_projection.png`,
+`test/mixmatch.method_projection.png`처럼 저장한다. 기본 split은 `test`이며,
+예전 report처럼 validation 산출물이 남아 있는 경우 `--split validation`을 명시할 수
+있다. reducer는 split별 전체 method
+feature에 한 번 fit하고, 저장만 method별로 나눠 같은 좌표계 비교를 유지한다.
+재현용 이름을 고정하려면 `--figure-version <name>`을 사용한다. `--output-dir`를
+주면 날짜 폴더를 만들지 않고 해당 경로에 바로 쓴다.
+
 ## 경계와 Read Path
 
 이 폴더는 dataset, method, adapter family 기본값을 새로 정의하지 않는다.
