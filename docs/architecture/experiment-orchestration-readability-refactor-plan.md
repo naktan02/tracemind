@@ -140,6 +140,12 @@ output layout slug 핵심 값
 uv run pytest tests/unit/test_scripts_hydra_configs.py
 ```
 
+상태:
+
+- 완료: 중앙 supervised smoke, 중앙 Query SSL smoke, FSSL smoke request의
+  orchestration contract snapshot을 `tests/unit/test_scripts_hydra_configs.py`에
+  추가했다.
+
 ### 3단계: entrypoint 첫 화면 정리
 
 대상:

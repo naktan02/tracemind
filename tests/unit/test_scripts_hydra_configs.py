@@ -65,6 +65,148 @@ def _assert_manual_fl_runtime_is_compatible(cfg: DictConfig) -> None:
     ) == str(cfg.round_runtime.payload_adapter_kind)
 
 
+def _central_supervised_contract_snapshot(cfg: DictConfig) -> dict[str, object]:
+    return {
+        "output_dir": str(cfg.output_dir),
+        "runtime": {
+            "name": str(cfg.runtime.name),
+            "device": str(cfg.runtime.device),
+            "local_files_only": bool(cfg.runtime.local_files_only),
+        },
+        "train_jsonl": str(cfg.train_jsonl),
+        "selection_set": str(cfg.selection_set),
+        "budget": {
+            "name": str(cfg.central_ssl_budget.name),
+            "train_batch_size": int(cfg.train_batch_size),
+            "eval_batch_size": int(cfg.eval_batch_size),
+            "epochs": int(cfg.epochs),
+            "max_train_steps": int(cfg.max_train_steps),
+        },
+        "trainable_surface": {
+            "name": str(cfg.trainable_surface.name),
+            "trainable_state": str(cfg.trainable_surface.trainable_state),
+        },
+        "initial_checkpoint": str(cfg.query_adaptation_initial_checkpoint.name),
+    }
+
+
+def _central_query_ssl_contract_snapshot(cfg: DictConfig) -> dict[str, object]:
+    return {
+        "output_dir": str(cfg.output_dir),
+        "runtime": {
+            "name": str(cfg.runtime.name),
+            "device": str(cfg.runtime.device),
+            "local_files_only": bool(cfg.runtime.local_files_only),
+        },
+        "data": {
+            "train_jsonl": str(cfg.train_jsonl),
+            "unlabeled_jsonl": str(cfg.unlabeled_jsonl),
+            "selection_set": str(cfg.selection_set),
+            "strong_view_policy": str(cfg.query_ssl_strong_view_policy),
+            "augmenter": str(cfg.query_ssl_augmenter.name),
+        },
+        "budget": {
+            "name": str(cfg.central_ssl_budget.name),
+            "train_batch_size": int(cfg.train_batch_size),
+            "eval_batch_size": int(cfg.eval_batch_size),
+            "epochs": int(cfg.epochs),
+            "max_train_steps": int(cfg.max_train_steps),
+            "drop_last_train_batches": bool(cfg.drop_last_train_batches),
+            "drop_last_unlabeled_batches": bool(cfg.drop_last_unlabeled_batches),
+        },
+        "query_ssl_method": {
+            "name": str(cfg.query_ssl_method.name),
+            "algorithm_name": str(cfg.query_ssl_method.algorithm_name),
+            "unlabeled_batch_size": int(cfg.query_ssl_method.unlabeled_batch_size),
+            "p_cutoff": float(cfg.query_ssl_method.p_cutoff),
+        },
+        "initial_checkpoint": str(cfg.query_adaptation_initial_checkpoint.name),
+    }
+
+
+def _federated_ssl_request_contract_snapshot(
+    cfg: DictConfig,
+    *,
+    output_dir: Path,
+) -> dict[str, object]:
+    request = build_simulation_request_from_config(cfg, output_dir=output_dir)
+    query_ssl_config = request.query_ssl_objective_config
+    if query_ssl_config is None:
+        query_ssl_snapshot = None
+    else:
+        query_ssl_snapshot = {
+            "method_name": query_ssl_config.method_name,
+            "algorithm_name": query_ssl_config.algorithm_name,
+            "strong_view_policy": query_ssl_config.strong_view_policy,
+            "unlabeled_batch_size": query_ssl_config.unlabeled_batch_size,
+        }
+    shard_count = (
+        None
+        if request.materialized_dataset_split is None
+        else len(request.materialized_dataset_split.client_shards)
+    )
+
+    return {
+        "run": {
+            "budget_name": request.run_budget_name,
+            "run_output_dir": request.run_output_dir,
+            "client_count": request.client_count,
+            "rounds": request.rounds,
+            "bootstrap_ratio": request.bootstrap_ratio,
+            "seed": request.seed,
+        },
+        "rows": {
+            "train": len(request.train_rows),
+            "validation": len(request.validation_rows),
+            "test": len(request.test_rows),
+            "client_shards": shard_count,
+        },
+        "training_task": {
+            "task_type": str(request.training_task_config.task_type),
+            "local_epochs": request.training_task_config.local_epochs,
+            "batch_size": request.training_task_config.batch_size,
+            "learning_rate": request.training_task_config.learning_rate,
+            "max_steps": request.training_task_config.max_steps,
+            "min_required_examples": (
+                request.training_task_config.min_required_examples
+            ),
+        },
+        "round_runtime": {
+            "payload_adapter_kind": (request.round_runtime_config.payload_adapter_kind),
+            "aggregation_backend_name": (
+                request.round_runtime_config.aggregation_backend_name
+            ),
+            "update_family_name": request.round_runtime_config.update_family_name,
+            "runtime_payload_key": request.round_runtime_config.runtime_payload_key,
+            "release_transient_model_cache_after_client": (
+                request.round_runtime_config.release_transient_model_cache_after_client
+            ),
+            "transient_resource_cleaner": (
+                request.round_runtime_config.transient_resource_cleaner
+            ),
+        },
+        "capability_plan": (
+            None
+            if request.capability_plan is None
+            else request.capability_plan.to_payload()
+        ),
+        "query_ssl_objective": query_ssl_snapshot,
+        "data_source": {
+            "source_mode": request.data_source_config.source_mode,
+            "split_manifest_path": request.data_source_config.split_manifest_path,
+        },
+        "diagnostic_view": {
+            "enabled": request.diagnostic_view_config.enabled,
+            "selection_policy": request.diagnostic_view_config.selection_policy,
+            "max_rows": request.diagnostic_view_config.max_rows,
+        },
+        "final_projection": {
+            "enabled": request.final_projection_config.enabled,
+            "dataset_names": list(request.final_projection_config.dataset_names),
+        },
+    }
+
+
 def test_trainable_state_update_family_leafs_are_executable_surfaces() -> None:
     update_family_dir = (
         REPO_ROOT / "conf" / "strategy_axes" / "model_architecture" / "update_family"
@@ -732,6 +874,180 @@ def test_run_peft_ssl_control_uses_entrypoint_precomputed_query_views() -> None:
     assert cfg.query_ssl_augmenter.augmenter_type == "precomputed_usb_candidates"
     assert cfg.query_ssl_augmenter.cache_dir == "data/cache/query_ssl_augmentations"
     assert cfg.query_ssl_strong_view_policy == "first_aug"
+
+
+def test_central_supervised_smoke_orchestration_contract_snapshot() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_supervised_control",
+            overrides=["run_controls/central_ssl/budget=smoke"],
+        )
+
+    assert _central_supervised_contract_snapshot(cfg) == {
+        "output_dir": "runs/_smoke/central/supervised/peft_classifier",
+        "runtime": {
+            "name": "gpu_online",
+            "device": "cuda",
+            "local_files_only": False,
+        },
+        "train_jsonl": (
+            "data/datasets/szegeelim_mental_health/views/"
+            "labeled1024_per_class_seed42_v1/"
+            "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+        ),
+        "selection_set": "test",
+        "budget": {
+            "name": "smoke",
+            "train_batch_size": 8,
+            "eval_batch_size": 32,
+            "epochs": 1,
+            "max_train_steps": 100,
+        },
+        "trainable_surface": {
+            "name": "peft_text_encoder",
+            "trainable_state": "peft_adapter_and_classifier_head",
+        },
+        "initial_checkpoint": "none",
+    }
+
+
+def test_central_query_ssl_smoke_orchestration_contract_snapshot() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=["run_controls/central_ssl/budget=smoke"],
+        )
+
+    assert _central_query_ssl_contract_snapshot(cfg) == {
+        "output_dir": (
+            "runs/_smoke/central/ssl/peft_classifier/"
+            "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+            "test-ourafla_reddit"
+        ),
+        "runtime": {
+            "name": "gpu_local",
+            "device": "cuda",
+            "local_files_only": True,
+        },
+        "data": {
+            "train_jsonl": (
+                "data/datasets/szegeelim_mental_health/views/"
+                "labeled1024_per_class_seed42_v1/"
+                "backtranslation_nllb_en_de_fr_usb_v1/"
+                "labeled_train.with_views.jsonl"
+            ),
+            "unlabeled_jsonl": (
+                "data/datasets/ourafla_mental_health/views/"
+                "labeled1024_per_class_seed42_v1/"
+                "backtranslation_nllb_en_de_fr_usb_v1/"
+                "unlabeled_pool.with_views.jsonl"
+            ),
+            "selection_set": "test",
+            "strong_view_policy": "first_aug",
+            "augmenter": "precomputed_usb_candidates_v1",
+        },
+        "budget": {
+            "name": "smoke",
+            "train_batch_size": 8,
+            "eval_batch_size": 32,
+            "epochs": 1,
+            "max_train_steps": 100,
+            "drop_last_train_batches": True,
+            "drop_last_unlabeled_batches": True,
+        },
+        "query_ssl_method": {
+            "name": "fixmatch_usb_v1",
+            "algorithm_name": "fixmatch",
+            "unlabeled_batch_size": 8,
+            "p_cutoff": 0.95,
+        },
+        "initial_checkpoint": "none",
+    }
+
+
+def test_federated_ssl_smoke_orchestration_contract_snapshot(
+    tmp_path: Path,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=["run_controls/fl_ssl/budget=smoke"],
+        )
+
+    assert _federated_ssl_request_contract_snapshot(
+        cfg,
+        output_dir=tmp_path,
+    ) == {
+        "run": {
+            "budget_name": "smoke",
+            "run_output_dir": "runs/_smoke/fl_ssl",
+            "client_count": 4,
+            "rounds": 3,
+            "bootstrap_ratio": 0.2,
+            "seed": 42,
+        },
+        "rows": {
+            "train": 57759,
+            "validation": 3192,
+            "test": 3192,
+            "client_shards": 4,
+        },
+        "training_task": {
+            "task_type": "pseudo_label_self_training",
+            "local_epochs": 1,
+            "batch_size": 8,
+            "learning_rate": 0.0001,
+            "max_steps": 50,
+            "min_required_examples": 4,
+        },
+        "round_runtime": {
+            "payload_adapter_kind": "peft_classifier",
+            "aggregation_backend_name": "fedavg",
+            "update_family_name": "peft_text_encoder",
+            "runtime_payload_key": "peft_text_encoder",
+            "release_transient_model_cache_after_client": False,
+            "transient_resource_cleaner": (
+                "methods.adaptation.peft_text_encoder.resource_cache."
+                "clear_peft_encoder_transient_resource_cache"
+            ),
+        },
+        "capability_plan": {
+            "client_participation_policy": {
+                "name": "all_clients",
+                "fraction": None,
+                "count": None,
+                "min_clients": 1,
+            },
+            "labeled_exposure_policy": {"name": "shared_client_seed"},
+            "local_supervision_regime": {"name": "client_labeled_and_unlabeled"},
+            "server_step_policy": {"name": "none"},
+            "server_update_policy": {"name": "fedavg_merged_delta"},
+            "peer_context_policy": {"name": "none"},
+            "update_partition_policy": {"name": "unified"},
+            "local_ssl_policy": {"name": "fixmatch"},
+            "aggregation_weight_policy": {"name": "example_count"},
+            "query_multiview_source": {"name": "materialized_rows"},
+        },
+        "query_ssl_objective": {
+            "method_name": "fixmatch_usb_v1",
+            "algorithm_name": "fixmatch",
+            "strong_view_policy": "first_aug",
+            "unlabeled_batch_size": 8,
+        },
+        "data_source": {
+            "source_mode": "runtime_split_from_train",
+            "split_manifest_path": None,
+        },
+        "diagnostic_view": {
+            "enabled": True,
+            "selection_policy": "deterministic_random",
+            "max_rows": 512,
+        },
+        "final_projection": {
+            "enabled": True,
+            "dataset_names": ["validation", "test"],
+        },
+    }
 
 
 def test_threshold_sweep_supports_short_leaf_override() -> None:
