@@ -38,7 +38,7 @@
 - `alpha=0.3`을 기본/main condition으로 둔다.
 - Dirichlet `alpha=0.1`은 마지막 stress/robustness 확인으로만 연다.
 - full-budget preset은 `30 communication rounds`, `local_epochs=1`,
-  `max_steps=20`이다. 새 method/wiring은 먼저 `1-round` 또는 `5-round` reduced
+  `max_steps=50`이다. 새 method/wiring은 먼저 `1-round` 또는 `5-round` reduced
   run으로 확인한 뒤 full-budget 비교로 올린다.
 - smoke preset은 실행 확인용 `3 rounds`지만, 현재 method/wiring 검증은 필요에
   따라 `1-round` smoke 또는 `5-round` reduced run으로 제한한다.

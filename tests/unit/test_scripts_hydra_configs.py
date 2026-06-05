@@ -871,8 +871,9 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.run_safety.allow_long_run is False
     assert cfg.run_safety.long_run_ack is None
     assert cfg.run_safety.required_long_run_ack == "ALLOW_FL_SSL_LONG_RUN"
-    assert cfg.shard_policy.name == "label_dominant"
-    assert cfg.shard_policy.dominant_ratio == 0.75
+    assert cfg.shard_policy.name == "dirichlet_label_skew"
+    assert cfg.shard_policy.alpha == 0.3
+    assert cfg.shard_policy.dominant_ratio is None
     assert "ssl_method" not in cfg
     assert cfg.fl_method.composition_mode == "manual"
     assert "manual_axes" not in cfg.fl_method
@@ -1232,7 +1233,7 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     assert ssl_method_config is not None
 
     assert cfg.ssl_method.local_budget_policy == "iteration_capped"
-    assert cfg.training_task.max_steps == 20
+    assert cfg.training_task.max_steps == 50
     assert "original_parameters" not in cfg.ssl_method
     assert "original_source" not in cfg.ssl_method
     assert "trace_mapping" not in cfg.ssl_method
@@ -1340,6 +1341,27 @@ def test_method_owned_fedmatch_ignores_query_ssl_lower_axis_objective_payload(
     assert "query_ssl.algorithm_name" not in objective
     assert "query_ssl.method_name" not in objective
     assert objective["algorithm_profile_name"] == "peft_pseudo_label_v1"
+
+
+def test_federated_simulation_main_default_gives_each_client_unlabeled_rows(
+    tmp_path: Path,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=["run_controls/fl_ssl/budget=main"],
+        )
+
+    request = build_simulation_request_from_config(cfg, output_dir=tmp_path)
+
+    assert request.client_count == 10
+    assert request.shard_policy.name == "dirichlet_label_skew"
+    assert request.shard_policy.alpha == 0.3
+    assert request.materialized_dataset_split is not None
+    assert all(
+        shard.unlabeled_rows
+        for shard in request.materialized_dataset_split.client_shards
+    )
 
 
 def test_method_owned_fedmatch_labels_at_server_derives_method_capabilities() -> None:
@@ -1579,7 +1601,7 @@ def test_federated_simulation_main_budget_fixes_main_comparison_budget() -> None
     assert cfg.training_task.local_epochs == 1
     assert cfg.training_task.batch_size == 8
     assert cfg.train_batch_size == 8
-    assert cfg.training_task.max_steps == 20
+    assert cfg.training_task.max_steps == 50
 
 
 def test_federated_simulation_reduced_budget_uses_5_rounds() -> None:
@@ -1647,6 +1669,7 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.6",
                 "training_task.objective.confidence_threshold=0.7",
                 "training_task.objective.margin_threshold=0.1",

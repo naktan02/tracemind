@@ -40,7 +40,7 @@ central fixed embedding + classifier seed
 
 - main split: `10 clients`, Dirichlet label-skew `alpha=0.3`, split seed `42`.
 - `alpha=0.1`은 final stress/robustness 확인용이다.
-- full-budget preset: `30 communication rounds`, `local_epochs=1`, `max_steps=20`.
+- full-budget preset: `30 communication rounds`, `local_epochs=1`, `max_steps=50`.
 - smoke/reduced run으로 wiring을 먼저 확인한 뒤 full-budget 비교로 올린다.
 - primary metrics: `macro-F1`, `worst-client macro-F1`.
 - risk metrics: `loss`, `weighted-F1`, balanced accuracy, worst-category F1,

@@ -14,7 +14,7 @@ defaults:
   - /run_controls/fl_ssl/budget: smoke
   - /run_controls/fl_ssl/safety_and_sweeps: default
   # fl_topology: FL split/topology와 공통 round capability 축
-  - /strategy_axes/fl_topology/shard_policy: label_dominant
+  - /strategy_axes/fl_topology/shard_policy: dirichlet_alpha03
   - /strategy_axes/fl_topology/labeled_exposure: shared_client_seed
   - /strategy_axes/fl_topology/client_participation: all_clients
   - /strategy_axes/fl_topology/supervision_regime: client_labeled_and_unlabeled
@@ -71,7 +71,7 @@ training_task:
   local_epochs: 1
   batch_size: 8
   learning_rate: 0.0001
-  max_steps: 20
+  max_steps: 50
   min_required_examples: ${federated_run_budget.min_required_examples}
   gradient_clip_norm: 0.5
   objective:

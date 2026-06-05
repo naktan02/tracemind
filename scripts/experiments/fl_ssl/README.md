@@ -45,13 +45,13 @@ runs/fl_ssl/{split}/{condition}/{surface}/{method}/{run_id}/
 예:
 
 ```text
-runs/fl_ssl/sz4_ourafla_shared_s42/c10_r30_e1_b8_s20/peft_text_encoder_lora/fixmatch_fedavg/20260605T101139Z/
+runs/fl_ssl/sz4_ourafla_shared_s42/c10_r30_e1_b8_s50/peft_text_encoder_lora/fixmatch_fedavg/20260605T101139Z/
 ```
 
 - `split`: labeled/unlabeled source, labeled exposure, seed를 짧게 표현한다.
   예: `sz4_ourafla_shared_s42`, `sz4_ourafla_lp100_shared_s42`.
 - `condition`: 비교에 영향을 주는 숫자 조건이다.
-  예: `c10_r30_e1_b8_s20`.
+  예: `c10_r30_e1_b8_s50`.
 - `surface`: update/training surface다. 예: `peft_text_encoder_lora`.
 - `method`: 비교 대상 방법론이다. 예: `fixmatch_fedavg`, `softmatch_fedavg`,
   `fedmatch`.
