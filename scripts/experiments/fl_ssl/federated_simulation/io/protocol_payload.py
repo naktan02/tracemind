@@ -106,6 +106,9 @@ def build_protocol_payload(
             "transient_resource_cleaner": (
                 round_runtime_config.transient_resource_cleaner
             ),
+            "release_transient_model_cache_after_client": (
+                round_runtime_config.release_transient_model_cache_after_client
+            ),
             "aggregation_backend_name": (round_runtime_config.aggregation_backend_name),
         },
         "fl_capabilities": _capability_plan_to_payload(capability_plan),

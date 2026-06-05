@@ -142,6 +142,11 @@ def build_simulation_request_from_config(
             cfg.round_runtime,
             "transient_resource_cleaner",
         ),
+        release_transient_model_cache_after_client=_optional_config_bool(
+            cfg.round_runtime,
+            "release_transient_model_cache_after_client",
+            default=False,
+        ),
     )
     actual_seed = int(cfg.seed if seed is None else seed)
     shard_policy = FederatedShardPolicyConfig(**to_plain_dict(cfg.shard_policy))
@@ -611,6 +616,20 @@ def _optional_config_str(cfg: DictConfig, key: str) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _optional_config_bool(cfg: DictConfig, key: str, *, default: bool) -> bool:
+    value = getattr(cfg, key, None)
+    if value is None:
+        return bool(default)
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "on"}:
+        return True
+    if text in {"false", "0", "no", "off"}:
+        return False
+    raise ValueError(f"{key} must be a boolean value.")
 
 
 def _ssl_method_config_mapping(cfg: DictConfig) -> dict[str, object] | None:

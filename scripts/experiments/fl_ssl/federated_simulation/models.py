@@ -334,6 +334,7 @@ class FederatedRoundRuntimeConfig:
     validation_evaluator: str | None = None
     final_projection_builder: str | None = None
     transient_resource_cleaner: str | None = None
+    release_transient_model_cache_after_client: bool = False
 
     def __init__(
         self,
@@ -352,6 +353,7 @@ class FederatedRoundRuntimeConfig:
         validation_evaluator: str | None = None,
         final_projection_builder: str | None = None,
         transient_resource_cleaner: str | None = None,
+        release_transient_model_cache_after_client: bool = False,
     ) -> None:
         self.payload_adapter_kind = payload_adapter_kind
         self.aggregation_backend_name = aggregation_backend_name
@@ -379,6 +381,9 @@ class FederatedRoundRuntimeConfig:
         self.validation_evaluator = validation_evaluator
         self.final_projection_builder = final_projection_builder
         self.transient_resource_cleaner = transient_resource_cleaner
+        self.release_transient_model_cache_after_client = bool(
+            release_transient_model_cache_after_client
+        )
         self.__post_init__()
 
     def __post_init__(self) -> None:

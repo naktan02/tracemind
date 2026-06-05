@@ -757,6 +757,7 @@ def _default_round_runtime_config(
     ),
     aggregation_backend_name: str = "fedavg",
     peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
+    release_transient_model_cache_after_client: bool = False,
 ) -> FederatedRoundRuntimeConfig:
     runtime_payload = (
         peft_classifier
@@ -779,6 +780,9 @@ def _default_round_runtime_config(
         validation_evaluator=validation_evaluator,
         final_projection_builder=final_projection_builder,
         transient_resource_cleaner=transient_resource_cleaner,
+        release_transient_model_cache_after_client=(
+            release_transient_model_cache_after_client
+        ),
         local_objective_executors=local_objective_executors,
         client_round_runtime=(
             _peft_client_round_runtime_callables()
@@ -1620,9 +1624,11 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
     assert "agent-local://" not in accepted_payload.model_dump_json()
 
 
+@pytest.mark.parametrize("release_after_client", [False, True])
 def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    release_after_client: bool,
 ) -> None:
     labeled_row = _row("l1", "labeled panic", "anxiety")
     unlabeled_row = _row("u1", "weak panic", "anxiety")
@@ -1672,6 +1678,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
+            release_transient_model_cache_after_client=release_after_client,
         ),
         model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
@@ -1860,6 +1867,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
+            release_transient_model_cache_after_client=release_after_client,
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
@@ -1965,14 +1973,33 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["peer_probe_rows"] == (labeled_row,)
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
-    assert runtime_resource_cache.get_resource("peft_encoder:helper_model:test") is None
-    assert (
-        runtime_resource_cache.get_resource("peft_encoder:backbone_base:test") is None
-    )
+    if release_after_client:
+        assert (
+            runtime_resource_cache.get_resource("peft_encoder:helper_model:test")
+            is None
+        )
+        assert (
+            runtime_resource_cache.get_resource("peft_encoder:backbone_base:test")
+            is None
+        )
+        assert "helper_model_cache_release_seconds" in (
+            execution.summary.timing_breakdown
+        )
+    else:
+        assert (
+            runtime_resource_cache.get_resource("peft_encoder:helper_model:test")
+            is not None
+        )
+        assert (
+            runtime_resource_cache.get_resource("peft_encoder:backbone_base:test")
+            is not None
+        )
+        assert "helper_model_cache_release_seconds" not in (
+            execution.summary.timing_breakdown
+        )
     assert (
         runtime_resource_cache.get_resource("peft_encoder:tokenizer:test") is not None
     )
-    assert "helper_model_cache_release_seconds" in execution.summary.timing_breakdown
     assert execution.summary.method_diagnostics["fedmatch_helper_count"] == (
         pytest.approx(1.0)
     )
