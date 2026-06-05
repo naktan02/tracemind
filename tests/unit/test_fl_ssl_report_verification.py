@@ -290,13 +290,10 @@ def _write_report_run_with_server_update_artifacts(
 
     final_round = dict(payload["rounds"][-1])  # type: ignore[index,arg-type]
     snapshot_family = "peft_text_encoder"
-    adapter_snapshot_name = "peft_adapter.json"
+    adapter_snapshot_name = "peft_adapter.safetensors"
     snapshot_dir = artifact_root / snapshot_family / str(final_round["model_revision"])
     snapshot_dir.mkdir(parents=True)
-    (snapshot_dir / adapter_snapshot_name).write_text(
-        json.dumps({"peft_parameters": {"a": [1.0]}}),
-        encoding="utf-8",
-    )
+    (snapshot_dir / adapter_snapshot_name).write_bytes(b"placeholder")
     (snapshot_dir / "classifier_head.json").write_text(
         json.dumps({"classifier_head_weights": {"normal": [1.0]}}),
         encoding="utf-8",
@@ -1369,13 +1366,9 @@ def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
                             "expected_labeled_exposure_policy": "shared_client_seed",
                             "expected_run_control_budget_name": "reduced",
                             "expected_fl_method_name": "fedmatch",
-                            "expected_fl_method_descriptor_name": (
-                                "fedmatch"
-                            ),
+                            "expected_fl_method_descriptor_name": ("fedmatch"),
                             "expected_fl_method_execution_role": "method_owned",
-                            "expected_federated_ssl_method": (
-                                "fedmatch"
-                            ),
+                            "expected_federated_ssl_method": ("fedmatch"),
                             "expected_ssl_method_implementation_status": (
                                 "partitioned_trainable_state_slice_v1"
                             ),
@@ -1393,10 +1386,7 @@ def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
                             "expected_local_ssl_policy": "fedmatch_agreement",
                             "expect_partitioned_update_artifact_refs": True,
                             "expected_communication_estimate_schema_version": (
-                                (
-                                    communication_cost_estimates
-                                    .COMMUNICATION_ESTIMATE_SCHEMA_VERSION
-                                )
+                                communication_cost_estimates.COMMUNICATION_ESTIMATE_SCHEMA_VERSION
                             ),
                             "expect_partitioned_sparse_s2c_estimates": True,
                         },

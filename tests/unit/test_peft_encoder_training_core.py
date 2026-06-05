@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from types import SimpleNamespace
 
 import torch
@@ -32,6 +33,9 @@ from methods.adaptation.peft_text_encoder.training.loops import (
 )
 from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftTextEncoderWithLinearHead,
+)
+from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
+    _build_bounded_label_balanced_selection_rows,
 )
 from methods.adaptation.peft_text_encoder.training.ssl_model_extensions import (
     build_peft_query_ssl_model_extensions,
@@ -88,6 +92,33 @@ def test_pseudo_label_diagnostic_threshold_marks_fixed_threshold_only() -> None:
     }
 
 
+def test_query_ssl_local_selection_probe_is_bounded_and_balanced() -> None:
+    rows = [
+        _query_row(query_id=f"{label}_{index}", label=label)
+        for label in ("anxiety", "normal", "suicidal")
+        for index in range(6)
+    ]
+
+    first = _build_bounded_label_balanced_selection_rows(
+        rows=rows,
+        max_examples=6,
+        seed=42,
+    )
+    second = _build_bounded_label_balanced_selection_rows(
+        rows=rows,
+        max_examples=6,
+        seed=42,
+    )
+
+    assert [row["query_id"] for row in first] == [row["query_id"] for row in second]
+    assert len(first) == 6
+    assert Counter(row["mapped_label_4"] for row in first) == {
+        "anxiety": 2,
+        "normal": 2,
+        "suicidal": 2,
+    }
+
+
 def test_peft_encoder_text_classifier_train_step_and_evaluation() -> None:
     torch.manual_seed(7)
     model = PeftTextEncoderWithLinearHead(
@@ -122,6 +153,20 @@ def test_peft_encoder_text_classifier_train_step_and_evaluation() -> None:
     assert selection_report["rows_total"] == 2
     assert evaluation["rows_total"] == 2
     assert set(evaluation["per_category"]) == {"anxiety", "normal"}
+
+
+def _query_row(*, query_id: str, label: str) -> dict[str, str | None]:
+    return {
+        "query_id": query_id,
+        "text": f"text {query_id}",
+        "raw_label_scheme": "test",
+        "raw_label": label,
+        "mapped_label_4": label,
+        "locale": "en",
+        "annotation_source": "test",
+        "approved_by": None,
+        "created_at": "2026-06-05T00:00:00Z",
+    }
 
 
 def test_peft_encoder_config_accepts_fedprox_mu() -> None:

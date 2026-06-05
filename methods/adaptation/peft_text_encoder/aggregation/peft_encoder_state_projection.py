@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
+from methods.federated.aggregation.base import build_safetensors_aggregated_artifact
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
@@ -15,10 +16,10 @@ from ..update.materialization import (
     CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
     PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
     PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
-    PARTITIONED_PEFT_STATE_PARAMETERS_KEY,
     PEFT_STATE_PARAMETERS_KEY,
     PeftEncoderMaterializedState,
 )
+from ..update.merged_tensor_artifact import build_peft_adapter_state_tensor_artifact
 
 PeftEncoderStatePayload = PeftClassifierState
 
@@ -61,15 +62,11 @@ def build_peft_encoder_state_projection(
         base_parameters.classifier_head_biases,
         classifier_head_bias_deltas,
     )
-    adapter_parameters_key = _adapter_parameters_key(base_state)
-    applied_adapter_deltas_key = _applied_adapter_deltas_key(base_state)
-    lora_artifact: dict[str, object] = {
-        adapter_parameters_key: next_peft_parameters,
-        applied_adapter_deltas_key: {
-            key: [float(value) for value in values]
-            for key, values in peft_parameter_deltas.items()
-        },
+    applied_adapter_deltas = {
+        key: [float(value) for value in values]
+        for key, values in peft_parameter_deltas.items()
     }
+    partitioned_peft_parameters: dict[str, dict[str, list[float]]] = {}
     classifier_head_artifact: dict[str, object] = {
         CLASSIFIER_HEAD_STATE_WEIGHTS_KEY: next_classifier_head_weights,
         CLASSIFIER_HEAD_STATE_BIASES_KEY: next_classifier_head_biases,
@@ -82,7 +79,7 @@ def build_peft_encoder_state_projection(
         },
     }
     if partitioned_parameters:
-        lora_artifact[_partitioned_adapter_parameters_key(base_state)] = {
+        partitioned_peft_parameters = {
             partition_name: _json_vector_mapping(partition.peft_parameters)
             for partition_name, partition in sorted(partitioned_parameters.items())
         }
@@ -94,6 +91,11 @@ def build_peft_encoder_state_projection(
             partition_name: partition.classifier_head_biases
             for partition_name, partition in sorted(partitioned_parameters.items())
         }
+    peft_state_tensors, peft_state_metadata = build_peft_adapter_state_tensor_artifact(
+        peft_parameters=next_peft_parameters,
+        applied_peft_parameter_deltas=applied_adapter_deltas,
+        partitioned_peft_parameters=partitioned_peft_parameters,
+    )
 
     return PeftEncoderStateProjection(
         next_state=_build_next_state(
@@ -105,9 +107,10 @@ def build_peft_encoder_state_projection(
             artifact_format=artifact_format,
         ),
         artifacts={
-            peft_adapter_artifact_ref: {
-                **lora_artifact,
-            },
+            peft_adapter_artifact_ref: build_safetensors_aggregated_artifact(
+                tensors=peft_state_tensors,
+                metadata=peft_state_metadata,
+            ),
             classifier_head_artifact_ref: {
                 **classifier_head_artifact,
             },
@@ -138,18 +141,6 @@ def _build_next_state(
         classifier_head_artifact_ref=classifier_head_artifact_ref,
         artifact_format=artifact_format,
     )
-
-
-def _adapter_parameters_key(base_state: PeftEncoderStatePayload) -> str:
-    return PEFT_STATE_PARAMETERS_KEY
-
-
-def _partitioned_adapter_parameters_key(base_state: PeftEncoderStatePayload) -> str:
-    return PARTITIONED_PEFT_STATE_PARAMETERS_KEY
-
-
-def _applied_adapter_deltas_key(base_state: PeftEncoderStatePayload) -> str:
-    return "applied_peft_parameter_deltas"
 
 
 def _json_vector_mapping(

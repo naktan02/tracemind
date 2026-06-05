@@ -20,6 +20,9 @@ from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftEncoderModelRuntimeConfig,
     build_peft_text_encoder_with_linear_head_from_config,
 )
+from methods.adaptation.peft_text_encoder.training.pseudo_label_diagnostics import (
+    tokenization_cache_namespace,
+)
 from methods.adaptation.peft_text_encoder.update.materialization import (
     materialize_base_peft_encoder_state,
 )
@@ -27,6 +30,9 @@ from methods.adaptation.peft_text_encoder.update_family_runtime import (
     build_training_backend_config_for_peft_encoder_state,
 )
 from methods.adaptation.query_text_views.data import build_dataloader
+from methods.adaptation.query_text_views.tokenization import (
+    resolve_text_tokenization_cache,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated.aggregation.base import FederatedAggregationContext
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
@@ -76,6 +82,8 @@ def build_peft_encoder_final_projection_artifacts_from_state(
         batch_size=batch_size,
         max_length=int(peft_config.max_length),
         task_prefix=peft_config.task_prefix,
+        tokenization_cache=resolve_text_tokenization_cache(runtime_resource_cache),
+        tokenization_cache_namespace=tokenization_cache_namespace(peft_config),
     )
     if not eval_loaders:
         return {"enabled": False, "reason": "no_projection_datasets"}
@@ -98,6 +106,8 @@ def _build_projection_eval_loaders(
     batch_size: int,
     max_length: int,
     task_prefix: str,
+    tokenization_cache: Any | None,
+    tokenization_cache_namespace: str,
 ) -> dict[str, Any]:
     label_to_index = {label: index for index, label in enumerate(labels)}
     return {
@@ -109,6 +119,8 @@ def _build_projection_eval_loaders(
             max_length=max_length,
             task_prefix=task_prefix,
             shuffle=False,
+            tokenization_cache=tokenization_cache,
+            tokenization_cache_namespace=tokenization_cache_namespace,
         )
         for dataset_name, rows in rows_by_dataset_name.items()
         if rows

@@ -22,6 +22,8 @@ from main_server.src.services.federation.rounds.payload_adapters.models import (
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
+from .aggregation.artifact_payload_writer import save_aggregated_artifact_payload
+
 
 @dataclass(frozen=True, slots=True)
 class SharedAdapterStatePublicationRequest:
@@ -59,7 +61,8 @@ class SharedAdapterStatePublicationService:
         """projection artifact payload와 next state를 저장하고 active로 전환한다."""
 
         for artifact_ref, payload in request.artifacts.items():
-            self.artifact_store.save_json_artifact_ref(
+            save_aggregated_artifact_payload(
+                artifact_store=self.artifact_store,
                 artifact_ref=artifact_ref,
                 payload=dict(payload),
             )

@@ -840,6 +840,8 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
     assert cfg.training_task.batch_size == 8
     assert cfg.train_batch_size == 8
+    assert cfg.train_jsonl == cfg.query_source.train_jsonl
+    assert cfg.train_jsonl != cfg.dataset.train_jsonl
     assert cfg.query_ssl_method.unlabeled_batch_size == cfg.training_task.batch_size
     assert cfg.query_ssl_strong_view_policy == "first_aug"
     assert cfg.training_task.objective.query_ssl.method_name == "fixmatch_usb_v1"

@@ -15,6 +15,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
+from .artifact_payload_writer import save_aggregated_artifact_payload
 from .artifact_refs import AggregatedArtifactRefBuilder, AggregationArtifactStore
 from .models import AggregationConfigScalar, AggregationResult
 
@@ -64,25 +65,30 @@ class MethodAggregationBackend:
                 artifact_loader=self.artifact_loader,
             ),
         )
-        self._save_aggregated_artifacts(method_result.aggregated_artifacts)
+        saved_artifacts = self._save_aggregated_artifacts(
+            method_result.aggregated_artifacts
+        )
         return AggregationResult(
             next_state=method_result.next_state,
             aggregated_metrics=method_result.aggregated_metrics,
             update_count=method_result.update_count,
-            aggregated_artifacts=method_result.aggregated_artifacts,
+            aggregated_artifacts=saved_artifacts,
         )
 
     def _save_aggregated_artifacts(
         self,
         artifacts: Mapping[str, Mapping[str, object]],
-    ) -> None:
+    ) -> dict[str, dict[str, object]]:
         """methods strategy가 만든 server-owned aggregate artifact를 저장한다."""
 
+        saved_artifacts: dict[str, dict[str, object]] = {}
         for artifact_ref, payload in artifacts.items():
-            self.artifact_loader.save_json_artifact_ref(
+            saved_artifacts[artifact_ref] = save_aggregated_artifact_payload(
+                artifact_store=self.artifact_loader,
                 artifact_ref=artifact_ref,
                 payload=dict(payload),
             )
+        return saved_artifacts
 
 
 def _build_aggregated_artifact_ref_builder(

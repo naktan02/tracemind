@@ -21,7 +21,9 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 
 from .merged_tensor_artifact import (
     parse_classifier_head_delta_tensor_artifact,
+    parse_partitioned_peft_adapter_state_tensor_artifact,
     parse_peft_adapter_delta_tensor_artifact,
+    parse_peft_adapter_state_tensor_artifact,
 )
 from .partitioned_delta import PeftEncoderPartitionDelta
 from .partitioned_tensor_artifact import parse_partitioned_delta_tensor_artifact
@@ -158,12 +160,9 @@ def materialize_base_peft_encoder_partitioned_state(
     )
     partitioned_peft_parameters: dict[str, dict[str, list[float]]] = {}
     if peft_adapter_artifact_ref is not None:
-        peft_adapter_artifact = loader.load_json_artifact(
-            artifact_ref=peft_adapter_artifact_ref
-        )
-        partitioned_peft_parameters = _normalize_partitioned_vector_mapping(
-            peft_adapter_artifact.get(PARTITIONED_PEFT_STATE_PARAMETERS_KEY, {}),
-            field_name=PARTITIONED_PEFT_STATE_PARAMETERS_KEY,
+        partitioned_peft_parameters = _load_partitioned_base_peft_parameters(
+            artifact_ref=peft_adapter_artifact_ref,
+            loader=loader,
         )
 
     partitioned_head_weights: dict[str, dict[str, list[float]]] = {}
@@ -465,12 +464,78 @@ def _load_base_peft_parameters(
     artifact_ref: str,
     loader: AggregationJsonArtifactLoader,
 ) -> dict[str, list[float]]:
+    tensor_parameters = _try_load_base_peft_state_tensor_artifact(
+        loader=loader,
+        artifact_ref=artifact_ref,
+    )
+    if tensor_parameters is not None:
+        return tensor_parameters
     artifact = loader.load_json_artifact(artifact_ref=artifact_ref)
     source = artifact.get(
         PEFT_STATE_PARAMETERS_KEY,
         artifact.get("peft_parameter_deltas", artifact),
     )
     return _normalize_vector_mapping(source, field_name=PEFT_STATE_PARAMETERS_KEY)
+
+
+def _load_partitioned_base_peft_parameters(
+    *,
+    artifact_ref: str,
+    loader: AggregationJsonArtifactLoader,
+) -> dict[str, dict[str, list[float]]]:
+    tensor_parameters = _try_load_partitioned_base_peft_state_tensor_artifact(
+        loader=loader,
+        artifact_ref=artifact_ref,
+    )
+    if tensor_parameters is not None:
+        return tensor_parameters
+    peft_adapter_artifact = loader.load_json_artifact(artifact_ref=artifact_ref)
+    return _normalize_partitioned_vector_mapping(
+        peft_adapter_artifact.get(PARTITIONED_PEFT_STATE_PARAMETERS_KEY, {}),
+        field_name=PARTITIONED_PEFT_STATE_PARAMETERS_KEY,
+    )
+
+
+def _try_load_base_peft_state_tensor_artifact(
+    *,
+    loader: AggregationJsonArtifactLoader,
+    artifact_ref: str,
+) -> dict[str, list[float]] | None:
+    tensor_loader = getattr(loader, "load_safetensors_artifact", None)
+    if tensor_loader is None:
+        return None
+    tensor_artifact_loader = cast(_AggregationTensorArtifactLoader, loader)
+    try:
+        tensors, metadata = tensor_artifact_loader.load_safetensors_artifact(
+            artifact_ref=artifact_ref
+        )
+    except (FileNotFoundError, KeyError):
+        return None
+    return parse_peft_adapter_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _try_load_partitioned_base_peft_state_tensor_artifact(
+    *,
+    loader: AggregationJsonArtifactLoader,
+    artifact_ref: str,
+) -> dict[str, dict[str, list[float]]] | None:
+    tensor_loader = getattr(loader, "load_safetensors_artifact", None)
+    if tensor_loader is None:
+        return None
+    tensor_artifact_loader = cast(_AggregationTensorArtifactLoader, loader)
+    try:
+        tensors, metadata = tensor_artifact_loader.load_safetensors_artifact(
+            artifact_ref=artifact_ref
+        )
+    except (FileNotFoundError, KeyError):
+        return None
+    return parse_partitioned_peft_adapter_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
 
 
 def _peft_adapter_artifact_ref(

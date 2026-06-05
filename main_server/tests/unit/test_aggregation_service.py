@@ -19,6 +19,9 @@ from main_server.src.services.federation.rounds.aggregation.registry import (
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
 from methods.adaptation.peft_text_encoder.update import (
+    merged_tensor_artifact as merged_artifacts,
+)
+from methods.adaptation.peft_text_encoder.update import (
     partitioned_tensor_artifact as partitioned_artifacts,
 )
 from methods.adaptation.peft_text_encoder.update.partitioned_delta import (
@@ -238,20 +241,36 @@ def test_peft_classifier_fedavg_aggregation_publishes_next_state_refs(
     )
     assert result.next_state.artifact_format == "server_aggregated_artifact_ref"
     assert result.aggregated_artifacts
-    peft_artifact = artifact_store.load_json_artifact(
+    peft_tensors, peft_metadata = artifact_store.load_safetensors_artifact(
         artifact_ref=result.next_state.peft_adapter_artifact_ref
+    )
+    peft_artifact = merged_artifacts.parse_peft_adapter_state_tensor_artifact(
+        tensors=peft_tensors,
+        metadata=peft_metadata,
+    )
+    applied_peft_deltas = (
+        merged_artifacts.parse_applied_peft_parameter_deltas_tensor_artifact(
+            tensors=peft_tensors,
+            metadata=peft_metadata,
+        )
     )
     head_artifact = artifact_store.load_json_artifact(
         artifact_ref=result.next_state.classifier_head_artifact_ref
     )
-    assert peft_artifact["peft_parameters"] == {
+    assert (
+        result.aggregated_artifacts[result.next_state.peft_adapter_artifact_ref][
+            "artifact_format"
+        ]
+        == "safetensors"
+    )
+    assert peft_artifact == {
         "encoder.extra.lora_A": pytest.approx([0.5]),
         "encoder.q_proj.lora_A": pytest.approx([1.1333333333333333, 1.3]),
         "encoder.q_proj.lora_B": pytest.approx([0.13333333333333333, 0.0]),
     }
-    assert peft_artifact["applied_peft_parameter_deltas"][
-        "encoder.q_proj.lora_A"
-    ] == pytest.approx([0.13333333333333333, 0.3])
+    assert applied_peft_deltas["encoder.q_proj.lora_A"] == pytest.approx(
+        [0.13333333333333333, 0.3]
+    )
     assert head_artifact["classifier_head_weights"]["anxiety"] == pytest.approx(
         [1.1666666666666667, 0.0]
     )
@@ -341,21 +360,23 @@ def test_peft_classifier_partitioned_delta_average_publishes_next_state_refs(
 
     assert isinstance(backend, MethodAggregationBackend)
     assert backend.adapter_kind == "peft_classifier"
-    peft_artifact = artifact_store.load_json_artifact(
-        artifact_ref=result.next_state.peft_adapter_artifact_ref or ""
+    peft_artifact = _load_peft_state_artifact(
+        artifact_store, artifact_ref=result.next_state.peft_adapter_artifact_ref or ""
+    )
+    partitioned_peft_artifact = _load_partitioned_peft_state_artifact(
+        artifact_store,
+        artifact_ref=result.next_state.peft_adapter_artifact_ref or "",
     )
     head_artifact = artifact_store.load_json_artifact(
         artifact_ref=result.next_state.classifier_head_artifact_ref or ""
     )
-    assert peft_artifact["peft_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
-        [1.3, 1.3]
+    assert peft_artifact["encoder.q_proj.lora_A"] == pytest.approx([1.3, 1.3])
+    assert partitioned_peft_artifact["sigma"]["encoder.q_proj.lora_A"] == pytest.approx(
+        [1.2, 1.0]
     )
-    assert peft_artifact["partitioned_peft_parameters"]["sigma"][
-        "encoder.q_proj.lora_A"
-    ] == pytest.approx([1.2, 1.0])
-    assert peft_artifact["partitioned_peft_parameters"]["psi"][
-        "encoder.q_proj.lora_A"
-    ] == pytest.approx([1.1, 1.3])
+    assert partitioned_peft_artifact["psi"]["encoder.q_proj.lora_A"] == pytest.approx(
+        [1.1, 1.3]
+    )
     assert head_artifact["classifier_head_weights"]["anxiety"] == pytest.approx(
         [1.3, 0.2]
     )
@@ -457,12 +478,10 @@ def test_peft_classifier_partitioned_delta_average_reads_partitioned_artifact_re
         aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
     )
 
-    peft_artifact = artifact_store.load_json_artifact(
-        artifact_ref=result.next_state.peft_adapter_artifact_ref or ""
+    peft_artifact = _load_peft_state_artifact(
+        artifact_store, artifact_ref=result.next_state.peft_adapter_artifact_ref or ""
     )
-    assert peft_artifact["peft_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
-        [1.3, 1.3]
-    )
+    assert peft_artifact["encoder.q_proj.lora_A"] == pytest.approx([1.3, 1.3])
     assert result.aggregated_metrics["server_update_partitioned"] == 1.0
 
 
@@ -551,12 +570,10 @@ def test_peft_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
         aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
     )
 
-    peft_artifact = artifact_store.load_json_artifact(
-        artifact_ref=result.next_state.peft_adapter_artifact_ref or ""
+    peft_artifact = _load_peft_state_artifact(
+        artifact_store, artifact_ref=result.next_state.peft_adapter_artifact_ref or ""
     )
-    assert peft_artifact["peft_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
-        [1.3, 1.3]
-    )
+    assert peft_artifact["encoder.q_proj.lora_A"] == pytest.approx([1.3, 1.3])
     assert result.aggregated_metrics["server_update_partitioned"] == 1.0
 
 
@@ -624,23 +641,28 @@ def test_peft_classifier_fedavg_two_rounds_accumulates_global_snapshot(
         aggregated_at=datetime(2026, 4, 8, 2, tzinfo=timezone.utc),
     )
 
-    first_lora = artifact_store.load_json_artifact(
-        artifact_ref=first_result.next_state.peft_adapter_artifact_ref
+    first_lora = _load_peft_state_artifact(
+        artifact_store, artifact_ref=first_result.next_state.peft_adapter_artifact_ref
+    )
+    second_lora = _load_peft_state_artifact(
+        artifact_store,
+        artifact_ref=second_result.next_state.peft_adapter_artifact_ref,
+    )
+    second_applied_lora = _load_applied_peft_delta_artifact(
+        artifact_store,
+        artifact_ref=second_result.next_state.peft_adapter_artifact_ref,
     )
     first_head = artifact_store.load_json_artifact(
         artifact_ref=first_result.next_state.classifier_head_artifact_ref
-    )
-    second_lora = artifact_store.load_json_artifact(
-        artifact_ref=second_result.next_state.peft_adapter_artifact_ref
     )
     second_head = artifact_store.load_json_artifact(
         artifact_ref=second_result.next_state.classifier_head_artifact_ref
     )
 
     _assert_vector_mapping_accumulates(
-        before=first_lora["peft_parameters"],
-        delta=second_lora["applied_peft_parameter_deltas"],
-        after=second_lora["peft_parameters"],
+        before=first_lora,
+        delta=second_applied_lora,
+        after=second_lora,
     )
     _assert_vector_mapping_accumulates(
         before=first_head["classifier_head_weights"],
@@ -836,6 +858,48 @@ def _build_peft_update(
         mean_confidence=mean_confidence,
         mean_margin=0.2,
         created_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
+    )
+
+
+def _load_peft_state_artifact(
+    artifact_store: AggregationArtifactStore,
+    *,
+    artifact_ref: str,
+) -> dict[str, list[float]]:
+    tensors, metadata = artifact_store.load_safetensors_artifact(
+        artifact_ref=artifact_ref
+    )
+    return merged_artifacts.parse_peft_adapter_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _load_partitioned_peft_state_artifact(
+    artifact_store: AggregationArtifactStore,
+    *,
+    artifact_ref: str,
+) -> dict[str, dict[str, list[float]]]:
+    tensors, metadata = artifact_store.load_safetensors_artifact(
+        artifact_ref=artifact_ref
+    )
+    return merged_artifacts.parse_partitioned_peft_adapter_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _load_applied_peft_delta_artifact(
+    artifact_store: AggregationArtifactStore,
+    *,
+    artifact_ref: str,
+) -> dict[str, list[float]]:
+    tensors, metadata = artifact_store.load_safetensors_artifact(
+        artifact_ref=artifact_ref
+    )
+    return merged_artifacts.parse_applied_peft_parameter_deltas_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
     )
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass, field
@@ -211,6 +212,11 @@ def run_query_ssl_peft_encoder_training_core(
 
     with _measure(timing_recorder, "core_dataloader_prepare_seconds"):
         label_to_index = {label: index for index, label in enumerate(effective_labels)}
+        selection_rows = _build_bounded_label_balanced_selection_rows(
+            rows=effective_labeled_rows,
+            max_examples=training_task.selection_policy.max_examples,
+            seed=int(seed),
+        )
         train_loader = build_dataloader(
             rows=effective_labeled_rows,
             label_to_index=label_to_index,
@@ -223,7 +229,7 @@ def run_query_ssl_peft_encoder_training_core(
             tokenization_cache_namespace=tokenization_cache_namespace_value,
         )
         selection_loader = build_dataloader(
-            rows=effective_labeled_rows,
+            rows=selection_rows,
             label_to_index=label_to_index,
             tokenizer=tokenizer,
             batch_size=int(training_task.batch_size),
@@ -341,6 +347,7 @@ def run_query_ssl_peft_encoder_training_core(
     update_payload = update_build_result.update_payload
     client_metrics = {
         **dict(update_build_result.client_metrics),
+        "query_ssl_selection_labeled_count": float(len(selection_rows)),
         **diagnostic_threshold.to_client_metrics(),
     }
     update_envelope = make_training_update_envelope(
@@ -388,6 +395,42 @@ def _measure(timing_recorder: TimingRecorder | None, key: str) -> Any:
     if timing_recorder is None:
         return nullcontext()
     return timing_recorder.measure(key)
+
+
+def _build_bounded_label_balanced_selection_rows(
+    *,
+    rows: Sequence[LabeledQueryRow],
+    max_examples: int | None,
+    seed: int,
+) -> list[LabeledQueryRow]:
+    """client-local selection 평가용 labeled probe를 class-balanced로 제한한다."""
+
+    source_rows = list(rows)
+    if max_examples is None or max_examples <= 0 or max_examples >= len(source_rows):
+        return source_rows
+
+    rng = random.Random(seed)
+    rows_by_label: dict[str, list[LabeledQueryRow]] = {}
+    for row in source_rows:
+        rows_by_label.setdefault(str(row["mapped_label_4"]), []).append(row)
+    for label_rows in rows_by_label.values():
+        rng.shuffle(label_rows)
+
+    selected: list[LabeledQueryRow] = []
+    label_order = sorted(rows_by_label)
+    while len(selected) < max_examples and label_order:
+        next_label_order: list[str] = []
+        for label in label_order:
+            bucket = rows_by_label[label]
+            if not bucket:
+                continue
+            selected.append(bucket.pop())
+            if len(selected) >= max_examples:
+                break
+            if bucket:
+                next_label_order.append(label)
+        label_order = next_label_order
+    return selected
 
 
 def _payload_format_for_update(update_payload: PeftClassifierDelta) -> str:

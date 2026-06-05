@@ -11,6 +11,9 @@ from typing import Any
 
 import pytest
 
+from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
+    AggregationArtifactStore,
+)
 from methods.adaptation.peft_text_encoder import (
     evaluation as peft_encoder_evaluation,
 )
@@ -30,6 +33,9 @@ from methods.adaptation.peft_text_encoder.federated_ssl.peer_predictions import 
     PEFT_ENCODER_PEER_SNAPSHOT_KIND,
 )
 from methods.adaptation.peft_text_encoder.simulation_runtime import (
+    final_projection as peft_encoder_final_projection,
+)
+from methods.adaptation.peft_text_encoder.simulation_runtime import (
     supervised_seed as supervised_seed_runtime,
 )
 from methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime import (
@@ -38,6 +44,9 @@ from methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime impor
 )
 from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
     QuerySslPeftEncoderClientTrainingResult,
+)
+from methods.adaptation.peft_text_encoder.update import (
+    merged_tensor_artifact as merged_artifacts,
 )
 from methods.adaptation.peft_text_encoder.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
@@ -249,6 +258,57 @@ def test_peft_encoder_validation_reuses_runtime_tokenization_cache(monkeypatch) 
             seed=42,
             runtime_resource_cache=cache,
         )
+
+    assert tokenizer.calls == ["same validation text"]
+
+
+def test_peft_encoder_final_projection_reuses_runtime_tokenization_cache() -> None:
+    class _Tokenizer:
+        pad_token_id = 0
+        padding_side = "right"
+        name_or_path = "unit-tokenizer"
+
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def __call__(self, texts, **_kwargs):
+            self.calls.append(str(texts))
+            values = [ord(char) % 19 + 1 for char in str(texts)]
+            return {
+                "input_ids": values,
+                "attention_mask": [1 for _value in values],
+            }
+
+    tokenizer = _Tokenizer()
+    cache = InMemoryRuntimeResourceCache()
+    rows_by_dataset = {"validation": [_row("q1", "same validation text", "anxiety")]}
+    common_kwargs = {
+        "rows_by_dataset_name": rows_by_dataset,
+        "tokenizer": tokenizer,
+        "labels": ["anxiety"],
+        "batch_size": 1,
+        "max_length": 256,
+        "task_prefix": "",
+    }
+
+    first_loaders = peft_encoder_final_projection._build_projection_eval_loaders(
+        **common_kwargs,
+        tokenization_cache=peft_encoder_final_projection.resolve_text_tokenization_cache(
+            cache
+        ),
+        tokenization_cache_namespace="unit",
+    )
+    second_loaders = peft_encoder_final_projection._build_projection_eval_loaders(
+        **common_kwargs,
+        tokenization_cache=peft_encoder_final_projection.resolve_text_tokenization_cache(
+            cache
+        ),
+        tokenization_cache_namespace="unit",
+    )
+
+    assert len(first_loaders["validation"].dataset) == 1
+    list(first_loaders["validation"])
+    list(second_loaders["validation"])
 
     assert tokenizer.calls == ["same validation text"]
 
@@ -2839,7 +2899,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "versions"
         / "peft_text_encoder"
         / "sim_rev_0001"
-        / "peft_adapter.json"
+        / "peft_adapter.safetensors"
     )
     head_aggregate_path = (
         output_dir
@@ -2852,9 +2912,10 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
     )
     assert peft_aggregate_path.exists()
     assert head_aggregate_path.exists()
-    assert json.loads(peft_aggregate_path.read_text(encoding="utf-8"))[
-        "peft_parameters"
-    ]
+    assert _load_peft_state_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0001/peft_adapter",
+    )
     assert json.loads(head_aggregate_path.read_text(encoding="utf-8"))[
         "classifier_head_weights"
     ]
@@ -2865,7 +2926,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "versions"
         / "peft_text_encoder"
         / "sim_rev_0002"
-        / "peft_adapter.json"
+        / "peft_adapter.safetensors"
     )
     second_head_aggregate_path = (
         output_dir
@@ -2878,19 +2939,32 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
     )
     assert second_peft_aggregate_path.exists()
     assert second_head_aggregate_path.exists()
-    first_peft_artifact = json.loads(peft_aggregate_path.read_text(encoding="utf-8"))
+    first_peft_artifact = _load_peft_state_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0001/peft_adapter",
+    )
+    first_applied_peft_deltas = _load_applied_peft_deltas_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0001/peft_adapter",
+    )
     first_head_artifact = json.loads(head_aggregate_path.read_text(encoding="utf-8"))
-    second_peft_artifact = json.loads(
-        second_peft_aggregate_path.read_text(encoding="utf-8")
+    second_peft_artifact = _load_peft_state_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0002/peft_adapter",
+    )
+    second_applied_peft_deltas = _load_applied_peft_deltas_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0002/peft_adapter",
     )
     second_head_artifact = json.loads(
         second_head_aggregate_path.read_text(encoding="utf-8")
     )
     assert second_peft_artifact != first_peft_artifact
+    assert first_applied_peft_deltas
     _assert_vector_mapping_accumulates(
-        before=first_peft_artifact["peft_parameters"],
-        delta=second_peft_artifact["applied_peft_parameter_deltas"],
-        after=second_peft_artifact["peft_parameters"],
+        before=first_peft_artifact,
+        delta=second_applied_peft_deltas,
+        after=second_peft_artifact,
     )
     _assert_vector_mapping_accumulates(
         before=first_head_artifact["classifier_head_weights"],
@@ -2973,7 +3047,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
         / "versions"
         / "peft_text_encoder"
         / "sim_rev_0001"
-        / "peft_adapter.json"
+        / "peft_adapter.safetensors"
     )
     head_aggregate_path = (
         output_dir
@@ -3368,6 +3442,34 @@ def test_run_simulation_accepts_hydra_style_detail_configs(
 
     assert result.rounds
     assert result.rounds[0].update_count > 0
+
+
+def _load_peft_state_safetensors_artifact(
+    output_dir: Path,
+    artifact_ref: str,
+) -> dict[str, list[float]]:
+    store = AggregationArtifactStore(
+        state_root=output_dir / "main_server" / "aggregation_artifacts"
+    )
+    tensors, metadata = store.load_safetensors_artifact(artifact_ref=artifact_ref)
+    return merged_artifacts.parse_peft_adapter_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _load_applied_peft_deltas_safetensors_artifact(
+    output_dir: Path,
+    artifact_ref: str,
+) -> dict[str, list[float]]:
+    store = AggregationArtifactStore(
+        state_root=output_dir / "main_server" / "aggregation_artifacts"
+    )
+    tensors, metadata = store.load_safetensors_artifact(artifact_ref=artifact_ref)
+    return merged_artifacts.parse_applied_peft_parameter_deltas_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
 
 
 def _assert_vector_mapping_accumulates(
