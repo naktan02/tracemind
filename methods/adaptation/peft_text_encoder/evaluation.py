@@ -20,11 +20,17 @@ from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftEncoderModelRuntimeConfig,
     build_peft_text_encoder_with_linear_head_from_config,
 )
+from methods.adaptation.peft_text_encoder.training.pseudo_label_diagnostics import (
+    tokenization_cache_namespace,
+)
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
     materialize_base_peft_encoder_state,
 )
 from methods.adaptation.query_text_views.data import build_dataloader
+from methods.adaptation.query_text_views.tokenization import (
+    resolve_text_tokenization_cache,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.evaluation.classification_payload import (
     build_classification_evaluation_payload,
@@ -77,6 +83,7 @@ def evaluate_peft_encoder_state(
         device=runtime_config.device,
     )
     label_to_index = {label: index for index, label in enumerate(effective_labels)}
+    tokenization_cache = resolve_text_tokenization_cache(runtime_resource_cache)
     dataloader = build_dataloader(
         rows=list(rows),
         label_to_index=label_to_index,
@@ -85,6 +92,8 @@ def evaluate_peft_encoder_state(
         max_length=int(peft_config.max_length),
         task_prefix=peft_config.task_prefix,
         shuffle=False,
+        tokenization_cache=tokenization_cache,
+        tokenization_cache_namespace=tokenization_cache_namespace(peft_config),
     )
     return evaluate_classifier(
         model=model,

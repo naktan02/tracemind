@@ -18,6 +18,11 @@ from methods.federated_ssl.method_config_surface import (
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.support.configured_callable import load_configured_callable
 
+_DATA_SOURCE_SLUG_ALIASES = {
+    "szegeelim_general4": "sz4",
+    "ourafla_reddit": "ourafla",
+}
+
 
 def build_fl_ssl_run_dir(
     base_dir: str | Path,
@@ -26,22 +31,23 @@ def build_fl_ssl_run_dir(
     run_id: str,
     run_kind: str = "single",
 ) -> Path:
-    """FL SSL run을 method composition과 실험 변수 아래에 배치한다."""
+    """FL SSL run을 split/condition/method 비교 축 아래에 배치한다."""
 
     base_path = (
         Path(str(base_dir))
-        / resolve_fl_ssl_method_family_slug(cfg)
-        / resolve_fl_ssl_method_composition_slug(cfg)
         / resolve_fl_ssl_split_slug(cfg)
+        / resolve_fl_ssl_run_condition_slug(cfg)
+        / resolve_fl_ssl_surface_slug(cfg)
+        / resolve_fl_ssl_method_composition_slug(cfg)
     )
     if run_kind == "single":
-        return base_path / resolve_fl_ssl_run_condition_slug(cfg) / _slugify(run_id)
+        return base_path / _slugify(run_id)
     if run_kind == "client_count_sweep":
         round_budget = int(_select(cfg, "federated_run_budget.rounds", default=0))
         return (
             base_path
             / "sweeps"
-            / f"client_count_rounds{round_budget}"
+            / f"client_count_r{round_budget}"
             / _slugify(run_id)
         )
     if run_kind == "seed_sweep":
@@ -50,7 +56,7 @@ def build_fl_ssl_run_dir(
         return (
             base_path
             / "sweeps"
-            / f"seed_clients{client_count}_rounds{round_budget}"
+            / f"seed_c{client_count}_r{round_budget}"
             / _slugify(run_id)
         )
     raise ValueError(f"Unsupported FL SSL run_kind: {run_kind!r}.")
@@ -86,36 +92,36 @@ def resolve_fl_ssl_method_family_slug(cfg: DictConfig) -> str:
 
 
 def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
-    """output path에서 method/runtime composition 축을 표현하는 slug를 만든다."""
+    """output path에서 비교 대상 method 축을 표현하는 slug를 만든다."""
 
     if not _is_manual_fl_composition(cfg):
         method_name = _select(cfg, "ssl_method.name", default=None) or "method_owned"
-        update_family = _resolve_update_runtime_slug(cfg)
-        server_update_policy = (
-            _resolve_method_owned_server_update_policy(cfg, method_name=method_name)
-            or _select(cfg, "round_runtime.aggregation_backend_name", default=None)
-            or "unknown_server_update"
-        )
-        return "__".join(
-            _slugify(part)
-            for part in (method_name, update_family, server_update_policy)
-        )
+        scenario = _select(cfg, "ssl_method.scenario", default=None)
+        parts = [_compact_method_name(method_name)]
+        if scenario is not None and str(scenario).strip():
+            parts.append(str(scenario))
+        return "_".join(_slugify(part) for part in parts)
 
     query_ssl_method = (
         _select(cfg, "query_ssl_method.name", default=None)
         or _select(cfg, "ssl_method.name", default=None)
         or "unknown_ssl"
     )
-    update_family = _resolve_update_runtime_slug(cfg)
     aggregation_backend = (
         _select(cfg, "round_runtime.aggregation_backend_name", default=None)
         or _select(cfg, "ssl_method.server_step.aggregation_backend_name", default=None)
         or "unknown_aggregation"
     )
-    return "__".join(
+    return "_".join(
         _slugify(part)
-        for part in (query_ssl_method, update_family, aggregation_backend)
+        for part in (_compact_method_name(query_ssl_method), aggregation_backend)
     )
+
+
+def resolve_fl_ssl_surface_slug(cfg: DictConfig) -> str:
+    """output path에서 update surface/runtime 형식 축을 표현하는 slug를 만든다."""
+
+    return _slugify(_resolve_update_runtime_slug(cfg))
 
 
 def _resolve_method_owned_server_update_policy(
@@ -135,7 +141,7 @@ def _resolve_method_owned_server_update_policy(
 
 
 def resolve_fl_ssl_split_slug(cfg: DictConfig) -> str:
-    """output path에서 data split 축을 표현하는 slug를 만든다."""
+    """output path에서 data split 축을 짧은 비교용 slug로 표현한다."""
 
     seed = _select(cfg, "seed", default=None)
     parts: list[str] = []
@@ -151,16 +157,29 @@ def resolve_fl_ssl_split_slug(cfg: DictConfig) -> str:
     if labeled_exposure is not None:
         parts.append(labeled_exposure)
     if seed is not None:
-        parts.append(f"seed{int(seed)}")
+        parts.append(f"s{int(seed)}")
     return "_".join(_slugify(part) for part in parts if str(part).strip())
 
 
 def resolve_fl_ssl_run_condition_slug(cfg: DictConfig) -> str:
-    """client 수, round budget, local objective 조건을 leaf slug로 표현한다."""
+    """client 수, round budget, local objective 숫자 조건을 slug로 표현한다."""
 
-    client_count = int(_select(cfg, "federated_run_budget.client_count", default=0))
-    round_budget = int(_select(cfg, "federated_run_budget.rounds", default=0))
-    parts = [f"clients{client_count}", f"rounds{round_budget}"]
+    client_count = _select(cfg, "federated_run_budget.client_count", default=None)
+    round_budget = _select(cfg, "federated_run_budget.rounds", default=None)
+    parts: list[str] = []
+    if client_count is not None:
+        parts.append(f"c{int(client_count)}")
+    if round_budget is not None:
+        parts.append(f"r{int(round_budget)}")
+    local_epochs = _select(cfg, "training_task.local_epochs", default=None)
+    batch_size = _select(cfg, "training_task.batch_size", default=None)
+    max_steps = _select(cfg, "training_task.max_steps", default=None)
+    if local_epochs is not None:
+        parts.append(f"e{int(local_epochs)}")
+    if batch_size is not None:
+        parts.append(f"b{int(batch_size)}")
+    if max_steps is not None:
+        parts.append(f"s{int(max_steps)}")
     local_regularizer = _resolve_local_regularizer_slug(cfg)
     if local_regularizer is not None:
         parts.append(local_regularizer)
@@ -227,11 +246,15 @@ def _resolve_labeled_exposure_slug(cfg: DictConfig) -> str | None:
     if configured is not None:
         normalized = str(configured).strip()
         if normalized:
-            return compact_labeled_exposure_policy_slug(normalized)
+            return _short_labeled_exposure_slug(
+                compact_labeled_exposure_policy_slug(normalized)
+            )
     manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
     for policy_name in sorted(LABELED_EXPOSURE_POLICY_NAMES):
         if policy_name in manifest:
-            return compact_labeled_exposure_policy_slug(policy_name)
+            return _short_labeled_exposure_slug(
+                compact_labeled_exposure_policy_slug(policy_name)
+            )
     return None
 
 
@@ -250,8 +273,8 @@ def _resolve_data_source_slug(cfg: DictConfig) -> str | None:
     return "_".join(
         _slugify(part)
         for part in (
-            f"labeled-{labeled or 'unknown'}",
-            f"unlabeled-{unlabeled or 'unknown'}",
+            _short_data_source_slug(labeled or "unknown"),
+            _short_data_source_slug(unlabeled or "unknown"),
         )
     )
 
@@ -263,13 +286,13 @@ def _resolve_label_budget_slug(cfg: DictConfig) -> str | None:
         default=None,
     )
     if count_per_class is not None:
-        return f"labels_pc{int(count_per_class)}"
+        return f"lp{int(count_per_class)}"
     fl_client_split_name = _select(cfg, "fl_client_split.name", default=None)
     manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
     for source in (fl_client_split_name, manifest):
         match = re.search(r"(?:^|_)labels_pc(\d+)(?:_|$)", str(source or ""))
         if match:
-            return f"labels_pc{match.group(1)}"
+            return f"lp{match.group(1)}"
     return None
 
 
@@ -304,6 +327,29 @@ def _select_objective_parameter(cfg: DictConfig, key: str) -> object | None:
             f"{sorted(normalized_values)}"
         )
     return values[0]
+
+
+def _compact_method_name(method_name: object) -> str:
+    normalized = str(method_name).strip()
+    for suffix in ("_usb_v1", "_v1"):
+        if normalized.endswith(suffix):
+            return normalized[: -len(suffix)]
+    return normalized
+
+
+def _short_data_source_slug(source_name: object) -> str:
+    normalized = str(source_name).strip()
+    return _DATA_SOURCE_SLUG_ALIASES.get(normalized, normalized)
+
+
+def _short_labeled_exposure_slug(exposure_slug: str) -> str:
+    if exposure_slug == "shared_client":
+        return "shared"
+    if exposure_slug == "client_local":
+        return "local"
+    if exposure_slug == "server_only":
+        return "server"
+    return exposure_slug
 
 
 def _collect_objective_parameter_values(

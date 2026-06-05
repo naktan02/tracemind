@@ -32,6 +32,7 @@ from ...hooks.supervised import compute_labeled_cross_entropy_loss
 from ...primitives.probability import compute_prob
 from ...registry import register_query_ssl_algorithm
 from ...state import (
+    JsonValue,
     build_query_ssl_algorithm_state,
     require_query_ssl_algorithm_state,
 )
@@ -239,6 +240,18 @@ class DashAlgorithm:
                 "rho_init_source": self.rho_init_source,
             },
         )
+
+    def export_report_state_summary(self) -> Mapping[str, JsonValue]:
+        """report/manifest가 소비하는 DASH dynamic-threshold 요약."""
+
+        return {
+            "rho_init": self.thresholding_hook.state.rho_init,
+            "rho": self.thresholding_hook.state.rho,
+            "rho_update_cnt": self.thresholding_hook.state.rho_update_cnt,
+            "use_hard_label": self.thresholding_hook.state.use_hard_label,
+            "num_wu_iter": self.num_wu_iter,
+            "rho_init_source": self.rho_init_source,
+        }
 
     def load_state(self, state: Mapping[str, Any]) -> None:
         state = require_query_ssl_algorithm_state(

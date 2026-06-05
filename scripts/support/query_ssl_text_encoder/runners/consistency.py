@@ -29,7 +29,7 @@ from methods.ssl.base import (
 )
 from methods.ssl.model_capabilities import require_pooled_feature_classifier
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
-from methods.ssl.state import export_query_ssl_algorithm_state
+from methods.ssl.state import export_query_ssl_algorithm_report_state_summary
 from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
 from scripts.support.query_ssl_text_encoder.query_ssl.run_context import (
     QuerySslRunContext,
@@ -182,7 +182,9 @@ def run_consistency_query_ssl_peft_baseline(
             getattr(cfg, "drop_last_unlabeled_batches", False)
         ),
         "query_ssl_method": build_query_ssl_method_manifest(cfg),
-        "query_ssl_algorithm_state": dict(export_query_ssl_algorithm_state(algorithm)),
+        "query_ssl_algorithm_state_summary": dict(
+            export_query_ssl_algorithm_report_state_summary(algorithm)
+        ),
         "query_ssl_resume": _build_query_ssl_resume_manifest(cfg),
         "runtime_metrics": runtime_metrics,
     }

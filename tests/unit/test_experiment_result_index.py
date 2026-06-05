@@ -287,6 +287,18 @@ def test_fl_ssl_result_index_reads_payload_adapter_kind(
     assert records.run.payload_adapter_kind == "peft_classifier"
 
 
+def test_fl_ssl_result_index_uses_method_owned_descriptor_as_method_name(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_method_owned_fl_ssl_report(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.method_family == "fedmatch"
+    assert records.run.method_name == "fedmatch"
+    assert records.run.algorithm_name == "fixmatch"
+
+
 def test_result_index_discovers_fl_ssl_report_artifacts(tmp_path: Path) -> None:
     central_report = _write_report(tmp_path)
     fl_report = _write_fl_ssl_report(tmp_path)
@@ -341,10 +353,10 @@ def test_result_index_prefers_canonical_fl_ssl_hardlink_path(
         tmp_path
         / "runs"
         / "fl_ssl"
-        / "manual_baselines"
-        / "fixmatch_usb_v1__peft_text_encoder_lora__fedavg"
-        / "alpha03_seed42"
-        / "clients10_rounds50"
+        / "ourafla_ourafla_shared_s42"
+        / "c10_r50_e1_b16_s50"
+        / "peft_text_encoder_lora"
+        / "fixmatch_fedavg"
         / "20260517T150549Z"
         / "reports"
         / "fl_ssl_main_comparison.report.json"
@@ -375,8 +387,8 @@ def test_load_result_index_records_keeps_new_fl_ssl_layout_parts(
     records = load_result_index_records(report_path)
 
     assert records.run.run_id == (
-        "manual_baselines__fixmatch_usb_v1__peft_text_encoder_lora__fedavg__"
-        "alpha03_seed42__clients10_rounds50__20260518T010203Z"
+        "ourafla_ourafla_shared_s42__c10_r50_e1_b16_s50__"
+        "peft_text_encoder_lora__fixmatch_fedavg__20260518T010203Z"
     )
 
 
@@ -595,6 +607,48 @@ def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
     return report_path
 
 
+def _write_method_owned_fl_ssl_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "fl_ssl"
+        / "sz4_ourafla_lp100_shared_s42"
+        / "c10_r30_e1_b12_s20"
+        / "peft_text_encoder_lora"
+        / "fedmatch_labels-at-client"
+        / "20260526T195137Z"
+        / "reports"
+        / "fl_ssl_main_comparison.report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = _sample_fl_ssl_report()
+    protocol = payload["protocol"]
+    protocol["fl_method"] = {
+        "name": "fedmatch",
+        "descriptor_name": "fedmatch",
+        "composition_mode": "method_owned",
+        "execution_role": "method_owned",
+        "manual_axes": {
+            "client_ssl_objective": None,
+            "server_aggregation": None,
+            "update_family": None,
+        },
+    }
+    protocol["ssl_method"] = {
+        "name": "fedmatch",
+        "scenario": "labels-at-client",
+    }
+    protocol["objective"] = {
+        "query_ssl.method_name": "fixmatch_usb_v1",
+        "query_ssl.algorithm_name": "fixmatch",
+    }
+    report_path.write_text(
+        json.dumps(payload, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
 def _write_legacy_entrypoint_report(tmp_path: Path) -> Path:
     report_path = (
         tmp_path
@@ -685,10 +739,10 @@ def _write_new_layout_fl_ssl_report(tmp_path: Path) -> Path:
         tmp_path
         / "runs"
         / "fl_ssl"
-        / "manual_baselines"
-        / "fixmatch_usb_v1__peft_text_encoder_lora__fedavg"
-        / "alpha03_seed42"
-        / "clients10_rounds50"
+        / "ourafla_ourafla_shared_s42"
+        / "c10_r50_e1_b16_s50"
+        / "peft_text_encoder_lora"
+        / "fixmatch_fedavg"
         / "20260518T010203Z"
         / "reports"
         / "fl_ssl_main_comparison.report.json"

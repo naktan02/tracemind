@@ -130,6 +130,9 @@ from scripts.runtime_adapters.federated_agent import (
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
+from scripts.runtime_adapters.federated_agent.client_update_flow import (
+    write_client_timing_snapshot,
+)
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
 )
@@ -180,6 +183,103 @@ def _row(query_id: str, text: str, label: str) -> dict[str, str]:
         "approved_by": "test",
         "created_at": "2026-03-29T00:00:00+00:00",
     }
+
+
+def test_peft_encoder_validation_reuses_runtime_tokenization_cache(monkeypatch) -> None:
+    class _Tokenizer:
+        pad_token_id = 0
+        padding_side = "right"
+        name_or_path = "unit-tokenizer"
+
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def __call__(self, texts, **_kwargs):
+            self.calls.append(str(texts))
+            values = [ord(char) % 19 + 1 for char in str(texts)]
+            return {
+                "input_ids": values,
+                "attention_mask": [1 for _value in values],
+            }
+
+    tokenizer = _Tokenizer()
+
+    monkeypatch.setattr(
+        peft_encoder_evaluation,
+        "build_peft_text_encoder_with_linear_head_from_config",
+        lambda **_kwargs: (object(), tokenizer),
+    )
+    monkeypatch.setattr(
+        peft_encoder_evaluation,
+        "load_peft_encoder_base_parameters_into_model",
+        lambda **_kwargs: None,
+    )
+
+    def _evaluate_classifier(*, dataloader, **_kwargs):
+        list(dataloader)
+        return {"loss": 0.0}
+
+    monkeypatch.setattr(
+        peft_encoder_evaluation,
+        "evaluate_classifier",
+        _evaluate_classifier,
+    )
+    cache = InMemoryRuntimeResourceCache()
+    rows = [_row("q1", "same validation text", "anxiety")]
+    runtime_config = SimpleNamespace(
+        device="cpu",
+        classifier_dropout=0.0,
+        cache_dir=None,
+        local_files_only=True,
+        trust_remote_code=False,
+    )
+
+    for _index in range(2):
+        peft_encoder_evaluation.evaluate_peft_encoder_state(
+            rows=rows,
+            labels=("anxiety",),
+            base_parameters=PeftEncoderMaterializedState(
+                peft_parameters={},
+                classifier_head_weights={},
+                classifier_head_biases={},
+            ),
+            peft_config=PeftEncoderTrainingBackendConfig(),
+            runtime_config=runtime_config,
+            batch_size=1,
+            seed=42,
+            runtime_resource_cache=cache,
+        )
+
+    assert tokenizer.calls == ["same validation text"]
+
+
+def test_write_client_timing_snapshot_writes_round_scoped_json(tmp_path) -> None:
+    summary = ClientRoundSummary(
+        client_id="agent/01",
+        candidate_count=10,
+        diagnostic_candidate_count=3,
+        accepted_count=2,
+        update_generated=True,
+        delta_l2_norm=1.5,
+        aggregation_example_count=10,
+        client_train_time_seconds=4.25,
+        client_payload_bytes=128,
+        client_artifact_bytes=256,
+        timing_breakdown={"core_training_loop_seconds": 3.5},
+    )
+
+    path = write_client_timing_snapshot(
+        output_dir=tmp_path,
+        round_id="round_0001",
+        update_id="update-1",
+        summary=summary,
+    )
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert path == tmp_path / "diagnostics/client_timing/round_0001/agent_01.json"
+    assert payload["schema_version"] == "fl_client_timing_snapshot.v1"
+    assert payload["client_id"] == "agent/01"
+    assert payload["timing_breakdown"] == {"core_training_loop_seconds": 3.5}
 
 
 def test_round_task_mapper_accepts_federated_ssl_method_step_task_type() -> None:

@@ -33,6 +33,48 @@ output_dir=runs/_smoke/fl_ssl
 `budget=reduced`는 `10 clients x 5 rounds`, `budget=main`은 `10 clients x 30
 rounds`다. 새 wiring은 smoke 또는 reduced로 먼저 확인한다.
 
+## Output Layout
+
+새 FL SSL run은 같은 split과 숫자 조건 아래에서 방법론을 빠르게 비교하도록
+아래 구조로 저장한다.
+
+```text
+runs/fl_ssl/{split}/{condition}/{surface}/{method}/{run_id}/
+```
+
+예:
+
+```text
+runs/fl_ssl/sz4_ourafla_shared_s42/c10_r30_e1_b8_s20/peft_text_encoder_lora/fixmatch_fedavg/20260605T101139Z/
+```
+
+- `split`: labeled/unlabeled source, labeled exposure, seed를 짧게 표현한다.
+  예: `sz4_ourafla_shared_s42`, `sz4_ourafla_lp100_shared_s42`.
+- `condition`: 비교에 영향을 주는 숫자 조건이다.
+  예: `c10_r30_e1_b8_s20`.
+- `surface`: update/training surface다. 예: `peft_text_encoder_lora`.
+- `method`: 비교 대상 방법론이다. 예: `fixmatch_fedavg`, `softmatch_fedavg`,
+  `fedmatch`.
+
+과거 run의 기존 경로는 이동하지 않는다. Report protocol에는 긴 source 이름과 실행
+metadata가 그대로 남으므로, folder slug는 비교용으로 짧게 유지한다.
+
+과거 `runs/fl_ssl` 산출물을 현재 구조로 옮길 때는 먼저 dry-run manifest를 만든다.
+
+```bash
+uv run python -m scripts.experiments.fl_ssl.migrate_run_layout \
+  --manifest runs/fl_ssl/.layout_migration_dry_run.json
+```
+
+target 충돌이 없음을 확인한 뒤 실행한다.
+
+```bash
+uv run python -m scripts.experiments.fl_ssl.migrate_run_layout \
+  --execute \
+  --prune-empty-parents \
+  --manifest runs/fl_ssl/.layout_migration_executed.json
+```
+
 ## Client Split
 
 논문 비교용 FL 실행은 materialized client split을 우선한다.

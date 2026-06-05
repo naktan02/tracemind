@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Protocol
@@ -97,65 +98,109 @@ def submit_local_training_result(
             update_payload=server_update_payload,
         )
     pseudo_label_quality = _pseudo_label_quality(local_result)
-    return ClientRoundExecution(
-        summary=ClientRoundSummary(
-            client_id=client_id,
-            candidate_count=local_result.candidate_count,
-            diagnostic_candidate_count=diagnostic_candidate_count,
-            accepted_count=local_result.accepted_count,
-            update_generated=update_submitted,
-            delta_l2_norm=client_update_submission.extract_delta_l2_norm(
-                local_result.update_envelope
-            ),
-            aggregation_example_count=(
-                client_update_submission.extract_aggregation_example_count(
-                    local_result.update_envelope
-                )
-            ),
-            client_train_time_seconds=client_train_time_seconds,
-            client_payload_bytes=(
-                client_update_submission.payload_byte_count(server_update_payload)
-                if update_submitted
-                else None
-            ),
-            client_artifact_bytes=(
-                client_artifact_byte_counter(
-                    artifact_store=artifact_store,
-                    update_payload=server_update_payload,
-                )
-                if update_submitted
-                else None
-            ),
-            pseudo_label_confidence_mean=(
-                pseudo_label_quality.pseudo_label_confidence_mean
-                if pseudo_label_quality.pseudo_label_confidence_mean is not None
-                else local_result.client_metrics.get(ClientMetricKeys.MEAN_CONFIDENCE)
-            ),
-            pseudo_label_margin_mean=(
-                pseudo_label_quality.pseudo_label_margin_mean
-                if pseudo_label_quality.pseudo_label_margin_mean is not None
-                else local_result.client_metrics.get(ClientMetricKeys.MEAN_MARGIN)
-            ),
-            pseudo_label_correct_count=(
-                pseudo_label_quality.pseudo_label_correct_count
-            ),
-            pseudo_label_evaluated_count=(
-                pseudo_label_quality.pseudo_label_evaluated_count
-            ),
-            accepted_label_distribution=(
-                pseudo_label_quality.accepted_label_distribution
-            ),
-            rejected_label_distribution=(
-                pseudo_label_quality.rejected_label_distribution
-            ),
-            method_diagnostics=dict(method_diagnostics or {}),
-            timing_breakdown=timing_recorder.to_mapping(),
+    summary = ClientRoundSummary(
+        client_id=client_id,
+        candidate_count=local_result.candidate_count,
+        diagnostic_candidate_count=diagnostic_candidate_count,
+        accepted_count=local_result.accepted_count,
+        update_generated=update_submitted,
+        delta_l2_norm=client_update_submission.extract_delta_l2_norm(
+            local_result.update_envelope
         ),
+        aggregation_example_count=(
+            client_update_submission.extract_aggregation_example_count(
+                local_result.update_envelope
+            )
+        ),
+        client_train_time_seconds=client_train_time_seconds,
+        client_payload_bytes=(
+            client_update_submission.payload_byte_count(server_update_payload)
+            if update_submitted
+            else None
+        ),
+        client_artifact_bytes=(
+            client_artifact_byte_counter(
+                artifact_store=artifact_store,
+                update_payload=server_update_payload,
+            )
+            if update_submitted
+            else None
+        ),
+        pseudo_label_confidence_mean=(
+            pseudo_label_quality.pseudo_label_confidence_mean
+            if pseudo_label_quality.pseudo_label_confidence_mean is not None
+            else local_result.client_metrics.get(ClientMetricKeys.MEAN_CONFIDENCE)
+        ),
+        pseudo_label_margin_mean=(
+            pseudo_label_quality.pseudo_label_margin_mean
+            if pseudo_label_quality.pseudo_label_margin_mean is not None
+            else local_result.client_metrics.get(ClientMetricKeys.MEAN_MARGIN)
+        ),
+        pseudo_label_correct_count=pseudo_label_quality.pseudo_label_correct_count,
+        pseudo_label_evaluated_count=pseudo_label_quality.pseudo_label_evaluated_count,
+        accepted_label_distribution=pseudo_label_quality.accepted_label_distribution,
+        rejected_label_distribution=pseudo_label_quality.rejected_label_distribution,
+        method_diagnostics=dict(method_diagnostics or {}),
+        timing_breakdown=timing_recorder.to_mapping(),
+    )
+    write_client_timing_snapshot(
+        output_dir=output_dir,
+        round_id=round_id,
+        update_id=str(local_result.update_envelope.update_id),
+        summary=summary,
+    )
+    return ClientRoundExecution(
+        summary=summary,
         update_submitted=update_submitted,
         peer_client_snapshot=peer_client_snapshot,
         client_partition_snapshot=client_partition_snapshot or {},
         query_ssl_algorithm_state=query_ssl_algorithm_state or {},
     )
+
+
+def write_client_timing_snapshot(
+    *,
+    output_dir: Path,
+    round_id: str,
+    update_id: str,
+    summary: ClientRoundSummary,
+) -> Path:
+    """round 종료 전에도 client별 runtime timing을 확인할 수 있게 저장한다."""
+
+    payload = {
+        "schema_version": "fl_client_timing_snapshot.v1",
+        "round_id": round_id,
+        "client_id": summary.client_id,
+        "update_id": update_id,
+        "client_train_time_seconds": summary.client_train_time_seconds,
+        "candidate_count": summary.candidate_count,
+        "diagnostic_candidate_count": summary.diagnostic_candidate_count,
+        "accepted_count": summary.accepted_count,
+        "update_generated": summary.update_generated,
+        "client_payload_bytes": summary.client_payload_bytes,
+        "client_artifact_bytes": summary.client_artifact_bytes,
+        "timing_breakdown": dict(summary.timing_breakdown),
+    }
+    path = (
+        output_dir
+        / "diagnostics"
+        / "client_timing"
+        / _safe_path_part(round_id)
+        / f"{_safe_path_part(summary.client_id)}.json"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=True, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def _safe_path_part(value: str) -> str:
+    normalized = str(value).strip().replace("/", "_")
+    if not normalized or normalized in {".", ".."}:
+        raise ValueError("timing snapshot path part must not be empty or traversal.")
+    return normalized
 
 
 def build_round_diagnostic_unlabeled_rows(
