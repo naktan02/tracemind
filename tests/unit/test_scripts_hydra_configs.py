@@ -536,6 +536,7 @@ def test_run_peft_ssl_control_supports_dash_method_override() -> None:
                 "query_ssl_method.gamma=1.5",
                 "query_ssl_method.C=1.1",
                 "query_ssl_method.rho_min=0.1",
+                "query_ssl_method.num_wu_iter=128",
                 "query_ssl_method.unlabeled_batch_size=8",
             ],
         )
@@ -545,6 +546,7 @@ def test_run_peft_ssl_control_supports_dash_method_override() -> None:
     assert cfg.query_ssl_method.gamma == 1.5
     assert cfg.query_ssl_method.C == 1.1
     assert cfg.query_ssl_method.rho_min == 0.1
+    assert cfg.query_ssl_method.num_wu_iter == 128
     assert cfg.query_ssl_method.unlabeled_batch_size == 8
     assert cfg.query_ssl_method.require_multiview is True
 

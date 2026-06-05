@@ -18,7 +18,7 @@ USB_DASH_PRESERVED_FLOW = (
 USB_DASH_TRACE_MIND_ADAPTATIONS = (
     "USB AlgorithmBase/AMP/distributed glue는 중앙 Query SSL trainer가 소유한다.",
     "USB warm-up supervised phase 뒤 eval/loss로 rho_init을 잡는 흐름은 "
-    "TraceMind 중앙 SSL의 supervised seed 시작점에 맞춰 학습 시작 전 selection "
+    "TraceMind 중앙 SSL budget에 맞춰 기본 1024 labeled-only step 뒤 selection "
     "loss를 주입하는 방식으로 연결한다.",
     "USB self.it와 num_iter_per_epoch 기반 10-epoch 업데이트는 QuerySslStepContext의 "
     "epoch_index/step_index로 표현한다.",

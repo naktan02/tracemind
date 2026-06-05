@@ -13,6 +13,7 @@
 
 TraceMind 차이:
 
-- USB의 별도 supervised warm-up phase는 중앙 SSL의 supervised seed 시작점과 맞지
-  않으므로, 학습 시작 전 selection loss를 `rho_init`으로 주입한다.
+- USB의 supervised warm-up phase를 trainer lifecycle에서 수행한 뒤 selection loss를
+  `rho_init`으로 주입한다. 원본 기본 2048 step보다 낮춘 `num_wu_iter=1024`를
+  TraceMind 중앙 PEFT 기본값으로 사용하며, smoke run은 Hydra override로 줄인다.
 - Hydra/config, tokenizer, row 준비, artifact 저장은 scripts runner가 소유한다.

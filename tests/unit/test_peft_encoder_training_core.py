@@ -260,6 +260,29 @@ class _InitialSelectionLossQuerySslAlgorithm(_CountingQuerySslAlgorithm):
         )
 
 
+class _WarmupInitialSelectionLossQuerySslAlgorithm(
+    _InitialSelectionLossQuerySslAlgorithm
+):
+    algorithm_name = "warmup_initial_selection_loss_counting"
+
+    def __init__(self, model: PeftTextEncoderWithLinearHead) -> None:
+        super().__init__()
+        self.model = model
+        self.initial_classifier_weight = model.classifier.weight.detach().clone()
+        self.classifier_changed_before_rho_init = False
+
+    @property
+    def initial_selection_warmup_steps(self) -> int:
+        return 2
+
+    def configure_initial_selection_loss(self, *, selection_loss: float) -> None:
+        self.classifier_changed_before_rho_init = not torch.allclose(
+            self.model.classifier.weight.detach(),
+            self.initial_classifier_weight,
+        )
+        super().configure_initial_selection_loss(selection_loss=selection_loss)
+
+
 class _AuxiliaryProjectionQuerySslAlgorithm(_CountingQuerySslAlgorithm):
     algorithm_name = "auxiliary_projection"
 
@@ -460,6 +483,40 @@ def test_query_ssl_training_injects_initial_selection_loss_when_required() -> No
 
     assert algorithm.initial_selection_loss is not None
     assert algorithm.initial_selection_loss > 0
+    assert algorithm.steps == 1
+
+
+def test_query_ssl_training_runs_supervised_warmup_before_initial_selection_loss() -> (
+    None
+):
+    torch.manual_seed(7)
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _WarmupInitialSelectionLossQuerySslAlgorithm(model)
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=1,
+        max_train_steps=1,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+    )
+
+    assert algorithm.classifier_changed_before_rho_init is True
+    assert algorithm.initial_selection_loss is not None
     assert algorithm.steps == 1
 
 

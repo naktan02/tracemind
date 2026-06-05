@@ -64,6 +64,7 @@ def test_query_ssl_algorithm_registry_builds_dash_algorithm() -> None:
             "gamma": 1.27,
             "C": 1.0001,
             "rho_min": 0.05,
+            "num_wu_iter": 256,
             "lambda_u": 1.0,
             "rho_init": 0.7,
         },
@@ -72,7 +73,9 @@ def test_query_ssl_algorithm_registry_builds_dash_algorithm() -> None:
     assert isinstance(algorithm, DashAlgorithm)
     assert algorithm.algorithm_name == "dash"
     assert algorithm.T == 0.5
+    assert algorithm.num_wu_iter == 256
     assert algorithm.needs_initial_selection_loss is False
+    assert algorithm.initial_selection_warmup_steps == 0
 
 
 def test_query_ssl_algorithm_descriptor_exposes_dash_view_spec() -> None:
@@ -156,7 +159,13 @@ def test_compute_dash_step_uses_weak_ce_mask_and_student_strong_ce() -> None:
 
 
 def test_dash_algorithm_state_roundtrips_threshold_state() -> None:
-    algorithm = DashAlgorithm(T=0.5, gamma=2.0, C=1.0, rho_min=0.05)
+    algorithm = DashAlgorithm(
+        T=0.5,
+        gamma=2.0,
+        C=1.0,
+        rho_min=0.05,
+        num_wu_iter=1024,
+    )
     algorithm.configure_initial_selection_loss(selection_loss=0.8)
     algorithm.compute_step_with_context(
         model=_TokenSumClassifier(),
@@ -173,3 +182,5 @@ def test_dash_algorithm_state_roundtrips_threshold_state() -> None:
     assert restored_state["rho_init"] == state["rho_init"]
     assert restored_state["rho"] == state["rho"]
     assert restored_state["rho_update_cnt"] == state["rho_update_cnt"]
+    assert state["num_wu_iter"] == 1024
+    assert state["rho_init_source"] == "supervised_warmup_selection_loss"

@@ -187,17 +187,6 @@ def train_query_ssl_classifier(
             algorithm,
             initial_query_ssl_algorithm_state,
         )
-    if bool(getattr(algorithm, "needs_initial_selection_loss", False)):
-        initial_selection_report = evaluate_classifier(
-            model=model,
-            dataloader=selection_loader,
-            categories=categories,
-            device=device,
-        )
-        configure_query_ssl_algorithm_initial_selection_loss(
-            algorithm,
-            selection_loss=float(initial_selection_report["loss"]),
-        )
 
     optimizer = build_optimizer(
         model=model,
@@ -226,6 +215,33 @@ def train_query_ssl_classifier(
         proximal_mu=proximal_mu,
         trainable_parameters=trainable_parameters,
     )
+    if resume_checkpoint_path is None and bool(
+        getattr(algorithm, "needs_initial_selection_loss", False)
+    ):
+        warmup_steps = _resolve_initial_selection_warmup_steps(algorithm)
+        if warmup_steps > 0:
+            _run_initial_selection_supervised_warmup(
+                model=model,
+                train_loader=train_loader,
+                device=device,
+                max_steps=warmup_steps,
+                optimizer=optimizer,
+                trainable_parameters=optimizer_step_parameters,
+                max_grad_norm=max_grad_norm,
+                fedprox=fedprox,
+                log_every_steps=log_every_steps,
+                algorithm_name=algorithm.algorithm_name,
+            )
+        initial_selection_report = evaluate_classifier(
+            model=model,
+            dataloader=selection_loader,
+            categories=categories,
+            device=device,
+        )
+        configure_query_ssl_algorithm_initial_selection_loss(
+            algorithm,
+            selection_loss=float(initial_selection_report["loss"]),
+        )
 
     resume_state = load_query_ssl_training_checkpoint(
         path=resume_checkpoint_path,
@@ -418,6 +434,67 @@ def train_query_ssl_classifier(
         after_epoch=save_resume_checkpoint_after_epoch,
     )
     return model, history, best_selection_report
+
+
+def _resolve_initial_selection_warmup_steps(algorithm: QuerySslAlgorithm) -> int:
+    raw_steps = getattr(algorithm, "initial_selection_warmup_steps", 0)
+    warmup_steps = int(raw_steps() if callable(raw_steps) else raw_steps)
+    if warmup_steps < 0:
+        raise ValueError(
+            f"{algorithm.algorithm_name} initial_selection_warmup_steps must not "
+            "be negative."
+        )
+    return warmup_steps
+
+
+def _run_initial_selection_supervised_warmup(
+    *,
+    model: PeftTextEncoderWithLinearHead,
+    train_loader: DataLoader[dict[str, Any]],
+    device: str,
+    max_steps: int,
+    optimizer: torch.optim.Optimizer,
+    trainable_parameters: tuple[torch.nn.Parameter, ...],
+    max_grad_norm: float,
+    fedprox: Any,
+    log_every_steps: int,
+    algorithm_name: str,
+) -> None:
+    """DASH처럼 rho_init 계산 전 labeled-only warmup을 수행한다."""
+
+    if max_steps <= 0:
+        return
+    model.train()
+    train_iterator = iter(train_loader)
+    running_loss_total = 0.0
+    for step_index in range(1, max_steps + 1):
+        batch, train_iterator = next_cycling_batch(
+            loader=train_loader,
+            iterator=train_iterator,
+        )
+        input_ids = batch["input_ids"].to(device)
+        attention_mask = batch["attention_mask"].to(device)
+        labels = batch["labels"].to(device)
+
+        def compute_loss() -> torch.Tensor:
+            logits = model(input_ids=input_ids, attention_mask=attention_mask)
+            loss = torch.nn.functional.cross_entropy(logits, labels)
+            return fedprox.add_to_loss(loss)
+
+        loss = run_optimizer_loss_step(
+            optimizer=optimizer,
+            trainable_parameters=trainable_parameters,
+            max_grad_norm=max_grad_norm,
+            compute_loss=compute_loss,
+        )
+        running_loss_total += float(loss.detach().item())
+        if log_every_steps > 0 and step_index % log_every_steps == 0:
+            running_loss = safe_divide(running_loss_total, step_index)
+            print(
+                f"[{algorithm_name} warmup step={step_index}] "
+                f"running_sup_loss={running_loss:.4f}",
+                flush=True,
+            )
 
 
 def _require_loader_batch_size(

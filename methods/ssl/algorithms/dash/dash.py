@@ -166,6 +166,7 @@ class DashAlgorithm:
         gamma: float = 1.27,
         C: float = 1.0001,
         rho_min: float = 0.05,
+        num_wu_iter: int = 1024,
         lambda_u: float = 1.0,
         supervised_loss_weight: float = 1.0,
         rho_init: float | None = None,
@@ -176,6 +177,10 @@ class DashAlgorithm:
         self.gamma = float(gamma)
         self.C = float(C)
         self.rho_min = float(rho_min)
+        self.num_wu_iter = int(num_wu_iter)
+        if self.num_wu_iter < 0:
+            raise ValueError("num_wu_iter must not be negative.")
+        self.rho_init_source = "supervised_warmup_selection_loss"
         self.lambda_u = float(lambda_u)
         self.supervised_loss_weight = float(supervised_loss_weight)
         self.thresholding_hook = thresholding_hook or DashThresholdingHook(
@@ -187,6 +192,7 @@ class DashAlgorithm:
             pseudo_labeling_hook or HardOrSoftPseudoLabelingHook()
         )
         if rho_init is not None:
+            self.rho_init_source = "configured_parameter"
             self.thresholding_hook.configure_initial_selection_loss(
                 selection_loss=float(rho_init),
             )
@@ -198,6 +204,12 @@ class DashAlgorithm:
     @property
     def needs_initial_selection_loss(self) -> bool:
         return self.thresholding_hook.needs_initial_selection_loss
+
+    @property
+    def initial_selection_warmup_steps(self) -> int:
+        if not self.needs_initial_selection_loss:
+            return 0
+        return self.num_wu_iter
 
     def configure_initial_selection_loss(self, *, selection_loss: float) -> None:
         self.thresholding_hook.configure_initial_selection_loss(
@@ -223,6 +235,8 @@ class DashAlgorithm:
             configured=not self.needs_initial_selection_loss,
             metadata={
                 **self.thresholding_hook.export_state(),
+                "num_wu_iter": self.num_wu_iter,
+                "rho_init_source": self.rho_init_source,
             },
         )
 
@@ -232,6 +246,7 @@ class DashAlgorithm:
             algorithm_name=self.algorithm_name,
         )
         self.thresholding_hook.load_state(state)
+        self.rho_init_source = str(state.get("rho_init_source", self.rho_init_source))
 
     def compute_step(
         self,
@@ -369,6 +384,7 @@ def build_dash_algorithm(parameters: Mapping[str, Any]) -> DashAlgorithm:
         gamma=float(parameters.get("gamma", 1.27)),
         C=float(parameters.get("C", 1.0001)),
         rho_min=float(parameters.get("rho_min", 0.05)),
+        num_wu_iter=int(parameters.get("num_wu_iter", 1024)),
         lambda_u=float(parameters.get("lambda_u", 1.0)),
         supervised_loss_weight=float(parameters.get("supervised_loss_weight", 1.0)),
         rho_init=None if raw_rho_init is None else float(raw_rho_init),
