@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import gc
 import time
+from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
-from methods.federated.participation import select_participating_clients
+from methods.federated.participation import (
+    ParticipationSelection,
+    select_participating_clients,
+)
 from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     peer_context_exchange,
@@ -34,12 +39,29 @@ from scripts.experiments.fl_ssl.federated_simulation.model_revisions import (
     build_simulation_model_revision,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FederatedClientShard,
+    SimulationEvaluation,
     SimulationRoundSummary,
     SimulationRunRequest,
 )
 from scripts.support.configured_callable import load_configured_callable
+from shared.src.contracts.training_contracts import TrainingTask
 
 from ..io.run_artifact_writer import RunArtifactWriter
+
+
+@dataclass(frozen=True, slots=True)
+class _ClientSelection:
+    selected_shards: tuple[FederatedClientShard, ...]
+    participation_selection: ParticipationSelection
+    skipped_client_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _RoundSyncStates:
+    peer_context_state: PeerContextSimulationState
+    client_partition_sync_state: ClientPartitionSyncSimulationState
+    query_ssl_algorithm_sync_state: QuerySslAlgorithmSyncSimulationState
 
 
 def run_one_round(
@@ -58,20 +80,145 @@ def run_one_round(
     round_started_at = time.perf_counter()
     round_timing: dict[str, float] = {}
     round_id = f"round_{round_index:04d}"
-    capability_plan = (
-        request.capability_plan
-        or FederatedSslCapabilityPlan.from_mappings(
-            client_participation_policy=None,
-            aggregation_weight_policy=None,
-            labeled_exposure_policy=None,
-            local_supervision_regime=None,
-            server_step_policy=None,
-            peer_context_policy=None,
-            update_partition_policy=None,
-            query_multiview_source=None,
+    capability_plan = _resolve_round_capability_plan(request)
+    active = _run_server_step_phase(
+        request=request,
+        bootstrapped=bootstrapped,
+        active=active,
+        capability_plan=capability_plan,
+        round_index=round_index,
+        round_timing=round_timing,
+    )
+    _clear_round_base_snapshot_cache(
+        bootstrapped=bootstrapped,
+        round_timing=round_timing,
+    )
+    training_task = _open_round_phase(
+        request=request,
+        bootstrapped=bootstrapped,
+        ssl_method_runtime=ssl_method_runtime,
+        round_id=round_id,
+        round_timing=round_timing,
+    )
+    client_selection = _select_clients_phase(
+        request=request,
+        bootstrapped=bootstrapped,
+        capability_plan=capability_plan,
+        round_index=round_index,
+        round_timing=round_timing,
+    )
+    peer_context_by_client = _prepare_peer_context_phase(
+        capability_plan=capability_plan,
+        request=request,
+        selected_shards=client_selection.selected_shards,
+        round_index=round_index,
+        peer_context_state=peer_context_state,
+        round_timing=round_timing,
+    )
+    client_executions = _train_clients_phase(
+        request=request,
+        bootstrapped=bootstrapped,
+        active=active,
+        ssl_method_runtime=ssl_method_runtime,
+        round_id=round_id,
+        training_task=training_task,
+        capability_plan=capability_plan,
+        client_selection=client_selection,
+        peer_context_by_client=peer_context_by_client,
+        peer_context_state=peer_context_state,
+        client_partition_sync_state=client_partition_sync_state,
+        query_ssl_algorithm_sync_state=query_ssl_algorithm_sync_state,
+        round_timing=round_timing,
+    )
+    update_count = sum(
+        1 for execution in client_executions if execution.update_submitted
+    )
+    if update_count == 0:
+        _record_round_transient_resource_cleanup(
+            request=request,
+            bootstrapped=bootstrapped,
+            round_timing=round_timing,
         )
+        return RoundExecution(
+            active=active,
+            peer_context_state=peer_context_state,
+            client_partition_sync_state=client_partition_sync_state,
+            query_ssl_algorithm_sync_state=query_ssl_algorithm_sync_state,
+            summary=None,
+        )
+
+    sync_states = _build_sync_state_phase(
+        peer_context_state=peer_context_state,
+        client_partition_sync_state=client_partition_sync_state,
+        query_ssl_algorithm_sync_state=query_ssl_algorithm_sync_state,
+        client_executions=client_executions,
+        round_timing=round_timing,
+    )
+    next_model_revision = build_simulation_model_revision(round_index)
+    next_active, aggregation_metrics = _finalize_publication_phase(
+        request=request,
+        bootstrapped=bootstrapped,
+        round_id=round_id,
+        next_model_revision=next_model_revision,
+        round_timing=round_timing,
+    )
+    validation = _evaluate_validation_phase(
+        request=request,
+        active=next_active,
+        bootstrapped=bootstrapped,
+        training_task=training_task,
+        round_timing=round_timing,
+    )
+    _record_round_transient_resource_cleanup(
+        request=request,
+        bootstrapped=bootstrapped,
+        round_timing=round_timing,
+    )
+    summary = _assemble_round_summary(
+        bootstrapped=bootstrapped,
+        round_id=round_id,
+        next_model_revision=next_model_revision,
+        validation=validation,
+        client_executions=client_executions,
+        update_count=update_count,
+        client_selection=client_selection,
+        aggregation_metrics=aggregation_metrics,
+        round_started_at=round_started_at,
+        round_timing=round_timing,
+    )
+    return RoundExecution(
+        active=next_active,
+        peer_context_state=sync_states.peer_context_state,
+        client_partition_sync_state=sync_states.client_partition_sync_state,
+        query_ssl_algorithm_sync_state=sync_states.query_ssl_algorithm_sync_state,
+        summary=summary,
     )
 
+
+def _resolve_round_capability_plan(
+    request: SimulationRunRequest,
+) -> FederatedSslCapabilityPlan:
+    return request.capability_plan or FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy=None,
+        aggregation_weight_policy=None,
+        labeled_exposure_policy=None,
+        local_supervision_regime=None,
+        server_step_policy=None,
+        peer_context_policy=None,
+        update_partition_policy=None,
+        query_multiview_source=None,
+    )
+
+
+def _run_server_step_phase(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    active: ActiveSimulationState,
+    capability_plan: FederatedSslCapabilityPlan,
+    round_index: int,
+    round_timing: dict[str, float],
+) -> ActiveSimulationState:
     started_at = time.perf_counter()
     server_step = server_step_execution.run_server_step_if_supported(
         request=request,
@@ -80,9 +227,15 @@ def run_one_round(
         capability_plan=capability_plan,
         round_index=round_index,
     )
-    active = server_step.active
     round_timing["round_server_step_seconds"] = time.perf_counter() - started_at
+    return server_step.active
 
+
+def _clear_round_base_snapshot_cache(
+    *,
+    bootstrapped: BootstrappedSimulation,
+    round_timing: dict[str, float],
+) -> None:
     started_at = time.perf_counter()
     if bootstrapped.round_base_snapshot_cache is not None:
         bootstrapped.round_base_snapshot_cache.clear()
@@ -90,6 +243,15 @@ def run_one_round(
         time.perf_counter() - started_at
     )
 
+
+def _open_round_phase(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    ssl_method_runtime: FederatedSslSimulationRuntime,
+    round_id: str,
+    round_timing: dict[str, float],
+) -> TrainingTask:
     started_at = time.perf_counter()
     round_record = bootstrapped.server_runtime.open_round(
         ssl_method_runtime.build_round_open_request(
@@ -98,8 +260,17 @@ def run_one_round(
         )
     )
     round_timing["round_open_seconds"] = time.perf_counter() - started_at
-    training_task = round_record.training_task
+    return round_record.training_task
 
+
+def _select_clients_phase(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    capability_plan: FederatedSslCapabilityPlan,
+    round_index: int,
+    round_timing: dict[str, float],
+) -> _ClientSelection:
     started_at = time.perf_counter()
     selected_shards, participation_selection = select_participating_clients(
         clients=bootstrapped.dataset_split.client_shards,
@@ -112,7 +283,22 @@ def run_one_round(
         bootstrapped.dataset_split.client_shards[index].client_id
         for index in participation_selection.skipped_indices
     )
+    return _ClientSelection(
+        selected_shards=selected_shards,
+        participation_selection=participation_selection,
+        skipped_client_ids=skipped_client_ids,
+    )
 
+
+def _prepare_peer_context_phase(
+    *,
+    capability_plan: FederatedSslCapabilityPlan,
+    request: SimulationRunRequest,
+    selected_shards: tuple[FederatedClientShard, ...],
+    round_index: int,
+    peer_context_state: PeerContextSimulationState,
+    round_timing: dict[str, float],
+) -> Mapping[str, object]:
     started_at = time.perf_counter()
     peer_context_by_client = peer_context_exchange.build_peer_context_by_client(
         capability_plan=capability_plan,
@@ -124,7 +310,25 @@ def run_one_round(
     round_timing["round_peer_context_prepare_seconds"] = (
         time.perf_counter() - started_at
     )
+    return peer_context_by_client
 
+
+def _train_clients_phase(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    active: ActiveSimulationState,
+    ssl_method_runtime: FederatedSslSimulationRuntime,
+    round_id: str,
+    training_task: TrainingTask,
+    capability_plan: FederatedSslCapabilityPlan,
+    client_selection: _ClientSelection,
+    peer_context_by_client: Mapping[str, object],
+    peer_context_state: PeerContextSimulationState,
+    client_partition_sync_state: ClientPartitionSyncSimulationState,
+    query_ssl_algorithm_sync_state: QuerySslAlgorithmSyncSimulationState,
+    round_timing: dict[str, float],
+) -> tuple[ClientRoundExecution, ...]:
     started_at = time.perf_counter()
     client_executions = tuple(
         run_client_round(
@@ -145,41 +349,47 @@ def run_one_round(
                 query_ssl_algorithm_sync_state.state_for_client(shard.client_id)
             ),
         )
-        for shard in selected_shards
+        for shard in client_selection.selected_shards
     )
     round_timing["round_client_execution_seconds"] = time.perf_counter() - started_at
-    update_count = sum(
-        1 for execution in client_executions if execution.update_submitted
-    )
-    if update_count == 0:
-        _record_round_transient_resource_cleanup(
-            request=request,
-            bootstrapped=bootstrapped,
-            round_timing=round_timing,
-        )
-        return RoundExecution(
-            active=active,
-            peer_context_state=peer_context_state,
-            client_partition_sync_state=client_partition_sync_state,
-            query_ssl_algorithm_sync_state=query_ssl_algorithm_sync_state,
-            summary=None,
-        )
+    return client_executions
+
+
+def _build_sync_state_phase(
+    *,
+    peer_context_state: PeerContextSimulationState,
+    client_partition_sync_state: ClientPartitionSyncSimulationState,
+    query_ssl_algorithm_sync_state: QuerySslAlgorithmSyncSimulationState,
+    client_executions: tuple[ClientRoundExecution, ...],
+    round_timing: dict[str, float],
+) -> _RoundSyncStates:
     started_at = time.perf_counter()
-    next_peer_context_state = _build_next_peer_context_state(
-        previous=peer_context_state,
-        client_executions=client_executions,
-    )
-    next_client_partition_sync_state = _build_next_client_partition_sync_state(
-        previous=client_partition_sync_state,
-        client_executions=client_executions,
-    )
-    next_query_ssl_algorithm_sync_state = _build_next_query_ssl_algorithm_sync_state(
-        previous=query_ssl_algorithm_sync_state,
-        client_executions=client_executions,
+    sync_states = _RoundSyncStates(
+        peer_context_state=_build_next_peer_context_state(
+            previous=peer_context_state,
+            client_executions=client_executions,
+        ),
+        client_partition_sync_state=_build_next_client_partition_sync_state(
+            previous=client_partition_sync_state,
+            client_executions=client_executions,
+        ),
+        query_ssl_algorithm_sync_state=_build_next_query_ssl_algorithm_sync_state(
+            previous=query_ssl_algorithm_sync_state,
+            client_executions=client_executions,
+        ),
     )
     round_timing["round_peer_state_build_seconds"] = time.perf_counter() - started_at
+    return sync_states
 
-    next_model_revision = build_simulation_model_revision(round_index)
+
+def _finalize_publication_phase(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    round_id: str,
+    next_model_revision: str,
+    round_timing: dict[str, float],
+) -> tuple[ActiveSimulationState, dict[str, float]]:
     started_at = time.perf_counter()
     next_active, aggregation_metrics = _finalize_round_publication(
         request=request,
@@ -190,20 +400,42 @@ def run_one_round(
     round_timing["round_finalize_publication_seconds"] = (
         time.perf_counter() - started_at
     )
+    return next_active, aggregation_metrics
+
+
+def _evaluate_validation_phase(
+    *,
+    request: SimulationRunRequest,
+    active: ActiveSimulationState,
+    bootstrapped: BootstrappedSimulation,
+    training_task: TrainingTask,
+    round_timing: dict[str, float],
+) -> SimulationEvaluation:
     started_at = time.perf_counter()
     validation = evaluate_simulation_validation(
         request=request,
-        active=next_active,
+        active=active,
         rows=request.validation_rows,
         objective_config=training_task.objective_config,
         runtime_resource_cache=bootstrapped.runtime_resource_cache,
     )
     round_timing["round_validation_seconds"] = time.perf_counter() - started_at
-    _record_round_transient_resource_cleanup(
-        request=request,
-        bootstrapped=bootstrapped,
-        round_timing=round_timing,
-    )
+    return validation
+
+
+def _assemble_round_summary(
+    *,
+    bootstrapped: BootstrappedSimulation,
+    round_id: str,
+    next_model_revision: str,
+    validation: SimulationEvaluation,
+    client_executions: tuple[ClientRoundExecution, ...],
+    update_count: int,
+    client_selection: _ClientSelection,
+    aggregation_metrics: dict[str, float],
+    round_started_at: float,
+    round_timing: dict[str, float],
+) -> SimulationRoundSummary:
     round_elapsed = time.perf_counter() - round_started_at
     round_timing["round_total_seconds"] = round_elapsed
     measured_without_total = sum(
@@ -215,29 +447,23 @@ def run_one_round(
         0.0,
         round_elapsed - measured_without_total,
     )
-    return RoundExecution(
-        active=next_active,
-        peer_context_state=next_peer_context_state,
-        client_partition_sync_state=next_client_partition_sync_state,
-        query_ssl_algorithm_sync_state=next_query_ssl_algorithm_sync_state,
-        summary=SimulationRoundSummary(
-            round_id=round_id,
-            model_revision=next_model_revision,
-            update_count=update_count,
-            validation=validation,
-            clients=tuple(execution.summary for execution in client_executions),
-            round_time_seconds=round_elapsed,
-            round_timing_breakdown=round_timing,
-            aggregation_metrics=aggregation_metrics,
-            total_payload_bytes=sum(
-                execution.summary.client_payload_bytes or 0
-                for execution in client_executions
-            ),
-            total_client_count=len(bootstrapped.dataset_split.client_shards),
-            selected_client_count=participation_selection.selected_count,
-            skipped_client_count=participation_selection.skipped_count,
-            skipped_client_ids=skipped_client_ids,
+    return SimulationRoundSummary(
+        round_id=round_id,
+        model_revision=next_model_revision,
+        update_count=update_count,
+        validation=validation,
+        clients=tuple(execution.summary for execution in client_executions),
+        round_time_seconds=round_elapsed,
+        round_timing_breakdown=round_timing,
+        aggregation_metrics=aggregation_metrics,
+        total_payload_bytes=sum(
+            execution.summary.client_payload_bytes or 0
+            for execution in client_executions
         ),
+        total_client_count=len(bootstrapped.dataset_split.client_shards),
+        selected_client_count=client_selection.participation_selection.selected_count,
+        skipped_client_count=client_selection.participation_selection.skipped_count,
+        skipped_client_ids=client_selection.skipped_client_ids,
     )
 
 

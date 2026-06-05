@@ -233,6 +233,13 @@ assemble summary
 - `round_timing_breakdown` key 의미를 바꾸지 않는다.
 - cache cleanup 같은 안정화 변경과 구조 리팩터링을 같은 커밋에 섞지 않는다.
 
+상태:
+
+- 완료: `run_one_round()`의 첫 화면을 server step, round open, client selection,
+  peer context, client training, sync state, publication, validation, cleanup,
+  summary assembly phase 호출로 정리했다.
+- 유지: 기존 `round_timing_breakdown` key와 transient cleanup 동작은 변경하지 않았다.
+
 ### 6단계: README/index 갱신
 
 코드 구조가 정리된 뒤에만 문서를 갱신한다.
