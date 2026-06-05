@@ -91,6 +91,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
 from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
     _build_next_client_partition_sync_state,
     _build_next_query_ssl_algorithm_sync_state,
+    _release_transient_resources_at_round_boundary,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
@@ -2027,6 +2028,34 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     assert execution.peer_client_snapshot is returned_peer_snapshot
     assert execution.client_partition_snapshot is returned_client_partition_parameters
     assert execution.query_ssl_algorithm_state is returned_algorithm_state
+
+
+def test_round_boundary_releases_peft_transient_model_cache() -> None:
+    runtime_resource_cache = InMemoryRuntimeResourceCache()
+    runtime_resource_cache.set_resource("peft_encoder:helper_model:test", object())
+    runtime_resource_cache.set_resource("peft_encoder:backbone_base:test", object())
+    runtime_resource_cache.set_resource("peft_encoder:tokenizer:test", object())
+
+    removed_count = _release_transient_resources_at_round_boundary(
+        request=SimpleNamespace(
+            round_runtime_config=SimpleNamespace(
+                transient_resource_cleaner=(
+                    "methods.adaptation.peft_text_encoder.resource_cache."
+                    "clear_peft_encoder_transient_resource_cache"
+                )
+            )
+        ),
+        bootstrapped=SimpleNamespace(runtime_resource_cache=runtime_resource_cache),
+    )
+
+    assert removed_count == 2
+    assert runtime_resource_cache.get_resource("peft_encoder:helper_model:test") is None
+    assert (
+        runtime_resource_cache.get_resource("peft_encoder:backbone_base:test") is None
+    )
+    assert (
+        runtime_resource_cache.get_resource("peft_encoder:tokenizer:test") is not None
+    )
 
 
 def test_build_next_client_partition_sync_state_keeps_previous_snapshots() -> None:

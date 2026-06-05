@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import gc
 import time
+from typing import Any
 
 from methods.federated.participation import select_participating_clients
 from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
@@ -35,6 +37,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRoundSummary,
     SimulationRunRequest,
 )
+from scripts.support.configured_callable import load_configured_callable
 
 from ..io.run_artifact_writer import RunArtifactWriter
 
@@ -149,6 +152,11 @@ def run_one_round(
         1 for execution in client_executions if execution.update_submitted
     )
     if update_count == 0:
+        _record_round_transient_resource_cleanup(
+            request=request,
+            bootstrapped=bootstrapped,
+            round_timing=round_timing,
+        )
         return RoundExecution(
             active=active,
             peer_context_state=peer_context_state,
@@ -191,6 +199,11 @@ def run_one_round(
         runtime_resource_cache=bootstrapped.runtime_resource_cache,
     )
     round_timing["round_validation_seconds"] = time.perf_counter() - started_at
+    _record_round_transient_resource_cleanup(
+        request=request,
+        bootstrapped=bootstrapped,
+        round_timing=round_timing,
+    )
     round_elapsed = time.perf_counter() - round_started_at
     round_timing["round_total_seconds"] = round_elapsed
     measured_without_total = sum(
@@ -295,4 +308,50 @@ def _finalize_round_publication(
             adapter_state=active_state,
         ),
         dict(finalized_round.publication.aggregated_metrics),
+    )
+
+
+def _record_round_transient_resource_cleanup(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    round_timing: dict[str, float],
+) -> None:
+    started_at = time.perf_counter()
+    removed_count = _release_transient_resources_at_round_boundary(
+        request=request,
+        bootstrapped=bootstrapped,
+    )
+    round_timing["round_transient_resource_clean_seconds"] = (
+        time.perf_counter() - started_at
+    )
+    round_timing["round_transient_resource_removed_count"] = float(removed_count)
+
+
+def _release_transient_resources_at_round_boundary(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+) -> int:
+    """round 사이에 update family가 선언한 무거운 transient cache를 정리한다."""
+
+    cleaner_path = request.round_runtime_config.transient_resource_cleaner
+    removed_count = 0
+    if cleaner_path:
+        cleaner = _load_transient_resource_cleaner(cleaner_path)
+        removed_count = int(cleaner(bootstrapped.runtime_resource_cache) or 0)
+    gc.collect()
+    try:
+        import torch
+    except ImportError:  # pragma: no cover - optional dependency guard
+        return removed_count
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return removed_count
+
+
+def _load_transient_resource_cleaner(cleaner_path: str) -> Any:
+    return load_configured_callable(
+        cleaner_path,
+        field_name="round_runtime.transient_resource_cleaner",
     )
