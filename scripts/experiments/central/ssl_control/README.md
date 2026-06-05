@@ -19,6 +19,22 @@ SSL objective는 `methods/ssl`, PEFT adaptation core는
 중앙 SSL method 비교의 기본 initial checkpoint는 `none`이다. teacher는 SSL 실행의
 숨은 sub-step이 아니라 방법론이 필요할 때 teacher hook으로 소비한다.
 
+## 읽기 경로
+
+entrypoint는 Hydra thin wrapper다. 실행 의미를 확인할 때는 아래 순서로 본다.
+
+```text
+conf/entrypoints/central/ssl_control/*.yaml
+-> run_peft_supervised_control.py 또는 run_peft_ssl_control.py
+-> scripts/support/query_ssl_text_encoder/runners/supervised_text_encoder.py
+   또는 scripts/support/query_ssl_text_encoder/runners/consistency.py
+-> scripts/support/query_ssl_text_encoder/{text_encoder_run_context.py,query_ssl/run_context.py}
+-> scripts/support/query_ssl_text_encoder/io/artifacts.py
+```
+
+`consistency.py`의 첫 화면은 Query SSL runtime 준비, 학습, 평가, manifest 조립,
+artifact 저장 순서로 읽는다.
+
 ## 기본 실행
 
 ```bash

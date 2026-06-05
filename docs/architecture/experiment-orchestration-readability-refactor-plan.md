@@ -252,6 +252,12 @@ assemble summary
 
 목표는 cookbook 확대가 아니라, 처음 읽을 파일 순서를 짧게 남기는 것이다.
 
+상태:
+
+- 완료: `docs/execution_index.md`, `docs/ai_context_manifest.yaml`,
+  central SSL README, FL SSL README, federated simulation README의 읽기 경로를
+  현재 entrypoint/runner/round lifecycle 구조에 맞췄다.
+
 ## 진행 원칙
 
 - 한 번에 한 entrypoint 또는 한 execution phase만 다룬다.

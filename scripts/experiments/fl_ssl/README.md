@@ -33,6 +33,25 @@ output_dir=runs/_smoke/fl_ssl
 `budget=reduced`는 `10 clients x 5 rounds`, `budget=main`은 `10 clients x 30
 rounds`다. 새 wiring은 smoke 또는 reduced로 먼저 확인한다.
 
+## 읽기 경로
+
+entrypoint에서 method core까지 따라갈 때는 아래 순서로 본다.
+
+```text
+conf/entrypoints/fl_ssl/run_federated_simulation.yaml
+-> run_federated_simulation.py
+-> federated_simulation/config_request.py
+-> federated_simulation/simulation.py
+-> federated_simulation/flow/bootstrap.py
+-> federated_simulation/flow/round_loop.py
+-> federated_simulation/flow/result_builder.py
+```
+
+`run_federated_simulation.py`는 sweep 처리, output dir 결정, request 생성, runner
+호출, 결과 출력만 맡는다. `simulation.py`는 runtime 준비와 round loop를 분리해서
+보여주고, `flow/round_loop.py`는 server step부터 summary assembly까지 round
+lifecycle phase를 보여준다.
+
 ## Output Layout
 
 새 FL SSL run은 같은 split과 숫자 조건 아래에서 방법론을 빠르게 비교하도록

@@ -31,10 +31,15 @@
 2. `config_request.py` - config를 typed request로 변환
 3. `simulation.py` - public simulation API
 4. `flow/bootstrap.py` - initial state, split, runtime context
-5. `flow/round_loop.py` - round lifecycle
+5. `flow/round_loop.py` - server step부터 summary assembly까지 round lifecycle
 6. `flow/result_builder.py` - final evaluation/report input 조립
 7. `adapters/` - method descriptor, local execution, server step/update bridge
 8. `io/` - report/artifact/diagnostics serialization
+
+`simulation.py`의 첫 화면은 runtime 준비, round loop 실행, result 조립 순서로
+읽는다. `round_loop.py`의 첫 화면은 server step, round open, client selection,
+peer context, client training, sync state, publication, validation, cleanup,
+summary assembly phase를 따라간다.
 
 ## 경계 규칙
 

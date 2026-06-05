@@ -19,9 +19,9 @@ central fixed embedding + classifier seed
 | `docs/project_execution_plan.md` | active decision, phase, next step |
 | `docs/architecture/system-overview.md` | 런타임 구성요소와 코드 경계 |
 | `docs/architecture/target-method-runtime-structure.md` | 최종 method/runtime 구조와 migration plan |
-| `docs/architecture/strategy-surface-refactor-plan.md` | 중앙 SSL/FSSL public 축과 method-owned 축 정리 계획 |
+| `docs/architecture/experiment-orchestration-readability-refactor-plan.md` | 중앙 SSL/FSSL 실행 흐름 읽기 경로와 리팩터링 상태 |
+| `docs/architecture/experiment-orchestration-readability-inventory.md` | 중앙 supervised, 중앙 SSL, FSSL entrypoint별 실행 경로 inventory |
 | `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 guard |
-| `docs/architecture/federated-ssl-module-deepening-plan.md` | `methods/federated_ssl` 읽기 경로와 단계별 정리 계획 |
 | `docs/architecture/pattern-integrity-refactor-backlog.md` | 패턴 경계 guard와 남은 후보 |
 | `docs/architecture/code-expression-guidelines.md` | 코드 표현 밀도와 읽기 난이도 기준 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
@@ -68,20 +68,31 @@ central fixed embedding + classifier seed
 Central SSL:
 
 1. relevant `conf/**`
-2. `docs/architecture/target-method-runtime-structure.md`
-3. `docs/contracts/query_buffer_v1.md`
-4. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
-5. `scripts/experiments/central/ssl_control/README.md`
-6. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
-7. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
-8. `scripts/support/query_ssl_text_encoder/*`
-9. `methods/ssl/hooks/teacher.py` (teacher source hook 변경 시)
-10. `methods/adaptation/peft_text_encoder/*`
-11. `methods/evaluation/*`
-12. `methods/adaptation/query_text_views/*`
-13. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
-14. `methods/ssl/*`
-15. `methods/adaptation/*`
+2. `scripts/experiments/central/ssl_control/README.md`
+3. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
+4. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
+5. `scripts/support/query_ssl_text_encoder/runners/supervised_text_encoder.py`
+6. `scripts/support/query_ssl_text_encoder/runners/consistency.py`
+7. `scripts/support/query_ssl_text_encoder/query_ssl/run_context.py`
+8. `scripts/support/query_ssl_text_encoder/io/artifacts.py`
+9. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
+10. `methods/ssl/hooks/teacher.py` (teacher source hook 변경 시)
+11. `methods/adaptation/{peft_text_encoder,full_text_encoder}/**`
+
+FL SSL:
+
+1. relevant `conf/**`
+2. `scripts/experiments/fl_ssl/README.md`
+3. `scripts/experiments/fl_ssl/run_federated_simulation.py`
+4. `scripts/experiments/fl_ssl/federated_simulation/config_request.py`
+5. `scripts/experiments/fl_ssl/federated_simulation/simulation.py`
+6. `scripts/experiments/fl_ssl/federated_simulation/flow/bootstrap.py`
+7. `scripts/experiments/fl_ssl/federated_simulation/flow/round_loop.py`
+8. `scripts/experiments/fl_ssl/federated_simulation/flow/result_builder.py`
+9. `scripts/experiments/fl_ssl/federated_simulation/io/**`
+10. `scripts/runtime_adapters/federated_{agent,server}/**`
+11. `methods/federated_ssl/**`
+12. `methods/adaptation/peft_text_encoder/**`
 
 Agent runtime:
 

@@ -16,7 +16,7 @@ source_of_truth_priority:
   - plan.md
   - docs/project_execution_plan.md
   - docs/architecture/target-method-runtime-structure.md
-  - docs/architecture/strategy-surface-refactor-plan.md
+  - docs/architecture/experiment-orchestration-readability-refactor-plan.md
   - docs/architecture/system-overview.md
   - docs/contracts/*
   - docs/strategy_surface_map.md
@@ -53,7 +53,8 @@ active_entrypoints:
   - docs/architecture/code-expression-guidelines.md
   - docs/architecture/pattern-integrity-refactor-backlog.md
   - docs/architecture/method-owned-runtime-refactor-plan.md
-  - docs/architecture/federated-ssl-module-deepening-plan.md
+  - docs/architecture/experiment-orchestration-readability-refactor-plan.md
+  - docs/architecture/experiment-orchestration-readability-inventory.md
   - docs/contracts/query_buffer_v1.md
   - docs/contracts/legacy_contract_ledger.md
   - docs/contracts/central_peft_text_encoder_trainer_contract.md
@@ -123,7 +124,7 @@ task_routes:
       - docs/contracts/strategy_addition_playbook.md
       - docs/contracts/fl_ssl_method_capability_matrix.md
       - docs/architecture/method-owned-runtime-refactor-plan.md
-      - docs/architecture/federated-ssl-module-deepening-plan.md
+      - docs/architecture/experiment-orchestration-readability-refactor-plan.md
       - methods/README.md
       - conf/README.md
       - relevant path-specific AGENTS.md
