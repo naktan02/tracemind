@@ -16,6 +16,9 @@ from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.adaptation.query_text_views.query_ssl_views import (
     build_query_ssl_unlabeled_dataloader,
 )
+from methods.adaptation.query_text_views.unlabeled_preparation import (
+    PreparedQuerySslUnlabeledRows,
+)
 from methods.ssl.base import (
     QUERY_SSL_INPUT_TRANSFORM_NONE,
     QUERY_SSL_MODEL_OUTPUT_LOGITS,
@@ -25,6 +28,7 @@ from methods.ssl.base import (
     QUERY_SSL_OPTIMIZER_LIFECYCLE_SINGLE_LOSS_STEP,
     QUERY_SSL_TEACHER_STATE_EMA_TRAINABLE,
     QUERY_SSL_TEACHER_STATE_NONE,
+    QuerySslAlgorithm,
     QuerySslAlgorithmDescriptor,
 )
 from methods.ssl.model_capabilities import require_pooled_feature_classifier
@@ -90,6 +94,75 @@ def run_consistency_query_ssl_peft_baseline(
 ) -> dict[str, str]:
     """Query SSL baseline을 공통 scaffolding으로 실행한다."""
 
+    (
+        prepared_unlabeled_rows,
+        context,
+        unlabeled_loader,
+        algorithm,
+    ) = _prepare_query_ssl_training_runtime(
+        cfg=cfg,
+        descriptor=descriptor,
+        train_rows=train_rows,
+        unlabeled_rows=unlabeled_rows,
+        eval_rows_by_name=eval_rows_by_name,
+        selection_set_name=selection_set_name,
+        categories_override=categories_override,
+    )
+    max_train_steps = _resolve_max_train_steps(cfg)
+    model, history, best_selection_report, runtime_metrics = _train_query_ssl_context(
+        cfg=cfg,
+        context=context,
+        unlabeled_loader=unlabeled_loader,
+        algorithm=algorithm,
+        max_train_steps=max_train_steps,
+    )
+    results = evaluate_query_ssl_run_context(
+        model=model,
+        eval_loaders=context.eval_loaders,
+        categories=context.categories,
+        device=context.training_device,
+    )
+    effective_extra_manifest = _build_query_ssl_extra_manifest(
+        cfg=cfg,
+        context=context,
+        prepared_unlabeled_rows=prepared_unlabeled_rows,
+        algorithm=algorithm,
+        runtime_metrics=runtime_metrics,
+        extra_manifest=extra_manifest,
+    )
+    outputs = write_run_artifacts(
+        cfg=context.cfg,
+        trainer_version=context.trainer_version,
+        created_at=context.created_at,
+        model=model,
+        tokenizer=context.tokenizer,
+        categories=context.categories,
+        eval_set_map=context.eval_set_map,
+        training_device=context.training_device,
+        backbone_summary=context.backbone_summary,
+        history=history,
+        best_selection_report=best_selection_report,
+        results=results,
+        extra_manifest=effective_extra_manifest,
+        eval_loaders=context.eval_loaders,
+    )
+    for key, value in outputs.items():
+        print(f"{key}={value}")
+    return outputs
+
+
+def _prepare_query_ssl_training_runtime(
+    *,
+    cfg: Any,
+    descriptor: QuerySslAlgorithmDescriptor,
+    train_rows: list[LabeledQueryRow] | None,
+    unlabeled_rows: list[LabeledQueryRow] | None,
+    eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None,
+    selection_set_name: str | None,
+    categories_override: list[str] | tuple[str, ...] | None,
+) -> tuple[PreparedQuerySslUnlabeledRows, QuerySslRunContext, Any, QuerySslAlgorithm]:
+    """unlabeled view, run context, loader, algorithm runtime을 준비한다."""
+
     if unlabeled_rows is None:
         if getattr(cfg, "unlabeled_jsonl", None) is None:
             raise ValueError(
@@ -126,7 +199,19 @@ def run_consistency_query_ssl_peft_baseline(
         context=context,
     )
     algorithm = descriptor.build_algorithm(build_query_ssl_method_parameters(cfg))
-    max_train_steps = _resolve_max_train_steps(cfg)
+    return prepared_unlabeled_rows, context, unlabeled_loader, algorithm
+
+
+def _train_query_ssl_context(
+    *,
+    cfg: Any,
+    context: QuerySslRunContext,
+    unlabeled_loader: Any,
+    algorithm: QuerySslAlgorithm,
+    max_train_steps: int | None,
+) -> tuple[Any, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+    """준비된 Query SSL context로 학습을 실행하고 runtime metric을 반환한다."""
+
     (
         (model, history, best_selection_report),
         runtime_metrics,
@@ -166,12 +251,19 @@ def run_consistency_query_ssl_peft_baseline(
         parameter_counts=context.backbone_summary["parameter_counts"],
         device=context.training_device,
     )
-    results = evaluate_query_ssl_run_context(
-        model=model,
-        eval_loaders=context.eval_loaders,
-        categories=context.categories,
-        device=context.training_device,
-    )
+    return model, history, best_selection_report, runtime_metrics
+
+
+def _build_query_ssl_extra_manifest(
+    *,
+    cfg: Any,
+    context: QuerySslRunContext,
+    prepared_unlabeled_rows: PreparedQuerySslUnlabeledRows,
+    algorithm: QuerySslAlgorithm,
+    runtime_metrics: Mapping[str, Any],
+    extra_manifest: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Query SSL run artifact manifest의 추가 metadata를 조립한다."""
 
     effective_extra_manifest: dict[str, Any] = {
         "unlabeled_jsonl": None
@@ -202,26 +294,7 @@ def run_consistency_query_ssl_peft_baseline(
     effective_extra_manifest.update(prepared_unlabeled_rows.build_run_manifest())
     if extra_manifest is not None:
         effective_extra_manifest.update(dict(extra_manifest))
-
-    outputs = write_run_artifacts(
-        cfg=context.cfg,
-        trainer_version=context.trainer_version,
-        created_at=context.created_at,
-        model=model,
-        tokenizer=context.tokenizer,
-        categories=context.categories,
-        eval_set_map=context.eval_set_map,
-        training_device=context.training_device,
-        backbone_summary=context.backbone_summary,
-        history=history,
-        best_selection_report=best_selection_report,
-        results=results,
-        extra_manifest=effective_extra_manifest,
-        eval_loaders=context.eval_loaders,
-    )
-    for key, value in outputs.items():
-        print(f"{key}={value}")
-    return outputs
+    return effective_extra_manifest
 
 
 def _resolve_max_train_steps(cfg: Any) -> int | None:

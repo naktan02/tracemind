@@ -194,6 +194,15 @@ write artifacts/report
 
 각 단계가 함수 이름에서 드러나게 한다.
 
+상태:
+
+- 완료: FSSL `run_simulation_request()`를 runtime 준비, round loop 실행, result 조립
+  흐름으로 분리했다.
+- 완료: 중앙 Query SSL runner를 unlabeled view/context/algorithm 준비, 학습,
+  평가, manifest 조립, artifact 저장 흐름으로 분리했다.
+- 유지: 중앙 supervised runner는 이미 context 준비, 학습, 평가, artifact 저장 순서가
+  드러나므로 추가 분리를 하지 않았다.
+
 ### 5단계: FSSL round lifecycle phase 정리
 
 이 단계는 FSSL 전용으로 남기되, 전체 계획 안의 하위 단계로 취급한다.
