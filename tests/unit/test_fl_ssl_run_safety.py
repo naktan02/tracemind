@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 from hydra import compose, initialize_config_module
 from omegaconf import OmegaConf
@@ -9,6 +11,9 @@ from omegaconf import OmegaConf
 from scripts.experiments.fl_ssl.federated_simulation.sweep import (
     run_client_count_sweep_from_config,
     run_seed_sweep_from_config,
+)
+from scripts.experiments.fl_ssl.run_federated_simulation import (
+    resolve_single_simulation_output_dir,
 )
 from scripts.experiments.fl_ssl.support.safety import (
     DEFAULT_LONG_RUN_ACK,
@@ -55,6 +60,41 @@ def test_fl_ssl_long_run_guard_allows_reduced_single_run_budget() -> None:
         )
 
     require_fl_ssl_run_budget_allowed(cfg, run_kind="single_simulation")
+
+
+def test_fl_ssl_single_run_output_dir_uses_layout_slug_and_run_id() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
+
+    output_dir = resolve_single_simulation_output_dir(
+        cfg,
+        created_at=datetime(2026, 6, 5, 12, 34, 56, tzinfo=timezone.utc),
+    )
+
+    assert output_dir.as_posix() == (
+        "runs/_smoke/fl_ssl/"
+        "sz4_ourafla_shared_s42/"
+        "c4_r3_e1_b8_s50/"
+        "peft_text_encoder_lora/"
+        "fixmatch_fedavg/"
+        "20260605T123456Z"
+    )
+
+
+def test_fl_ssl_single_run_output_dir_uses_resume_dir_when_enabled() -> None:
+    cfg = OmegaConf.create(
+        {
+            "resume": {
+                "enabled": True,
+                "run_dir": "runs/fl_ssl/existing_run",
+            }
+        }
+    )
+
+    assert (
+        resolve_single_simulation_output_dir(cfg).as_posix()
+        == "runs/fl_ssl/existing_run"
+    )
 
 
 def test_fl_ssl_long_run_guard_requires_exact_ack() -> None:

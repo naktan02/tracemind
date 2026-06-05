@@ -170,6 +170,14 @@ uv run pytest tests/unit/test_scripts_hydra_configs.py
 - output path와 result 출력 형식을 바꾸지 않는다.
 - 각 entrypoint별 helper를 우선하고 공통 framework를 만들지 않는다.
 
+상태:
+
+- 완료: central supervised/Query SSL entrypoint는 이미 thin wrapper라 유지했다.
+- 완료: FSSL entrypoint는 `run_sweep_if_requested()`,
+  `resolve_single_simulation_output_dir()`, `run_single_simulation_from_config()`,
+  `print_simulation_result()`로 분리해 첫 화면에서 sweep/single-run 흐름이 보이게
+  했다.
+
 ### 4단계: runtime preparation과 execution loop 분리
 
 FSSL은 `simulation.py`, 중앙 SSL은 `scripts/support/query_ssl_text_encoder/runners/*`
