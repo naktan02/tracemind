@@ -239,6 +239,8 @@ assemble summary
   peer context, client training, sync state, publication, validation, cleanup,
   summary assembly phase 호출로 정리했다.
 - 유지: 기존 `round_timing_breakdown` key와 transient cleanup 동작은 변경하지 않았다.
+- 정리: round loop 내부 fallback capability plan 생성을 제거하고, request 준비 단계에서
+  확정된 `capability_plan`을 요구하도록 했다.
 
 ### 6단계: README/index 갱신
 

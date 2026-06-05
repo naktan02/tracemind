@@ -80,7 +80,7 @@ def run_one_round(
     round_started_at = time.perf_counter()
     round_timing: dict[str, float] = {}
     round_id = f"round_{round_index:04d}"
-    capability_plan = _resolve_round_capability_plan(request)
+    capability_plan = _require_round_capability_plan(request)
     active = _run_server_step_phase(
         request=request,
         bootstrapped=bootstrapped,
@@ -195,19 +195,12 @@ def run_one_round(
     )
 
 
-def _resolve_round_capability_plan(
+def _require_round_capability_plan(
     request: SimulationRunRequest,
 ) -> FederatedSslCapabilityPlan:
-    return request.capability_plan or FederatedSslCapabilityPlan.from_mappings(
-        client_participation_policy=None,
-        aggregation_weight_policy=None,
-        labeled_exposure_policy=None,
-        local_supervision_regime=None,
-        server_step_policy=None,
-        peer_context_policy=None,
-        update_partition_policy=None,
-        query_multiview_source=None,
-    )
+    if request.capability_plan is None:
+        raise ValueError("SimulationRunRequest.capability_plan must be resolved.")
+    return request.capability_plan
 
 
 def _run_server_step_phase(
