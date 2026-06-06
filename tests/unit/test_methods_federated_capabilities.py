@@ -236,7 +236,7 @@ def test_capability_plan_defaults_to_shared_client_seed() -> None:
 
     assert plan.labeled_exposure_policy_name == "shared_client_seed"
     assert plan.client_participation_policy.name == "all_clients"
-    assert plan.aggregation_weight_policy.name == "example_count"
+    assert plan.aggregation_weight_policy.name == "uniform"
     assert plan.server_step_policy_name == "none"
     assert plan.server_update_policy_name == SERVER_UPDATE_FEDAVG_MERGED_DELTA
     assert plan.peer_context_policy_name == "none"

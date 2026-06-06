@@ -137,7 +137,6 @@ def _build_update(
         example_count=3,
         mean_confidence=0.8,
         mean_margin=0.15,
-        label_counts={"anxiety": 2, "normal": 1},
     )
     envelope = TrainingUpdateEnvelope(
         schema_version="training_update_envelope.v1",
@@ -196,6 +195,14 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
         accepted_update.payload_ref
         == service.update_payload_repository.ref_for_update("update_001")
     )
+    assert accepted_update.example_count == 1
+    assert accepted_update.client_metrics == {}
+    stored_payload = service.update_payload_repository.load_shared_adapter_update(
+        "update_001"
+    )
+    assert stored_payload.example_count == 1
+    assert stored_payload.mean_confidence is None
+    assert stored_payload.mean_margin is None
 
     current_response = fl_rounds_api.get_current_round(service=service)
     assert current_response.round_id == "round_0001"

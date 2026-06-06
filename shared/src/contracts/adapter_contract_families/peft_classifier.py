@@ -216,7 +216,6 @@ class PeftClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
     delta_format: str = "artifact_ref"
     mean_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     mean_margin: float | None = None
-    label_counts: dict[str, int] = Field(default_factory=dict)
     delta_l2_norm: float | None = Field(default=None, ge=0.0)
 
     @model_validator(mode="before")
@@ -225,6 +224,7 @@ class PeftClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
         if not isinstance(source, Mapping):
             return source
         data = dict(source)
+        data.pop("label_counts", None)
         raw_partitioned_deltas = data.get("partitioned_deltas")
         if isinstance(raw_partitioned_deltas, Mapping):
             data["partitioned_deltas"] = {

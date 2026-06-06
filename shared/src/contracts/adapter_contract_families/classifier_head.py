@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import ClassVar, Literal, TypeAlias
 
 from pydantic import Field, model_validator
@@ -158,9 +158,17 @@ class ClassifierHeadAdapterUpdatePayload(SharedAdapterUpdatePayload):
         description="카테고리별 weight delta 벡터."
     )
     label_bias_deltas: dict[str, float] = Field(default_factory=dict)
-    mean_confidence: float = Field(ge=0.0, le=1.0)
+    mean_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     mean_margin: float | None = None
-    label_counts: dict[str, int] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_private_label_counts(cls, source: object) -> object:
+        if not isinstance(source, Mapping):
+            return source
+        data = dict(source)
+        data.pop("label_counts", None)
+        return data
 
     @model_validator(mode="after")
     def _validate_classifier_head_delta_shape(

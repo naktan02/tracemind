@@ -1010,6 +1010,7 @@ def test_peft_encoder_partitioned_delta_average_merges_partitions_per_client() -
                 delta_l2_norm=0.2,
             ),
         ),
+        weight_policy_name="example_count",
     )
 
     assert result.peft_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(

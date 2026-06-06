@@ -33,17 +33,15 @@ from shared.src.contracts.adapter_contract_families.base import (
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
-    ClientMetricKeys,
     TrainingTask,
     TrainingUpdateEnvelope,
-)
-from shared.src.domain.entities.training.shared_adapter_update import (
-    SharedAdapterUpdate,
 )
 from shared.src.services.secure_update_codec import (
     NoOpSecureUpdateCodec,
     SecureUpdateCodec,
 )
+
+_PRIVATE_UPDATE_METADATA_FIELDS = ("mean_confidence", "mean_margin")
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,11 +133,12 @@ class LocalUpdateExecutor:
             training_task=request.training_task,
         )
         submission_payload = resolved_backend.to_payload(protected_update.update)
+        server_visible_payload = _server_visible_update_payload(submission_payload)
 
         update_id = f"update_{request.training_task.round_id}_{uuid4().hex[:12]}"
         self.repository.save_shared_adapter_update(
             update_id,
-            submission_payload,
+            server_visible_payload,
         )
         update_envelope = TrainingUpdateEnvelope(
             schema_version="training_update_envelope.v1",
@@ -151,13 +150,8 @@ class LocalUpdateExecutor:
             training_scope=request.training_task.training_scope,
             payload_ref=f"client-submission::{update_id}",
             payload_format=resolved_backend.payload_format,
-            example_count=len(request.accepted_examples),
-            client_metrics=self._build_client_metrics(
-                backend=resolved_backend,
-                update=protected_update.update,
-                selection_result=request.selection_result,
-                accepted_example_count=len(request.accepted_examples),
-            ),
+            example_count=server_visible_payload.example_count,
+            client_metrics={},
             created_at=request.created_at,
             clipped=protected_update.clipped,
             dp_applied=protected_update.dp_applied,
@@ -169,20 +163,21 @@ class LocalUpdateExecutor:
         )
         return LocalUpdateExecutionResult(
             update_envelope=encoded_envelope,
-            update_payload=submission_payload,
+            update_payload=server_visible_payload,
         )
 
-    @staticmethod
-    def _build_client_metrics(
-        *,
-        backend: SharedAdapterTrainingBackend,
-        update: SharedAdapterUpdate,
-        selection_result: PseudoLabelSelectionResult,
-        accepted_example_count: int,
-    ) -> dict[str, float]:
-        client_metrics = {
-            ClientMetricKeys.ACCEPTED_RATIO: selection_result.accepted_ratio,
-            ClientMetricKeys.SELECTED_EXAMPLES: float(accepted_example_count),
-        }
-        client_metrics.update(backend.build_client_metrics(update))
-        return client_metrics
+
+def _server_visible_update_payload(
+    payload: SharedAdapterUpdatePayload,
+) -> SharedAdapterUpdatePayload:
+    updates: dict[str, object] = {
+        "example_count": _server_visible_example_count(payload.example_count)
+    }
+    for field_name in _PRIVATE_UPDATE_METADATA_FIELDS:
+        if hasattr(payload, field_name):
+            updates[field_name] = None
+    return payload.model_copy(update=updates)
+
+
+def _server_visible_example_count(raw_count: int) -> int:
+    return 0 if raw_count <= 0 else 1

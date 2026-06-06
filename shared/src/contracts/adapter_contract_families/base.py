@@ -70,7 +70,10 @@ class SharedAdapterUpdatePayload(BaseModel):
     )
     example_count: int = Field(
         ge=0,
-        description="실제 update 계산에 반영된 로컬 예시 수.",
+        description=(
+            "서버가 보는 update aggregation unit 수. Privacy-preserving runtime은 "
+            "실제 로컬 예시 수 대신 0 또는 1 같은 masked count를 기록할 수 있다."
+        ),
     )
     created_at: datetime | None = Field(
         default=None,

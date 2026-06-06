@@ -37,6 +37,15 @@ def test_peft_classifier_delta_golden_fixture_round_trips_shape() -> None:
     assert dumped == fixture
 
 
+def test_peft_classifier_delta_drops_legacy_label_counts() -> None:
+    fixture = _load_fixture("peft_classifier_delta.v2.json")
+    fixture["label_counts"] = {"anxiety": 2, "normal": 1}
+
+    parsed = parse_shared_adapter_update_payload(fixture)
+
+    assert "label_counts" not in parsed.model_dump(mode="json")
+
+
 def test_classifier_head_state_golden_fixture_round_trips_shape() -> None:
     fixture = _load_fixture("classifier_head_state.v1.json")
 

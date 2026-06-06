@@ -349,10 +349,12 @@ def test_local_training_service_uses_peft_classifier_backend(
     assert result.update_payload is not None
     assert result.update_payload.adapter_kind == "peft_classifier"
     assert result.update_envelope.payload_format == "peft_classifier_update"
-    assert result.update_envelope.client_metrics["selected_examples"] == 1.0
-    assert result.update_envelope.client_metrics["label_schema_size"] == 3.0
-    assert result.update_envelope.client_metrics["delta_l2_norm"] == 0.0
-    assert result.update_payload.label_counts == {"anxiety": 1}
+    assert result.update_envelope.example_count == 1
+    assert result.update_envelope.client_metrics == {}
+    assert result.update_payload.example_count == 1
+    assert result.update_payload.mean_confidence is None
+    assert result.update_payload.mean_margin is None
+    assert "label_counts" not in result.update_payload.model_dump(mode="json")
 
     loaded_payload = repository.load_shared_adapter_update(
         result.update_envelope.update_id

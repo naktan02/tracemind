@@ -214,15 +214,17 @@ class TrainingUpdateEnvelopePayload(BaseModel):
     )
     example_count: int = Field(
         ge=0,
-        description="실제 update에 반영된 로컬 예시 수.",
+        description=(
+            "서버가 보는 update aggregation unit 수. Privacy-preserving runtime은 "
+            "실제 로컬 예시 수 대신 masked count를 기록할 수 있다."
+        ),
     )
     client_metrics: dict[str, float] = Field(
         description=(
             "로컬 측 학습 품질 요약 metric. "
-            "표준 키는 이 모듈의 ClientMetricKeys 참고. "
-            "기본 키: mean_confidence, mean_margin, accepted_ratio, "
-            "delta_l2_norm, selected_examples. "
-            "추가 키는 하위 호환성을 유지하며 자유롭게 확장 가능하다."
+            "표준 키는 이 모듈의 ClientMetricKeys 참고. Privacy-preserving "
+            "runtime은 per-client pseudo-label 품질/개수 metric을 서버에 보내지 "
+            "않고 빈 dict를 사용한다."
         )
     )
     created_at: datetime | None = Field(

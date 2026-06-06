@@ -64,10 +64,6 @@
     "delta_format": "artifact_ref",
     "mean_confidence": 0.87,
     "mean_margin": 0.24,
-    "label_counts": {
-      "anxiety": 2,
-      "normal": 1
-    },
     "delta_l2_norm": 1.25
   }
 }

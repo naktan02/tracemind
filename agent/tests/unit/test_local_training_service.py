@@ -51,7 +51,6 @@ from shared.src.domain.services.clock import FixedClock
 
 class DefaultTestShiftUpdatePayload(SharedAdapterUpdatePayload):
     shift_norm: float
-    label_counts: dict[str, int] = {}
 
 
 @dataclass(slots=True)
@@ -78,7 +77,6 @@ class DefaultTestShiftBackend:
             example_count=len(accepted_examples),
             created_at=created_at,
             shift_norm=float(len(accepted_examples)),
-            label_counts={"anxiety": len(accepted_examples)},
         )
 
     def to_payload(
@@ -282,7 +280,7 @@ def test_local_training_service_creates_update_from_top_candidates(
     assert result.update_envelope is not None
     assert result.update_payload is not None
     assert result.update_envelope.example_count == 1
-    assert result.update_payload.label_counts == {"anxiety": 1}
+    assert "label_counts" not in result.update_payload.model_dump(mode="json")
     assert result.update_payload.adapter_kind == "test_shift"
     assert result.update_envelope.payload_format == "test_shift_update"
     assert (
@@ -552,7 +550,7 @@ def test_local_training_service_reuses_injected_backend_on_matching_objective(
 
     assert result.update_envelope is not None
     assert result.update_envelope.payload_format == "reusable_test_update"
-    assert result.update_envelope.client_metrics["reused_backend"] == 1.0
+    assert result.update_envelope.client_metrics == {}
     assert result.update_payload is not None
     assert result.update_payload.adapter_kind == "test_shift"
 
@@ -637,8 +635,7 @@ def test_local_training_service_can_use_registered_non_diagonal_backend(
     assert result.update_payload is not None
     assert result.update_payload.adapter_kind == "test_shift"
     assert result.update_envelope.payload_format == "test_shift_update"
-    assert result.update_envelope.client_metrics["test_shift_norm"] == 1.25
-    assert "mean_confidence" not in result.update_envelope.client_metrics
+    assert result.update_envelope.client_metrics == {}
 
     loaded_payload = repository.load_shared_adapter_update(
         result.update_envelope.update_id
@@ -785,9 +782,7 @@ def test_local_training_service_rejects_incompatible_scoring_backend(
     )
     register_scoring_backend(
         "peft_only_test_scorer",
-        factory=lambda _objective_config, _similarity_name: (
-            PeftOnlyScoringBackend()
-        ),
+        factory=lambda _objective_config, _similarity_name: PeftOnlyScoringBackend(),
         catalog_entry=_registry_catalog_entry(
             item_name="peft_only_test_scorer",
             family_name="scoring_backend",
@@ -924,9 +919,7 @@ def test_local_training_service_rejects_incompatible_training_example_backend(
                         loss="test_shift_backend_incompatible_examples",
                         confidence_threshold=0.6,
                         margin_threshold=0.02,
-                        example_generation_backend_name=(
-                            "peft_only_training_examples"
-                        ),
+                        example_generation_backend_name=("peft_only_training_examples"),
                         privacy_guard_name="noop",
                     ),
                     selection_policy=TrainingSelectionPolicy(max_examples=1),

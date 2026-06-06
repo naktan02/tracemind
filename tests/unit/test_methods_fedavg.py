@@ -178,6 +178,7 @@ def test_classifier_head_fedavg_updates_values_without_mutation() -> None:
                 delta_l2_norm=0.2,
             ),
         ],
+        weight_policy_name="example_count",
     )
 
     assert result.label_weights["anxiety"] == pytest.approx([1.1666666666666667, 0.0])
@@ -232,6 +233,7 @@ def test_peft_encoder_fedavg_averages_adapter_and_head_deltas() -> None:
                 delta_l2_norm=0.2,
             ),
         ],
+        weight_policy_name="example_count",
     )
 
     assert result.peft_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(

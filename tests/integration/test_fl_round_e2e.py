@@ -132,7 +132,6 @@ def delta_payload():
         example_count=5,
         mean_confidence=0.82,
         mean_margin=0.14,
-        label_counts={"negative": 2, "positive": 3},
     )
 
 

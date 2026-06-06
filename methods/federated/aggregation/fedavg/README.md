@@ -1,6 +1,6 @@
 # FedAvg Aggregation
 
-`fedavg/`는 example_count 기반 FedAvg의 공통 산술과 strategy wiring을 소유한다.
+`fedavg/`는 aggregation weight policy 기반 FedAvg의 공통 산술과 strategy wiring을 소유한다.
 payload adapter별 delta 해석과 next-state 계산은 각 family package가 소유한다.
 
 ## 파일 역할

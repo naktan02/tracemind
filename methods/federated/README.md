@@ -2,7 +2,7 @@
 
 `methods/federated/`는 federated learning에서 재사용되는 순수 method 계산을 둔다.
 
-현재 `aggregation/fedavg/`는 example_count 기반 FedAvg의 공통 가중 평균 산술과
+현재 `aggregation/fedavg/`는 policy 기반 FedAvg의 공통 가중 평균 산술과
 strategy wiring을 소유한다. payload adapter별 delta 해석과 next-state 계산은
 `methods/adaptation/<family>/aggregation/fedavg.py`가 소유한다.
 
@@ -18,8 +18,9 @@ report/path용 compact slug를 소유한다.
 `fixed_count_random`을 config에서 고른다.
 
 `aggregation_weighting.py`는 payload adapter와 분리된 aggregation weight 기준을
-소유한다. 기본값은 기존 FedAvg와 같은 `example_count`이고, method가 필요하면
-`uniform` 또는 `accepted_count`를 capability plan으로 요구한다.
+소유한다. 기본값은 client-local 표본 수를 서버 기본 판단에 쓰지 않는 `uniform`이고,
+method가 필요하면 `example_count` 또는 `accepted_count`를 capability plan으로
+명시한다.
 
 반면 round 생성, client update acceptance, model revision 발행,
 artifact publication은 `main_server` 책임으로 유지한다.

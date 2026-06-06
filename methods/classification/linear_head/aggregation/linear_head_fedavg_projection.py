@@ -26,7 +26,7 @@ from methods.federated.aggregation.fedavg.weighted_average import (
     weighted_average_vector_mappings,
 )
 from methods.federated.aggregation_weighting import (
-    AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+    AGGREGATION_WEIGHT_UNIFORM,
     AggregationWeightPolicy,
     aggregation_weight_for_update,
 )
@@ -48,7 +48,7 @@ class ClassifierHeadFedAvgUpdate:
     label_weight_deltas: Mapping[str, Sequence[float]]
     label_bias_deltas: Mapping[str, float]
     example_count: int
-    mean_confidence: float
+    mean_confidence: float | None
     mean_margin: float | None
     delta_l2_norm: float
 
@@ -68,7 +68,7 @@ def compute_classifier_head_fedavg(
     base_label_weights: Mapping[str, Sequence[float]],
     base_label_biases: Mapping[str, float],
     updates: Sequence[ClassifierHeadFedAvgUpdate],
-    weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+    weight_policy_name: str = AGGREGATION_WEIGHT_UNIFORM,
 ) -> ClassifierHeadFedAvgResult:
     """label별 weight/bias delta를 policy weight로 평균해 다음 head를 계산한다."""
 
@@ -229,7 +229,9 @@ def aggregate_classifier_head_fedavg(
         base_label_weights=base_state.label_weights,
         base_label_biases=base_state.label_biases,
         updates=method_updates,
-        weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
+        weight_policy_name=str(
+            (overrides or {}).get("weight_policy", AGGREGATION_WEIGHT_UNIFORM)
+        ),
     )
 
     next_state = ClassifierHeadState(

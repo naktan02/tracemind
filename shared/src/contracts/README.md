@@ -90,6 +90,11 @@ runtime과 test는 family별 direct import를 사용한다.
     inline `state`를 로컬 캐시에 저장해 사용한다
 - `SharedAdapterUpdatePayload`
   - agent가 서버로 올리는 shared adapter update 공통 필드
+  - per-agent pseudo-label 분포(`label_counts`)는 서버 전송 payload에 넣지 않고
+    필요하면 agent-local diagnostics에만 남긴다
+  - 서버 전송 payload의 `example_count`는 집계 가능 update 존재 여부에 가까운
+    server-visible 단위이며, 실제 로컬 표본 수와 pseudo-label 품질 metric은
+    agent-local diagnostics에만 남긴다
 - `ClassifierHeadAdapterUpdatePayload`
   - classifier-head v1 concrete 구현
   - `head_kind="linear"`를 사용한다

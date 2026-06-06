@@ -85,6 +85,7 @@ if TYPE_CHECKING:
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
 )
+_PRIVATE_UPDATE_METADATA_FIELDS = ("mean_confidence", "mean_margin")
 
 
 def _build_round_repository() -> RoundRepository:
@@ -217,15 +218,22 @@ class RoundLifecycleService:
             envelope=submission.envelope,
             training_task=record.training_task,
         )
+        server_visible_payload = _server_visible_update_payload(
+            submission.update_payload
+        )
         self._validate_update_payload_matches_active_payload_adapter(
             envelope=decoded_envelope,
-            update_payload=submission.update_payload,
+            update_payload=server_visible_payload,
         )
         server_payload_ref = self.update_payload_repository.ref_for_update(
             decoded_envelope.update_id
         )
         server_owned_envelope = decoded_envelope.model_copy(
-            update={"payload_ref": server_payload_ref}
+            update={
+                "payload_ref": server_payload_ref,
+                "example_count": server_visible_payload.example_count,
+                "client_metrics": {},
+            }
         )
         decision = self.update_acceptance_policy.evaluate(
             record=record,
@@ -233,10 +241,10 @@ class RoundLifecycleService:
             accepted_at=accepted_at,
         )
         try:
-            require_server_materializable_update_payload(submission.update_payload)
+            require_server_materializable_update_payload(server_visible_payload)
             self._validate_update_payload_matches_active_state(
                 record=record,
-                update_payload=submission.update_payload,
+                update_payload=server_visible_payload,
             )
         except ValueError as error:
             raise RoundValidationError(str(error)) from error
@@ -244,7 +252,7 @@ class RoundLifecycleService:
         if not decision.is_idempotent:
             self.update_payload_repository.save_shared_adapter_update(
                 decision.update_envelope.update_id,
-                submission.update_payload,
+                server_visible_payload,
             )
             updated_record = replace(
                 record,
@@ -408,3 +416,19 @@ class RoundLifecycleService:
             update_payload=update_payload,
             active_state=active_state,
         )
+
+
+def _server_visible_update_payload(
+    payload: SharedAdapterUpdatePayload,
+) -> SharedAdapterUpdatePayload:
+    updates: dict[str, object] = {
+        "example_count": _server_visible_example_count(payload.example_count)
+    }
+    for field_name in _PRIVATE_UPDATE_METADATA_FIELDS:
+        if hasattr(payload, field_name):
+            updates[field_name] = None
+    return payload.model_copy(update=updates)
+
+
+def _server_visible_example_count(raw_count: int) -> int:
+    return 0 if raw_count <= 0 else 1
