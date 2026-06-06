@@ -25,6 +25,15 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from agent.src.infrastructure.repositories.captured_text_repository import (
+    CAPTURED_TEXT_VIEW_STATUS_READY,
+    CapturedTextGeneratedViewRecord,
+    CapturedTextRecord,
+    CapturedTextRepository,
+)
+from agent.src.infrastructure.repositories.scored_event_repository import (
+    ScoredEventRepository,
+)
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.federation.rounds.runtime_service import (
     FederationRunResult,
@@ -34,6 +43,10 @@ from agent.src.services.federation.rounds.runtime_service import (
 from agent.src.services.training.execution.agent_training_task_runner_service import (
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
+)
+from agent.src.services.training.execution.query_ssl_training_task_service import (
+    AgentQuerySslTrainingTaskRunRequest,
+    AgentQuerySslTrainingTaskService,
 )
 from main_server.src.api.fl_rounds import get_round_lifecycle_service
 from main_server.src.api.main import app as server_app
@@ -59,16 +72,27 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
+from methods.adaptation.peft_text_encoder.training import (
+    query_ssl_local_training as qssl_training,
+)
+from methods.adaptation.query_text_views.local_training_budget import (
+    build_query_ssl_local_step_plan,
+)
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_classifier_head_delta_payload,
+    make_peft_classifier_delta_payload,
     make_peft_classifier_state_payload,
     make_zero_classifier_head_state_payload,
 )
 from shared.src.contracts.adapter_contract_families.io import (
     dump_shared_adapter_state_payload,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+    PeftClassifierDelta,
 )
 from shared.src.contracts.common_types import TrainingScope
 from shared.src.contracts.model_contracts import (
@@ -79,6 +103,7 @@ from shared.src.contracts.training_contracts import (
     make_training_update_envelope,
     make_training_update_submission,
 )
+from shared.src.domain.entities.inference.events import ScoredEvent
 
 # ------------------------------------------------------------------ #
 # 픽스처                                                               #
@@ -95,6 +120,9 @@ SharedAdapterStateRepository = (
     shared_adapter_state_repository_module.SharedAdapterStateRepository
 )
 ModelManifestRepository = model_manifest_repository_module.ModelManifestRepository
+QuerySslPeftEncoderClientTrainingResult = (
+    qssl_training.QuerySslPeftEncoderClientTrainingResult
+)
 
 
 @pytest.fixture()
@@ -191,6 +219,54 @@ class _BorrowedClientContext(AbstractContextManager[httpx.Client]):
 
     def __exit__(self, exc_type, exc, tb) -> None:
         return None
+
+
+class _QuerySslUploadSmokeBackend:
+    """Query SSL upload smoke에서 외부 모델 학습만 대체하는 fake backend."""
+
+    backend_name = "peft_classifier_trainer"
+
+    def __init__(self, update_payload: PeftClassifierDelta) -> None:
+        self.update_payload = update_payload
+        self.captured_kwargs: dict[str, object] | None = None
+
+    def matches_objective_config(self, objective_config: object | None) -> bool:
+        del objective_config
+        return True
+
+    def build_query_ssl_update(
+        self,
+        **kwargs: object,
+    ) -> QuerySslPeftEncoderClientTrainingResult:
+        self.captured_kwargs = dict(kwargs)
+        training_task = kwargs["training_task"]
+        model_manifest = kwargs["model_manifest"]
+        update_envelope = make_training_update_envelope(
+            update_id="update_query_ssl_upload_smoke",
+            round_id=training_task.round_id,
+            task_id=training_task.task_id,
+            model_id=model_manifest.model_id,
+            base_model_revision=model_manifest.model_revision,
+            training_scope=training_task.training_scope,
+            payload_ref="client-submission::update_query_ssl_upload_smoke",
+            payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+            example_count=self.update_payload.example_count,
+            client_metrics={"query_ssl_local_steps": 1.0},
+        )
+        return QuerySslPeftEncoderClientTrainingResult(
+            update_envelope=update_envelope,
+            update_payload=self.update_payload,
+            candidate_count=2,
+            accepted_count=1,
+            local_step_plan=build_query_ssl_local_step_plan(
+                labeled_loader_steps=1,
+                unlabeled_loader_steps=1,
+                uses_labeled_batches=True,
+                local_epochs=1,
+                max_steps=1,
+            ),
+            client_metrics=update_envelope.client_metrics,
+        )
 
 
 @pytest.fixture()
@@ -487,6 +563,137 @@ def test_peft_round_default_query_ssl_task_routes_to_agent_query_ssl_service(
             shared_sync.pull_current.assert_called_once_with(
                 server_base_url="http://testserver"
             )
+    finally:
+        server_app.dependency_overrides.clear()
+
+
+@pytest.mark.integration
+def test_agent_query_ssl_service_uploads_update_to_main_server(
+    state_root: Path,
+    artifact_root: Path,
+    tmp_path: Path,
+) -> None:
+    """agent Query SSL service가 main_server에 PEFT update를 업로드한다."""
+    peft_service = _build_peft_round_service(
+        state_root=state_root,
+        artifact_root=artifact_root,
+    )
+    server_app.dependency_overrides[get_round_lifecycle_service] = lambda: peft_service
+    try:
+        with TestClient(server_app, base_url="http://testserver") as server_client:
+            _activate_peft_manifest(server_client, peft_service)
+            response = server_client.post("/api/v1/fl/rounds", json={})
+            assert response.status_code == 201
+
+            round_client = RoundClient(
+                server_base_url="http://testserver",
+                _client_factory=lambda: _BorrowedClientContext(server_client),
+            )
+            training_task = round_client.fetch_current_task()
+            assert training_task is not None
+
+            occurred_at = datetime(2026, 6, 7, 1, 0, tzinfo=timezone.utc)
+            scored_repo = ScoredEventRepository(db_path=tmp_path / "scored.db")
+            scored_repo.save(
+                ScoredEvent(
+                    query_id="labeled_1",
+                    occurred_at=occurred_at,
+                    translated_text="I feel anxious",
+                    embedding_model_id="embed",
+                    translation_model_id="nllb",
+                    category_scores={"anxiety": 0.9, "normal": 0.1},
+                )
+            )
+            captured_repo = CapturedTextRepository(db_path=tmp_path / "captured.db")
+            captured_repo.save(
+                CapturedTextRecord(
+                    event_id="unlabeled_1",
+                    occurred_at=occurred_at,
+                    received_at=occurred_at,
+                    text="불안해",
+                    locale="ko",
+                    source_type="search",
+                    surface_type="search_box",
+                )
+            )
+            stored = captured_repo.get("unlabeled_1")
+            assert stored is not None
+            captured_repo.save_generated_view(
+                CapturedTextGeneratedViewRecord(
+                    event_id="unlabeled_1",
+                    generated_at=occurred_at,
+                    weak_text="I am anxious",
+                    strong_text_0="I feel anxious now",
+                    strong_text_1="I am worried now",
+                    generator_name="integration-test",
+                    generator_version="v1",
+                    source_text_fingerprint=stored.text_fingerprint,
+                    metadata={"weak_text_translated": True},
+                )
+            )
+            captured_repo.mark_view_generation_status(
+                event_id="unlabeled_1",
+                status=CAPTURED_TEXT_VIEW_STATUS_READY,
+            )
+
+            active_manifest = peft_service.active_manifest_service.get_active_manifest()
+            active_state = peft_service.get_current_shared_adapter_state().state
+            update_payload = make_peft_classifier_delta_payload(
+                model_id=MODEL_ID,
+                base_model_revision=MODEL_REVISION,
+                training_scope=TrainingScope.ADAPTER_ONLY,
+                backbone=active_state.backbone,
+                peft_adapter_config=active_state.peft_adapter_config,
+                label_schema=active_state.label_schema,
+                example_count=1,
+                peft_parameter_deltas={"lora.test": [0.1]},
+                classifier_head_weight_deltas={
+                    "anxiety": [0.1],
+                    "normal": [-0.1],
+                },
+                classifier_head_bias_deltas={
+                    "anxiety": 0.01,
+                    "normal": -0.01,
+                },
+                delta_format="inline_delta",
+            )
+            backend = _QuerySslUploadSmokeBackend(update_payload)
+            service = AgentQuerySslTrainingTaskService(backend=backend)
+
+            result = service.run_current_task(
+                AgentQuerySslTrainingTaskRunRequest(
+                    training_task=training_task,
+                    model_manifest=active_manifest,
+                    active_state=active_state,
+                    round_client=round_client,
+                    scored_event_repository=scored_repo,
+                    captured_text_repository=captured_repo,
+                    scored_event_days=7,
+                    agent_id="agent_01",
+                )
+            )
+
+            assert result.status == FederationRunStatus.UPLOADED
+            assert result.update_id == "update_query_ssl_upload_smoke"
+            assert backend.captured_kwargs is not None
+            assert backend.captured_kwargs["labels"] == ("anxiety", "normal")
+            stored_round = peft_service.get_round(training_task.round_id)
+            assert len(stored_round.updates) == 1
+            accepted_update = stored_round.updates[0]
+            assert accepted_update.update_id == "update_query_ssl_upload_smoke"
+            assert accepted_update.client_metrics == {}
+            assert accepted_update.payload_ref == (
+                peft_service.update_payload_repository.ref_for_update(
+                    accepted_update.update_id
+                )
+            )
+            update_repository = peft_service.update_payload_repository
+            stored_update = update_repository.load_shared_adapter_update_from_ref(
+                accepted_update.payload_ref
+            )
+            assert stored_update.model_id == MODEL_ID
+            assert stored_update.example_count == 1
+            assert stored_update.label_schema == ["anxiety", "normal"]
     finally:
         server_app.dependency_overrides.clear()
 
