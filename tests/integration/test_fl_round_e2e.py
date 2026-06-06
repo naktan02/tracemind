@@ -19,6 +19,7 @@ from __future__ import annotations
 from contextlib import AbstractContextManager
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
@@ -26,8 +27,13 @@ from fastapi.testclient import TestClient
 
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.federation.rounds.runtime_service import (
+    FederationRunResult,
     FederationRunStatus,
     FederationRuntimeService,
+)
+from agent.src.services.training.execution.agent_training_task_runner_service import (
+    AgentTrainingTaskRunnerService,
+    AgentTrainingTaskRunRequest,
 )
 from main_server.src.api.fl_rounds import get_round_lifecycle_service
 from main_server.src.api.main import app as server_app
@@ -58,6 +64,7 @@ from shared.src.contracts.adapter_contract_families.classifier_head import (
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_classifier_head_delta_payload,
+    make_peft_classifier_state_payload,
     make_zero_classifier_head_state_payload,
 )
 from shared.src.contracts.adapter_contract_families.io import (
@@ -221,6 +228,50 @@ def _active_manifest_payload(round_service: RoundLifecycleService) -> dict:
     return manifest.model_dump(mode="json")
 
 
+def _peft_active_manifest_payload(round_service: RoundLifecycleService) -> dict:
+    """PEFT shared adapter active manifest 등록 요청 payload dict."""
+    state_repository = round_service.round_manager_service.artifact_repository
+    state_repository.save_shared_adapter_state(
+        _peft_state_payload(model_revision=MODEL_REVISION)
+    )
+    manifest = make_embedding_manifest(
+        model_id=MODEL_ID,
+        model_revision=MODEL_REVISION,
+        artifact_ref=state_repository.ref_for_revision(MODEL_REVISION),
+        training_scope=TrainingScope.ADAPTER_ONLY,
+    )
+    return manifest.model_dump(mode="json")
+
+
+def _peft_state_payload(*, model_revision: str):
+    return make_peft_classifier_state_payload(
+        model_id=MODEL_ID,
+        model_revision=model_revision,
+        training_scope=TrainingScope.ADAPTER_ONLY,
+        backbone={
+            "backbone_model_id": "mxbai",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mxbai",
+            "tokenizer_revision": "main",
+            "pooling": "mean",
+            "max_length": 256,
+            "task_prefix": "",
+        },
+        peft_adapter_config={
+            "peft_adapter_name": "lora",
+            "parameters": {
+                "rank": 8,
+                "alpha": 16,
+                "dropout": 0.1,
+                "bias": "none",
+                "target_modules": "all-linear",
+                "use_rslora": False,
+            },
+        },
+        label_schema=("anxiety", "normal"),
+    )
+
+
 def _open_round_payload() -> dict:
     """round open 요청 payload dict."""
     return {}
@@ -239,6 +290,19 @@ def _activate_manifest(
     return response.json()
 
 
+def _activate_peft_manifest(
+    server_client: httpx.Client,
+    round_service: RoundLifecycleService,
+) -> dict:
+    """서버 active PEFT manifest를 bootstrap한다."""
+    response = server_client.post(
+        "/api/v1/fl/rounds/active-manifest",
+        json=_peft_active_manifest_payload(round_service),
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
 def _make_domain_manifest(base_state_path: Path) -> ModelManifest:
     """RoundClient/FederationRuntimeService에 넘기는 도메인 ModelManifest."""
     return ModelManifest(
@@ -252,6 +316,34 @@ def _make_domain_manifest(base_state_path: Path) -> ModelManifest:
         training_scope=TrainingScope.HEAD_ONLY,
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
+    )
+
+
+def _build_peft_round_service(
+    *,
+    state_root: Path,
+    artifact_root: Path,
+) -> RoundLifecycleService:
+    state_repository = SharedAdapterStateRepository(
+        state_root=artifact_root / "peft_shared_states"
+    )
+    return RoundLifecycleService(
+        round_repository=RoundRepository(state_root=state_root / "peft_rounds"),
+        update_payload_repository=SharedAdapterUpdateRepository(
+            state_root=artifact_root / "peft_server_updates"
+        ),
+        active_manifest_service=ActiveModelManifestService(
+            manifest_repository=ModelManifestRepository(
+                state_root=artifact_root / "peft_model_manifests"
+            )
+        ),
+        round_manager_service=RoundManagerService(
+            payload_adapter=build_shared_adapter_round_payload_adapter(
+                "peft_classifier",
+                aggregation_backend_name="fedavg",
+            ),
+            artifact_repository=state_repository,
+        ),
     )
 
 
@@ -318,6 +410,85 @@ def test_agent_fetches_task_from_open_round(
     task = round_client.fetch_current_task()
     assert task is not None
     assert task.task_id == expected_task_id
+
+
+@pytest.mark.integration
+def test_peft_round_default_query_ssl_task_routes_to_agent_query_ssl_service(
+    state_root: Path,
+    artifact_root: Path,
+) -> None:
+    """PEFT no-config round task가 agent Query SSL runner로 분기된다."""
+    peft_service = _build_peft_round_service(
+        state_root=state_root,
+        artifact_root=artifact_root,
+    )
+    server_app.dependency_overrides[get_round_lifecycle_service] = lambda: peft_service
+    try:
+        with TestClient(server_app, base_url="http://testserver") as server_client:
+            _activate_peft_manifest(server_client, peft_service)
+            response = server_client.post("/api/v1/fl/rounds", json={})
+            assert response.status_code == 201
+
+            round_client = RoundClient(
+                server_base_url="http://testserver",
+                _client_factory=lambda: _BorrowedClientContext(server_client),
+            )
+            task = round_client.fetch_current_task()
+            assert task is not None
+            assert task.objective_config.extras["query_ssl.algorithm_name"] == (
+                "fixmatch"
+            )
+            assert task.objective_config.extras["peft_classifier.delta_format"] == (
+                "inline_delta"
+            )
+
+            active_manifest = peft_service.active_manifest_service.get_active_manifest()
+            active_state = _peft_state_payload(model_revision=MODEL_REVISION)
+            shared_runtime = MagicMock()
+            shared_runtime.get_active_manifest.return_value = active_manifest
+            shared_runtime.get_active_state.return_value = active_state
+            shared_sync = MagicMock()
+            query_ssl_task_service = MagicMock()
+            query_ssl_task_service.run_current_task.return_value = FederationRunResult(
+                status=FederationRunStatus.UPLOADED,
+                round_id=task.round_id,
+                task_id=task.task_id,
+                update_id="update_query_ssl_e2e",
+                example_count=2,
+                accepted_count=1,
+                message="Query SSL update 업로드 완료.",
+            )
+            runtime_factory = MagicMock()
+            runner = AgentTrainingTaskRunnerService(
+                scored_event_repository=MagicMock(),
+                prototype_runtime_service=MagicMock(),
+                prototype_sync_service=MagicMock(),
+                shared_adapter_runtime_service=shared_runtime,
+                shared_adapter_sync_service=shared_sync,
+                round_client_factory=MagicMock(return_value=round_client),
+                federation_runtime_service_factory=runtime_factory,
+                captured_text_repository=MagicMock(),
+                query_ssl_task_service=query_ssl_task_service,
+            )
+
+            result = runner.run_current_task(
+                AgentTrainingTaskRunRequest(server_base_url="http://testserver")
+            )
+
+            assert result.status == str(FederationRunStatus.UPLOADED)
+            assert result.update_id == "update_query_ssl_e2e"
+            query_ssl_request = query_ssl_task_service.run_current_task.call_args.args[
+                0
+            ]
+            assert query_ssl_request.training_task.task_id == task.task_id
+            assert query_ssl_request.model_manifest is active_manifest
+            assert query_ssl_request.active_state is active_state
+            runtime_factory.assert_not_called()
+            shared_sync.pull_current.assert_called_once_with(
+                server_base_url="http://testserver"
+            )
+    finally:
+        server_app.dependency_overrides.clear()
 
 
 @pytest.mark.integration
