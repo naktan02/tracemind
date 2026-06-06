@@ -8,6 +8,7 @@ from collections.abc import Callable, Mapping
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from agent.src.api.captured_text import router as captured_text_router
 from agent.src.api.child_support import router as child_support_router
 from agent.src.api.family_access import router as family_access_router
 from agent.src.api.health import router as health_router
@@ -17,6 +18,9 @@ from agent.src.api.training import router as training_router
 from agent.src.api.typing_segments import router as typing_segments_router
 from agent.src.api.wellbeing import router as wellbeing_router
 from agent.src.config.env_file import load_agent_env_files
+from agent.src.infrastructure.repositories.captured_text_repository import (
+    CapturedTextRepository,
+)
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
 )
@@ -107,6 +111,7 @@ def create_app(
     pipeline_service: InferencePipelineService | None = None,
     scored_event_repository: ScoredEventRepository | None = None,
     query_buffer_repository: QueryBufferRepository | None = None,
+    captured_text_repository: CapturedTextRepository | None = None,
     child_support_conversation_repository: (
         ChildSupportConversationRepository | None
     ) = None,
@@ -141,6 +146,9 @@ def create_app(
     )
     app.state.query_buffer_repository = (
         query_buffer_repository or QueryBufferRepository()
+    )
+    app.state.captured_text_repository = (
+        captured_text_repository or CapturedTextRepository()
     )
     app.state.child_support_conversation_repository = (
         child_support_conversation_repository or ChildSupportConversationRepository()
@@ -211,6 +219,7 @@ def create_app(
         app.state.pipeline_service = pipeline_service
 
     app.include_router(health_router)
+    app.include_router(captured_text_router)
     app.include_router(child_support_router)
     app.include_router(family_access_router)
     app.include_router(ingest_router)

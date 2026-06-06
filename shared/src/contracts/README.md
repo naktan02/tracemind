@@ -201,6 +201,29 @@ typing segment 계약을 정의한다.
 - `TypingSegmentIngestResponsePayload`
   - agent가 segment를 inference pipeline으로 처리한 결과의 최소 응답이다
 
+### `captured_text_contracts.py`
+
+브라우저 확장 프로그램이나 future local collector가 로컬 agent로 보내는
+canonical raw text 수집 계약을 정의한다.
+
+중요:
+
+- 이 계약은 collector -> agent local ingest 전용이다.
+- `text`, `page_url`, `page_title`, source/surface metadata는 raw text 또는
+  raw-text-adjacent 값이므로 main_server API나 FL update envelope으로 전달하지
+  않는다.
+- 수집 source가 늘어나도 producer는 `CapturedTextEventPayload` canonical shape로
+  정규화해서 agent에 보낸다.
+- `source_type`과 `surface_type`은 분리한다. `reddit:comment` 같은 조합 문자열은
+  agent 내부 `QueryEvent` projection에서만 만든다.
+
+- `CapturedTextEventPayload`
+  - 검색어, Reddit, webpage, typing, manual 입력을 하나의 local-only raw event로
+    표현한다
+  - `collector_version`과 `metadata`는 이후 재처리와 audit를 위한 provenance다
+- `CapturedTextIngestResponsePayload`
+  - agent가 event를 inference pipeline으로 처리한 결과의 최소 응답이다
+
 ### `family_access_contracts.py`
 
 가족용 확장 프로그램의 app-level setup/auth 경계를 정의한다.
