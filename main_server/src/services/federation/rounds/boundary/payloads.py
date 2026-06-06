@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from main_server.src.services.federation.rounds.boundary.models import RoundStatus
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
-from shared.src.contracts.common_types import TrainingTaskType
+from shared.src.contracts.common_types import TrainingScope, TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifestPayload
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfigPayload,
@@ -97,6 +97,22 @@ class ActiveModelManifestPointerPayload(BaseModel):
 
     model_revision: str
     activated_at: datetime
+
+
+class InitialSharedArtifactPublicationRequestPayload(BaseModel):
+    """첫 active shared artifact publication API payload."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model_id: str
+    label_schema: list[str] = Field(min_length=1)
+    model_revision: str | None = None
+    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY
+    embedding_dim: int | None = Field(default=None, ge=1)
+    compatible_task_types: list[TrainingTaskType] = Field(
+        default_factory=lambda: [TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING]
+    )
+    notes: str | None = None
 
 
 class RoundTaskConfigPayload(BaseModel):

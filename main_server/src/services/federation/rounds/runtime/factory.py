@@ -143,5 +143,6 @@ def build_round_lifecycle_service_from_config(
             update_acceptance_policy or StrictRoundUpdateAcceptancePolicy()
         ),
         method_descriptor=method_descriptor,
+        round_runtime_config=config,
         clock=effective_clock,
     )

@@ -23,6 +23,7 @@ from main_server.src.services.federation.rounds.active_manifest_service import (
     ActiveModelManifestService,
 )
 from main_server.src.services.federation.rounds.boundary.models import (
+    InitialSharedArtifactPublicationRequest,
     RoundFinalizeRequest,
     RoundOpenDraftRequest,
     RoundOpenRequest,
@@ -30,6 +31,9 @@ from main_server.src.services.federation.rounds.boundary.models import (
     RoundRecord,
     RoundStatus,
     RoundUpdateAcceptance,
+)
+from main_server.src.services.federation.rounds.initial_publication_service import (
+    InitialSharedArtifactPublicationService,
 )
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
@@ -58,7 +62,10 @@ from shared.src.contracts.adapter_contract_families.base import (
 from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,
 )
-from shared.src.contracts.model_contracts import PROTOTYPE_PACK_AUXILIARY_KEY
+from shared.src.contracts.model_contracts import (
+    PROTOTYPE_PACK_AUXILIARY_KEY,
+    ModelManifest,
+)
 from shared.src.contracts.training_contracts import (
     TrainingUpdateEnvelope,
     TrainingUpdateSubmission,
@@ -104,6 +111,21 @@ def _build_active_manifest_service() -> ActiveModelManifestService:
     return ActiveModelManifestService()
 
 
+def _runtime_update_family_name(round_runtime_config: object | None) -> str:
+    value = getattr(round_runtime_config, "update_family_name", None)
+    if value is None:
+        raise RoundValidationError(
+            "Initial shared artifact publication requires round runtime "
+            "update_family_name."
+        )
+    normalized = str(value).strip()
+    if not normalized:
+        raise RoundValidationError(
+            "round runtime update_family_name must not be empty."
+        )
+    return normalized
+
+
 @dataclass(slots=True)
 class RoundLifecycleService:
     """active round open/update/finalize 전이를 조정한다."""
@@ -134,6 +156,7 @@ class RoundLifecycleService:
         default_factory=DefaultRoundStateExchangeExecutor
     )
     method_descriptor: FederatedSslMethodDescriptor | None = None
+    round_runtime_config: object | None = None
     clock: Clock = field(default_factory=SystemUtcClock)
 
     def __post_init__(self) -> None:
@@ -142,6 +165,21 @@ class RoundLifecycleService:
         self.round_manager_service.update_payload_repository = (
             self.update_payload_repository
         )
+
+    def publish_initial_shared_artifact(
+        self,
+        request: InitialSharedArtifactPublicationRequest,
+    ) -> ModelManifest:
+        """선택된 family initial state를 active manifest로 publish한다."""
+
+        return InitialSharedArtifactPublicationService(
+            artifact_repository=self.round_manager_service.artifact_repository,
+            active_manifest_service=self.active_manifest_service,
+            payload_adapter_kind=self.round_manager_service.payload_adapter.adapter_kind,
+            update_family_name=_runtime_update_family_name(self.round_runtime_config),
+            round_runtime_config=self.round_runtime_config,
+            clock=self.clock,
+        ).publish(request)
 
     def open_round(self, request: RoundOpenDraftRequest) -> RoundRecord:
         active_pointer = self.round_repository.load_active_pointer()

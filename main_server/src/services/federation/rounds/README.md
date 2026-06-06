@@ -8,6 +8,7 @@
 2. agent update를 수집하고 검증한다.
 3. aggregation으로 다음 shared adapter state를 만든다.
 4. 다음 `ModelManifest`와 필요한 optional auxiliary artifact 발행까지 연결한다.
+5. 첫 round 전에 선택된 adapter family의 initial shared adapter state를 publish한다.
 
 ## 먼저 읽을 파일
 
@@ -53,7 +54,12 @@
   - `artifact_ref`/`payload_ref`는 파일 경로가 아니라 server-owned ref로 다루고,
     실제 저장소 해석은 infrastructure repository에 위임
 - `round_lifecycle_service.py`
-  - open/update/finalize orchestration
+  - initial publication, open/update/finalize orchestration
+- `initial_publication_service.py`
+  - selected payload adapter/update family의 initial state builder를 호출하고
+    server-owned state repository와 active manifest pointer에 publish
+  - classifier, prototype 같은 family 내부 payload 의미는 `methods/adaptation/<family>/`
+    initial state builder가 소유한다
 - `active_manifest_service.py`
   - 서버 current `ModelManifest` 저장/활성화
 - `payload_adapters/`

@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
-from shared.src.contracts.common_types import TrainingTaskType
+from shared.src.contracts.common_types import TrainingScope, TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
@@ -53,6 +53,21 @@ class RoundRecord:
     updates: tuple[TrainingUpdateEnvelope, ...] = field(default_factory=tuple)
     finalized_at: datetime | None = None
     publication: RoundPublicationSummary | None = None
+
+
+@dataclass(slots=True, kw_only=True)
+class InitialSharedArtifactPublicationRequest:
+    """첫 active shared artifact publication 요청."""
+
+    model_id: str
+    label_schema: tuple[str, ...]
+    model_revision: str | None = None
+    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY
+    embedding_dim: int | None = None
+    compatible_task_types: tuple[TrainingTaskType, ...] = (
+        TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
+    )
+    notes: str | None = None
 
 
 @dataclass(slots=True, kw_only=True)

@@ -11,6 +11,7 @@ from shared.src.contracts.training_contracts import (
 )
 
 from .models import (
+    InitialSharedArtifactPublicationRequest,
     RoundFinalizeRequest,
     RoundOpenDraftRequest,
     RoundPublicationSummary,
@@ -18,6 +19,7 @@ from .models import (
     RoundUpdateAcceptance,
 )
 from .payloads import (
+    InitialSharedArtifactPublicationRequestPayload,
     RoundFinalizeRequestPayload,
     RoundOpenRequestPayload,
     RoundPublicationPayload,
@@ -128,6 +130,26 @@ def round_record_from_payload(payload: RoundRecordPayload) -> RoundRecord:
             if payload.publication is not None
             else None
         ),
+    )
+
+
+def initial_shared_artifact_publication_request_from_payload(
+    payload: InitialSharedArtifactPublicationRequestPayload,
+) -> InitialSharedArtifactPublicationRequest:
+    """API payload를 initial shared artifact publication request로 변환한다."""
+
+    labels = tuple(str(label).strip() for label in payload.label_schema)
+    labels = tuple(label for label in labels if label)
+    if not labels:
+        raise ValueError("label_schema must contain at least one non-empty label.")
+    return InitialSharedArtifactPublicationRequest(
+        model_id=payload.model_id,
+        model_revision=payload.model_revision,
+        training_scope=payload.training_scope,
+        label_schema=labels,
+        embedding_dim=payload.embedding_dim,
+        compatible_task_types=tuple(payload.compatible_task_types),
+        notes=payload.notes,
     )
 
 

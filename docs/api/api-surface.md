@@ -137,6 +137,7 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | GET | `/api/v1/fl/rounds/current` | 현재 active round 조회 | `main_server/src/api/fl_rounds.py` |
 | GET | `/api/v1/fl/rounds/active-manifest/current` | 서버 current model manifest 조회 | `main_server/src/api/fl_rounds.py` |
 | POST | `/api/v1/fl/rounds/active-manifest` | 초기/수동 model manifest 활성화 | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds/active-manifest/initialize` | 선택된 shared adapter family의 initial state 생성 및 active manifest publish | `main_server/src/api/fl_rounds.py` |
 | GET | `/api/v1/fl/rounds/active-state/current` | 서버 current manifest와 shared adapter state 조회 | `main_server/src/api/fl_rounds.py` |
 | POST | `/api/v1/fl/rounds` | 서버 current manifest 기준 새 round open | `main_server/src/api/fl_rounds.py` |
 | GET | `/api/v1/fl/rounds/{round_id}` | 특정 round 조회 | `main_server/src/api/fl_rounds.py` |
@@ -150,6 +151,7 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | `RoundOpenRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `RoundRecordPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `RoundFinalizeRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
+| `InitialSharedArtifactPublicationRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `ModelManifestPayload` | `shared/src/contracts/model_contracts.py` |
 | `CurrentSharedAdapterStatePayload` | `shared/src/contracts/adapter_contract_families/base.py` |
 | `TrainingUpdateSubmissionPayload` | `shared/src/contracts/training_contracts.py` |

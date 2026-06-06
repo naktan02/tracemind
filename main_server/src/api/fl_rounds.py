@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from main_server.src.services.federation.rounds.boundary.mappers import (
+    initial_shared_artifact_publication_request_from_payload,
     model_manifest_from_payload,
     model_manifest_to_payload,
     round_finalize_request_from_payload,
@@ -15,6 +16,7 @@ from main_server.src.services.federation.rounds.boundary.mappers import (
     round_update_acceptance_to_payload,
 )
 from main_server.src.services.federation.rounds.boundary.payloads import (
+    InitialSharedArtifactPublicationRequestPayload,
     RoundFinalizeRequestPayload,
     RoundOpenRequestPayload,
     RoundRecordPayload,
@@ -91,6 +93,30 @@ def activate_model_manifest(
             model_manifest_from_payload(request)
         )
     )
+
+
+@router.post(
+    "/active-manifest/initialize",
+    response_model=ModelManifestPayload,
+    status_code=status.HTTP_201_CREATED,
+)
+def initialize_active_shared_artifact(
+    request: InitialSharedArtifactPublicationRequestPayload,
+    service: RoundServiceDep,
+) -> ModelManifestPayload:
+    """선택된 shared adapter family의 initial state를 active manifest로 publish한다."""
+
+    try:
+        return model_manifest_to_payload(
+            service.publish_initial_shared_artifact(
+                initial_shared_artifact_publication_request_from_payload(request)
+            )
+        )
+    except (RoundValidationError, ValueError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
 
 
 @router.get("/active-state/current", response_model=CurrentSharedAdapterStatePayload)
