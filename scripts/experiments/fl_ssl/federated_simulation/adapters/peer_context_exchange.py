@@ -42,8 +42,9 @@ def build_peer_context_by_client(
 ) -> dict[str, FederatedSslPeerContext]:
     """round 시작 전 client별 peer/helper context를 만든다.
 
-    script adapter는 capability와 simulation input만 전달한다. helper parameter와
-    nearest-neighbor selection 의미는 `methods.federated_ssl.hooks.peer_context`가 소유한다.
+    script adapter는 capability와 simulation input만 전달한다.
+    helper parameter와 nearest-neighbor selection 의미는
+    `methods.federated_ssl.hooks.peer_context`가 소유한다.
     """
 
     policy_name = capability_plan.peer_context_policy_name

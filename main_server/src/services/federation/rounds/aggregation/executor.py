@@ -15,8 +15,11 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-from .artifact_payload_writer import save_aggregated_artifact_payload
-from .artifact_refs import AggregatedArtifactRefBuilder, AggregationArtifactStore
+from .artifact_refs import (
+    AggregatedArtifactRefBuilder,
+    AggregationArtifactStore,
+    save_aggregated_artifact_payload,
+)
 from .models import AggregationConfigScalar, AggregationResult
 
 DEFAULT_AGGREGATED_ARTIFACT_FORMAT = "server_aggregated_artifact_ref"

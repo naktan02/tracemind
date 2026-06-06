@@ -1,7 +1,6 @@
 # FL SSL 실행
 
-이 폴더는 FL SSL 실험 entrypoint와 support helper만 둔다. 직접 실행하는 파일은
-top-level에 두고, path/safety 같은 내부 helper는 `support/` 아래에 둔다. FL method identity와
+이 폴더는 FL SSL 실험 entrypoint와 support helper만 둔다. FL method identity와
 method-only 정책은 `methods/federated_ssl/`, SSL objective core는 `methods/ssl`,
 update-family 계산 core는 `methods/adaptation/*`, 실행 조합과 파라미터는 `conf/`
 Hydra config가 소유한다.
@@ -35,8 +34,6 @@ rounds`다. 새 wiring은 smoke 또는 reduced로 먼저 확인한다.
 
 ## 읽기 경로
 
-entrypoint에서 method core까지 따라갈 때는 아래 순서로 본다.
-
 ```text
 conf/entrypoints/fl_ssl/run_federated_simulation.yaml
 -> run_federated_simulation.py
@@ -48,14 +45,13 @@ conf/entrypoints/fl_ssl/run_federated_simulation.yaml
 ```
 
 `run_federated_simulation.py`는 sweep 처리, output dir 결정, request 생성, runner
-호출, 결과 출력만 맡는다. `simulation.py`는 runtime 준비와 round loop를 분리해서
-보여주고, `flow/round_loop.py`는 server step부터 summary assembly까지 round
-lifecycle phase를 보여준다.
+호출, 결과 출력만 맡는다. `flow/round_loop.py`는 server step부터 summary assembly까지
+round lifecycle phase를 보여준다.
 
 ## Output Layout
 
-새 FL SSL run은 같은 split과 숫자 조건 아래에서 방법론을 빠르게 비교하도록
-아래 구조로 저장한다.
+새 FL SSL run은 같은 split과 숫자 조건 아래에서 방법론을 빠르게 비교하도록 아래
+구조로 저장한다.
 
 ```text
 runs/fl_ssl/{split}/{condition}/{surface}/{method}/{run_id}/
@@ -67,32 +63,8 @@ runs/fl_ssl/{split}/{condition}/{surface}/{method}/{run_id}/
 runs/fl_ssl/sz4_ourafla_shared_s42/c10_r30_e1_b8_s50/peft_text_encoder_lora/fixmatch_fedavg/20260605T101139Z/
 ```
 
-- `split`: labeled/unlabeled source, labeled exposure, seed를 짧게 표현한다.
-  예: `sz4_ourafla_shared_s42`, `sz4_ourafla_lp100_shared_s42`.
-- `condition`: 비교에 영향을 주는 숫자 조건이다.
-  예: `c10_r30_e1_b8_s50`.
-- `surface`: update/training surface다. 예: `peft_text_encoder_lora`.
-- `method`: 비교 대상 방법론이다. 예: `fixmatch_fedavg`, `softmatch_fedavg`,
-  `fedmatch`.
-
 과거 run의 기존 경로는 이동하지 않는다. Report protocol에는 긴 source 이름과 실행
-metadata가 그대로 남으므로, folder slug는 비교용으로 짧게 유지한다.
-
-과거 `runs/fl_ssl` 산출물을 현재 구조로 옮길 때는 먼저 dry-run manifest를 만든다.
-
-```bash
-uv run python -m scripts.experiments.fl_ssl.migrate_run_layout \
-  --manifest runs/fl_ssl/.layout_migration_dry_run.json
-```
-
-target 충돌이 없음을 확인한 뒤 실행한다.
-
-```bash
-uv run python -m scripts.experiments.fl_ssl.migrate_run_layout \
-  --execute \
-  --prune-empty-parents \
-  --manifest runs/fl_ssl/.layout_migration_executed.json
-```
+metadata가 그대로 남으므로 folder slug는 비교용으로 짧게 유지한다.
 
 ## Client Split
 
@@ -128,9 +100,6 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 
 Method-owned 실행은 method descriptor와 capability leaf를 함께 고른다. 원본 상세값은
 YAML에 복제하지 않고 method package에서 report protocol로 주입한다.
-`local_update_profile` 같은 local recipe와 `consistency_method` 같은 Query SSL
-lower axis는 method-owned에서 별도 override하지 않는다. canonical FedMatch
-main-comparison 경로는 method identity와 scenario를 분리한다.
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
@@ -140,12 +109,12 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   ssl_method.scenario=labels-at-client
 ```
 
+manual 조합은 selector 축을 직접 고르는 baseline/debug 경로다.
+
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
-  run_controls/fl_ssl/budget=reduced \
-  fl_method.composition_mode=method_owned \
-  strategy_axes/fssl_method=fedmatch \
-  ssl_method.scenario=labels-at-server
+  run_controls/fl_ssl/budget=smoke \
+  strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
 ```
 
 ## Sweep
@@ -157,23 +126,14 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
 ```
 
-```bash
-uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
-  run_controls/fl_ssl/budget=smoke \
-  sweep.axis=client_count \
-  strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
-```
-
 `materialized_client_split` 기반 client-count sweep은
 `sweep.client_count.split_manifest_by_client_count`에 count별 manifest를 명시한다.
 
 ## Report
 
-각 run의 canonical report는
-`reports/fl_ssl_main_comparison.report.json`이다. report verifier는
-`scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`를 사용한다.
-
-대시보드 cache 생성과 `--reset` 의미는
+각 run의 canonical report는 `reports/fl_ssl_main_comparison.report.json`이다. report
+verifier는 `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`를
+사용한다. 대시보드 cache 생성과 `--reset` 의미는
 `apps/experiment_dashboard/README.md`가 소유한다.
 
 ## 주의

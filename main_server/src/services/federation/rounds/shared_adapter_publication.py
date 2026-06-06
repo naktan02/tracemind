@@ -15,14 +15,13 @@ from main_server.src.services.federation.rounds.active_manifest_service import (
 )
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
     AggregationArtifactStore,
+    save_aggregated_artifact_payload,
 )
 from main_server.src.services.federation.rounds.payload_adapters.models import (
     SharedAdapterRoundPayloadAdapter,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
-
-from .aggregation.artifact_payload_writer import save_aggregated_artifact_payload
 
 
 @dataclass(frozen=True, slots=True)

@@ -413,10 +413,12 @@ def test_run_federated_simulation_config_loads_materialized_split(
             overrides=[
                 "execution_context/embedding_adapter=hash_debug",
                 "execution_context/runtime_env=cpu_local",
+                "query_data_selection.labeled=ourafla_reddit",
                 "federated_run_budget.client_count=2",
                 "federated_run_budget.bootstrap_ratio=0.25",
                 "fl_data.source_mode=materialized_client_split",
                 f"fl_data.split_manifest={manifest_path}",
+                "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.5",
             ],
         )
@@ -463,10 +465,12 @@ def test_run_federated_simulation_rejects_manifest_client_count_drift(
             overrides=[
                 "execution_context/embedding_adapter=hash_debug",
                 "execution_context/runtime_env=cpu_local",
+                "query_data_selection.labeled=ourafla_reddit",
                 "federated_run_budget.client_count=3",
                 "federated_run_budget.bootstrap_ratio=0.25",
                 "fl_data.source_mode=materialized_client_split",
                 f"fl_data.split_manifest={manifest_path}",
+                "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.5",
             ],
         )
@@ -492,10 +496,12 @@ def test_run_federated_simulation_records_server_only_seed_manifest_capability(
             overrides=[
                 "execution_context/embedding_adapter=hash_debug",
                 "execution_context/runtime_env=cpu_local",
+                "query_data_selection.labeled=ourafla_reddit",
                 "federated_run_budget.client_count=2",
                 "federated_run_budget.bootstrap_ratio=0.25",
                 "fl_data.source_mode=materialized_client_split",
                 f"fl_data.split_manifest={manifest_path}",
+                "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.5",
             ],
         )
@@ -520,10 +526,12 @@ def test_run_federated_simulation_allows_materialized_split_ratio_metadata_drift
             overrides=[
                 "execution_context/embedding_adapter=hash_debug",
                 "execution_context/runtime_env=cpu_local",
+                "query_data_selection.labeled=ourafla_reddit",
                 "federated_run_budget.client_count=2",
                 "federated_run_budget.bootstrap_ratio=0.25",
                 "fl_data.source_mode=materialized_client_split",
                 f"fl_data.split_manifest={manifest_path}",
+                "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.5",
                 "client_pool_split.labeled_ratio=0.2",
                 "client_pool_split.unlabeled_ratio=0.8",
