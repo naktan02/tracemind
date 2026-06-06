@@ -116,6 +116,11 @@
 - `training/datasets/query_adaptation_multiview_service.py`
   - single-view adaptation dataset을 weak/strong source row가 있는 multiview dataset으로 확장
   - augmentation recipe는 여기서 고정하지 않고 pluggable augmenter hook으로 분리
+- `training/datasets/captured_text_training_source_service.py`
+  - agent-local `CapturedTextGeneratedViewRecord`를 training backend가 읽는
+    `TrainingExampleSource`로 정규화한다
+  - captured text는 raw string이나 임의 JSON으로 학습에 직접 들어가지 않고,
+    captured event -> generated view -> source row 단계를 거친다
 - `training/selection/query_buffer_lifecycle_service.py`
   - query buffer raw text retention / purge 정책과 lifecycle 실행
 - `training/examples/models.py`
@@ -132,6 +137,8 @@
 - `training/execution/agent_training_task_runner_service.py`
   - active task 조회, shared/prototype sync, example build, update upload까지의
     agent application flow 소유
+  - stored-event rebuild를 지원하지 않는 weak/strong backend는 ready captured text
+    generated view를 `TrainingExampleSource`로 변환해 사용한다
 - `training/examples/service.py`
   - raw row 또는 stored event를 `EmbeddedTrainingExample`으로 변환
 - `training/backends/inputs/`

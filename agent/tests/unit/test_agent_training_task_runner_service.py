@@ -3,8 +3,15 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import MagicMock
 
+from agent.src.infrastructure.repositories.captured_text_repository import (
+    CAPTURED_TEXT_VIEW_STATUS_READY,
+    CapturedTextGeneratedViewRecord,
+    CapturedTextRecord,
+    CapturedTextRepository,
+)
 from agent.src.services.federation.rounds.runtime_service import (
     FederationRunResult,
     FederationRunStatus,
@@ -147,6 +154,8 @@ def _build_service(
     shared_adapter_sync_service: MagicMock,
     round_client_factory: MagicMock,
     runtime_factory: MagicMock,
+    captured_text_repository: CapturedTextRepository | None = None,
+    embedding_adapter: object | None = None,
 ) -> AgentTrainingTaskRunnerService:
     return AgentTrainingTaskRunnerService(
         scored_event_repository=repo,
@@ -156,19 +165,206 @@ def _build_service(
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
         federation_runtime_service_factory=runtime_factory,
+        captured_text_repository=captured_text_repository,
+        embedding_adapter=embedding_adapter,  # type: ignore[arg-type]
     )
 
 
-def test_runner_returns_unsupported_runtime_for_multiview_live_path() -> None:
+class StubEmbeddingAdapter:
+    def embed_texts(self, texts):
+        return [[1.0, 0.0] for _text in texts]
+
+
+def test_runner_builds_multiview_examples_from_captured_text_views(
+    tmp_path: Path,
+) -> None:
     repo = MagicMock()
+    repo.get_recent_stored.return_value = ()
+    captured_repo = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
+    occurred_at = datetime(2026, 6, 7, 1, 0, tzinfo=timezone.utc)
+    captured_repo.save(
+        CapturedTextRecord(
+            event_id="event_generated",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="불안해",
+            locale="ko",
+            source_type="search",
+            surface_type="search_box",
+        )
+    )
+    stored = captured_repo.get("event_generated")
+    assert stored is not None
+    captured_repo.save_generated_view(
+        CapturedTextGeneratedViewRecord(
+            event_id="event_generated",
+            generated_at=occurred_at,
+            weak_text="I feel anxious",
+            strong_text_0="I am feeling anxious",
+            strong_text_1="I feel worried",
+            generator_name="unit-test",
+            generator_version="v1",
+            source_text_fingerprint=stored.text_fingerprint,
+            metadata={"weak_text_translated": True},
+        )
+    )
+    captured_repo.mark_view_generation_status(
+        event_id="event_generated",
+        status=CAPTURED_TEXT_VIEW_STATUS_READY,
+    )
     proto_service = MagicMock()
+    proto_service.get_active_pack.return_value = _build_prototype_pack()
     proto_sync_service = MagicMock()
-    shared_adapter_runtime_service = MagicMock()
     shared_adapter_sync_service = MagicMock()
+    active_manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_multiview",
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+        artifact_ref="/server/state/rev_multiview.json",
+    )
+    active_state = MagicMock()
+    active_state.apply.side_effect = lambda embedding: list(embedding)
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
+    shared_adapter_runtime_service.get_active_state.return_value = active_state
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_task_payload()
+    round_client_factory = MagicMock(return_value=round_client)
+    federation_runtime = MagicMock()
+    federation_runtime.run_current_task.return_value = FederationRunResult(
+        status=FederationRunStatus.INSUFFICIENT_EXAMPLES,
+        round_id="round_multiview",
+        task_id="task_multiview",
+        example_count=1,
+    )
+    runtime_factory = MagicMock(return_value=federation_runtime)
+    service = _build_service(
+        repo=repo,
+        proto_service=proto_service,
+        proto_sync_service=proto_sync_service,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+        runtime_factory=runtime_factory,
+        captured_text_repository=captured_repo,
+        embedding_adapter=StubEmbeddingAdapter(),
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == str(FederationRunStatus.INSUFFICIENT_EXAMPLES)
+    proto_sync_service.pull_version.assert_called_once_with(
+        server_base_url="http://server.test",
+        prototype_version="proto_001",
+    )
+    call_kwargs = federation_runtime.run_current_task.call_args.kwargs
+    training_examples = call_kwargs["training_examples"]
+    assert len(training_examples) == 1
+    assert training_examples[0].metadata["weak_text"] == "I feel anxious"
+    assert training_examples[0].metadata["strong_text"] == "I am feeling anxious"
+
+
+def test_runner_reports_missing_embedding_adapter_for_captured_text_views(
+    tmp_path: Path,
+) -> None:
+    repo = MagicMock()
+    repo.get_recent_stored.return_value = ()
+    captured_repo = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
+    occurred_at = datetime(2026, 6, 7, 1, 0, tzinfo=timezone.utc)
+    captured_repo.save(
+        CapturedTextRecord(
+            event_id="event_generated",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="불안해",
+            locale="ko",
+            source_type="search",
+            surface_type="search_box",
+        )
+    )
+    stored = captured_repo.get("event_generated")
+    assert stored is not None
+    captured_repo.save_generated_view(
+        CapturedTextGeneratedViewRecord(
+            event_id="event_generated",
+            generated_at=occurred_at,
+            weak_text="I feel anxious",
+            strong_text_0="I am feeling anxious",
+            strong_text_1="I feel worried",
+            generator_name="unit-test",
+            generator_version="v1",
+            source_text_fingerprint=stored.text_fingerprint,
+            metadata={"weak_text_translated": True},
+        )
+    )
+    captured_repo.mark_view_generation_status(
+        event_id="event_generated",
+        status=CAPTURED_TEXT_VIEW_STATUS_READY,
+    )
+    proto_service = MagicMock()
+    proto_service.get_active_pack.return_value = _build_prototype_pack()
+    proto_sync_service = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    active_manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_multiview",
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+        artifact_ref="/server/state/rev_multiview.json",
+    )
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
+    shared_adapter_runtime_service.get_active_state.return_value = MagicMock()
     round_client = MagicMock()
     round_client.fetch_current_task.return_value = _build_task_payload()
     round_client_factory = MagicMock(return_value=round_client)
     runtime_factory = MagicMock()
+    service = _build_service(
+        repo=repo,
+        proto_service=proto_service,
+        proto_sync_service=proto_sync_service,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+        runtime_factory=runtime_factory,
+        captured_text_repository=captured_repo,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == "missing_embedding_adapter"
+    runtime_factory.assert_not_called()
+
+
+def test_runner_uses_empty_examples_when_multiview_has_no_generated_views() -> None:
+    repo = MagicMock()
+    repo.get_recent_stored.return_value = ()
+    proto_service = MagicMock()
+    proto_service.get_active_pack.return_value = _build_prototype_pack()
+    proto_sync_service = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    active_manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_multiview",
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+        artifact_ref="/server/state/rev_multiview.json",
+    )
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
+    shared_adapter_runtime_service.get_active_state.return_value = MagicMock()
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_task_payload()
+    round_client_factory = MagicMock(return_value=round_client)
+    federation_runtime = MagicMock()
+    federation_runtime.run_current_task.return_value = FederationRunResult(
+        status=FederationRunStatus.INSUFFICIENT_EXAMPLES,
+        round_id="round_multiview",
+        task_id="task_multiview",
+    )
+    runtime_factory = MagicMock(return_value=federation_runtime)
     service = _build_service(
         repo=repo,
         proto_service=proto_service,
@@ -183,15 +379,9 @@ def test_runner_returns_unsupported_runtime_for_multiview_live_path() -> None:
         AgentTrainingTaskRunRequest(server_base_url="http://server.test")
     )
 
-    assert response.status == "unsupported_runtime"
-    assert response.round_id == "round_multiview"
-    assert response.task_id == "task_multiview"
-    assert "stored-event" in response.message
-    repo.get_recent_stored.assert_not_called()
-    proto_service.get_active_pack.assert_not_called()
-    proto_sync_service.pull_version.assert_not_called()
-    shared_adapter_sync_service.pull_current.assert_not_called()
-    runtime_factory.assert_not_called()
+    assert response.status == str(FederationRunStatus.INSUFFICIENT_EXAMPLES)
+    call_kwargs = federation_runtime.run_current_task.call_args.kwargs
+    assert call_kwargs["training_examples"] == ()
 
 
 def test_runner_syncs_shared_state_and_uses_matching_manifest() -> None:

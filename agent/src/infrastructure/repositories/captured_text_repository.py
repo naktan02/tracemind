@@ -174,6 +174,18 @@ LIMIT ?;
 
 _COUNT_GENERATED_VIEWS_SQL = "SELECT COUNT(*) FROM captured_text_generated_views;"
 
+_SELECT_READY_GENERATED_TRAINING_SOURCES_SQL = """
+SELECT e.event_id, e.occurred_at, e.text, e.locale, e.source_type, e.surface_type,
+       e.text_fingerprint, v.generated_at, v.weak_text, v.strong_text_0,
+       v.strong_text_1, v.generator_name, v.generator_version, v.metadata
+FROM captured_text_events e
+JOIN captured_text_generated_views v ON e.event_id = v.event_id
+WHERE e.view_generation_status = ?
+  AND e.occurred_at >= ?
+ORDER BY e.occurred_at DESC
+LIMIT ?;
+"""
+
 
 @dataclass(slots=True)
 class CapturedTextRecord:
@@ -248,6 +260,26 @@ class CapturedTextGeneratedViewRecord:
             raise ValueError("source_text_fingerprint must not be empty.")
         if not self.schema_version.strip():
             raise ValueError("schema_version must not be empty.")
+
+
+@dataclass(slots=True)
+class CapturedTextGeneratedTrainingSourceRecord:
+    """generated view와 원본 captured text를 합친 학습 source snapshot."""
+
+    event_id: str
+    occurred_at: datetime
+    text: str
+    locale: str
+    source_type: str
+    surface_type: str
+    text_fingerprint: str
+    generated_at: datetime
+    weak_text: str
+    strong_text_0: str
+    strong_text_1: str
+    generator_name: str
+    generator_version: str
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def captured_text_record_from_payload(
@@ -424,6 +456,27 @@ class CapturedTextRepository:
         with self._connect() as conn:
             return conn.execute(_COUNT_GENERATED_VIEWS_SQL).fetchone()[0]
 
+    def get_ready_generated_training_sources(
+        self,
+        *,
+        cutoff: datetime,
+        limit: int,
+    ) -> list[CapturedTextGeneratedTrainingSourceRecord]:
+        """ready 상태 generated view를 학습 source 후보로 반환한다."""
+
+        if limit <= 0:
+            raise ValueError("limit must be positive.")
+        with self._connect() as conn:
+            rows = conn.execute(
+                _SELECT_READY_GENERATED_TRAINING_SOURCES_SQL,
+                (
+                    CAPTURED_TEXT_VIEW_STATUS_READY,
+                    cutoff.isoformat(),
+                    limit,
+                ),
+            ).fetchall()
+        return [_row_to_generated_training_source(row) for row in rows]
+
     def delete_older_than(self, *, cutoff: datetime) -> int:
         """cutoff보다 오래된 captured text event를 삭제한다."""
 
@@ -514,6 +567,46 @@ def _row_to_generated_view(row: tuple[Any, ...]) -> CapturedTextGeneratedViewRec
         generator_name=str(generator_name),
         generator_version=str(generator_version),
         source_text_fingerprint=str(source_text_fingerprint),
+        metadata=metadata,
+    )
+
+
+def _row_to_generated_training_source(
+    row: tuple[Any, ...],
+) -> CapturedTextGeneratedTrainingSourceRecord:
+    (
+        event_id,
+        occurred_at,
+        text,
+        locale,
+        source_type,
+        surface_type,
+        text_fingerprint,
+        generated_at,
+        weak_text,
+        strong_text_0,
+        strong_text_1,
+        generator_name,
+        generator_version,
+        metadata_json,
+    ) = row
+    metadata = json.loads(str(metadata_json))
+    if not isinstance(metadata, dict):
+        metadata = {}
+    return CapturedTextGeneratedTrainingSourceRecord(
+        event_id=str(event_id),
+        occurred_at=datetime.fromisoformat(str(occurred_at)),
+        text=str(text),
+        locale=str(locale),
+        source_type=str(source_type),
+        surface_type=str(surface_type),
+        text_fingerprint=str(text_fingerprint),
+        generated_at=datetime.fromisoformat(str(generated_at)),
+        weak_text=str(weak_text),
+        strong_text_0=str(strong_text_0),
+        strong_text_1=str(strong_text_1),
+        generator_name=str(generator_name),
+        generator_version=str(generator_version),
         metadata=metadata,
     )
 

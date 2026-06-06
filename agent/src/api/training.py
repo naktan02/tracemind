@@ -8,6 +8,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from agent.src.infrastructure.repositories.captured_text_repository import (
+    CapturedTextRepository,
+)
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
@@ -28,6 +31,7 @@ from agent.src.services.training.execution.agent_training_task_runner_service im
     AgentTrainingTaskRunRequest,
 )
 from shared.src.contracts.training_contracts import TrainingTaskPayload
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 
 class RunCurrentTaskRequest(BaseModel):
@@ -190,6 +194,7 @@ FederationRuntimeFactoryDep = Annotated[
 
 
 def get_training_task_runner_service(
+    request: Request,
     repo: ScoredEventRepoDep,
     proto_service: ProtoServiceDep,
     proto_sync_service: PrototypeSyncServiceDep,
@@ -208,6 +213,8 @@ def get_training_task_runner_service(
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
         federation_runtime_service_factory=runtime_factory,
+        captured_text_repository=_get_optional_captured_text_repository(request),
+        embedding_adapter=_get_optional_training_embedding_adapter(request),
     )
 
 
@@ -289,3 +296,24 @@ def get_training_status(
 # ------------------------------------------------------------------ #
 # 내부 헬퍼                                                             #
 # ------------------------------------------------------------------ #
+
+
+def _get_optional_captured_text_repository(
+    request: Request,
+) -> CapturedTextRepository | None:
+    repository = getattr(request.app.state, "captured_text_repository", None)
+    if repository is None:
+        return None
+    return repository
+
+
+def _get_optional_training_embedding_adapter(
+    request: Request,
+) -> EmbeddingAdapter | None:
+    adapter = getattr(request.app.state, "training_embedding_adapter", None)
+    if adapter is not None:
+        return adapter
+    pipeline_service = getattr(request.app.state, "pipeline_service", None)
+    embedding_service = getattr(pipeline_service, "embedding_service", None)
+    pipeline_adapter = getattr(embedding_service, "adapter", None)
+    return pipeline_adapter

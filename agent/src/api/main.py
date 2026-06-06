@@ -71,6 +71,7 @@ from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import (
     WellbeingTimeseriesService,
 )
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 RoundClientFactory = Callable[[str], RoundClient]
 FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
@@ -126,6 +127,7 @@ def create_app(
     child_support_llm_provider: ChildSupportLlmProvider | None = None,
     round_client_factory: RoundClientFactory | None = None,
     federation_runtime_service_factory: FederationRuntimeServiceFactory | None = None,
+    training_embedding_adapter: EmbeddingAdapter | None = None,
     family_extension_allowed_origins: tuple[str, ...] | None = None,
 ) -> FastAPI:
     """Agent API 앱을 생성하고 override 가능한 기본 의존성을 연결한다."""
@@ -217,6 +219,12 @@ def create_app(
     )
     if pipeline_service is not None:
         app.state.pipeline_service = pipeline_service
+    if training_embedding_adapter is not None:
+        app.state.training_embedding_adapter = training_embedding_adapter
+    elif pipeline_service is not None:
+        app.state.training_embedding_adapter = (
+            pipeline_service.embedding_service.adapter
+        )
 
     app.include_router(health_router)
     app.include_router(captured_text_router)

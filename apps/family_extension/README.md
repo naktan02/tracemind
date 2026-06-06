@@ -27,6 +27,14 @@
 `apps/family_extension`는 하나의 Chrome extension 패키지로 유지한다. UI와
 향후 입력 수집 runtime은 같은 manifest에 묶이지만, 코드 책임은 분리한다.
 
+페이지 분리는 HTML entry가 아니라 product/runtime surface 기준으로 잡는다.
+`index.html`과 `parent.html`은 같은 React app shell인 `src/ui/main.tsx`를 쓰고,
+`/setup`, `/gate`, `/child/unlock`, `/parent/unlock`, `/child`, `/parent`는
+`src/ui/pages/**`의 page component 파일로 분리한다. role/session/access guard는
+`src/ui/App.tsx`가 공유하므로 setup/gate/unlock을 별도 Vite entry로 쪼개지 않는다.
+반대로 `popup.html`, `collector-debug.html`, content script, background service
+worker는 manifest surface와 runtime 책임이 달라 독립 entry로 둔다.
+
 - `src/ui/`
   - child/parent detail, route, React component, UI 전용 API client를 둔다.
   - wellbeing/child-support 의미를 재정의하지 않고 agent API payload를 표시한다.
@@ -44,6 +52,11 @@
 `src/collector/`에는 content script의 입력 surface 감시와 segment 생성만 두고,
 `src/extension/`에는 background service worker의 queue, local agent 전달, extension
 storage key를 둔다. 위험 추론, 카테고리 판단, 학습 buffer는 계속 agent가 소유한다.
+collector가 만든 text는 raw string 배열로 저장하지 않고
+`TypingSegmentPayload -> CapturedTextEventPayload -> agent-local CapturedTextRecord
+-> CapturedTextGeneratedViewRecord -> TrainingExampleSource` 순서로 정규화한다.
+extension local storage queue는 agent가 꺼져 있을 때의 재전송 buffer일 뿐이며,
+학습 데이터 source of truth가 아니다.
 
 현재 collector runtime:
 

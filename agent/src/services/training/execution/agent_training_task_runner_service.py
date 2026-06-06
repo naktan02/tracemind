@@ -5,6 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from agent.src.infrastructure.repositories.captured_text_repository import (
+    CapturedTextRepository,
+)
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
@@ -27,12 +30,18 @@ from agent.src.services.federation.rounds.runtime_service import (
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.backends.inputs.models import (
     StoredEventTrainingExampleBuildRequest,
+    TrainingExampleBuildRequest,
+    TrainingExampleSource,
+)
+from agent.src.services.training.datasets.captured_text_training_source_service import (
+    CapturedTextTrainingSourceService,
 )
 from agent.src.services.training.examples.service import TrainingExampleService
 from agent.src.services.training.execution.runtime_compatibility import (
-    validate_live_agent_stored_event_runtime,
+    validate_local_training_runtime,
 )
 from shared.src.contracts.model_contracts import PROTOTYPE_PACK_AUXILIARY_KEY
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 RoundClientFactory = Callable[[str], RoundClient]
 FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
@@ -74,6 +83,8 @@ class AgentTrainingTaskRunnerService:
     shared_adapter_sync_service: SharedAdapterSyncService
     round_client_factory: RoundClientFactory
     federation_runtime_service_factory: FederationRuntimeServiceFactory
+    captured_text_repository: CapturedTextRepository | None = None
+    embedding_adapter: EmbeddingAdapter | None = None
 
     def run_current_task(
         self,
@@ -90,7 +101,7 @@ class AgentTrainingTaskRunnerService:
             )
 
         try:
-            validate_live_agent_stored_event_runtime(task_payload)
+            validate_local_training_runtime(task_payload)
         except ValueError as error:
             return AgentTrainingTaskRunResult(
                 status="unsupported_runtime",
@@ -128,9 +139,6 @@ class AgentTrainingTaskRunnerService:
                 ),
             )
 
-        stored_events = self.scored_event_repository.get_recent_stored(
-            days=request.scored_event_days
-        )
         prototype_version = active_manifest.auxiliary_artifact_versions.get(
             PROTOTYPE_PACK_AUXILIARY_KEY
         )
@@ -153,16 +161,48 @@ class AgentTrainingTaskRunnerService:
                 training_example_service = TrainingExampleService.from_objective_config(
                     task_payload.objective_config
                 )
-                training_examples = (
-                    training_example_service.build_examples_from_stored_events(
-                        StoredEventTrainingExampleBuildRequest(
-                            stored_events=stored_events,
-                            prototype_pack=active_pack,
-                            scoring_service=scoring_service,
-                            adapter_state=active_state,
+                if training_example_service.backend.supports_stored_event_rebuild:
+                    stored_events = self.scored_event_repository.get_recent_stored(
+                        days=request.scored_event_days
+                    )
+                    training_examples = (
+                        training_example_service.build_examples_from_stored_events(
+                            StoredEventTrainingExampleBuildRequest(
+                                stored_events=stored_events,
+                                prototype_pack=active_pack,
+                                scoring_service=scoring_service,
+                                adapter_state=active_state,
+                            )
                         )
                     )
-                )
+                else:
+                    source_rows = self._load_captured_text_source_rows(
+                        days=request.scored_event_days,
+                        max_examples=task_payload.selection_policy.max_examples,
+                    )
+                    if source_rows and self.embedding_adapter is None:
+                        return AgentTrainingTaskRunResult(
+                            status="missing_embedding_adapter",
+                            round_id=task_payload.round_id,
+                            task_id=task_payload.task_id,
+                            message=(
+                                "generated captured text source를 학습에 쓰려면 "
+                                "embedding_adapter가 필요합니다."
+                            ),
+                        )
+                    if not source_rows or self.embedding_adapter is None:
+                        training_examples = ()
+                    else:
+                        training_examples = training_example_service.build_examples(
+                            TrainingExampleBuildRequest(
+                                source_rows=source_rows,
+                                adapter=self.embedding_adapter,
+                                adapter_state=active_state,
+                                prototype_pack=active_pack,
+                                model_id=task_payload.model_id,
+                                scoring_service=scoring_service,
+                            )
+                        )
 
         service = self.federation_runtime_service_factory(request.server_base_url)
         result: FederationRunResult = service.run_current_task(
@@ -179,4 +219,20 @@ class AgentTrainingTaskRunnerService:
             example_count=result.example_count,
             accepted_count=result.accepted_count,
             message=result.message,
+        )
+
+    def _load_captured_text_source_rows(
+        self,
+        *,
+        days: int,
+        max_examples: int | None,
+    ) -> tuple[TrainingExampleSource, ...]:
+        if self.captured_text_repository is None:
+            return ()
+        service = CapturedTextTrainingSourceService(
+            repository=self.captured_text_repository
+        )
+        return service.get_recent_source_rows(
+            days=days,
+            limit=max_examples or 100,
         )
