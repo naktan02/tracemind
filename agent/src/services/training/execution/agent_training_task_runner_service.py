@@ -99,6 +99,16 @@ class AgentTrainingTaskRunnerService:
                 status="no_active_task",
                 message="현재 active round 또는 open task가 없습니다.",
             )
+        if _uses_query_ssl_objective(task_payload.objective_config.extras):
+            return AgentTrainingTaskRunResult(
+                status="unsupported_runtime",
+                round_id=task_payload.round_id,
+                task_id=task_payload.task_id,
+                message=(
+                    "Query SSL objective task는 아직 run-current-task legacy "
+                    "pseudo-label runner로 실행하지 않습니다."
+                ),
+            )
 
         try:
             validate_local_training_runtime(task_payload)
@@ -236,3 +246,9 @@ class AgentTrainingTaskRunnerService:
             days=days,
             limit=max_examples or 100,
         )
+
+
+def _uses_query_ssl_objective(extras: dict[str, object]) -> bool:
+    """objective extras가 Query SSL local objective를 명시하는지 확인한다."""
+
+    return any(key.startswith("query_ssl.") for key in extras)

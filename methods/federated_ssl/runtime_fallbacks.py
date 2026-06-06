@@ -1,8 +1,10 @@
 """FL SSL runtime fallback profile.
 
 이 모듈은 API/runtime 요청이 명시 training 값을 주지 않았을 때만 쓰는
-compatibility fallback을 소유한다. 실험 실행값의 source of truth는 Hydra
-`conf/strategy_axes/fssl_method/`, `conf/strategy_axes/fl_topology/` 등에 남긴다.
+compatibility fallback을 소유한다. live 기본값은 FL SSL 실험 기본 조합인
+FixMatch local objective + PEFT text encoder update + FedAvg server aggregation을
+가리키되, 실제 실험 실행값의 source of truth는 Hydra `conf/strategy_axes/`에
+남긴다.
 """
 
 from __future__ import annotations
@@ -230,7 +232,13 @@ class RuntimeFallbackServerRoundProfile:
         )
 
 
-PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK_NAME = "pseudo_label_self_training.v1"
+FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK_NAME = "fixmatch_fedavg.v1"
+FIXMATCH_QUERY_SSL_METHOD_NAME = "fixmatch_usb_v1"
+FIXMATCH_QUERY_SSL_ALGORITHM_NAME = "fixmatch"
+FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY = "first_aug"
+FIXMATCH_QUERY_SSL_TEMPERATURE = 0.5
+FIXMATCH_QUERY_SSL_P_CUTOFF = 0.95
+PEFT_PSEUDO_LABEL_LOCAL_UPDATE_PROFILE_NAME = "peft_pseudo_label_v1"
 PEFT_TEXT_ENCODER_FEDAVG_SERVER_ROUND_RUNTIME_FALLBACK_NAME = (
     "default_peft_text_encoder_fedavg.v1"
 )
@@ -239,7 +247,7 @@ FEDAVG_AGGREGATION_BACKEND_NAME = "fedavg"
 
 RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
     {
-        "algorithm_profile_name": "prototype_pseudo_label_v1",
+        "algorithm_profile_name": PEFT_PSEUDO_LABEL_LOCAL_UPDATE_PROFILE_NAME,
         "training_backend_name": PEFT_ENCODER_TRAINING_BACKEND_NAME,
         "confidence_threshold": 0.6,
         "margin_threshold": 0.02,
@@ -250,6 +258,15 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
         "acceptance_policy_name": "top1_margin_threshold",
         "pseudo_label_algorithm_name": "top1_margin_threshold",
         "privacy_guard_name": NOOP_PRIVACY_GUARD_NAME,
+        "query_ssl.method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
+        "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
+        "query_ssl.strong_view_policy": FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
+        "query_ssl.unlabeled_batch_size": 12,
+        "query_ssl.temperature": FIXMATCH_QUERY_SSL_TEMPERATURE,
+        "query_ssl.p_cutoff": FIXMATCH_QUERY_SSL_P_CUTOFF,
+        "query_ssl.hard_label": True,
+        "query_ssl.lambda_u": 1.0,
+        "query_ssl.supervised_loss_weight": 1.0,
     }
 )
 
@@ -266,15 +283,15 @@ RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS = RuntimeTrainingTaskDefaults(
     gradient_clip_norm=None,
 )
 
-PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK = RuntimeFallbackTrainingProfile(
-    profile_name=PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK_NAME,
+FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK = RuntimeFallbackTrainingProfile(
+    profile_name=FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK_NAME,
     objective_mapping=RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING,
     selection_mapping=RUNTIME_FALLBACK_TRAINING_SELECTION_MAPPING,
     secure_aggregation_mapping=RUNTIME_FALLBACK_SECURE_AGGREGATION_MAPPING,
     task_runtime_defaults=RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS,
 )
 
-RUNTIME_FALLBACK_TRAINING_PROFILE = PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK
+RUNTIME_FALLBACK_TRAINING_PROFILE = FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK
 RUNTIME_FALLBACK_SERVER_ROUND_PROFILE = RuntimeFallbackServerRoundProfile(
     profile_name=PEFT_TEXT_ENCODER_FEDAVG_SERVER_ROUND_RUNTIME_FALLBACK_NAME,
     payload_adapter_kind=PEFT_ENCODER_PAYLOAD_ADAPTER_KIND,
@@ -304,8 +321,7 @@ def resolve_runtime_example_generation_backend_name(
         return RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     normalized = str(raw_value).strip()
     return (
-        normalized
-        or RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
+        normalized or RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     )
 
 

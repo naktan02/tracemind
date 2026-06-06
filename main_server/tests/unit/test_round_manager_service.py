@@ -25,6 +25,11 @@ from main_server.src.services.federation.rounds.round_manager_service import (  
     RoundPublicationRequest,
 )
 from methods.federated_ssl.runtime_fallbacks import (
+    FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
+    FIXMATCH_QUERY_SSL_METHOD_NAME,
+    FIXMATCH_QUERY_SSL_P_CUTOFF,
+    FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
+    FIXMATCH_QUERY_SSL_TEMPERATURE,
     RUNTIME_FALLBACK_TRAINING_PROFILE,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
@@ -218,7 +223,17 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
     assert task.objective_config.margin_threshold == (
         RUNTIME_FALLBACK_TRAINING_PROFILE.margin_threshold
     )
-    assert task.objective_config.extras == {}
+    assert task.objective_config.extras == {
+        "query_ssl.method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
+        "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
+        "query_ssl.strong_view_policy": FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
+        "query_ssl.unlabeled_batch_size": 12,
+        "query_ssl.temperature": FIXMATCH_QUERY_SSL_TEMPERATURE,
+        "query_ssl.p_cutoff": FIXMATCH_QUERY_SSL_P_CUTOFF,
+        "query_ssl.hard_label": True,
+        "query_ssl.lambda_u": 1.0,
+        "query_ssl.supervised_loss_weight": 1.0,
+    }
     assert task.secure_aggregation.required is False
 
 

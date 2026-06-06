@@ -60,6 +60,36 @@ def _build_task_payload() -> TrainingTaskPayload:
     )
 
 
+def _build_query_ssl_task_payload() -> TrainingTaskPayload:
+    return _build_task_payload().model_copy(
+        update={
+            "task_id": "task_query_ssl",
+            "objective_config": TrainingObjectiveConfigPayload(
+                algorithm_profile_name="peft_pseudo_label_v1",
+                training_backend_name="peft_classifier_trainer",
+                confidence_threshold=0.6,
+                margin_threshold=0.02,
+                example_generation_backend_name="weak_strong_pair",
+                evidence_backend_name="prototype_similarity_evidence",
+                scorer_backend_name="prototype_similarity",
+                acceptance_policy_name="top1_margin_threshold",
+                privacy_guard_name="noop",
+                extras={
+                    "query_ssl.method_name": "fixmatch_usb_v1",
+                    "query_ssl.algorithm_name": "fixmatch",
+                    "query_ssl.strong_view_policy": "first_aug",
+                    "query_ssl.unlabeled_batch_size": 8,
+                    "query_ssl.temperature": 0.5,
+                    "query_ssl.p_cutoff": 0.95,
+                    "query_ssl.hard_label": True,
+                    "query_ssl.lambda_u": 1.0,
+                    "query_ssl.supervised_loss_weight": 1.0,
+                },
+            ),
+        }
+    )
+
+
 def _build_supported_task_payload() -> TrainingTaskPayload:
     return TrainingTaskPayload(
         schema_version="training_task.v1",
@@ -336,6 +366,38 @@ def test_runner_reports_missing_embedding_adapter_for_captured_text_views(
     )
 
     assert response.status == "missing_embedding_adapter"
+    runtime_factory.assert_not_called()
+
+
+def test_runner_rejects_query_ssl_task_until_live_runner_is_connected() -> None:
+    repo = MagicMock()
+    proto_service = MagicMock()
+    proto_sync_service = MagicMock()
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload()
+    round_client_factory = MagicMock(return_value=round_client)
+    runtime_factory = MagicMock()
+    service = _build_service(
+        repo=repo,
+        proto_service=proto_service,
+        proto_sync_service=proto_sync_service,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+        runtime_factory=runtime_factory,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == "unsupported_runtime"
+    assert response.round_id == "round_multiview"
+    assert response.task_id == "task_query_ssl"
+    assert "Query SSL objective task" in response.message
+    shared_adapter_sync_service.pull_current.assert_not_called()
     runtime_factory.assert_not_called()
 
 

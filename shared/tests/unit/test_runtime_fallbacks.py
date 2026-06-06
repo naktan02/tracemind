@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from methods.federated_ssl.runtime_fallbacks import (
-    PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK,
+    FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK,
+    FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
+    FIXMATCH_QUERY_SSL_METHOD_NAME,
+    FIXMATCH_QUERY_SSL_P_CUTOFF,
+    FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
+    FIXMATCH_QUERY_SSL_TEMPERATURE,
     RUNTIME_FALLBACK_TRAINING_PROFILE,
     RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS,
     build_runtime_fallback_secure_aggregation_config,
@@ -15,14 +20,8 @@ from shared.src.contracts.training_example_backends import (
 
 
 def test_runtime_fallback_profile_points_to_versioned_bundle() -> None:
-    assert (
-        RUNTIME_FALLBACK_TRAINING_PROFILE
-        is PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK
-    )
-    assert (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.profile_name
-        == "pseudo_label_self_training.v1"
-    )
+    assert RUNTIME_FALLBACK_TRAINING_PROFILE is FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK
+    assert RUNTIME_FALLBACK_TRAINING_PROFILE.profile_name == "fixmatch_fedavg.v1"
 
 
 def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> None:
@@ -65,7 +64,17 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
         config.acceptance_policy_name
         == RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
     )
-    assert config.extras == {}
+    assert config.extras == {
+        "query_ssl.method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
+        "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
+        "query_ssl.strong_view_policy": FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
+        "query_ssl.unlabeled_batch_size": 12,
+        "query_ssl.temperature": FIXMATCH_QUERY_SSL_TEMPERATURE,
+        "query_ssl.p_cutoff": FIXMATCH_QUERY_SSL_P_CUTOFF,
+        "query_ssl.hard_label": True,
+        "query_ssl.lambda_u": 1.0,
+        "query_ssl.supervised_loss_weight": 1.0,
+    }
     assert config.example_generation_backend_name == WEAK_STRONG_PAIR_EXAMPLE_BACKEND
 
 
