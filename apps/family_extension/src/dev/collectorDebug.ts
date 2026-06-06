@@ -1,4 +1,15 @@
-import type { TypingSegmentPayload } from "../contracts/generated";
+import {
+  getAgentApiBaseUrl,
+  requestAgentJson,
+  type AgentApiError,
+} from "../common/agentClient";
+import type {
+  CapturedTextDebugJobConfigRequestPayload,
+  CapturedTextDebugJobRunRequestPayload,
+  CapturedTextDebugJobRunResultPayload,
+  CapturedTextDebugJobStatusPayload,
+  TypingSegmentPayload,
+} from "../contracts/generated";
 import {
   COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
   COLLECTOR_STATUS_STORAGE_KEY,
@@ -156,6 +167,38 @@ if (extensionApi === null) {
       font-size: 18px;
     }
 
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #526071;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input {
+      width: min(420px, 100%);
+      box-sizing: border-box;
+      border: 1px solid #bac4d2;
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: #17202a;
+      background: #ffffff;
+      font: inherit;
+      font-size: 14px;
+    }
+
+    input.numeric {
+      width: 120px;
+    }
+
     .copy-button {
       border-color: #bac4d2;
       padding: 6px 10px;
@@ -203,6 +246,33 @@ if (extensionApi === null) {
       </section>
       <section class="panel">
         <div class="panel-header">
+          <h2>Agent Pipeline Job</h2>
+          <button id="refresh-job" class="copy-button" type="button">상태 갱신</button>
+        </div>
+        <p id="agent-api-base"></p>
+        <div class="control-row">
+          <label>
+            interval seconds
+            <input id="job-interval" class="numeric" type="number" min="5" max="3600" value="30" />
+          </label>
+          <label>
+            batch size
+            <input id="job-batch-size" class="numeric" type="number" min="1" max="500" value="100" />
+          </label>
+          <button id="toggle-job" type="button">job 켜기</button>
+          <button id="run-view-generation" class="secondary" type="button">번역/view 즉시 실행</button>
+        </div>
+        <div class="control-row">
+          <label>
+            server base URL
+            <input id="training-server-url" type="url" value="http://127.0.0.1:8000" />
+          </label>
+          <button id="run-training" class="secondary" type="button">학습 즉시 실행</button>
+        </div>
+        <pre id="job-status">{}</pre>
+      </section>
+      <section class="panel">
+        <div class="panel-header">
           <h2>Last TypingSegmentPayload</h2>
           <button id="copy-segment" class="copy-button" type="button">복사</button>
         </div>
@@ -221,10 +291,25 @@ if (extensionApi === null) {
 
 const toggleButton = getElement("toggle-debug", HTMLButtonElement);
 const refreshButton = getElement("refresh-debug", HTMLButtonElement);
+const refreshJobButton = getElement("refresh-job", HTMLButtonElement);
+const toggleJobButton = getElement("toggle-job", HTMLButtonElement);
+const runViewGenerationButton = getElement(
+  "run-view-generation",
+  HTMLButtonElement,
+);
+const runTrainingButton = getElement("run-training", HTMLButtonElement);
 const copyStatusButton = getElement("copy-status", HTMLButtonElement);
 const copySegmentButton = getElement("copy-segment", HTMLButtonElement);
 const copyHistoryButton = getElement("copy-history", HTMLButtonElement);
+const agentApiBaseText = getElement("agent-api-base", HTMLParagraphElement);
+const jobIntervalInput = getElement("job-interval", HTMLInputElement);
+const jobBatchSizeInput = getElement("job-batch-size", HTMLInputElement);
+const trainingServerUrlInput = getElement(
+  "training-server-url",
+  HTMLInputElement,
+);
 const statusPre = getElement("collector-status", HTMLPreElement);
+const jobStatusPre = getElement("job-status", HTMLPreElement);
 const segmentPre = getElement("last-segment", HTMLPreElement);
 const historyPre = getElement("segment-history", HTMLPreElement);
 
@@ -233,6 +318,18 @@ toggleButton.addEventListener("click", () => {
 });
 refreshButton.addEventListener("click", () => {
   void refreshDebugView();
+});
+refreshJobButton.addEventListener("click", () => {
+  void refreshJobStatus();
+});
+toggleJobButton.addEventListener("click", () => {
+  void togglePipelineJob();
+});
+runViewGenerationButton.addEventListener("click", () => {
+  void runViewGenerationNow();
+});
+runTrainingButton.addEventListener("click", () => {
+  void runTrainingNow();
 });
 copyStatusButton.addEventListener("click", () => {
   void copyPreText(statusPre, copyStatusButton);
@@ -245,6 +342,8 @@ copyHistoryButton.addEventListener("click", () => {
 });
 
 void refreshDebugView();
+agentApiBaseText.textContent = `Agent API: ${getAgentApiBaseUrl()}`;
+void refreshJobStatus();
 window.setInterval(() => {
   if (!hasActiveDebugSelection()) {
     void refreshDebugView();
@@ -297,6 +396,102 @@ async function refreshDebugView(): Promise<void> {
         2,
       )
     : "아직 저장된 history가 없습니다.";
+}
+
+async function refreshJobStatus(): Promise<void> {
+  try {
+    const status = await requestAgentJson<CapturedTextDebugJobStatusPayload>(
+      "/api/v1/captured-text/debug-job/status",
+    );
+    applyJobStatus(status);
+    jobStatusPre.textContent = JSON.stringify(status, null, 2);
+  } catch (error) {
+    jobStatusPre.textContent = JSON.stringify(formatAgentError(error), null, 2);
+  }
+}
+
+async function togglePipelineJob(): Promise<void> {
+  const nextEnabled = toggleJobButton.dataset.enabled !== "true";
+  const payload: CapturedTextDebugJobConfigRequestPayload = {
+    view_generation_enabled: nextEnabled,
+    view_generation_interval_seconds: readNumberInput(jobIntervalInput, 30),
+    view_generation_batch_size: readNumberInput(jobBatchSizeInput, 100),
+  };
+  try {
+    const status = await requestAgentJson<CapturedTextDebugJobStatusPayload>(
+      "/api/v1/captured-text/debug-job/config",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+    applyJobStatus(status);
+    jobStatusPre.textContent = JSON.stringify(status, null, 2);
+  } catch (error) {
+    jobStatusPre.textContent = JSON.stringify(formatAgentError(error), null, 2);
+  }
+}
+
+async function runViewGenerationNow(): Promise<void> {
+  const payload: CapturedTextDebugJobRunRequestPayload = {
+    limit: readNumberInput(jobBatchSizeInput, 100),
+  };
+  try {
+    const result =
+      await requestAgentJson<CapturedTextDebugJobRunResultPayload>(
+        "/api/v1/captured-text/debug-job/run-view-generation",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+    jobStatusPre.textContent = JSON.stringify(result, null, 2);
+    await refreshJobStatus();
+  } catch (error) {
+    jobStatusPre.textContent = JSON.stringify(formatAgentError(error), null, 2);
+  }
+}
+
+async function runTrainingNow(): Promise<void> {
+  const serverBaseUrl = trainingServerUrlInput.value.trim();
+  if (serverBaseUrl.length === 0) {
+    jobStatusPre.textContent = JSON.stringify(
+      { error: "server_base_url을 입력하세요." },
+      null,
+      2,
+    );
+    return;
+  }
+  try {
+    const result = await requestAgentJson<Record<string, unknown>>(
+      "/api/v1/training/run-current-task",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          server_base_url: serverBaseUrl,
+          scored_event_days: 7,
+        }),
+      },
+    );
+    jobStatusPre.textContent = JSON.stringify(result, null, 2);
+  } catch (error) {
+    jobStatusPre.textContent = JSON.stringify(formatAgentError(error), null, 2);
+  }
+}
+
+function applyJobStatus(status: CapturedTextDebugJobStatusPayload): void {
+  toggleJobButton.dataset.enabled = String(status.view_generation_enabled);
+  toggleJobButton.textContent = status.view_generation_enabled
+    ? "job 끄기"
+    : "job 켜기";
+  toggleJobButton.className = status.view_generation_enabled ? "secondary" : "";
+  jobIntervalInput.value = String(status.view_generation_interval_seconds);
+  jobBatchSizeInput.value = String(status.view_generation_batch_size);
+}
+
+function readNumberInput(input: HTMLInputElement, fallback: number): number {
+  const parsed = Number.parseInt(input.value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 async function loadDebugEnabled(): Promise<boolean> {
@@ -378,4 +573,16 @@ function isTypingSegment(value: unknown): value is TypingSegmentPayload {
 
 function isTypingSegmentArray(value: unknown): value is TypingSegmentPayload[] {
   return Array.isArray(value) && value.every(isTypingSegment);
+}
+
+function formatAgentError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    const candidate = error as AgentApiError;
+    return {
+      error: candidate.message,
+      status: candidate.status,
+      kind: candidate.kind,
+    };
+  }
+  return { error: String(error) };
 }

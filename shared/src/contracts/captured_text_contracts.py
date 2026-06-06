@@ -11,6 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 CAPTURED_TEXT_EVENT_V1 = "captured_text_event.v1"
 CAPTURED_TEXT_INGEST_RESPONSE_V1 = "captured_text_ingest_response.v1"
 CAPTURED_TEXT_BATCH_INGEST_RESPONSE_V1 = "captured_text_batch_ingest_response.v1"
+CAPTURED_TEXT_DEBUG_JOB_STATUS_V1 = "captured_text_debug_job_status.v1"
+CAPTURED_TEXT_DEBUG_JOB_RUN_RESULT_V1 = "captured_text_debug_job_run_result.v1"
 
 CapturedTextEventSchemaVersion: TypeAlias = Literal["captured_text_event.v1"]
 CapturedTextIngestResponseSchemaVersion: TypeAlias = Literal[
@@ -18,6 +20,12 @@ CapturedTextIngestResponseSchemaVersion: TypeAlias = Literal[
 ]
 CapturedTextBatchIngestResponseSchemaVersion: TypeAlias = Literal[
     "captured_text_batch_ingest_response.v1"
+]
+CapturedTextDebugJobStatusSchemaVersion: TypeAlias = Literal[
+    "captured_text_debug_job_status.v1"
+]
+CapturedTextDebugJobRunResultSchemaVersion: TypeAlias = Literal[
+    "captured_text_debug_job_run_result.v1"
 ]
 
 
@@ -107,3 +115,60 @@ class CapturedTextBatchIngestResponsePayload(BaseModel):
     )
     processed: int = Field(ge=0)
     results: tuple[CapturedTextIngestResponsePayload, ...]
+
+
+class CapturedTextDebugJobRunRequestPayload(BaseModel):
+    """개발용 captured text view generation 즉시 실행 요청."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    limit: int = Field(default=100, ge=1, le=500)
+
+
+class CapturedTextDebugJobConfigRequestPayload(BaseModel):
+    """개발용 captured text background job 설정 요청.
+
+    이 payload는 production scheduling contract가 아니라 agent-local debug surface다.
+    주기와 batch size는 debug page에서 on/off와 즉시 실행을 점검하기 위한 값이다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    view_generation_enabled: bool
+    view_generation_interval_seconds: int = Field(default=30, ge=5, le=3600)
+    view_generation_batch_size: int = Field(default=100, ge=1, le=500)
+
+
+class CapturedTextDebugJobRunResultPayload(BaseModel):
+    """captured text view generation 실행 결과."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: CapturedTextDebugJobRunResultSchemaVersion = (
+        CAPTURED_TEXT_DEBUG_JOB_RUN_RESULT_V1
+    )
+    selected_count: int = Field(ge=0)
+    generated_count: int = Field(ge=0)
+    failed_count: int = Field(ge=0)
+    pending_remaining_count: int = Field(ge=0)
+    generated_view_count: int = Field(ge=0)
+    message: str = ""
+
+
+class CapturedTextDebugJobStatusPayload(BaseModel):
+    """debug page가 읽는 captured text pipeline 상태."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: CapturedTextDebugJobStatusSchemaVersion = (
+        CAPTURED_TEXT_DEBUG_JOB_STATUS_V1
+    )
+    view_generation_enabled: bool
+    view_generation_running: bool
+    view_generation_interval_seconds: int = Field(ge=5, le=3600)
+    view_generation_batch_size: int = Field(ge=1, le=500)
+    captured_text_event_count: int = Field(ge=0)
+    generated_view_count: int = Field(ge=0)
+    view_generation_status_counts: dict[str, int] = Field(default_factory=dict)
+    last_run_at: datetime | None = None
+    last_run_result: CapturedTextDebugJobRunResultPayload | None = None

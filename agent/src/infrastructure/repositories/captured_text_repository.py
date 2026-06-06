@@ -19,12 +19,15 @@ _DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "captured_text.db"
 CAPTURED_TEXT_VIEW_STATUS_PENDING = "pending"
 CAPTURED_TEXT_VIEW_STATUS_DUPLICATE = "duplicate"
 CAPTURED_TEXT_VIEW_STATUS_READY = "ready"
+CAPTURED_TEXT_VIEW_STATUS_FAILED = "failed"
+CAPTURED_TEXT_GENERATED_VIEW_V1 = "captured_text_generated_view.v1"
 
 _CAPTURED_TEXT_VIEW_STATUSES = frozenset(
     {
         CAPTURED_TEXT_VIEW_STATUS_PENDING,
         CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
         CAPTURED_TEXT_VIEW_STATUS_READY,
+        CAPTURED_TEXT_VIEW_STATUS_FAILED,
     }
 )
 
@@ -45,6 +48,21 @@ CREATE TABLE IF NOT EXISTS captured_text_events (
     view_generation_status TEXT NOT NULL DEFAULT 'pending',
     duplicate_of_event_id TEXT,
     metadata          TEXT NOT NULL
+);
+"""
+
+_CREATE_GENERATED_VIEW_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS captured_text_generated_views (
+    event_id                TEXT PRIMARY KEY,
+    schema_version          TEXT NOT NULL,
+    generated_at            TEXT NOT NULL,
+    weak_text               TEXT NOT NULL,
+    strong_text_0           TEXT NOT NULL,
+    strong_text_1           TEXT NOT NULL,
+    generator_name          TEXT NOT NULL,
+    generator_version       TEXT NOT NULL,
+    source_text_fingerprint TEXT NOT NULL,
+    metadata                TEXT NOT NULL
 );
 """
 
@@ -122,6 +140,40 @@ WHERE event_id IN (
 );
 """
 
+_DELETE_ORPHANED_GENERATED_VIEWS_SQL = """
+DELETE FROM captured_text_generated_views
+WHERE event_id NOT IN (
+    SELECT event_id FROM captured_text_events
+);
+"""
+
+_INSERT_GENERATED_VIEW_SQL = """
+INSERT OR REPLACE INTO captured_text_generated_views
+    (event_id, schema_version, generated_at, weak_text, strong_text_0,
+     strong_text_1, generator_name, generator_version, source_text_fingerprint,
+     metadata)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+"""
+
+_SELECT_GENERATED_VIEW_SQL = """
+SELECT event_id, schema_version, generated_at, weak_text, strong_text_0,
+       strong_text_1, generator_name, generator_version, source_text_fingerprint,
+       metadata
+FROM captured_text_generated_views
+WHERE event_id = ?;
+"""
+
+_SELECT_RECENT_GENERATED_VIEWS_SQL = """
+SELECT event_id, schema_version, generated_at, weak_text, strong_text_0,
+       strong_text_1, generator_name, generator_version, source_text_fingerprint,
+       metadata
+FROM captured_text_generated_views
+ORDER BY generated_at DESC
+LIMIT ?;
+"""
+
+_COUNT_GENERATED_VIEWS_SQL = "SELECT COUNT(*) FROM captured_text_generated_views;"
+
 
 @dataclass(slots=True)
 class CapturedTextRecord:
@@ -164,6 +216,40 @@ class CapturedTextRecord:
             raise ValueError("duplicate_of_event_id must not be empty.")
 
 
+@dataclass(slots=True)
+class CapturedTextGeneratedViewRecord:
+    """agent-local captured text에서 만든 weak/strong view snapshot."""
+
+    event_id: str
+    generated_at: datetime
+    weak_text: str
+    strong_text_0: str
+    strong_text_1: str
+    generator_name: str
+    generator_version: str
+    source_text_fingerprint: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+    schema_version: str = CAPTURED_TEXT_GENERATED_VIEW_V1
+
+    def __post_init__(self) -> None:
+        if not self.event_id.strip():
+            raise ValueError("event_id must not be empty.")
+        if not self.weak_text.strip():
+            raise ValueError("weak_text must not be empty.")
+        if not self.strong_text_0.strip():
+            raise ValueError("strong_text_0 must not be empty.")
+        if not self.strong_text_1.strip():
+            raise ValueError("strong_text_1 must not be empty.")
+        if not self.generator_name.strip():
+            raise ValueError("generator_name must not be empty.")
+        if not self.generator_version.strip():
+            raise ValueError("generator_version must not be empty.")
+        if not self.source_text_fingerprint.strip():
+            raise ValueError("source_text_fingerprint must not be empty.")
+        if not self.schema_version.strip():
+            raise ValueError("schema_version must not be empty.")
+
+
 def captured_text_record_from_payload(
     payload: CapturedTextEventPayload,
     *,
@@ -203,6 +289,7 @@ class CapturedTextRepository:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.execute(_CREATE_TABLE_SQL)
+            conn.execute(_CREATE_GENERATED_VIEW_TABLE_SQL)
             _ensure_schema(conn)
 
     def save(self, record: CapturedTextRecord) -> None:
@@ -288,11 +375,61 @@ class CapturedTextRepository:
             )
         return max(cursor.rowcount, 0)
 
+    def save_generated_view(self, record: CapturedTextGeneratedViewRecord) -> None:
+        """weak/strong generated view를 저장한다."""
+
+        with self._connect() as conn:
+            conn.execute(
+                _INSERT_GENERATED_VIEW_SQL,
+                (
+                    record.event_id,
+                    record.schema_version,
+                    record.generated_at.isoformat(),
+                    record.weak_text,
+                    record.strong_text_0,
+                    record.strong_text_1,
+                    record.generator_name,
+                    record.generator_version,
+                    record.source_text_fingerprint,
+                    json.dumps(record.metadata, ensure_ascii=False),
+                ),
+            )
+
+    def get_generated_view(
+        self,
+        event_id: str,
+    ) -> CapturedTextGeneratedViewRecord | None:
+        """event_id에 해당하는 generated view를 반환한다."""
+
+        with self._connect() as conn:
+            row = conn.execute(_SELECT_GENERATED_VIEW_SQL, (event_id,)).fetchone()
+        return None if row is None else _row_to_generated_view(row)
+
+    def get_recent_generated_views(
+        self,
+        *,
+        limit: int = 50,
+    ) -> list[CapturedTextGeneratedViewRecord]:
+        """최근 generated view를 최신순으로 반환한다."""
+
+        if limit <= 0:
+            raise ValueError("limit must be positive.")
+        with self._connect() as conn:
+            rows = conn.execute(_SELECT_RECENT_GENERATED_VIEWS_SQL, (limit,)).fetchall()
+        return [_row_to_generated_view(row) for row in rows]
+
+    def count_generated_views(self) -> int:
+        """저장된 generated view 수를 반환한다."""
+
+        with self._connect() as conn:
+            return conn.execute(_COUNT_GENERATED_VIEWS_SQL).fetchone()[0]
+
     def delete_older_than(self, *, cutoff: datetime) -> int:
         """cutoff보다 오래된 captured text event를 삭제한다."""
 
         with self._connect() as conn:
             cursor = conn.execute(_DELETE_OLDER_THAN_SQL, (cutoff.isoformat(),))
+            conn.execute(_DELETE_ORPHANED_GENERATED_VIEWS_SQL)
         return max(cursor.rowcount, 0)
 
     def delete_oldest_excess(self, *, keep_latest: int) -> int:
@@ -302,6 +439,7 @@ class CapturedTextRepository:
             raise ValueError("keep_latest must not be negative.")
         with self._connect() as conn:
             cursor = conn.execute(_DELETE_EXCESS_SQL, (keep_latest,))
+            conn.execute(_DELETE_ORPHANED_GENERATED_VIEWS_SQL)
         return max(cursor.rowcount, 0)
 
     def _connect(self) -> sqlite3.Connection:
@@ -346,6 +484,36 @@ def _row_to_record(row: tuple[Any, ...]) -> CapturedTextRecord:
         duplicate_of_event_id=(
             None if duplicate_of_event_id is None else str(duplicate_of_event_id)
         ),
+        metadata=metadata,
+    )
+
+
+def _row_to_generated_view(row: tuple[Any, ...]) -> CapturedTextGeneratedViewRecord:
+    (
+        event_id,
+        schema_version,
+        generated_at,
+        weak_text,
+        strong_text_0,
+        strong_text_1,
+        generator_name,
+        generator_version,
+        source_text_fingerprint,
+        metadata_json,
+    ) = row
+    metadata = json.loads(str(metadata_json))
+    if not isinstance(metadata, dict):
+        metadata = {}
+    return CapturedTextGeneratedViewRecord(
+        event_id=str(event_id),
+        schema_version=str(schema_version),
+        generated_at=datetime.fromisoformat(str(generated_at)),
+        weak_text=str(weak_text),
+        strong_text_0=str(strong_text_0),
+        strong_text_1=str(strong_text_1),
+        generator_name=str(generator_name),
+        generator_version=str(generator_version),
+        source_text_fingerprint=str(source_text_fingerprint),
         metadata=metadata,
     )
 

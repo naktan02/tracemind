@@ -10,8 +10,10 @@ import pytest
 
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
+    CAPTURED_TEXT_VIEW_STATUS_FAILED,
     CAPTURED_TEXT_VIEW_STATUS_PENDING,
     CAPTURED_TEXT_VIEW_STATUS_READY,
+    CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
     CapturedTextRepository,
     captured_text_record_from_payload,
@@ -19,6 +21,9 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
 from agent.src.services.ingest.captured_text_lifecycle_service import (
     CapturedTextLifecycleConfig,
     CapturedTextLifecycleService,
+)
+from agent.src.services.ingest.captured_text_view_generation_service import (
+    CapturedTextViewGenerationService,
 )
 from shared.src.contracts.captured_text_contracts import (
     CapturedTextEventPayload,
@@ -164,6 +169,75 @@ def test_repo_pending_view_generation_excludes_duplicates(
     assert counts[CAPTURED_TEXT_VIEW_STATUS_READY] == 1
 
 
+def test_repo_saves_generated_view(
+    tmp_repo: CapturedTextRepository,
+) -> None:
+    record = _make_record()
+    tmp_repo.save(record)
+    stored = tmp_repo.get("event_1")
+    assert stored is not None
+
+    tmp_repo.save_generated_view(
+        CapturedTextGeneratedViewRecord(
+            event_id=stored.event_id,
+            generated_at=datetime.now(tz=timezone.utc),
+            weak_text="I feel anxious",
+            strong_text_0="I am feeling anxious",
+            strong_text_1="I feel worried",
+            generator_name="unit-test",
+            generator_version="v1",
+            source_text_fingerprint=stored.text_fingerprint,
+            metadata={"source_locale": "ko"},
+        )
+    )
+
+    generated = tmp_repo.get_generated_view("event_1")
+    assert generated is not None
+    assert generated.weak_text == "I feel anxious"
+    assert tmp_repo.count_generated_views() == 1
+
+
+def test_view_generation_service_materializes_identity_fallback(
+    tmp_repo: CapturedTextRepository,
+) -> None:
+    tmp_repo.save(_make_record(event_id="event_1", text="불안해"))
+    service = CapturedTextViewGenerationService(repository=tmp_repo)
+
+    result = service.generate_pending_views(limit=10)
+
+    generated = tmp_repo.get_generated_view("event_1")
+    loaded = tmp_repo.get("event_1")
+    assert generated is not None
+    assert loaded is not None
+    assert generated.weak_text == "불안해"
+    assert generated.strong_text_0 == "불안해"
+    assert generated.metadata["weak_text_provider"] == "identity"
+    assert loaded.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_READY
+    assert result.generated_count == 1
+
+
+def test_view_generation_service_marks_provider_failure(
+    tmp_repo: CapturedTextRepository,
+) -> None:
+    class FailingTranslationProvider:
+        def translate_batch(self, texts: list[str]) -> list[str]:
+            raise RuntimeError("translation failed")
+
+    tmp_repo.save(_make_record(event_id="event_1", text="불안해"))
+    service = CapturedTextViewGenerationService(
+        repository=tmp_repo,
+        translation_provider=FailingTranslationProvider(),
+    )
+
+    result = service.generate_pending_views(limit=10)
+
+    loaded = tmp_repo.get("event_1")
+    assert loaded is not None
+    assert loaded.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_FAILED
+    assert result.failed_count == 1
+    assert tmp_repo.count_generated_views() == 0
+
+
 def test_repo_delete_older_than_and_capacity_purge(
     tmp_repo: CapturedTextRepository,
 ) -> None:
@@ -171,6 +245,20 @@ def test_repo_delete_older_than_and_capacity_purge(
     tmp_repo.save(_make_record(event_id="old", occurred_at=now - timedelta(days=31)))
     tmp_repo.save(_make_record(event_id="mid", occurred_at=now - timedelta(days=1)))
     tmp_repo.save(_make_record(event_id="new", occurred_at=now))
+    mid = tmp_repo.get("mid")
+    assert mid is not None
+    tmp_repo.save_generated_view(
+        CapturedTextGeneratedViewRecord(
+            event_id="mid",
+            generated_at=now,
+            weak_text="mid weak",
+            strong_text_0="mid strong 0",
+            strong_text_1="mid strong 1",
+            generator_name="unit-test",
+            generator_version="v1",
+            source_text_fingerprint=mid.text_fingerprint,
+        )
+    )
 
     deleted_old = tmp_repo.delete_older_than(cutoff=now - timedelta(days=30))
     deleted_excess = tmp_repo.delete_oldest_excess(keep_latest=1)
@@ -180,6 +268,7 @@ def test_repo_delete_older_than_and_capacity_purge(
     assert tmp_repo.get("old") is None
     assert tmp_repo.get("mid") is None
     assert tmp_repo.get("new") is not None
+    assert tmp_repo.get_generated_view("mid") is None
 
 
 def test_captured_text_lifecycle_service_purges_by_policy(

@@ -9,6 +9,9 @@ from pydantic import ValidationError
 
 from shared.src.contracts.captured_text_contracts import (
     CapturedTextBatchIngestRequestPayload,
+    CapturedTextDebugJobConfigRequestPayload,
+    CapturedTextDebugJobRunResultPayload,
+    CapturedTextDebugJobStatusPayload,
     CapturedTextEventPayload,
     CapturedTextSourceType,
     CapturedTextSurfaceType,
@@ -56,3 +59,33 @@ def test_captured_text_batch_has_size_limit() -> None:
     batch = CapturedTextBatchIngestRequestPayload(events=[event])
 
     assert batch.events == (event,)
+
+
+def test_captured_text_debug_job_contracts_are_strict() -> None:
+    config = CapturedTextDebugJobConfigRequestPayload(
+        view_generation_enabled=True,
+        view_generation_interval_seconds=30,
+        view_generation_batch_size=20,
+    )
+    result = CapturedTextDebugJobRunResultPayload(
+        selected_count=2,
+        generated_count=2,
+        failed_count=0,
+        pending_remaining_count=0,
+        generated_view_count=2,
+    )
+
+    status = CapturedTextDebugJobStatusPayload(
+        view_generation_enabled=config.view_generation_enabled,
+        view_generation_running=True,
+        view_generation_interval_seconds=config.view_generation_interval_seconds,
+        view_generation_batch_size=config.view_generation_batch_size,
+        captured_text_event_count=2,
+        generated_view_count=2,
+        view_generation_status_counts={"ready": 2},
+        last_run_result=result,
+    )
+
+    assert status.schema_version == "captured_text_debug_job_status.v1"
+    assert status.last_run_result is not None
+    assert status.last_run_result.generated_count == 2

@@ -211,3 +211,36 @@ export interface CapturedTextBatchIngestResponsePayload {
   processed: number;
   results: CapturedTextIngestResponsePayload[];
 }
+
+export interface CapturedTextDebugJobRunRequestPayload {
+  limit: number;
+}
+
+export interface CapturedTextDebugJobConfigRequestPayload {
+  view_generation_enabled: boolean;
+  view_generation_interval_seconds: number;
+  view_generation_batch_size: number;
+}
+
+export interface CapturedTextDebugJobRunResultPayload {
+  schema_version: string;
+  selected_count: number;
+  generated_count: number;
+  failed_count: number;
+  pending_remaining_count: number;
+  generated_view_count: number;
+  message: string;
+}
+
+export interface CapturedTextDebugJobStatusPayload {
+  schema_version: string;
+  view_generation_enabled: boolean;
+  view_generation_running: boolean;
+  view_generation_interval_seconds: number;
+  view_generation_batch_size: number;
+  captured_text_event_count: number;
+  generated_view_count: number;
+  view_generation_status_counts: Record<string, number>;
+  last_run_at: string | null;
+  last_run_result: CapturedTextDebugJobRunResultPayload | null;
+}

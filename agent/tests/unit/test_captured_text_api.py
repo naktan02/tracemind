@@ -12,6 +12,7 @@ from agent.src.api import captured_text as captured_text_api
 from agent.src.api.main import app, create_app
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
+    captured_text_record_from_payload,
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineResult
 from agent.src.services.ingest.captured_text_ingest_service import (
@@ -19,6 +20,8 @@ from agent.src.services.ingest.captured_text_ingest_service import (
 )
 from shared.src.contracts.captured_text_contracts import (
     CapturedTextBatchIngestRequestPayload,
+    CapturedTextDebugJobConfigRequestPayload,
+    CapturedTextDebugJobRunRequestPayload,
     CapturedTextEventPayload,
     CapturedTextSourceType,
     CapturedTextSurfaceType,
@@ -148,6 +151,9 @@ def test_captured_text_router_is_registered_on_agent_app() -> None:
     assert "/api/v1/captured-text/events" in route_paths
     assert "/api/v1/captured-text/batch" in route_paths
     assert "/api/v1/captured-text/status" in route_paths
+    assert "/api/v1/captured-text/debug-job/status" in route_paths
+    assert "/api/v1/captured-text/debug-job/config" in route_paths
+    assert "/api/v1/captured-text/debug-job/run-view-generation" in route_paths
 
 
 def test_captured_text_endpoint_reports_missing_pipeline_without_traceback() -> None:
@@ -205,3 +211,75 @@ def test_captured_text_status_reports_view_generation_counts(tmp_path: Path) -> 
     assert payload["captured_text_event_count"] == 1
     assert payload["stored_event_count"] == 1
     assert payload["view_generation_status_counts"] == {"pending": 1}
+
+
+def test_captured_text_debug_job_status_reports_pipeline_state(
+    tmp_path: Path,
+) -> None:
+    repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
+    repository.save(captured_text_record_from_payload(_event("event_1")))
+    client = TestClient(create_app(captured_text_repository=repository))
+
+    response = client.get("/api/v1/captured-text/debug-job/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["view_generation_enabled"] is False
+    assert payload["view_generation_running"] is False
+    assert payload["captured_text_event_count"] == 1
+    assert payload["generated_view_count"] == 0
+    assert payload["view_generation_status_counts"] == {"pending": 1}
+
+
+def test_captured_text_debug_job_run_generates_views(
+    tmp_path: Path,
+) -> None:
+    repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
+    repository.save(captured_text_record_from_payload(_event("event_1")))
+    client = TestClient(create_app(captured_text_repository=repository))
+
+    response = client.post(
+        "/api/v1/captured-text/debug-job/run-view-generation",
+        json=CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(mode="json"),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["selected_count"] == 1
+    assert payload["generated_count"] == 1
+    assert payload["generated_view_count"] == 1
+    assert repository.get_generated_view("event_1") is not None
+
+
+def test_captured_text_debug_job_config_toggles_state(
+    tmp_path: Path,
+) -> None:
+    repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
+    client = TestClient(create_app(captured_text_repository=repository))
+
+    response = client.post(
+        "/api/v1/captured-text/debug-job/config",
+        json=CapturedTextDebugJobConfigRequestPayload(
+            view_generation_enabled=True,
+            view_generation_interval_seconds=30,
+            view_generation_batch_size=10,
+        ).model_dump(mode="json"),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["view_generation_enabled"] is True
+    assert payload["view_generation_interval_seconds"] == 30
+    assert payload["view_generation_batch_size"] == 10
+
+    off_response = client.post(
+        "/api/v1/captured-text/debug-job/config",
+        json=CapturedTextDebugJobConfigRequestPayload(
+            view_generation_enabled=False,
+            view_generation_interval_seconds=30,
+            view_generation_batch_size=10,
+        ).model_dump(mode="json"),
+    )
+
+    assert off_response.status_code == 200
+    assert off_response.json()["view_generation_enabled"] is False

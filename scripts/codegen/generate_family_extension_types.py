@@ -146,6 +146,22 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
         "CapturedTextBatchIngestResponsePayload",
         captured_text_contracts.CapturedTextBatchIngestResponsePayload,
     ),
+    (
+        "CapturedTextDebugJobRunRequestPayload",
+        captured_text_contracts.CapturedTextDebugJobRunRequestPayload,
+    ),
+    (
+        "CapturedTextDebugJobConfigRequestPayload",
+        captured_text_contracts.CapturedTextDebugJobConfigRequestPayload,
+    ),
+    (
+        "CapturedTextDebugJobRunResultPayload",
+        captured_text_contracts.CapturedTextDebugJobRunResultPayload,
+    ),
+    (
+        "CapturedTextDebugJobStatusPayload",
+        captured_text_contracts.CapturedTextDebugJobStatusPayload,
+    ),
 )
 
 

@@ -223,6 +223,11 @@ canonical raw text 수집 계약을 정의한다.
   - `collector_version`과 `metadata`는 이후 재처리와 audit를 위한 provenance다
 - `CapturedTextIngestResponsePayload`
   - agent가 event를 inference pipeline으로 처리한 결과의 최소 응답이다
+- `CapturedTextDebugJob*Payload`
+  - family extension debug page가 agent-local view generation 상태를 조회하고
+    개발용 on/off, 즉시 실행을 요청하는 payload다
+  - 이 payload는 production scheduler나 main_server orchestration 계약이 아니다.
+    raw text와 generated weak/strong view는 agent local boundary에 남긴다
 
 ### `family_access_contracts.py`
 
