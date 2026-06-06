@@ -332,6 +332,9 @@ def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
     assert provider_b is not None
     assert provider_a.helper_count == 1
     assert provider_a.materialized_helper_count == 0
+    assert provider_a.helper_model_cache_hit_count == 0
+    assert provider_a.helper_model_cache_miss_count == 0
+    assert provider_a.helper_forward_call_count == 0
 
     batch = {
         "weak_input_ids": torch.ones(1, 2),
@@ -340,9 +343,17 @@ def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
     assert provider_a(unlabeled_batch=batch) is not None
     assert calls == {"build": 1, "load": 1}
     assert provider_a.materialized_helper_count == 1
+    assert provider_a.helper_model_cache_hit_count == 0
+    assert provider_a.helper_model_cache_miss_count == 1
+    assert provider_a.helper_model_materialization_seconds >= 0.0
+    assert provider_a.helper_forward_call_count == 1
+    assert provider_a.helper_forward_seconds >= 0.0
 
     assert provider_b(unlabeled_batch=batch) is not None
     assert calls == {"build": 1, "load": 1}
+    assert provider_b.helper_model_cache_hit_count == 1
+    assert provider_b.helper_model_cache_miss_count == 0
+    assert provider_b.helper_forward_call_count == 1
     assert provider_a.helper_models[0] is provider_b.helper_models[0]
 
 

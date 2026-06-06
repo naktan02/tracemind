@@ -138,17 +138,17 @@ def _optional_mapping(value: object) -> Mapping[str, object] | None:
 
 
 def release_transient_model_cache(runtime_resource_cache: object | None) -> int:
-    """client 경계에서 무거운 model materialization cache를 폐기한다."""
+    """client 경계에서 FedMatch helper model materialization cache를 폐기한다."""
 
     import gc
     import sys
     from methods.adaptation.peft_text_encoder.resource_cache import (
-        clear_peft_encoder_transient_resource_cache,
+        clear_peft_encoder_helper_model_cache,
     )
     removed = (
         0
         if runtime_resource_cache is None
-        else clear_peft_encoder_transient_resource_cache(runtime_resource_cache)
+        else clear_peft_encoder_helper_model_cache(runtime_resource_cache)
     )
     gc.collect()
     try:
@@ -267,7 +267,6 @@ def run_method_owned_peft_encoder_local_training_core(
         timing_recorder=timing_recorder,
         initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
     )
-
 
 
 

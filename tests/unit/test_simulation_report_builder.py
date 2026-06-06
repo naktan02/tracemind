@@ -176,9 +176,18 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                             "fedmatch_helper_provider_count": 0.0,
                             "fedmatch_missing_helper_snapshot_count": 0.0,
                             "fedmatch_materialized_helper_model_count": 0.0,
+                            "fedmatch_helper_model_materialization_seconds": 0.0,
+                            "fedmatch_helper_model_cache_hit_count": 0.0,
+                            "fedmatch_helper_model_cache_miss_count": 0.0,
+                            "fedmatch_helper_forward_seconds": 0.0,
+                            "fedmatch_helper_forward_call_count": 0.0,
                             "fedmatch_peer_context_refreshed": 0.0,
                             "fedmatch_c2s_sparse_upload_value_count": 3.0,
                             "fedmatch_s2c_sparse_download_value_count": 0.0,
+                            "fedmatch_cuda_memory_allocated_mb": 64.0,
+                            "fedmatch_cuda_memory_reserved_mb": 96.0,
+                            "fedmatch_cuda_memory_max_allocated_mb": 72.0,
+                            "fedmatch_cuda_memory_max_reserved_mb": 104.0,
                         },
                         timing_breakdown={
                             "core_training_loop_seconds": 0.04,
@@ -240,9 +249,18 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                             "fedmatch_helper_provider_count": 1.0,
                             "fedmatch_missing_helper_snapshot_count": 0.0,
                             "fedmatch_materialized_helper_model_count": 1.0,
+                            "fedmatch_helper_model_materialization_seconds": 0.12,
+                            "fedmatch_helper_model_cache_hit_count": 0.0,
+                            "fedmatch_helper_model_cache_miss_count": 1.0,
+                            "fedmatch_helper_forward_seconds": 0.34,
+                            "fedmatch_helper_forward_call_count": 2.0,
                             "fedmatch_peer_context_refreshed": 1.0,
                             "fedmatch_c2s_sparse_upload_value_count": 5.0,
                             "fedmatch_s2c_sparse_download_value_count": 2.0,
+                            "fedmatch_cuda_memory_allocated_mb": 100.0,
+                            "fedmatch_cuda_memory_reserved_mb": 128.0,
+                            "fedmatch_cuda_memory_max_allocated_mb": 110.0,
+                            "fedmatch_cuda_memory_max_reserved_mb": 140.0,
                         },
                         timing_breakdown={
                             "core_training_loop_seconds": 0.08,
@@ -417,6 +435,18 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         "fedmatch_materialized_helper_model_count"
     ] == pytest.approx(1.0)
     assert payload["rounds"][1]["clients"][0][
+        "fedmatch_helper_model_materialization_seconds"
+    ] == pytest.approx(0.12)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_helper_model_cache_miss_count"
+    ] == pytest.approx(1.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_helper_forward_call_count"
+    ] == pytest.approx(2.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_cuda_memory_reserved_mb"
+    ] == pytest.approx(128.0)
+    assert payload["rounds"][1]["clients"][0][
         "fedmatch_c2s_sparse_upload_value_count"
     ] == pytest.approx(5.0)
     assert payload["rounds"][1]["clients"][0][
@@ -450,6 +480,18 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert second_round_aggregation["fedmatch_materialized_helper_model_count_summary"][
         "max"
     ] == pytest.approx(1.0)
+    assert second_round_aggregation[
+        "fedmatch_helper_model_materialization_seconds_summary"
+    ]["max"] == pytest.approx(0.12)
+    assert second_round_aggregation["fedmatch_helper_model_cache_miss_count_summary"][
+        "max"
+    ] == pytest.approx(1.0)
+    assert second_round_aggregation["fedmatch_helper_forward_call_count_summary"][
+        "max"
+    ] == pytest.approx(2.0)
+    assert second_round_aggregation["fedmatch_cuda_memory_reserved_mb_summary"][
+        "max"
+    ] == pytest.approx(128.0)
     assert second_round_aggregation["fedmatch_c2s_sparse_upload_value_count_summary"][
         "max"
     ] == pytest.approx(5.0)

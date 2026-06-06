@@ -615,6 +615,41 @@ def run_partitioned_peft_encoder_training_core(
         ): materialized_helper_model_count,
         _method_metric_key(
             partitioned_runtime_plan.metric_prefix,
+            "helper_model_materialization_seconds",
+        ): _optional_helper_provider_metric(
+            helper_weak_probability_provider,
+            "helper_model_materialization_seconds",
+        ),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "helper_model_cache_hit_count",
+        ): _optional_helper_provider_metric(
+            helper_weak_probability_provider,
+            "helper_model_cache_hit_count",
+        ),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "helper_model_cache_miss_count",
+        ): _optional_helper_provider_metric(
+            helper_weak_probability_provider,
+            "helper_model_cache_miss_count",
+        ),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "helper_forward_seconds",
+        ): _optional_helper_provider_metric(
+            helper_weak_probability_provider,
+            "helper_forward_seconds",
+        ),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
+            "helper_forward_call_count",
+        ): _optional_helper_provider_metric(
+            helper_weak_probability_provider,
+            "helper_forward_call_count",
+        ),
+        _method_metric_key(
+            partitioned_runtime_plan.metric_prefix,
             "peer_context_refreshed",
         ): (0.0 if peer_context is None else float(peer_context.refreshed)),
         _method_metric_key(
@@ -646,6 +681,10 @@ def run_partitioned_peft_encoder_training_core(
             "budget_total_steps",
         ): float(step_plan.total_steps),
         **diagnostic_threshold.to_client_metrics(),
+        **_cuda_memory_client_metrics(
+            metric_prefix=partitioned_runtime_plan.metric_prefix,
+            device=trainer_runtime_config.device,
+        ),
     }
     update_envelope = make_training_update_envelope(
         update_id=update_id,
@@ -833,6 +872,32 @@ def _optional_helper_provider_metric(provider: object | None, key: str) -> float
         return max(0.0, float(value))
     except (TypeError, ValueError):
         return 0.0
+
+
+def _cuda_memory_client_metrics(*, metric_prefix: str, device: str) -> dict[str, float]:
+    try:
+        import torch
+    except ImportError:
+        return {}
+    device_text = str(device).strip()
+    if not device_text.startswith("cuda") or not torch.cuda.is_available():
+        return {}
+    cuda_device = torch.device(device_text)
+    mib = 1024.0 * 1024.0
+    return {
+        _method_metric_key(metric_prefix, "cuda_memory_allocated_mb"): (
+            float(torch.cuda.memory_allocated(cuda_device)) / mib
+        ),
+        _method_metric_key(metric_prefix, "cuda_memory_reserved_mb"): (
+            float(torch.cuda.memory_reserved(cuda_device)) / mib
+        ),
+        _method_metric_key(metric_prefix, "cuda_memory_max_allocated_mb"): (
+            float(torch.cuda.max_memory_allocated(cuda_device)) / mib
+        ),
+        _method_metric_key(metric_prefix, "cuda_memory_max_reserved_mb"): (
+            float(torch.cuda.max_memory_reserved(cuda_device)) / mib
+        ),
+    }
 
 
 def _validate_labeled_rows_have_known_labels(

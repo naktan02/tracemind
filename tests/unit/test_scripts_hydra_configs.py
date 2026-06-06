@@ -1005,7 +1005,7 @@ def test_federated_ssl_smoke_orchestration_contract_snapshot(
             "aggregation_backend_name": "fedavg",
             "update_family_name": "peft_text_encoder",
             "runtime_payload_key": "peft_text_encoder",
-            "release_transient_model_cache_after_client": False,
+            "release_transient_model_cache_after_client": True,
             "transient_resource_cleaner": (
                 "methods.adaptation.peft_text_encoder.resource_cache."
                 "clear_peft_encoder_transient_resource_cache"
@@ -1084,7 +1084,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert "round_runtime_profile" not in cfg
     assert cfg.round_runtime.update_family_name == "peft_text_encoder"
     assert cfg.round_runtime.runtime_payload_key == "peft_text_encoder"
-    assert cfg.round_runtime.release_transient_model_cache_after_client is False
+    assert cfg.round_runtime.release_transient_model_cache_after_client is True
     assert "peft_classifier" not in cfg.round_runtime
     assert "peft_text_encoder" in cfg.round_runtime.runtime_payloads
     assert cfg.round_runtime.composition_slug_builder == (
@@ -1367,7 +1367,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "scripts.runtime_adapters.federated_agent.base_state_materialization."
         "load_peft_encoder_base_parameters_with_timing"
     )
-    assert cfg.round_runtime.release_transient_model_cache_after_client is False
+    assert cfg.round_runtime.release_transient_model_cache_after_client is True
     assert cfg.round_runtime.client_round_runtime.query_ssl_training_runner == (
         "agent.src.services.training.execution.query_ssl_local_training_service."
         "run_query_ssl_peft_encoder_local_training"

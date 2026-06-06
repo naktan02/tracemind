@@ -1727,9 +1727,18 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
             "fedmatch_helper_provider_count": 1.0,
             "fedmatch_missing_helper_snapshot_count": 0.0,
             "fedmatch_materialized_helper_model_count": 1.0,
+            "fedmatch_helper_model_materialization_seconds": 0.12,
+            "fedmatch_helper_model_cache_hit_count": 0.0,
+            "fedmatch_helper_model_cache_miss_count": 1.0,
+            "fedmatch_helper_forward_seconds": 0.34,
+            "fedmatch_helper_forward_call_count": 2.0,
             "fedmatch_peer_context_refreshed": 1.0,
             "fedmatch_c2s_sparse_upload_value_count": 4.0,
             "fedmatch_s2c_sparse_download_value_count": 2.0,
+            "fedmatch_cuda_memory_allocated_mb": 100.0,
+            "fedmatch_cuda_memory_reserved_mb": 128.0,
+            "fedmatch_cuda_memory_max_allocated_mb": 110.0,
+            "fedmatch_cuda_memory_max_reserved_mb": 140.0,
         },
     )
     peer_snapshot = FederatedSslPeerClientSnapshot(
@@ -1981,7 +1990,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         )
         assert (
             runtime_resource_cache.get_resource("peft_encoder:backbone_base:test")
-            is None
+            is not None
         )
         assert "helper_model_cache_release_seconds" in (
             execution.summary.timing_breakdown
@@ -2017,6 +2026,21 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         "fedmatch_materialized_helper_model_count"
     ] == pytest.approx(1.0)
     assert execution.summary.method_diagnostics[
+        "fedmatch_helper_model_materialization_seconds"
+    ] == pytest.approx(0.12)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_helper_model_cache_hit_count"
+    ] == pytest.approx(0.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_helper_model_cache_miss_count"
+    ] == pytest.approx(1.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_helper_forward_seconds"
+    ] == pytest.approx(0.34)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_helper_forward_call_count"
+    ] == pytest.approx(2.0)
+    assert execution.summary.method_diagnostics[
         "fedmatch_peer_context_refreshed"
     ] == pytest.approx(1.0)
     assert execution.summary.method_diagnostics[
@@ -2025,6 +2049,18 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     assert execution.summary.method_diagnostics[
         "fedmatch_s2c_sparse_download_value_count"
     ] == pytest.approx(2.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_cuda_memory_allocated_mb"
+    ] == pytest.approx(100.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_cuda_memory_reserved_mb"
+    ] == pytest.approx(128.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_cuda_memory_max_allocated_mb"
+    ] == pytest.approx(110.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_cuda_memory_max_reserved_mb"
+    ] == pytest.approx(140.0)
     assert execution.peer_client_snapshot is returned_peer_snapshot
     assert execution.client_partition_snapshot is returned_client_partition_parameters
     assert execution.query_ssl_algorithm_state is returned_algorithm_state
@@ -2204,6 +2240,11 @@ def test_resume_checkpoint_preserves_fedmatch_helper_materialization_metrics(
                             "fedmatch_helper_provider_count": 1.0,
                             "fedmatch_missing_helper_snapshot_count": 1.0,
                             "fedmatch_materialized_helper_model_count": 1.0,
+                            "fedmatch_helper_model_materialization_seconds": 0.12,
+                            "fedmatch_helper_model_cache_hit_count": 0.0,
+                            "fedmatch_helper_model_cache_miss_count": 1.0,
+                            "fedmatch_helper_forward_seconds": 0.34,
+                            "fedmatch_helper_forward_call_count": 2.0,
                         },
                     ),
                 ),
@@ -2228,6 +2269,21 @@ def test_resume_checkpoint_preserves_fedmatch_helper_materialization_metrics(
     assert loaded_client.method_diagnostics[
         "fedmatch_materialized_helper_model_count"
     ] == pytest.approx(1.0)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_model_materialization_seconds"
+    ] == pytest.approx(0.12)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_model_cache_hit_count"
+    ] == pytest.approx(0.0)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_model_cache_miss_count"
+    ] == pytest.approx(1.0)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_forward_seconds"
+    ] == pytest.approx(0.34)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_forward_call_count"
+    ] == pytest.approx(2.0)
 
 
 def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() -> None:
