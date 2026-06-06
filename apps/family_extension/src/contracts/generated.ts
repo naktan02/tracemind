@@ -174,3 +174,40 @@ export interface TypingSegmentBatchIngestResponsePayload {
   processed: number;
   results: TypingSegmentIngestResponsePayload[];
 }
+
+export type CapturedTextSourceType = "search" | "reddit" | "webpage" | "typing" | "manual" | "unknown";
+
+export type CapturedTextSurfaceType = "search_box" | "address_bar" | "reddit_post" | "reddit_comment" | "page_text" | "selection" | "typing_segment" | "unknown";
+
+export interface CapturedTextEventPayload {
+  schema_version: string;
+  event_id: string;
+  occurred_at: string;
+  text: string;
+  locale: string;
+  source_type: CapturedTextSourceType;
+  surface_type: CapturedTextSurfaceType;
+  page_url: string | null;
+  page_title: string | null;
+  collector_version: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface CapturedTextBatchIngestRequestPayload {
+  events: CapturedTextEventPayload[];
+}
+
+export interface CapturedTextIngestResponsePayload {
+  schema_version: string;
+  event_id: string;
+  query_id: string;
+  top_category: string | null;
+  top_score: number | null;
+  message: string;
+}
+
+export interface CapturedTextBatchIngestResponsePayload {
+  schema_version: string;
+  processed: number;
+  results: CapturedTextIngestResponsePayload[];
+}

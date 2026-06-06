@@ -4,7 +4,7 @@ import {
   COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
   COLLECTOR_STATUS_STORAGE_KEY,
   LAST_TYPING_SEGMENT_STORAGE_KEY,
-  PENDING_TYPING_SEGMENTS_STORAGE_KEY,
+  PENDING_CAPTURED_TEXT_EVENTS_STORAGE_KEY,
   TYPING_SEGMENT_HISTORY_STORAGE_KEY,
 } from "../extension/storageKeys";
 
@@ -208,10 +208,10 @@ async function refreshPopup(): Promise<void> {
     COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
     COLLECTOR_STATUS_STORAGE_KEY,
     LAST_TYPING_SEGMENT_STORAGE_KEY,
-    PENDING_TYPING_SEGMENTS_STORAGE_KEY,
+    PENDING_CAPTURED_TEXT_EVENTS_STORAGE_KEY,
   ]);
-  const pendingSegments = items[PENDING_TYPING_SEGMENTS_STORAGE_KEY];
-  const pendingLength = Array.isArray(pendingSegments) ? pendingSegments.length : 0;
+  const pendingEvents = items[PENDING_CAPTURED_TEXT_EVENTS_STORAGE_KEY];
+  const pendingLength = Array.isArray(pendingEvents) ? pendingEvents.length : 0;
   const isDebugEnabled = items[COLLECTOR_DEBUG_ENABLED_STORAGE_KEY] === true;
   const status = isRecord(items[COLLECTOR_STATUS_STORAGE_KEY])
     ? items[COLLECTOR_STATUS_STORAGE_KEY]
@@ -269,7 +269,7 @@ async function clearQueue(): Promise<void> {
     return;
   }
   await storageSet({
-    [PENDING_TYPING_SEGMENTS_STORAGE_KEY]: [],
+    [PENDING_CAPTURED_TEXT_EVENTS_STORAGE_KEY]: [],
     [TYPING_SEGMENT_HISTORY_STORAGE_KEY]: [],
     [LAST_TYPING_SEGMENT_STORAGE_KEY]: null,
     [COLLECTOR_STATUS_STORAGE_KEY]: {

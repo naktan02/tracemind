@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter
 
+import shared.src.contracts.captured_text_contracts as captured_text_contracts
 import shared.src.contracts.child_support_contracts as child_support_contracts
 import shared.src.contracts.family_access_contracts as family_access_contracts
 import shared.src.contracts.typing_segment_contracts as typing_segment_contracts
@@ -120,6 +121,30 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
     (
         "TypingSegmentBatchIngestResponsePayload",
         typing_segment_contracts.TypingSegmentBatchIngestResponsePayload,
+    ),
+    (
+        "CapturedTextSourceType",
+        captured_text_contracts.CapturedTextSourceType,
+    ),
+    (
+        "CapturedTextSurfaceType",
+        captured_text_contracts.CapturedTextSurfaceType,
+    ),
+    (
+        "CapturedTextEventPayload",
+        captured_text_contracts.CapturedTextEventPayload,
+    ),
+    (
+        "CapturedTextBatchIngestRequestPayload",
+        captured_text_contracts.CapturedTextBatchIngestRequestPayload,
+    ),
+    (
+        "CapturedTextIngestResponsePayload",
+        captured_text_contracts.CapturedTextIngestResponsePayload,
+    ),
+    (
+        "CapturedTextBatchIngestResponsePayload",
+        captured_text_contracts.CapturedTextBatchIngestResponsePayload,
     ),
 )
 

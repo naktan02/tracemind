@@ -1,5 +1,10 @@
 import { buildAgentApiUrl } from "../common/agentClient";
-import type { TypingSegmentPayload } from "../contracts/generated";
+import type {
+  CapturedTextBatchIngestRequestPayload,
+  CapturedTextEventPayload,
+  CapturedTextSurfaceType,
+  TypingSegmentPayload,
+} from "../contracts/generated";
 import {
   isCollectorContentStatusMessage,
   isTypingSegmentCapturedMessage,
@@ -8,7 +13,7 @@ import {
   COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
   COLLECTOR_STATUS_STORAGE_KEY,
   LAST_TYPING_SEGMENT_STORAGE_KEY,
-  PENDING_TYPING_SEGMENTS_STORAGE_KEY,
+  PENDING_CAPTURED_TEXT_EVENTS_STORAGE_KEY,
   TYPING_SEGMENT_HISTORY_STORAGE_KEY,
 } from "./storageKeys";
 
@@ -40,6 +45,7 @@ declare const chrome: {
 };
 
 let isFlushing = false;
+const MAX_CAPTURED_TEXT_BATCH_SIZE = 100;
 
 chrome.runtime.onMessage.addListener((message) => {
   if (isCollectorContentStatusMessage(message)) {
@@ -55,8 +61,9 @@ chrome.runtime.onMessage.addListener((message) => {
 void flushQueue();
 
 async function enqueueSegment(segment: TypingSegmentPayload): Promise<void> {
+  const event = segmentToCapturedTextEvent(segment);
   const queue = await loadQueue();
-  queue.push(segment);
+  queue.push(event);
   await saveQueue(queue);
   await saveLastSegmentForDebug(segment);
   await saveStatusPatch({
@@ -75,13 +82,13 @@ async function flushQueue(): Promise<void> {
   try {
     let queue = await loadQueue();
     while (queue.length > 0) {
-      const [nextSegment, ...remaining] = queue;
-      await postSegment(nextSegment);
-      queue = remaining;
+      const batch = queue.slice(0, MAX_CAPTURED_TEXT_BATCH_SIZE);
+      await postCapturedTextBatch(batch);
+      queue = queue.slice(batch.length);
       await saveQueue(queue);
       await saveStatusPatch({
         pending_count: queue.length,
-        last_sent_at: nextSegment.ended_at,
+        last_sent_at: batch[batch.length - 1]?.occurred_at ?? null,
         last_error: null,
       });
     }
@@ -95,27 +102,30 @@ async function flushQueue(): Promise<void> {
   }
 }
 
-async function postSegment(segment: TypingSegmentPayload): Promise<void> {
-  const response = await fetch(buildAgentApiUrl("/api/v1/typing-segments"), {
+async function postCapturedTextBatch(
+  events: CapturedTextEventPayload[],
+): Promise<void> {
+  const payload: CapturedTextBatchIngestRequestPayload = { events };
+  const response = await fetch(buildAgentApiUrl("/api/v1/captured-text/batch"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(segment),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error(`Agent typing segment ingest failed: ${response.status}`);
+    throw new Error(`Agent captured text ingest failed: ${response.status}`);
   }
 }
 
-async function loadQueue(): Promise<TypingSegmentPayload[]> {
-  const items = await storageGet([PENDING_TYPING_SEGMENTS_STORAGE_KEY]);
-  const rawQueue = items[PENDING_TYPING_SEGMENTS_STORAGE_KEY];
-  return Array.isArray(rawQueue) ? (rawQueue as TypingSegmentPayload[]) : [];
+async function loadQueue(): Promise<CapturedTextEventPayload[]> {
+  const items = await storageGet([PENDING_CAPTURED_TEXT_EVENTS_STORAGE_KEY]);
+  const rawQueue = items[PENDING_CAPTURED_TEXT_EVENTS_STORAGE_KEY];
+  return Array.isArray(rawQueue) ? (rawQueue as CapturedTextEventPayload[]) : [];
 }
 
-function saveQueue(queue: TypingSegmentPayload[]): Promise<void> {
-  return storageSet({ [PENDING_TYPING_SEGMENTS_STORAGE_KEY]: queue });
+function saveQueue(queue: CapturedTextEventPayload[]): Promise<void> {
+  return storageSet({ [PENDING_CAPTURED_TEXT_EVENTS_STORAGE_KEY]: queue });
 }
 
 async function saveStatusPatch(status: Record<string, unknown>): Promise<void> {
@@ -146,6 +156,56 @@ async function saveLastSegmentForDebug(
     [LAST_TYPING_SEGMENT_STORAGE_KEY]: segment,
     [TYPING_SEGMENT_HISTORY_STORAGE_KEY]: [segment, ...history].slice(0, 20),
   });
+}
+
+function segmentToCapturedTextEvent(
+  segment: TypingSegmentPayload,
+): CapturedTextEventPayload {
+  return {
+    schema_version: "captured_text_event.v1",
+    event_id: segment.segment_id,
+    occurred_at: segment.ended_at,
+    text: readSegmentAnalysisText(segment),
+    locale: segment.locale,
+    source_type: "typing",
+    surface_type: "typing_segment",
+    page_url: segment.page_url,
+    page_title: null,
+    collector_version: null,
+    metadata: {
+      producer_schema_version: segment.schema_version,
+      producer_source_type: segment.source_type,
+      producer_surface_type: segment.surface_type,
+      producer_capture_confidence: segment.capture_confidence,
+      captured_text_surface_type: mapTypingSurfaceToCapturedSurface(
+        segment.surface_type,
+      ),
+      page_origin: segment.page_origin,
+      field_hint: segment.field_hint,
+      started_at: segment.started_at,
+      idle_ms: segment.idle_ms,
+      stats: segment.stats,
+      used_text_field:
+        (segment.final_text ?? "").trim() !== "" ? "final_text" : "deleted_text",
+    },
+  };
+}
+
+function readSegmentAnalysisText(segment: TypingSegmentPayload): string {
+  const finalText = (segment.final_text ?? "").trim();
+  if (finalText !== "") {
+    return finalText;
+  }
+  return (segment.deleted_text ?? "").trim();
+}
+
+function mapTypingSurfaceToCapturedSurface(
+  surfaceType: TypingSegmentPayload["surface_type"],
+): CapturedTextSurfaceType {
+  if (surfaceType === "input") {
+    return "search_box";
+  }
+  return "typing_segment";
 }
 
 function storageGet(keys: string[]): Promise<Record<string, unknown>> {
