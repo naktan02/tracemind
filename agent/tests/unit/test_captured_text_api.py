@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -17,6 +17,10 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
 from agent.src.services.inference.pipeline_service import InferencePipelineResult
 from agent.src.services.ingest.captured_text_ingest_service import (
     CapturedTextIngestService,
+)
+from agent.src.services.ingest.captured_text_lifecycle_service import (
+    CapturedTextLifecycleConfig,
+    CapturedTextLifecycleService,
 )
 from shared.src.contracts.captured_text_contracts import (
     CapturedTextBatchIngestRequestPayload,
@@ -106,6 +110,28 @@ def test_captured_text_service_saves_raw_event_and_processes_query_event(
     assert stored is not None
     assert stored.source_type == "search"
     assert stored.surface_type == "search_box"
+
+
+def test_captured_text_service_applies_lifecycle_after_ingest(
+    tmp_path: Path,
+) -> None:
+    repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
+    old_event = _event("old_event").model_copy(
+        update={"occurred_at": datetime.now(tz=timezone.utc) - timedelta(days=4)}
+    )
+    repository.save(captured_text_record_from_payload(old_event))
+    service = CapturedTextIngestService(
+        pipeline_service=_pipeline(),
+        captured_text_repository=repository,
+        lifecycle_service=CapturedTextLifecycleService(
+            config=CapturedTextLifecycleConfig(retention_days=3, max_records=500)
+        ),
+    )
+
+    service.process(_event("new_event"))
+
+    assert repository.get("old_event") is None
+    assert repository.get("new_event") is not None
 
 
 def test_captured_text_api_returns_service_response(tmp_path: Path) -> None:

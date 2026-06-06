@@ -15,6 +15,9 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
 from agent.src.services.ingest.captured_text_ingest_service import (
     CapturedTextIngestService,
 )
+from agent.src.services.ingest.captured_text_lifecycle_service import (
+    CapturedTextLifecycleService,
+)
 from agent.src.services.ingest.captured_text_view_generation_service import (
     CapturedTextViewGenerationService,
 )
@@ -77,6 +80,11 @@ def get_captured_text_ingest_service(
     service = CapturedTextIngestService(
         pipeline_service=pipeline_service,
         captured_text_repository=captured_text_repository,
+        lifecycle_service=getattr(
+            request.app.state,
+            "captured_text_lifecycle_service",
+            None,
+        ),
     )
     request.app.state.captured_text_ingest_service = service
     return service
@@ -95,6 +103,23 @@ def get_captured_text_repository(request: Request) -> CapturedTextRepository:
             ),
         )
     return repository
+
+
+def get_captured_text_lifecycle_service(
+    request: Request,
+) -> CapturedTextLifecycleService:
+    """app.state에서 captured text lifecycle service를 읽는다."""
+
+    service = getattr(request.app.state, "captured_text_lifecycle_service", None)
+    if service is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "captured_text_lifecycle_service가 없습니다. 앱 시작 시 "
+                "app.state.captured_text_lifecycle_service를 설정하세요."
+            ),
+        )
+    return service
 
 
 def get_captured_text_view_generation_service(
@@ -144,6 +169,10 @@ CapturedTextRepoDep = Annotated[
 CapturedTextViewGenerationServiceDep = Annotated[
     CapturedTextViewGenerationService,
     Depends(get_captured_text_view_generation_service),
+]
+CapturedTextLifecycleServiceDep = Annotated[
+    CapturedTextLifecycleService,
+    Depends(get_captured_text_lifecycle_service),
 ]
 CapturedTextDebugJobStateDep = Annotated[
     CapturedTextDebugJobState,
@@ -237,6 +266,7 @@ async def configure_captured_text_debug_job(
     request: Request,
     repository: CapturedTextRepoDep,
     service: CapturedTextViewGenerationServiceDep,
+    lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,
 ) -> CapturedTextDebugJobStatusPayload:
     """개발용 captured text view generation job을 켜거나 끈다."""
@@ -250,6 +280,7 @@ async def configure_captured_text_debug_job(
             _captured_text_debug_job_loop(
                 job_state=job_state,
                 service=service,
+                lifecycle_service=lifecycle_service,
             )
         )
     if not job_state.enabled and task is not None:
@@ -271,25 +302,32 @@ async def configure_captured_text_debug_job(
 async def run_captured_text_view_generation_once(
     run_request: CapturedTextDebugJobRunRequestPayload,
     service: CapturedTextViewGenerationServiceDep,
+    lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,
 ) -> CapturedTextDebugJobRunResultPayload:
     """pending captured text view generation을 즉시 한 번 실행한다."""
 
+    lifecycle_service.purge(repository=service.repository)
     result = await asyncio.to_thread(
         service.generate_pending_views,
         limit=run_request.limit,
     )
     job_state.last_run_at = datetime.now(tz=timezone.utc)
     job_state.last_run_result = result
-    return result
+    return job_state.last_run_result
 
 
 async def _captured_text_debug_job_loop(
     *,
     job_state: CapturedTextDebugJobState,
     service: CapturedTextViewGenerationService,
+    lifecycle_service: CapturedTextLifecycleService,
 ) -> None:
     while job_state.enabled:
+        await asyncio.to_thread(
+            lifecycle_service.purge,
+            repository=service.repository,
+        )
         result = await asyncio.to_thread(
             service.generate_pending_views,
             limit=job_state.batch_size,

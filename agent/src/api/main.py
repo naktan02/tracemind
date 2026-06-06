@@ -52,6 +52,10 @@ from agent.src.services.federation.rounds.runtime_service import (
     FederationRuntimeService,
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineService
+from agent.src.services.ingest.captured_text_lifecycle_service import (
+    CapturedTextLifecycleService,
+    build_captured_text_lifecycle_service_from_env,
+)
 from agent.src.services.ingest.captured_text_view_generation_service import (
     CapturedTextViewGenerationService,
 )
@@ -122,6 +126,7 @@ def create_app(
     captured_text_view_generation_service: (
         CapturedTextViewGenerationService | None
     ) = None,
+    captured_text_lifecycle_service: CapturedTextLifecycleService | None = None,
     child_support_conversation_repository: (
         ChildSupportConversationRepository | None
     ) = None,
@@ -160,6 +165,10 @@ def create_app(
     )
     app.state.captured_text_repository = (
         captured_text_repository or CapturedTextRepository()
+    )
+    app.state.captured_text_lifecycle_service = (
+        captured_text_lifecycle_service
+        or build_captured_text_lifecycle_service_from_env()
     )
     app.state.captured_text_view_generation_service = (
         captured_text_view_generation_service

@@ -12,6 +12,9 @@ from agent.src.services.inference.pipeline_service import (
     InferencePipelineResult,
     InferencePipelineService,
 )
+from agent.src.services.ingest.captured_text_lifecycle_service import (
+    CapturedTextLifecycleService,
+)
 from shared.src.contracts.captured_text_contracts import (
     CapturedTextBatchIngestResponsePayload,
     CapturedTextEventPayload,
@@ -26,6 +29,7 @@ class CapturedTextIngestService:
 
     pipeline_service: InferencePipelineService
     captured_text_repository: CapturedTextRepository
+    lifecycle_service: CapturedTextLifecycleService | None = None
 
     def process(
         self,
@@ -35,6 +39,7 @@ class CapturedTextIngestService:
 
         self.captured_text_repository.save(captured_text_record_from_payload(event))
         result = self.pipeline_service.process(_captured_text_to_query_event(event))
+        self._purge_if_configured()
         top_category, top_score = _top_score(result)
         return CapturedTextIngestResponsePayload(
             event_id=event.event_id,
@@ -43,6 +48,11 @@ class CapturedTextIngestService:
             top_score=top_score,
             message="captured text event가 처리되어 저장되었습니다.",
         )
+
+    def _purge_if_configured(self) -> None:
+        if self.lifecycle_service is None:
+            return
+        self.lifecycle_service.purge(repository=self.captured_text_repository)
 
     def process_batch(
         self,

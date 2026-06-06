@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
@@ -9,13 +11,18 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
 )
 
+CAPTURED_TEXT_RETENTION_DAYS_ENV = "TRACEMIND_CAPTURED_TEXT_RETENTION_DAYS"
+CAPTURED_TEXT_MAX_RECORDS_ENV = "TRACEMIND_CAPTURED_TEXT_MAX_RECORDS"
+DEFAULT_CAPTURED_TEXT_RETENTION_DAYS = 3
+DEFAULT_CAPTURED_TEXT_MAX_RECORDS = 500
+
 
 @dataclass(slots=True)
 class CapturedTextLifecycleConfig:
     """agent 로컬 captured text retention / purge 정책."""
 
-    retention_days: int = 30
-    max_records: int = 5000
+    retention_days: int = DEFAULT_CAPTURED_TEXT_RETENTION_DAYS
+    max_records: int = DEFAULT_CAPTURED_TEXT_MAX_RECORDS
 
     def __post_init__(self) -> None:
         if self.retention_days <= 0:
@@ -60,3 +67,31 @@ class CapturedTextLifecycleService:
             deleted_by_retention=deleted_by_retention,
             deleted_by_capacity=deleted_by_capacity,
         )
+
+
+def build_captured_text_lifecycle_service_from_env(
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> CapturedTextLifecycleService:
+    """환경변수에서 captured text 개발용 retention 정책을 조립한다."""
+
+    effective_environ = os.environ if environ is None else environ
+    return CapturedTextLifecycleService(
+        config=CapturedTextLifecycleConfig(
+            retention_days=_env_int(
+                effective_environ,
+                CAPTURED_TEXT_RETENTION_DAYS_ENV,
+                DEFAULT_CAPTURED_TEXT_RETENTION_DAYS,
+            ),
+            max_records=_env_int(
+                effective_environ,
+                CAPTURED_TEXT_MAX_RECORDS_ENV,
+                DEFAULT_CAPTURED_TEXT_MAX_RECORDS,
+            ),
+        )
+    )
+
+
+def _env_int(environ: Mapping[str, str], key: str, default: int) -> int:
+    value = environ.get(key, "").strip()
+    return int(value) if value else default

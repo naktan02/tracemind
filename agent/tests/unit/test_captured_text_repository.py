@@ -21,6 +21,7 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
 from agent.src.services.ingest.captured_text_lifecycle_service import (
     CapturedTextLifecycleConfig,
     CapturedTextLifecycleService,
+    build_captured_text_lifecycle_service_from_env,
 )
 from agent.src.services.ingest.captured_text_view_generation_service import (
     CapturedTextViewGenerationService,
@@ -308,6 +309,25 @@ def test_captured_text_lifecycle_service_purges_by_policy(
     assert result.deleted_by_capacity == 1
     assert result.deleted_total == 2
     assert tmp_repo.get("new") is not None
+
+
+def test_captured_text_lifecycle_default_is_short_for_development() -> None:
+    service = build_captured_text_lifecycle_service_from_env(environ={})
+
+    assert service.config.retention_days == 3
+    assert service.config.max_records == 500
+
+
+def test_captured_text_lifecycle_env_can_override_development_policy() -> None:
+    service = build_captured_text_lifecycle_service_from_env(
+        environ={
+            "TRACEMIND_CAPTURED_TEXT_RETENTION_DAYS": "2",
+            "TRACEMIND_CAPTURED_TEXT_MAX_RECORDS": "20",
+        }
+    )
+
+    assert service.config.retention_days == 2
+    assert service.config.max_records == 20
 
 
 def test_captured_text_record_from_payload_preserves_source_metadata() -> None:
