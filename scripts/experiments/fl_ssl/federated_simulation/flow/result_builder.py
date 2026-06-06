@@ -91,6 +91,7 @@ def build_simulation_result(
             validation_config=request.validation_config,
             round_runtime_config=request.round_runtime_config,
             execution_plan=request.execution_plan,
+            local_update_profile_name=_local_update_profile_name(request),
             capability_plan=request.capability_plan,
             server_step_executor=request.server_step_executor,
             data_source_config=request.data_source_config,
@@ -147,6 +148,12 @@ def _build_client_evaluations(
         )
         for shard in bootstrapped.validation_client_shards
     )
+
+
+def _local_update_profile_name(request: SimulationRunRequest) -> str | None:
+    if request.local_update_profile is None:
+        return None
+    return request.local_update_profile.algorithm_profile_name
 
 
 def _release_helper_model_cache_before_final_evaluation(

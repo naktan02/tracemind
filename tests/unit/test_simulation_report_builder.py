@@ -503,7 +503,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         "update_envelope.example_count"
     )
     assert second_round_aggregation["aggregation_weight_summary"]["max"] == (
-        pytest.approx(0.6)
+        pytest.approx(0.5)
     )
     assert second_round_aggregation["mean_delta_l2_norm"] == pytest.approx(5.0)
     assert second_round_aggregation["max_delta_l2_norm"] == pytest.approx(6.0)

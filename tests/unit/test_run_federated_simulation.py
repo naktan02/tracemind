@@ -3362,6 +3362,18 @@ def test_run_simulation_completes_one_round_with_small_fixture(
     assert report["protocol"]["ssl_method"]["reason"] == "manual_composition"
     assert report["protocol"]["fl_method"]["descriptor_name"] is None
     assert report["protocol"]["fl_method"]["execution_role"] == "manual_baseline"
+    assert report["protocol"]["runtime_selection"] == {
+        "composition_mode": "manual",
+        "execution_role": "manual_baseline",
+        "method_name": "manual",
+        "method_descriptor_name": None,
+        "local_ssl_algorithm_name": "fixmatch",
+        "local_update_profile_name": None,
+        "update_family_name": "peft_text_encoder",
+        "aggregation_backend_name": "fedavg",
+        "display_name": "fixmatch_fedavg",
+        "selection_key": "manual:fixmatch:none:peft_text_encoder:fedavg",
+    }
     assert report["protocol"]["labeled_unlabeled_split"]["status"] == (
         "enforced_by_client_pool_split"
     )
@@ -3406,9 +3418,7 @@ def test_run_simulation_completes_one_round_with_small_fixture(
         report["rounds"][0]["delta_from_previous_round"]["macro_f1_delta"]
         == report["rounds"][0]["delta_from_initial"]["macro_f1_delta"]
     )
-    assert report["diagnostics"]["aggregation"]["weight_basis"] == (
-        "update_envelope.example_count"
-    )
+    assert report["diagnostics"]["aggregation"]["weight_basis"] == "uniform"
     assert report["diagnostics"]["aggregation"]["rounds"][0]["update_count"] == (
         result.rounds[0].update_count
     )

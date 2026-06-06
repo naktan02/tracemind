@@ -67,4 +67,8 @@ summary assembly phase를 따라간다.
 local objective와 method protocol을 소유하므로, FedMatch request는 Query SSL
 objective payload를 싣지 않는다.
 
+Report protocol의 `runtime_selection`은 위 실행 축을 app/report가 읽기 쉬운
+canonical summary로 남긴다. manual 실행은 `local_ssl_algorithm + update_family +
+aggregation` 조합으로 기록하고, method-owned 실행은 descriptor 이름으로 기록한다.
+
 상세 실행 명령은 상위 `scripts/experiments/fl_ssl/README.md`를 먼저 본다.

@@ -205,14 +205,28 @@ def test_federated_ssl_execution_plan_defaults_to_method_owned_plaintext() -> No
     assert plan.required_client_metric_keys == ()
     assert plan.security_policy.name == SECURITY_POLICY_PLAINTEXT
 
+    selection = plan.runtime_selection(
+        local_update_profile_name=TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME
+    )
+    assert selection.composition_mode == COMPOSITION_MODE_METHOD_OWNED
+    assert selection.execution_role == "method_owned"
+    assert selection.method_name == "method_owned_ssl"
+    assert selection.method_descriptor_name == "method_owned_ssl"
+    assert selection.local_ssl_algorithm_name is None
+    assert selection.local_update_profile_name == TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME
+    assert selection.update_family_name is None
+    assert selection.aggregation_backend_name is None
+    assert selection.display_name == "method_owned_ssl"
+    assert selection.selection_key == "method_owned:method_owned_ssl"
+
 
 def test_federated_ssl_execution_plan_supports_manual_lower_axes() -> None:
     plan = build_federated_ssl_execution_plan(
         fl_method={
             "composition_mode": COMPOSITION_MODE_MANUAL,
             "manual_axes": {
-                "client_ssl_objective": "pseudo_label",
-                "server_aggregation": TEST_ONLY_AGGREGATION_BACKEND_NAME,
+                "client_ssl_objective": "fixmatch",
+                "server_aggregation": "fedavg",
                 "update_family": TEST_ONLY_UPDATE_FAMILY,
             },
         },
@@ -224,9 +238,43 @@ def test_federated_ssl_execution_plan_supports_manual_lower_axes() -> None:
     assert plan.descriptor_name is None
     assert plan.composition_mode == COMPOSITION_MODE_MANUAL
     assert plan.execution_role == "manual_baseline"
-    assert plan.manual_axes.client_ssl_objective == "pseudo_label"
-    assert plan.manual_axes.server_aggregation == TEST_ONLY_AGGREGATION_BACKEND_NAME
+    assert plan.manual_axes.client_ssl_objective == "fixmatch"
+    assert plan.manual_axes.server_aggregation == "fedavg"
     assert plan.manual_axes.update_family == TEST_ONLY_UPDATE_FAMILY
+
+    selection = plan.runtime_selection(
+        local_update_profile_name=TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME
+    )
+    assert selection.composition_mode == COMPOSITION_MODE_MANUAL
+    assert selection.execution_role == "manual_baseline"
+    assert selection.method_name == "manual"
+    assert selection.method_descriptor_name is None
+    assert selection.local_ssl_algorithm_name == "fixmatch"
+    assert selection.local_update_profile_name == TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME
+    assert selection.update_family_name == TEST_ONLY_UPDATE_FAMILY
+    assert selection.aggregation_backend_name == "fedavg"
+    assert selection.display_name == "fixmatch_fedavg"
+    assert selection.selection_key == (
+        "manual:"
+        f"fixmatch:{TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME}:"
+        f"{TEST_ONLY_UPDATE_FAMILY}:fedavg"
+    )
+    assert selection.to_mapping() == {
+        "composition_mode": "manual",
+        "execution_role": "manual_baseline",
+        "method_name": "manual",
+        "method_descriptor_name": None,
+        "local_ssl_algorithm_name": "fixmatch",
+        "local_update_profile_name": TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME,
+        "update_family_name": TEST_ONLY_UPDATE_FAMILY,
+        "aggregation_backend_name": "fedavg",
+        "display_name": "fixmatch_fedavg",
+        "selection_key": (
+            "manual:"
+            f"fixmatch:{TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME}:"
+            f"{TEST_ONLY_UPDATE_FAMILY}:fedavg"
+        ),
+    }
 
 
 def test_federated_ssl_execution_plan_preserves_configured_update_family() -> None:

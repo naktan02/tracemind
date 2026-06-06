@@ -48,6 +48,7 @@ def build_protocol_payload(
     validation_config: FederatedValidationConfig,
     round_runtime_config: FederatedRoundRuntimeConfig,
     execution_plan: FederatedSslExecutionPlan | None = None,
+    local_update_profile_name: str | None = None,
     capability_plan: FederatedSslCapabilityPlan | None = None,
     server_step_executor: str | None = None,
     data_source_config: FederatedDataSourceConfig | None = None,
@@ -136,6 +137,9 @@ def build_protocol_payload(
     }
     if execution_plan is not None:
         payload["fl_method"] = execution_plan.to_mapping()
+        payload["runtime_selection"] = execution_plan.runtime_selection(
+            local_update_profile_name=local_update_profile_name,
+        ).to_mapping()
     return payload
 
 
