@@ -6,6 +6,7 @@ import json
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,17 @@ from shared.src.contracts.captured_text_contracts import (
 )
 
 _DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "captured_text.db"
+CAPTURED_TEXT_VIEW_STATUS_PENDING = "pending"
+CAPTURED_TEXT_VIEW_STATUS_DUPLICATE = "duplicate"
+CAPTURED_TEXT_VIEW_STATUS_READY = "ready"
+
+_CAPTURED_TEXT_VIEW_STATUSES = frozenset(
+    {
+        CAPTURED_TEXT_VIEW_STATUS_PENDING,
+        CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
+        CAPTURED_TEXT_VIEW_STATUS_READY,
+    }
+)
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS captured_text_events (
@@ -29,6 +41,9 @@ CREATE TABLE IF NOT EXISTS captured_text_events (
     page_url          TEXT,
     page_title        TEXT,
     collector_version TEXT,
+    text_fingerprint  TEXT NOT NULL DEFAULT '',
+    view_generation_status TEXT NOT NULL DEFAULT 'pending',
+    duplicate_of_event_id TEXT,
     metadata          TEXT NOT NULL
 );
 """
@@ -36,26 +51,76 @@ CREATE TABLE IF NOT EXISTS captured_text_events (
 _INSERT_SQL = """
 INSERT OR REPLACE INTO captured_text_events
     (event_id, schema_version, occurred_at, received_at, text, locale,
-     source_type, surface_type, page_url, page_title, collector_version, metadata)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     source_type, surface_type, page_url, page_title, collector_version,
+     text_fingerprint, view_generation_status, duplicate_of_event_id, metadata)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 _SELECT_ONE_SQL = """
 SELECT event_id, schema_version, occurred_at, received_at, text, locale,
-       source_type, surface_type, page_url, page_title, collector_version, metadata
+       source_type, surface_type, page_url, page_title, collector_version,
+       text_fingerprint, view_generation_status, duplicate_of_event_id, metadata
 FROM captured_text_events
 WHERE event_id = ?;
 """
 
 _SELECT_RECENT_SQL = """
 SELECT event_id, schema_version, occurred_at, received_at, text, locale,
-       source_type, surface_type, page_url, page_title, collector_version, metadata
+       source_type, surface_type, page_url, page_title, collector_version,
+       text_fingerprint, view_generation_status, duplicate_of_event_id, metadata
 FROM captured_text_events
 ORDER BY occurred_at DESC
 LIMIT ?;
 """
 
+_SELECT_PENDING_VIEW_GENERATION_SQL = """
+SELECT event_id, schema_version, occurred_at, received_at, text, locale,
+       source_type, surface_type, page_url, page_title, collector_version,
+       text_fingerprint, view_generation_status, duplicate_of_event_id, metadata
+FROM captured_text_events
+WHERE view_generation_status = ?
+ORDER BY occurred_at ASC
+LIMIT ?;
+"""
+
+_SELECT_ORIGINAL_BY_FINGERPRINT_SQL = """
+SELECT event_id
+FROM captured_text_events
+WHERE text_fingerprint = ?
+  AND event_id <> ?
+  AND duplicate_of_event_id IS NULL
+ORDER BY occurred_at ASC
+LIMIT 1;
+"""
+
 _COUNT_SQL = "SELECT COUNT(*) FROM captured_text_events;"
+
+_COUNT_BY_STATUS_SQL = """
+SELECT view_generation_status, COUNT(*)
+FROM captured_text_events
+GROUP BY view_generation_status;
+"""
+
+_UPDATE_VIEW_GENERATION_STATUS_SQL = """
+UPDATE captured_text_events
+SET view_generation_status = ?
+WHERE event_id = ?;
+"""
+
+_DELETE_OLDER_THAN_SQL = """
+DELETE FROM captured_text_events
+WHERE occurred_at < ?;
+"""
+
+_DELETE_EXCESS_SQL = """
+DELETE FROM captured_text_events
+WHERE event_id IN (
+    SELECT event_id
+    FROM captured_text_events
+    ORDER BY occurred_at DESC
+    LIMIT -1 OFFSET ?
+);
+"""
 
 
 @dataclass(slots=True)
@@ -72,6 +137,9 @@ class CapturedTextRecord:
     page_url: str | None = None
     page_title: str | None = None
     collector_version: str | None = None
+    text_fingerprint: str = ""
+    view_generation_status: str = CAPTURED_TEXT_VIEW_STATUS_PENDING
+    duplicate_of_event_id: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     schema_version: str = CAPTURED_TEXT_EVENT_V1
 
@@ -88,6 +156,12 @@ class CapturedTextRecord:
             raise ValueError("surface_type must not be empty.")
         if not self.schema_version.strip():
             raise ValueError("schema_version must not be empty.")
+        if self.view_generation_status not in _CAPTURED_TEXT_VIEW_STATUSES:
+            raise ValueError("view_generation_status is unsupported.")
+        if self.duplicate_of_event_id is not None and not (
+            self.duplicate_of_event_id.strip()
+        ):
+            raise ValueError("duplicate_of_event_id must not be empty.")
 
 
 def captured_text_record_from_payload(
@@ -109,6 +183,12 @@ def captured_text_record_from_payload(
         page_url=payload.page_url,
         page_title=payload.page_title,
         collector_version=payload.collector_version,
+        text_fingerprint=_text_fingerprint(
+            text=payload.text,
+            locale=payload.locale,
+            source_type=payload.source_type.value,
+            surface_type=payload.surface_type.value,
+        ),
         metadata=dict(payload.metadata),
     )
 
@@ -123,26 +203,31 @@ class CapturedTextRepository:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.execute(_CREATE_TABLE_SQL)
+            _ensure_schema(conn)
 
     def save(self, record: CapturedTextRecord) -> None:
         """event_id 기준으로 raw captured text event를 저장한다."""
 
         with self._connect() as conn:
+            normalized = _record_with_dedup_status(conn, record)
             conn.execute(
                 _INSERT_SQL,
                 (
-                    record.event_id,
-                    record.schema_version,
-                    record.occurred_at.isoformat(),
-                    record.received_at.isoformat(),
-                    record.text,
-                    record.locale,
-                    record.source_type,
-                    record.surface_type,
-                    record.page_url,
-                    record.page_title,
-                    record.collector_version,
-                    json.dumps(record.metadata, ensure_ascii=False),
+                    normalized.event_id,
+                    normalized.schema_version,
+                    normalized.occurred_at.isoformat(),
+                    normalized.received_at.isoformat(),
+                    normalized.text,
+                    normalized.locale,
+                    normalized.source_type,
+                    normalized.surface_type,
+                    normalized.page_url,
+                    normalized.page_title,
+                    normalized.collector_version,
+                    normalized.text_fingerprint,
+                    normalized.view_generation_status,
+                    normalized.duplicate_of_event_id,
+                    json.dumps(normalized.metadata, ensure_ascii=False),
                 ),
             )
 
@@ -162,11 +247,62 @@ class CapturedTextRepository:
             rows = conn.execute(_SELECT_RECENT_SQL, (limit,)).fetchall()
         return [_row_to_record(row) for row in rows]
 
+    def get_pending_view_generation(
+        self,
+        *,
+        limit: int = 100,
+    ) -> list[CapturedTextRecord]:
+        """view generation을 기다리는 raw event를 오래된 순서로 반환한다."""
+
+        if limit <= 0:
+            raise ValueError("limit must be positive.")
+        with self._connect() as conn:
+            rows = conn.execute(
+                _SELECT_PENDING_VIEW_GENERATION_SQL,
+                (CAPTURED_TEXT_VIEW_STATUS_PENDING, limit),
+            ).fetchall()
+        return [_row_to_record(row) for row in rows]
+
     def count(self) -> int:
         """저장된 captured text event 수를 반환한다."""
 
         with self._connect() as conn:
             return conn.execute(_COUNT_SQL).fetchone()[0]
+
+    def count_by_view_generation_status(self) -> dict[str, int]:
+        """view generation 상태별 event 수를 반환한다."""
+
+        with self._connect() as conn:
+            rows = conn.execute(_COUNT_BY_STATUS_SQL).fetchall()
+        return {str(status): int(count) for status, count in rows}
+
+    def mark_view_generation_status(self, *, event_id: str, status: str) -> int:
+        """단일 event의 view generation 상태를 갱신한다."""
+
+        if status not in _CAPTURED_TEXT_VIEW_STATUSES:
+            raise ValueError("status is unsupported.")
+        with self._connect() as conn:
+            cursor = conn.execute(
+                _UPDATE_VIEW_GENERATION_STATUS_SQL,
+                (status, event_id),
+            )
+        return max(cursor.rowcount, 0)
+
+    def delete_older_than(self, *, cutoff: datetime) -> int:
+        """cutoff보다 오래된 captured text event를 삭제한다."""
+
+        with self._connect() as conn:
+            cursor = conn.execute(_DELETE_OLDER_THAN_SQL, (cutoff.isoformat(),))
+        return max(cursor.rowcount, 0)
+
+    def delete_oldest_excess(self, *, keep_latest: int) -> int:
+        """최신 keep_latest개를 제외한 오래된 event를 삭제한다."""
+
+        if keep_latest < 0:
+            raise ValueError("keep_latest must not be negative.")
+        with self._connect() as conn:
+            cursor = conn.execute(_DELETE_EXCESS_SQL, (keep_latest,))
+        return max(cursor.rowcount, 0)
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path)
@@ -185,6 +321,9 @@ def _row_to_record(row: tuple[Any, ...]) -> CapturedTextRecord:
         page_url,
         page_title,
         collector_version,
+        text_fingerprint,
+        view_generation_status,
+        duplicate_of_event_id,
         metadata_json,
     ) = row
     metadata = json.loads(str(metadata_json))
@@ -202,5 +341,107 @@ def _row_to_record(row: tuple[Any, ...]) -> CapturedTextRecord:
         page_url=None if page_url is None else str(page_url),
         page_title=None if page_title is None else str(page_title),
         collector_version=None if collector_version is None else str(collector_version),
+        text_fingerprint=str(text_fingerprint),
+        view_generation_status=str(view_generation_status),
+        duplicate_of_event_id=(
+            None if duplicate_of_event_id is None else str(duplicate_of_event_id)
+        ),
         metadata=metadata,
     )
+
+
+def _record_with_dedup_status(
+    conn: sqlite3.Connection,
+    record: CapturedTextRecord,
+) -> CapturedTextRecord:
+    fingerprint = record.text_fingerprint or _text_fingerprint(
+        text=record.text,
+        locale=record.locale,
+        source_type=record.source_type,
+        surface_type=record.surface_type,
+    )
+    original = conn.execute(
+        _SELECT_ORIGINAL_BY_FINGERPRINT_SQL,
+        (fingerprint, record.event_id),
+    ).fetchone()
+    if original is None:
+        return CapturedTextRecord(
+            **{
+                **_record_payload(record),
+                "text_fingerprint": fingerprint,
+                "view_generation_status": record.view_generation_status,
+                "duplicate_of_event_id": record.duplicate_of_event_id,
+            }
+        )
+    original_event_id = str(original[0])
+    metadata = {
+        **record.metadata,
+        "dedup_fingerprint": fingerprint,
+        "duplicate_of_event_id": original_event_id,
+    }
+    return CapturedTextRecord(
+        **{
+            **_record_payload(record),
+            "text_fingerprint": fingerprint,
+            "view_generation_status": CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
+            "duplicate_of_event_id": original_event_id,
+            "metadata": metadata,
+        }
+    )
+
+
+def _record_payload(record: CapturedTextRecord) -> dict[str, Any]:
+    return {
+        "event_id": record.event_id,
+        "schema_version": record.schema_version,
+        "occurred_at": record.occurred_at,
+        "received_at": record.received_at,
+        "text": record.text,
+        "locale": record.locale,
+        "source_type": record.source_type,
+        "surface_type": record.surface_type,
+        "page_url": record.page_url,
+        "page_title": record.page_title,
+        "collector_version": record.collector_version,
+        "metadata": dict(record.metadata),
+    }
+
+
+def _text_fingerprint(
+    *,
+    text: str,
+    locale: str,
+    source_type: str,
+    surface_type: str,
+) -> str:
+    payload = {
+        "locale": locale.strip().lower(),
+        "source_type": source_type.strip().lower(),
+        "surface_type": surface_type.strip().lower(),
+        "text": " ".join(text.strip().lower().split()),
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    return sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _ensure_schema(conn: sqlite3.Connection) -> None:
+    columns = {
+        str(row[1])
+        for row in conn.execute("PRAGMA table_info(captured_text_events)").fetchall()
+    }
+    migrations = {
+        "text_fingerprint": (
+            "ALTER TABLE captured_text_events "
+            "ADD COLUMN text_fingerprint TEXT NOT NULL DEFAULT ''"
+        ),
+        "view_generation_status": (
+            "ALTER TABLE captured_text_events "
+            "ADD COLUMN view_generation_status TEXT NOT NULL DEFAULT 'pending'"
+        ),
+        "duplicate_of_event_id": (
+            "ALTER TABLE captured_text_events ADD COLUMN duplicate_of_event_id TEXT"
+        ),
+    }
+    for column_name, statement in migrations.items():
+        if column_name not in columns:
+            conn.execute(statement)

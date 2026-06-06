@@ -181,3 +181,27 @@ def test_captured_text_endpoint_uses_app_state_dependencies(tmp_path: Path) -> N
     assert response.json()["query_id"] == "event_1"
     assert repository.count() == 1
     assert pipeline.processed_source_types == ["search:search_box"]
+
+
+def test_captured_text_status_reports_view_generation_counts(tmp_path: Path) -> None:
+    pipeline = _pipeline()
+    repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
+    client = TestClient(
+        create_app(
+            pipeline_service=pipeline,  # type: ignore[arg-type]
+            captured_text_repository=repository,
+        )
+    )
+    response = client.post(
+        "/api/v1/captured-text/events",
+        json=_event().model_dump(mode="json"),
+    )
+    assert response.status_code == 201
+
+    status_response = client.get("/api/v1/captured-text/status")
+
+    assert status_response.status_code == 200
+    payload = status_response.json()
+    assert payload["captured_text_event_count"] == 1
+    assert payload["stored_event_count"] == 1
+    assert payload["view_generation_status_counts"] == {"pending": 1}

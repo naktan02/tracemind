@@ -107,10 +107,13 @@ def ingest_captured_text_batch(
 @router.get("/status", status_code=status.HTTP_200_OK)
 def captured_text_status(
     service: CapturedTextIngestServiceDep,
-) -> dict[str, int]:
+) -> dict[str, object]:
     """저장된 captured text event 수를 반환한다."""
 
     return {
         "captured_text_event_count": service.captured_text_repository.count(),
+        "view_generation_status_counts": (
+            service.captured_text_repository.count_by_view_generation_status()
+        ),
         "stored_event_count": service.pipeline_service.event_repository.count(),
     }

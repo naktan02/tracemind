@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
 from agent.src.infrastructure.repositories.captured_text_repository import (
+    CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
+    CAPTURED_TEXT_VIEW_STATUS_PENDING,
+    CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextRecord,
     CapturedTextRepository,
     captured_text_record_from_payload,
+)
+from agent.src.services.ingest.captured_text_lifecycle_service import (
+    CapturedTextLifecycleConfig,
+    CapturedTextLifecycleService,
 )
 from shared.src.contracts.captured_text_contracts import (
     CapturedTextEventPayload,
@@ -61,6 +69,37 @@ def test_repo_save_and_get_round_trips_record(
     assert loaded.metadata["source"] == "unit-test"
 
 
+def test_repo_initialization_migrates_existing_table(tmp_path: Path) -> None:
+    db_path = tmp_path / "legacy_captured_text.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE captured_text_events (
+                event_id          TEXT PRIMARY KEY,
+                schema_version    TEXT NOT NULL,
+                occurred_at       TEXT NOT NULL,
+                received_at       TEXT NOT NULL,
+                text              TEXT NOT NULL,
+                locale            TEXT NOT NULL,
+                source_type       TEXT NOT NULL,
+                surface_type      TEXT NOT NULL,
+                page_url          TEXT,
+                page_title        TEXT,
+                collector_version TEXT,
+                metadata          TEXT NOT NULL
+            );
+            """
+        )
+
+    repository = CapturedTextRepository(db_path=db_path)
+    repository.save(_make_record())
+
+    loaded = repository.get("event_1")
+    assert loaded is not None
+    assert loaded.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_PENDING
+    assert loaded.text_fingerprint
+
+
 def test_repo_save_overwrites_same_event_id(
     tmp_repo: CapturedTextRepository,
 ) -> None:
@@ -84,6 +123,82 @@ def test_repo_get_recent_returns_latest_first(
 
     assert len(recent) == 1
     assert recent[0].event_id == "new"
+
+
+def test_repo_marks_same_source_surface_text_as_duplicate(
+    tmp_repo: CapturedTextRepository,
+) -> None:
+    first = _make_record(event_id="first", text="  같은   검색어 ")
+    second = _make_record(event_id="second", text="같은 검색어")
+
+    tmp_repo.save(first)
+    tmp_repo.save(second)
+
+    loaded_first = tmp_repo.get("first")
+    loaded_second = tmp_repo.get("second")
+    assert loaded_first is not None
+    assert loaded_second is not None
+    assert loaded_first.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_PENDING
+    assert loaded_second.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_DUPLICATE
+    assert loaded_second.duplicate_of_event_id == "first"
+    assert loaded_second.metadata["duplicate_of_event_id"] == "first"
+
+
+def test_repo_pending_view_generation_excludes_duplicates(
+    tmp_repo: CapturedTextRepository,
+) -> None:
+    tmp_repo.save(_make_record(event_id="first", text="중복"))
+    tmp_repo.save(_make_record(event_id="duplicate", text="중복"))
+    tmp_repo.save(_make_record(event_id="ready", text="완료"))
+    tmp_repo.mark_view_generation_status(
+        event_id="ready",
+        status=CAPTURED_TEXT_VIEW_STATUS_READY,
+    )
+
+    pending = tmp_repo.get_pending_view_generation(limit=10)
+    counts = tmp_repo.count_by_view_generation_status()
+
+    assert [record.event_id for record in pending] == ["first"]
+    assert counts[CAPTURED_TEXT_VIEW_STATUS_PENDING] == 1
+    assert counts[CAPTURED_TEXT_VIEW_STATUS_DUPLICATE] == 1
+    assert counts[CAPTURED_TEXT_VIEW_STATUS_READY] == 1
+
+
+def test_repo_delete_older_than_and_capacity_purge(
+    tmp_repo: CapturedTextRepository,
+) -> None:
+    now = datetime.now(tz=timezone.utc)
+    tmp_repo.save(_make_record(event_id="old", occurred_at=now - timedelta(days=31)))
+    tmp_repo.save(_make_record(event_id="mid", occurred_at=now - timedelta(days=1)))
+    tmp_repo.save(_make_record(event_id="new", occurred_at=now))
+
+    deleted_old = tmp_repo.delete_older_than(cutoff=now - timedelta(days=30))
+    deleted_excess = tmp_repo.delete_oldest_excess(keep_latest=1)
+
+    assert deleted_old == 1
+    assert deleted_excess == 1
+    assert tmp_repo.get("old") is None
+    assert tmp_repo.get("mid") is None
+    assert tmp_repo.get("new") is not None
+
+
+def test_captured_text_lifecycle_service_purges_by_policy(
+    tmp_repo: CapturedTextRepository,
+) -> None:
+    now = datetime.now(tz=timezone.utc)
+    tmp_repo.save(_make_record(event_id="old", occurred_at=now - timedelta(days=31)))
+    tmp_repo.save(_make_record(event_id="mid", occurred_at=now - timedelta(days=1)))
+    tmp_repo.save(_make_record(event_id="new", occurred_at=now))
+    service = CapturedTextLifecycleService(
+        config=CapturedTextLifecycleConfig(retention_days=30, max_records=1)
+    )
+
+    result = service.purge(repository=tmp_repo, as_of=now)
+
+    assert result.deleted_by_retention == 1
+    assert result.deleted_by_capacity == 1
+    assert result.deleted_total == 2
+    assert tmp_repo.get("new") is not None
 
 
 def test_captured_text_record_from_payload_preserves_source_metadata() -> None:
