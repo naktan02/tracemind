@@ -186,7 +186,11 @@ def _build_service(
     runtime_factory: MagicMock,
     captured_text_repository: CapturedTextRepository | None = None,
     embedding_adapter: object | None = None,
+    query_ssl_task_service: object | None = None,
 ) -> AgentTrainingTaskRunnerService:
+    kwargs = {}
+    if query_ssl_task_service is not None:
+        kwargs["query_ssl_task_service"] = query_ssl_task_service
     return AgentTrainingTaskRunnerService(
         scored_event_repository=repo,
         prototype_runtime_service=proto_service,
@@ -197,6 +201,7 @@ def _build_service(
         federation_runtime_service_factory=runtime_factory,
         captured_text_repository=captured_text_repository,
         embedding_adapter=embedding_adapter,  # type: ignore[arg-type]
+        **kwargs,
     )
 
 
@@ -369,16 +374,34 @@ def test_runner_reports_missing_embedding_adapter_for_captured_text_views(
     runtime_factory.assert_not_called()
 
 
-def test_runner_rejects_query_ssl_task_until_live_runner_is_connected() -> None:
+def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
     repo = MagicMock()
     proto_service = MagicMock()
     proto_sync_service = MagicMock()
-    shared_adapter_runtime_service = MagicMock()
     shared_adapter_sync_service = MagicMock()
+    active_manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_multiview",
+        artifact_ref="/server/state/rev_multiview.json",
+    )
+    active_state = _build_peft_state(model_revision="rev_multiview")
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
+    shared_adapter_runtime_service.get_active_state.return_value = active_state
     round_client = MagicMock()
     round_client.fetch_current_task.return_value = _build_query_ssl_task_payload()
     round_client_factory = MagicMock(return_value=round_client)
     runtime_factory = MagicMock()
+    query_ssl_task_service = MagicMock()
+    query_ssl_task_service.run_current_task.return_value = FederationRunResult(
+        status=FederationRunStatus.UPLOADED,
+        round_id="round_multiview",
+        task_id="task_query_ssl",
+        update_id="update_query_ssl",
+        example_count=3,
+        accepted_count=2,
+        message="Query SSL update 업로드 완료.",
+    )
     service = _build_service(
         repo=repo,
         proto_service=proto_service,
@@ -387,17 +410,24 @@ def test_runner_rejects_query_ssl_task_until_live_runner_is_connected() -> None:
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
         runtime_factory=runtime_factory,
+        query_ssl_task_service=query_ssl_task_service,
     )
 
     response = service.run_current_task(
         AgentTrainingTaskRunRequest(server_base_url="http://server.test")
     )
 
-    assert response.status == "unsupported_runtime"
+    assert response.status == str(FederationRunStatus.UPLOADED)
     assert response.round_id == "round_multiview"
     assert response.task_id == "task_query_ssl"
-    assert "Query SSL objective task" in response.message
-    shared_adapter_sync_service.pull_current.assert_not_called()
+    assert response.update_id == "update_query_ssl"
+    shared_adapter_sync_service.pull_current.assert_called_once_with(
+        server_base_url="http://server.test"
+    )
+    query_ssl_request = query_ssl_task_service.run_current_task.call_args.args[0]
+    assert query_ssl_request.training_task.task_id == "task_query_ssl"
+    assert query_ssl_request.model_manifest is active_manifest
+    assert query_ssl_request.active_state is active_state
     runtime_factory.assert_not_called()
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from methods.adaptation.peft_text_encoder.config import PEFT_ENCODER_DELTA_FORMAT_INLINE
 from methods.federated_ssl.runtime_fallbacks import (
     FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK,
     FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
@@ -74,6 +75,7 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
         "query_ssl.hard_label": True,
         "query_ssl.lambda_u": 1.0,
         "query_ssl.supervised_loss_weight": 1.0,
+        "peft_classifier.delta_format": PEFT_ENCODER_DELTA_FORMAT_INLINE,
     }
     assert config.example_generation_backend_name == WEAK_STRONG_PAIR_EXAMPLE_BACKEND
 

@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from methods.adaptation.peft_text_encoder.config import (
+    PEFT_ENCODER_DELTA_FORMAT_INLINE,
     PEFT_ENCODER_PAYLOAD_ADAPTER_KIND,
     PEFT_ENCODER_TRAINING_BACKEND_NAME,
 )
@@ -267,6 +268,7 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
         "query_ssl.hard_label": True,
         "query_ssl.lambda_u": 1.0,
         "query_ssl.supervised_loss_weight": 1.0,
+        "peft_classifier.delta_format": PEFT_ENCODER_DELTA_FORMAT_INLINE,
     }
 )
 

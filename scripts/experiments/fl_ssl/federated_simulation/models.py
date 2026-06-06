@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.diagnostics.sampling import (
@@ -16,6 +15,7 @@ from methods.federated_ssl.diagnostics.sampling import (
 )
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
+from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
 from scripts.experiments.fl_ssl.federated_simulation import (
     simulation_result_models,
 )
@@ -23,7 +23,6 @@ from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN = "runtime_split_from_train"
@@ -464,79 +463,8 @@ def _normalize_round_runtime_callable_mapping(
 
 
 @dataclass(frozen=True, slots=True)
-class FederatedQuerySslObjectiveConfig:
+class FederatedQuerySslObjectiveConfig(QuerySslObjectiveRuntimeConfig):
     """manual FL 조합이 실제 Query SSL algorithm을 가리키는지 나타내는 설정."""
-
-    method_name: str
-    algorithm_name: str
-    parameters: Mapping[str, object] = field(default_factory=dict)
-    strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY
-    unlabeled_batch_size: int | None = None
-
-    @classmethod
-    def from_objective_config(
-        cls,
-        objective_config: TrainingObjectiveConfig | None,
-    ) -> "FederatedQuerySslObjectiveConfig | None":
-        """Training objective extras에서 query_ssl.* 축을 읽는다."""
-
-        if objective_config is None:
-            return None
-        extras = objective_config.get_component_extras("query_ssl")
-        method_name = _optional_str(extras.get("method_name"))
-        algorithm_name = _optional_str(extras.get("algorithm_name"))
-        if method_name is None and algorithm_name is None:
-            return None
-        if method_name is None or algorithm_name is None:
-            raise ValueError(
-                "query_ssl objective extras require both method_name and "
-                "algorithm_name."
-            )
-        unlabeled_batch_size_raw = extras.get("unlabeled_batch_size")
-        unlabeled_batch_size = (
-            None if unlabeled_batch_size_raw is None else int(unlabeled_batch_size_raw)
-        )
-        if unlabeled_batch_size is not None and unlabeled_batch_size <= 0:
-            raise ValueError("query_ssl.unlabeled_batch_size must be positive.")
-        return cls(
-            method_name=method_name,
-            algorithm_name=algorithm_name,
-            parameters={},
-            strong_view_policy=(
-                _optional_str(extras.get("strong_view_policy"))
-                or DEFAULT_STRONG_VIEW_POLICY
-            ),
-            unlabeled_batch_size=unlabeled_batch_size,
-        )
-
-    @classmethod
-    def from_mapping(
-        cls,
-        source: Mapping[str, object],
-        *,
-        strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY,
-    ) -> "FederatedQuerySslObjectiveConfig":
-        """Hydra query_ssl_method mapping을 typed config로 해석한다."""
-
-        method_name = _optional_str(source.get("name"))
-        algorithm_name = _optional_str(source.get("algorithm_name"))
-        if method_name is None or algorithm_name is None:
-            raise ValueError("query_ssl_method requires name and algorithm_name.")
-        parameters = {
-            str(key): value
-            for key, value in source.items()
-            if str(key) not in {"name", "algorithm_name"}
-        }
-        unlabeled_batch_size = parameters.get("unlabeled_batch_size")
-        return cls(
-            method_name=method_name,
-            algorithm_name=algorithm_name,
-            parameters=parameters,
-            strong_view_policy=strong_view_policy,
-            unlabeled_batch_size=(
-                None if unlabeled_batch_size is None else int(unlabeled_batch_size)
-            ),
-        )
 
 
 @dataclass(frozen=True, slots=True)

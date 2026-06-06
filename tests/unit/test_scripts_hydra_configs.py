@@ -1025,7 +1025,7 @@ def test_federated_ssl_smoke_orchestration_contract_snapshot(
             "peer_context_policy": {"name": "none"},
             "update_partition_policy": {"name": "unified"},
             "local_ssl_policy": {"name": "fixmatch"},
-            "aggregation_weight_policy": {"name": "example_count"},
+            "aggregation_weight_policy": {"name": "uniform"},
             "query_multiview_source": {"name": "materialized_rows"},
         },
         "query_ssl_objective": {

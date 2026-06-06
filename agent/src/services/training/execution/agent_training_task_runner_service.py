@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
@@ -37,9 +37,14 @@ from agent.src.services.training.datasets.captured_text_training_source_service 
     CapturedTextTrainingSourceService,
 )
 from agent.src.services.training.examples.service import TrainingExampleService
+from agent.src.services.training.execution.query_ssl_training_task_service import (
+    AgentQuerySslTrainingTaskRunRequest,
+    AgentQuerySslTrainingTaskService,
+)
 from agent.src.services.training.execution.runtime_compatibility import (
     validate_local_training_runtime,
 )
+from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
 from shared.src.contracts.model_contracts import PROTOTYPE_PACK_AUXILIARY_KEY
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
@@ -85,6 +90,9 @@ class AgentTrainingTaskRunnerService:
     federation_runtime_service_factory: FederationRuntimeServiceFactory
     captured_text_repository: CapturedTextRepository | None = None
     embedding_adapter: EmbeddingAdapter | None = None
+    query_ssl_task_service: AgentQuerySslTrainingTaskService = field(
+        default_factory=AgentQuerySslTrainingTaskService
+    )
 
     def run_current_task(
         self,
@@ -99,26 +107,20 @@ class AgentTrainingTaskRunnerService:
                 status="no_active_task",
                 message="현재 active round 또는 open task가 없습니다.",
             )
-        if _uses_query_ssl_objective(task_payload.objective_config.extras):
-            return AgentTrainingTaskRunResult(
-                status="unsupported_runtime",
-                round_id=task_payload.round_id,
-                task_id=task_payload.task_id,
-                message=(
-                    "Query SSL objective task는 아직 run-current-task legacy "
-                    "pseudo-label runner로 실행하지 않습니다."
-                ),
-            )
+        query_ssl_config = QuerySslObjectiveRuntimeConfig.from_objective_config(
+            task_payload.objective_config
+        )
 
-        try:
-            validate_local_training_runtime(task_payload)
-        except ValueError as error:
-            return AgentTrainingTaskRunResult(
-                status="unsupported_runtime",
-                round_id=task_payload.round_id,
-                task_id=task_payload.task_id,
-                message=str(error),
-            )
+        if query_ssl_config is None:
+            try:
+                validate_local_training_runtime(task_payload)
+            except ValueError as error:
+                return AgentTrainingTaskRunResult(
+                    status="unsupported_runtime",
+                    round_id=task_payload.round_id,
+                    task_id=task_payload.task_id,
+                    message=str(error),
+                )
 
         try:
             self.shared_adapter_sync_service.pull_current(
@@ -147,6 +149,37 @@ class AgentTrainingTaskRunnerService:
                     f"{active_manifest.model_revision} != "
                     f"{task_payload.model_revision}"
                 ),
+            )
+
+        if query_ssl_config is not None:
+            try:
+                result = self.query_ssl_task_service.run_current_task(
+                    AgentQuerySslTrainingTaskRunRequest(
+                        training_task=task_payload,
+                        model_manifest=active_manifest,
+                        active_state=active_state,
+                        round_client=round_client,
+                        scored_event_repository=self.scored_event_repository,
+                        captured_text_repository=self.captured_text_repository,
+                        scored_event_days=request.scored_event_days,
+                        agent_id=request.agent_id,
+                    )
+                )
+            except ValueError as error:
+                return AgentTrainingTaskRunResult(
+                    status="unsupported_runtime",
+                    round_id=task_payload.round_id,
+                    task_id=task_payload.task_id,
+                    message=str(error),
+                )
+            return AgentTrainingTaskRunResult(
+                status=str(result.status),
+                round_id=result.round_id,
+                task_id=result.task_id,
+                update_id=result.update_id,
+                example_count=result.example_count,
+                accepted_count=result.accepted_count,
+                message=result.message,
             )
 
         prototype_version = active_manifest.auxiliary_artifact_versions.get(
@@ -246,9 +279,3 @@ class AgentTrainingTaskRunnerService:
             days=days,
             limit=max_examples or 100,
         )
-
-
-def _uses_query_ssl_objective(extras: dict[str, object]) -> bool:
-    """objective extras가 Query SSL local objective를 명시하는지 확인한다."""
-
-    return any(key.startswith("query_ssl.") for key in extras)

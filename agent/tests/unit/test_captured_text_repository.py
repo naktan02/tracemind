@@ -237,6 +237,24 @@ def test_generated_view_training_source_projection_uses_ready_views(
     assert source_rows[0].strong_text == "불안해"
 
 
+def test_generated_view_query_ssl_projection_uses_aug_candidates(
+    tmp_repo: CapturedTextRepository,
+) -> None:
+    tmp_repo.save(_make_record(event_id="event_1", text="불안해"))
+    service = CapturedTextViewGenerationService(repository=tmp_repo)
+    service.generate_pending_views(limit=10)
+
+    source_service = CapturedTextTrainingSourceService(repository=tmp_repo)
+    rows = source_service.get_recent_query_ssl_unlabeled_rows(days=7, limit=10)
+
+    assert len(rows) == 1
+    assert rows[0]["query_id"] == "event_1"
+    assert rows[0]["text"] == "불안해"
+    assert rows[0]["aug_0"] == "불안해"
+    assert rows[0]["aug_1"] == "불안해"
+    assert rows[0]["annotation_source"] == "agent_local_unlabeled"
+
+
 def test_view_generation_service_marks_provider_failure(
     tmp_repo: CapturedTextRepository,
 ) -> None:
