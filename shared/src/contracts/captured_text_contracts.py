@@ -167,6 +167,10 @@ class CapturedTextDebugJobStatusPayload(BaseModel):
     view_generation_running: bool
     view_generation_interval_seconds: int = Field(ge=5, le=3600)
     view_generation_batch_size: int = Field(ge=1, le=500)
+    weak_text_provider_name: str
+    strong_text_provider_name: str
+    weak_text_identity_fallback: bool
+    strong_text_identity_fallback: bool
     captured_text_event_count: int = Field(ge=0)
     generated_view_count: int = Field(ge=0)
     view_generation_status_counts: dict[str, int] = Field(default_factory=dict)

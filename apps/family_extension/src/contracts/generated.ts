@@ -238,6 +238,10 @@ export interface CapturedTextDebugJobStatusPayload {
   view_generation_running: boolean;
   view_generation_interval_seconds: number;
   view_generation_batch_size: number;
+  weak_text_provider_name: string;
+  strong_text_provider_name: string;
+  weak_text_identity_fallback: boolean;
+  strong_text_identity_fallback: boolean;
   captured_text_event_count: number;
   generated_view_count: number;
   view_generation_status_counts: Record<string, number>;

@@ -52,6 +52,12 @@ from agent.src.services.federation.rounds.runtime_service import (
     FederationRuntimeService,
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineService
+from agent.src.services.ingest.captured_text_view_generation_service import (
+    CapturedTextViewGenerationService,
+)
+from agent.src.services.ingest.captured_text_view_provider_factory import (
+    build_captured_text_view_generation_service_from_env,
+)
 from agent.src.services.wellbeing.auth_service import ParentAuthService
 from agent.src.services.wellbeing.child_support_context_provider import (
     ChildSupportContextProvider,
@@ -113,6 +119,9 @@ def create_app(
     scored_event_repository: ScoredEventRepository | None = None,
     query_buffer_repository: QueryBufferRepository | None = None,
     captured_text_repository: CapturedTextRepository | None = None,
+    captured_text_view_generation_service: (
+        CapturedTextViewGenerationService | None
+    ) = None,
     child_support_conversation_repository: (
         ChildSupportConversationRepository | None
     ) = None,
@@ -151,6 +160,12 @@ def create_app(
     )
     app.state.captured_text_repository = (
         captured_text_repository or CapturedTextRepository()
+    )
+    app.state.captured_text_view_generation_service = (
+        captured_text_view_generation_service
+        or build_captured_text_view_generation_service_from_env(
+            repository=app.state.captured_text_repository,
+        )
     )
     app.state.child_support_conversation_repository = (
         child_support_conversation_repository or ChildSupportConversationRepository()
@@ -222,9 +237,10 @@ def create_app(
     if training_embedding_adapter is not None:
         app.state.training_embedding_adapter = training_embedding_adapter
     elif pipeline_service is not None:
-        app.state.training_embedding_adapter = (
-            pipeline_service.embedding_service.adapter
-        )
+        embedding_service = getattr(pipeline_service, "embedding_service", None)
+        pipeline_adapter = getattr(embedding_service, "adapter", None)
+        if pipeline_adapter is not None:
+            app.state.training_embedding_adapter = pipeline_adapter
 
     app.include_router(health_router)
     app.include_router(captured_text_router)

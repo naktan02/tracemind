@@ -226,6 +226,10 @@ def test_captured_text_debug_job_status_reports_pipeline_state(
     payload = response.json()
     assert payload["view_generation_enabled"] is False
     assert payload["view_generation_running"] is False
+    assert payload["weak_text_provider_name"] == "identity"
+    assert payload["strong_text_provider_name"] == "identity"
+    assert payload["weak_text_identity_fallback"] is True
+    assert payload["strong_text_identity_fallback"] is True
     assert payload["captured_text_event_count"] == 1
     assert payload["generated_view_count"] == 0
     assert payload["view_generation_status_counts"] == {"pending": 1}

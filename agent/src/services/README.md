@@ -109,6 +109,10 @@
 - `language/backtranslation_service.py`
   - 운영 translation 코어와 같은 층에서 재사용하는 backtranslation service
   - strict USB NLP input용 `aug_0`, `aug_1` strong candidate 생성에 재사용한다
+- `ingest/captured_text_view_provider_factory.py`
+  - captured text weak/strong view generation provider를 agent env에서 조립한다
+  - 기본은 identity fallback이며, NLLB provider를 켜면 모델은 실제 view generation
+    실행 시 lazy-load된다
 - `training/datasets/query_adaptation_dataset_service.py`
   - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립
   - `query_id`는 `source_row.query_id`를 single source of truth로 두고,

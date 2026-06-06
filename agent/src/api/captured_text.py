@@ -214,6 +214,7 @@ def captured_text_status(
 def captured_text_debug_job_status(
     request: Request,
     repository: CapturedTextRepoDep,
+    service: CapturedTextViewGenerationServiceDep,
     job_state: CapturedTextDebugJobStateDep,
 ) -> CapturedTextDebugJobStatusPayload:
     """debug page가 읽는 captured text pipeline 상태."""
@@ -221,6 +222,7 @@ def captured_text_debug_job_status(
     return _build_debug_job_status(
         request=request,
         repository=repository,
+        service=service,
         job_state=job_state,
     )
 
@@ -256,6 +258,7 @@ async def configure_captured_text_debug_job(
     return _build_debug_job_status(
         request=request,
         repository=repository,
+        service=service,
         job_state=job_state,
     )
 
@@ -300,6 +303,7 @@ def _build_debug_job_status(
     *,
     request: Request,
     repository: CapturedTextRepository,
+    service: CapturedTextViewGenerationService,
     job_state: CapturedTextDebugJobState,
 ) -> CapturedTextDebugJobStatusPayload:
     task = getattr(request.app.state, "captured_text_debug_job_task", None)
@@ -308,6 +312,10 @@ def _build_debug_job_status(
         view_generation_running=bool(task is not None and not task.done()),
         view_generation_interval_seconds=job_state.interval_seconds,
         view_generation_batch_size=job_state.batch_size,
+        weak_text_provider_name=service.weak_text_provider_name,
+        strong_text_provider_name=service.strong_text_provider_name,
+        weak_text_identity_fallback=service.weak_text_identity_fallback,
+        strong_text_identity_fallback=service.strong_text_identity_fallback,
         captured_text_event_count=repository.count(),
         generated_view_count=repository.count_generated_views(),
         view_generation_status_counts=repository.count_by_view_generation_status(),

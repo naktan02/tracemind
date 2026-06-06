@@ -63,6 +63,30 @@ class CapturedTextViewGenerationService:
     generator_name: str = "captured_text_view_generation"
     generator_version: str = "v1"
 
+    @property
+    def weak_text_provider_name(self) -> str:
+        """debug/status용 weak text provider 이름."""
+
+        return _provider_name(self.translation_provider)
+
+    @property
+    def strong_text_provider_name(self) -> str:
+        """debug/status용 strong text provider 이름."""
+
+        return _provider_name(self.strong_view_provider)
+
+    @property
+    def weak_text_identity_fallback(self) -> bool:
+        """weak text가 identity fallback인지 여부."""
+
+        return self.translation_provider is None
+
+    @property
+    def strong_text_identity_fallback(self) -> bool:
+        """strong text가 identity fallback인지 여부."""
+
+        return self.strong_view_provider is None
+
     def generate_pending_views(
         self,
         *,

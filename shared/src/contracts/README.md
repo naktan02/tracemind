@@ -226,6 +226,8 @@ canonical raw text 수집 계약을 정의한다.
 - `CapturedTextDebugJob*Payload`
   - family extension debug page가 agent-local view generation 상태를 조회하고
     개발용 on/off, 즉시 실행을 요청하는 payload다
+  - status payload는 현재 weak/strong provider 이름과 identity fallback 여부를
+    포함해 debug page가 실제 번역 backend 사용 여부를 표시할 수 있게 한다
   - 이 payload는 production scheduler나 main_server orchestration 계약이 아니다.
     raw text와 generated weak/strong view는 agent local boundary에 남긴다
 
