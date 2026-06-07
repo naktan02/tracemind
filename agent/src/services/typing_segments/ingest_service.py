@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent.src.services.inference.pipeline_service import (
-    InferencePipelineResult,
-    InferencePipelineService,
-)
-from shared.src.contracts.typing_segment_contracts import (
+from agent.src.contracts.typing_segment_contracts import (
     TypingSegmentBatchIngestResponsePayload,
     TypingSegmentIngestResponsePayload,
     TypingSegmentPayload,
+)
+from agent.src.services.inference.pipeline_service import (
+    InferencePipelineResult,
+    InferencePipelineService,
 )
 from shared.src.domain.entities.inference.events import QueryEvent
 

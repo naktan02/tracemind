@@ -9,14 +9,14 @@ from fastapi.testclient import TestClient
 
 from agent.src.api import typing_segments as typing_segments_api
 from agent.src.api.main import app, create_app
-from agent.src.services.inference.pipeline_service import InferencePipelineResult
-from agent.src.services.typing_segments.ingest_service import (
-    TypingSegmentIngestService,
-)
-from shared.src.contracts.typing_segment_contracts import (
+from agent.src.contracts.typing_segment_contracts import (
     TypingSegmentBatchIngestRequestPayload,
     TypingSegmentPayload,
     TypingSurfaceType,
+)
+from agent.src.services.inference.pipeline_service import InferencePipelineResult
+from agent.src.services.typing_segments.ingest_service import (
+    TypingSegmentIngestService,
 )
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
@@ -106,7 +106,7 @@ def test_typing_segment_router_is_registered_on_agent_app() -> None:
 
 
 def test_typing_segment_endpoint_reports_missing_pipeline_without_traceback() -> None:
-    client = TestClient(create_app())
+    client = TestClient(create_app(auto_configure_pipeline=False))
 
     response = client.post(
         "/api/v1/typing-segments",

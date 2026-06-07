@@ -6,14 +6,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from agent.src.services.typing_segments.ingest_service import (
-    TypingSegmentIngestService,
-)
-from shared.src.contracts.typing_segment_contracts import (
+from agent.src.contracts.typing_segment_contracts import (
     TypingSegmentBatchIngestRequestPayload,
     TypingSegmentBatchIngestResponsePayload,
     TypingSegmentIngestResponsePayload,
     TypingSegmentPayload,
+)
+from agent.src.services.typing_segments.ingest_service import (
+    TypingSegmentIngestService,
 )
 
 router = APIRouter(prefix="/api/v1/typing-segments", tags=["typing-segments"])

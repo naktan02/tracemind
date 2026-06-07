@@ -9,8 +9,22 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from agent.src.contracts.captured_text_contracts import (
+    CapturedTextBatchIngestRequestPayload,
+    CapturedTextBatchIngestResponsePayload,
+    CapturedTextDebugJobConfigRequestPayload,
+    CapturedTextDebugJobRunRequestPayload,
+    CapturedTextDebugJobRunResultPayload,
+    CapturedTextDebugJobStatusPayload,
+    CapturedTextEventPayload,
+    CapturedTextIngestResponsePayload,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
+)
+from agent.src.services.inference.pipeline_service import InferencePipelineService
+from agent.src.services.ingest.captured_text_debug_job_service import (
+    CapturedTextDebugJobService,
 )
 from agent.src.services.ingest.captured_text_ingest_service import (
     CapturedTextIngestService,
@@ -20,16 +34,6 @@ from agent.src.services.ingest.captured_text_lifecycle_service import (
 )
 from agent.src.services.ingest.captured_text_view_generation_service import (
     CapturedTextViewGenerationService,
-)
-from shared.src.contracts.captured_text_contracts import (
-    CapturedTextBatchIngestRequestPayload,
-    CapturedTextBatchIngestResponsePayload,
-    CapturedTextDebugJobConfigRequestPayload,
-    CapturedTextDebugJobRunRequestPayload,
-    CapturedTextDebugJobRunResultPayload,
-    CapturedTextDebugJobStatusPayload,
-    CapturedTextEventPayload,
-    CapturedTextIngestResponsePayload,
 )
 
 router = APIRouter(prefix="/api/v1/captured-text", tags=["captured-text"])
@@ -158,6 +162,13 @@ def get_captured_text_debug_job_state(request: Request) -> CapturedTextDebugJobS
     return job_state
 
 
+def get_optional_pipeline_service(request: Request) -> InferencePipelineService | None:
+    """debug 실행에서 사용할 pipeline service를 읽는다."""
+
+    service = getattr(request.app.state, "pipeline_service", None)
+    return service if isinstance(service, InferencePipelineService) else service
+
+
 CapturedTextIngestServiceDep = Annotated[
     CapturedTextIngestService,
     Depends(get_captured_text_ingest_service),
@@ -279,8 +290,12 @@ async def configure_captured_text_debug_job(
         request.app.state.captured_text_debug_job_task = asyncio.create_task(
             _captured_text_debug_job_loop(
                 job_state=job_state,
-                service=service,
-                lifecycle_service=lifecycle_service,
+                service=_debug_job_service(
+                    request=request,
+                    repository=repository,
+                    view_generation_service=service,
+                    lifecycle_service=lifecycle_service,
+                ),
             )
         )
     if not job_state.enabled and task is not None:
@@ -301,15 +316,20 @@ async def configure_captured_text_debug_job(
 )
 async def run_captured_text_view_generation_once(
     run_request: CapturedTextDebugJobRunRequestPayload,
+    request: Request,
     service: CapturedTextViewGenerationServiceDep,
     lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,
 ) -> CapturedTextDebugJobRunResultPayload:
-    """pending captured text view generation을 즉시 한 번 실행한다."""
+    """pending captured text view generation과 미분석 ready event를 즉시 실행한다."""
 
-    lifecycle_service.purge(repository=service.repository)
     result = await asyncio.to_thread(
-        service.generate_pending_views,
+        _debug_job_service(
+            request=request,
+            repository=service.repository,
+            view_generation_service=service,
+            lifecycle_service=lifecycle_service,
+        ).run_once,
         limit=run_request.limit,
     )
     job_state.last_run_at = datetime.now(tz=timezone.utc)
@@ -320,18 +340,10 @@ async def run_captured_text_view_generation_once(
 async def _captured_text_debug_job_loop(
     *,
     job_state: CapturedTextDebugJobState,
-    service: CapturedTextViewGenerationService,
-    lifecycle_service: CapturedTextLifecycleService,
+    service: CapturedTextDebugJobService,
 ) -> None:
     while job_state.enabled:
-        await asyncio.to_thread(
-            lifecycle_service.purge,
-            repository=service.repository,
-        )
-        result = await asyncio.to_thread(
-            service.generate_pending_views,
-            limit=job_state.batch_size,
-        )
+        result = await asyncio.to_thread(service.run_once, limit=job_state.batch_size)
         job_state.last_run_at = datetime.now(tz=timezone.utc)
         job_state.last_run_result = result
         await asyncio.sleep(job_state.interval_seconds)
@@ -359,4 +371,19 @@ def _build_debug_job_status(
         view_generation_status_counts=repository.count_by_view_generation_status(),
         last_run_at=job_state.last_run_at,
         last_run_result=job_state.last_run_result,
+    )
+
+
+def _debug_job_service(
+    *,
+    request: Request,
+    repository: CapturedTextRepository,
+    view_generation_service: CapturedTextViewGenerationService,
+    lifecycle_service: CapturedTextLifecycleService,
+) -> CapturedTextDebugJobService:
+    return CapturedTextDebugJobService(
+        repository=repository,
+        view_generation_service=view_generation_service,
+        lifecycle_service=lifecycle_service,
+        pipeline_service=get_optional_pipeline_service(request),
     )

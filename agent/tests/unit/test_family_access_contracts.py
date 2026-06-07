@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from shared.src.contracts.family_access_contracts import (
+from agent.src.contracts.family_access_contracts import (
     FamilyAccessMode,
     FamilyAccessRole,
     FamilySetupRequestPayload,

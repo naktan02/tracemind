@@ -6,16 +6,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from agent.src.services.wellbeing.family_access_service import (
-    FamilyAccessService,
-    FamilyAccessSetupAlreadyCompletedError,
-)
-from shared.src.contracts.family_access_contracts import (
+from agent.src.contracts.family_access_contracts import (
     FamilySetupRequestPayload,
     FamilySetupResponsePayload,
     FamilySetupStatusPayload,
     FamilyUnlockRequestPayload,
     FamilyUnlockResponsePayload,
+)
+from agent.src.services.wellbeing.family_access_service import (
+    FamilyAccessService,
+    FamilyAccessSetupAlreadyCompletedError,
 )
 
 router = APIRouter(prefix="/api/v1/family", tags=["family-access"])

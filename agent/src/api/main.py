@@ -49,6 +49,7 @@ from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.federation.rounds.runtime_service import (
     FederationRuntimeService,
 )
+from agent.src.services.inference.pipeline_factory import build_default_pipeline_service
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.ingest.captured_text_lifecycle_service import (
     CapturedTextLifecycleService,
@@ -137,6 +138,7 @@ def create_app(
     round_client_factory: RoundClientFactory | None = None,
     federation_runtime_service_factory: FederationRuntimeServiceFactory | None = None,
     family_extension_allowed_origins: tuple[str, ...] | None = None,
+    auto_configure_pipeline: bool = True,
 ) -> FastAPI:
     """Agent API 앱을 생성하고 override 가능한 기본 의존성을 연결한다."""
     app = FastAPI(title="TraceMind Agent", version="0.1.0")
@@ -233,6 +235,15 @@ def create_app(
     )
     if pipeline_service is not None:
         app.state.pipeline_service = pipeline_service
+    elif auto_configure_pipeline:
+        app.state.pipeline_service = build_default_pipeline_service(
+            analysis_event_repository=app.state.analysis_event_repository,
+            query_buffer_repository=app.state.query_buffer_repository,
+            shared_adapter_runtime_service=app.state.shared_adapter_runtime_service,
+            translation_service=(
+                app.state.captured_text_view_generation_service.translation_provider
+            ),
+        )
 
     app.include_router(health_router)
     app.include_router(captured_text_router)

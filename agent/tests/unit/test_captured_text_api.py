@@ -10,6 +10,14 @@ from fastapi.testclient import TestClient
 
 from agent.src.api import captured_text as captured_text_api
 from agent.src.api.main import app, create_app
+from agent.src.contracts.captured_text_contracts import (
+    CapturedTextBatchIngestRequestPayload,
+    CapturedTextDebugJobConfigRequestPayload,
+    CapturedTextDebugJobRunRequestPayload,
+    CapturedTextEventPayload,
+    CapturedTextSourceType,
+    CapturedTextSurfaceType,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
     captured_text_record_from_payload,
@@ -22,13 +30,8 @@ from agent.src.services.ingest.captured_text_lifecycle_service import (
     CapturedTextLifecycleConfig,
     CapturedTextLifecycleService,
 )
-from shared.src.contracts.captured_text_contracts import (
-    CapturedTextBatchIngestRequestPayload,
-    CapturedTextDebugJobConfigRequestPayload,
-    CapturedTextDebugJobRunRequestPayload,
-    CapturedTextEventPayload,
-    CapturedTextSourceType,
-    CapturedTextSurfaceType,
+from agent.src.services.ingest.captured_text_view_generation_service import (
+    CapturedTextViewGenerationService,
 )
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
@@ -36,9 +39,20 @@ from shared.src.domain.entities.inference.events import AnalysisEvent
 @dataclass(slots=True)
 class StubEventRepository:
     count_value: int = 0
+    source_event_ids: set[str] | None = None
 
     def count(self) -> int:
         return self.count_value
+
+    def has_source_event_id(self, source_event_id: str) -> bool:
+        return source_event_id in (self.source_event_ids or set())
+
+    def mark_source_event_id(self, source_event_id: str) -> None:
+        if self.source_event_ids is None:
+            self.source_event_ids = set()
+        if source_event_id not in self.source_event_ids:
+            self.source_event_ids.add(source_event_id)
+            self.count_value += 1
 
 
 @dataclass(slots=True)
@@ -52,7 +66,7 @@ class StubPipelineService:
     def process(self, event):
         self.processed_texts.append(event.text)
         self.processed_source_types.append(event.source_type)
-        self.event_repository.count_value += 1
+        self.event_repository.mark_source_event_id(event.query_id)
         return InferencePipelineResult(
             analysis_event=AnalysisEvent(
                 query_id=event.query_id,
@@ -183,7 +197,7 @@ def test_captured_text_router_is_registered_on_agent_app() -> None:
 
 
 def test_captured_text_endpoint_reports_missing_pipeline_without_traceback() -> None:
-    client = TestClient(create_app())
+    client = TestClient(create_app(auto_configure_pipeline=False))
 
     response = client.post(
         "/api/v1/captured-text/events",
@@ -244,7 +258,15 @@ def test_captured_text_debug_job_status_reports_pipeline_state(
 ) -> None:
     repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
     repository.save(captured_text_record_from_payload(_event("event_1")))
-    client = TestClient(create_app(captured_text_repository=repository))
+    client = TestClient(
+        create_app(
+            captured_text_repository=repository,
+            captured_text_view_generation_service=CapturedTextViewGenerationService(
+                repository=repository
+            ),
+            auto_configure_pipeline=False,
+        )
+    )
 
     response = client.get("/api/v1/captured-text/debug-job/status")
 
@@ -264,9 +286,15 @@ def test_captured_text_debug_job_status_reports_pipeline_state(
 def test_captured_text_debug_job_run_generates_views(
     tmp_path: Path,
 ) -> None:
+    pipeline = _pipeline()
     repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
     repository.save(captured_text_record_from_payload(_event("event_1")))
-    client = TestClient(create_app(captured_text_repository=repository))
+    client = TestClient(
+        create_app(
+            captured_text_repository=repository,
+            pipeline_service=pipeline,  # type: ignore[arg-type]
+        )
+    )
 
     response = client.post(
         "/api/v1/captured-text/debug-job/run-view-generation",
@@ -277,8 +305,42 @@ def test_captured_text_debug_job_run_generates_views(
     payload = response.json()
     assert payload["selected_count"] == 1
     assert payload["generated_count"] == 1
+    assert payload["analysis_selected_count"] == 1
+    assert payload["analysis_processed_count"] == 1
+    assert payload["analysis_failed_count"] == 0
     assert payload["generated_view_count"] == 1
     assert repository.get_generated_view("event_1") is not None
+    assert pipeline.processed_texts == ["오늘 너무 불안해"]
+
+
+def test_captured_text_debug_job_run_analyzes_existing_ready_views(
+    tmp_path: Path,
+) -> None:
+    pipeline = _pipeline()
+    repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
+    repository.save(captured_text_record_from_payload(_event("event_1")))
+    service = CapturedTextViewGenerationService(repository=repository)
+    service.generate_pending_views(limit=10)
+    client = TestClient(
+        create_app(
+            captured_text_repository=repository,
+            captured_text_view_generation_service=service,
+            pipeline_service=pipeline,  # type: ignore[arg-type]
+        )
+    )
+
+    response = client.post(
+        "/api/v1/captured-text/debug-job/run-view-generation",
+        json=CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(mode="json"),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["selected_count"] == 0
+    assert payload["generated_count"] == 0
+    assert payload["analysis_selected_count"] == 1
+    assert payload["analysis_processed_count"] == 1
+    assert pipeline.processed_texts == ["오늘 너무 불안해"]
 
 
 def test_captured_text_debug_job_config_toggles_state(

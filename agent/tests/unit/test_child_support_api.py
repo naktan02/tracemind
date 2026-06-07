@@ -7,6 +7,18 @@ from pathlib import Path
 
 from agent.src.api import child_support as child_support_api
 from agent.src.api.main import app
+from agent.src.contracts.child_support_contracts import (
+    ChildSupportAssistantMode,
+    ChildSupportConversationRequestPayload,
+    ChildSupportSafetyLevel,
+    ChildSupportScopeStatus,
+)
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
 )
@@ -23,18 +35,6 @@ from agent.src.services.wellbeing.child_support_service import (
     ChildSupportCoachService,
 )
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from shared.src.contracts.child_support_contracts import (
-    ChildSupportAssistantMode,
-    ChildSupportConversationRequestPayload,
-    ChildSupportSafetyLevel,
-    ChildSupportScopeStatus,
-)
-from shared.src.contracts.wellbeing_signal_contracts import (
-    WellbeingSignalConfidence,
-    WellbeingSignalLevel,
-    WellbeingSignalSummaryPayload,
-    WellbeingSignalTrend,
-)
 
 
 class StubChildSupportLlmProvider:

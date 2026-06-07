@@ -5,6 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
@@ -16,12 +22,6 @@ from agent.src.services.inference.decision_service import DecisionService
 from shared.src.contracts.personalization_contracts import (
     PersonalizationState,
     PersonalizationWarmupStatus,
-)
-from shared.src.contracts.wellbeing_signal_contracts import (
-    WellbeingSignalConfidence,
-    WellbeingSignalLevel,
-    WellbeingSignalSummaryPayload,
-    WellbeingSignalTrend,
 )
 from shared.src.domain.entities.inference.result import AssessmentResult
 from shared.src.domain.entities.inference.state import BaselineProfile, TimeSeriesState

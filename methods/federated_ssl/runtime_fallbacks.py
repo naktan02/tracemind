@@ -18,6 +18,9 @@ from methods.adaptation.peft_text_encoder.config import (
     PEFT_ENCODER_TRAINING_BACKEND_NAME,
 )
 from methods.adaptation.privacy_guards.noop import NOOP_PRIVACY_GUARD_NAME
+from methods.classification.linear_head.scoring import (
+    CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
+)
 from methods.common.config_reading import freeze_mapping
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
@@ -254,7 +257,7 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
         "margin_threshold": 0.02,
         "example_generation_backend_name": WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
         "evidence_backend_name": "analysis_score_evidence",
-        "scorer_backend_name": "prototype_similarity",
+        "scorer_backend_name": CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
         "score_policy_name": "max_cosine",
         "acceptance_policy_name": "top1_margin_threshold",
         "pseudo_label_algorithm_name": "top1_margin_threshold",

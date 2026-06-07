@@ -5,17 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
 from agent.src.services.wellbeing.projection_service import (
     WellbeingSignalProjectionService,
-)
-from shared.src.contracts.wellbeing_signal_contracts import (
-    WellbeingSignalConfidence,
-    WellbeingSignalLevel,
-    WellbeingSignalSummaryPayload,
-    WellbeingSignalTrend,
 )
 
 

@@ -10,6 +10,9 @@ import pytest
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     StoredAnalysisEvent,
 )
+from agent.src.services.inference.scoring_backends.prototype_similarity import (
+    PrototypeSimilarityScoringBackend,
+)
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.backends.inputs import (
     registry as training_example_backend_registry,
@@ -121,6 +124,10 @@ def _registry_catalog_entry(
     )
 
 
+def _prototype_scoring_service() -> ScoringService:
+    return ScoringService(backend=PrototypeSimilarityScoringBackend())
+
+
 def test_training_example_service_builds_scored_examples_from_source_rows() -> None:
     service = TrainingExampleService(backend=PrototypeRescoringTrainingExampleBackend())
     adapter = _StaticEmbeddingAdapter(
@@ -149,7 +156,7 @@ def test_training_example_service_builds_scored_examples_from_source_rows() -> N
             adapter_state=adapter_state,
             prototype_pack=_pack_payload(),
             model_id="hash_debug",
-            scoring_service=ScoringService(),
+            scoring_service=_prototype_scoring_service(),
         )
     )
 
@@ -175,7 +182,7 @@ def test_training_example_service_returns_empty_tuple_for_empty_rows() -> None:
             adapter_state=adapter_state,
             prototype_pack=_pack_payload(),
             model_id="hash_debug",
-            scoring_service=ScoringService(),
+            scoring_service=_prototype_scoring_service(),
         )
     )
 
@@ -200,7 +207,7 @@ def test_training_example_service_rebuilds_examples_from_stored_events() -> None
                 ),
             ),
             prototype_pack=_pack_payload(),
-            scoring_service=ScoringService(),
+            scoring_service=_prototype_scoring_service(),
         )
     )
 
@@ -227,7 +234,7 @@ def test_training_example_service_accepts_custom_shared_adapter_state() -> None:
             adapter_state=_CustomSharedAdapterState(),
             prototype_pack=_pack_payload(),
             model_id="hash_debug",
-            scoring_service=ScoringService(),
+            scoring_service=_prototype_scoring_service(),
         )
     )
 
@@ -262,7 +269,7 @@ def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
             adapter_state=adapter_state,
             prototype_pack=_pack_payload(),
             model_id="hash_debug",
-            scoring_service=ScoringService(),
+            scoring_service=_prototype_scoring_service(),
         )
     )
 
@@ -292,7 +299,7 @@ def test_training_example_service_requires_explicit_backend() -> None:
                 adapter_state=_IdentitySharedAdapterState(),
                 prototype_pack=_pack_payload(),
                 model_id="hash_debug",
-                scoring_service=ScoringService(),
+                scoring_service=_prototype_scoring_service(),
             )
         )
 
@@ -308,7 +315,7 @@ def test_weak_strong_pair_backend_rejects_stored_event_rebuild() -> None:
             StoredEventTrainingExampleBuildRequest(
                 stored_events=(),
                 prototype_pack=_pack_payload(),
-                scoring_service=ScoringService(),
+                scoring_service=_prototype_scoring_service(),
             )
         )
 

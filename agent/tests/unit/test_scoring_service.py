@@ -43,7 +43,7 @@ def _load_prototypes() -> dict[str, list[float]]:
 
 
 def test_score_returns_cosine_similarity_for_each_category() -> None:
-    service = ScoringService()
+    service = ScoringService(backend=PrototypeSimilarityScoringBackend())
 
     scores = service.score([1.0, 0.0, 0.0], _load_prototypes())
 
@@ -54,7 +54,7 @@ def test_score_returns_cosine_similarity_for_each_category() -> None:
 
 
 def test_score_uses_best_matching_prototype_for_multi_prototype_category() -> None:
-    service = ScoringService()
+    service = ScoringService(backend=PrototypeSimilarityScoringBackend())
 
     scores = service.score(
         [1.0, 0.0],
@@ -78,21 +78,21 @@ def test_score_rejects_unsupported_similarity_metric() -> None:
 
 
 def test_score_rejects_dimension_mismatch() -> None:
-    service = ScoringService()
+    service = ScoringService(backend=PrototypeSimilarityScoringBackend())
 
     with pytest.raises(ValueError, match="dimensions must match"):
         service.score([1.0, 0.0, 0.0], {"anxiety": [1.0, 0.0]})
 
 
 def test_score_rejects_zero_norm_embedding() -> None:
-    service = ScoringService()
+    service = ScoringService(backend=PrototypeSimilarityScoringBackend())
 
     with pytest.raises(ValueError, match="Embedding vector norm must be non-zero"):
         service.score([0.0, 0.0], {"anxiety": [1.0, 0.0]})
 
 
 def test_score_rejects_zero_norm_prototype() -> None:
-    service = ScoringService()
+    service = ScoringService(backend=PrototypeSimilarityScoringBackend())
 
     with pytest.raises(ValueError, match="Prototype vector norm must be non-zero"):
         service.score([1.0, 0.0], {"anxiety": [0.0, 0.0]})
@@ -214,6 +214,13 @@ def test_score_service_uses_methods_owned_classifier_head_logits_backend() -> No
     assert service.confidence_kind == "classifier_head_logit_top1"
     assert scores["anxiety"] == pytest.approx(1.1)
     assert scores["normal"] == pytest.approx(0.9)
+
+
+def test_score_service_default_backend_is_classifier_head_logits() -> None:
+    service = ScoringService()
+
+    assert service.backend_name == "classifier_head_logits"
+    assert service.confidence_kind == "classifier_head_logit_top1"
 
 
 def test_classifier_head_logits_catalog_points_to_classification_core() -> None:

@@ -6,6 +6,16 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from agent.src.contracts.child_support_contracts import (
+    ChildSupportAssistantMode,
+    ChildSupportConversationRequestPayload,
+    ChildSupportConversationResponsePayload,
+    ChildSupportProactivePromptPayload,
+    ChildSupportSafetyLevel,
+    ChildSupportScopeStatus,
+    ChildSupportSuggestionPayload,
+)
+from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
     ChildSupportMessageRecord,
@@ -30,16 +40,6 @@ from agent.src.services.wellbeing.child_support_safety_policy import (
     ChildSupportSafetyPolicy,
 )
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from shared.src.contracts.child_support_contracts import (
-    ChildSupportAssistantMode,
-    ChildSupportConversationRequestPayload,
-    ChildSupportConversationResponsePayload,
-    ChildSupportProactivePromptPayload,
-    ChildSupportSafetyLevel,
-    ChildSupportScopeStatus,
-    ChildSupportSuggestionPayload,
-)
-from shared.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 
 DISCLOSURE_NOTICE = (
     "TraceMind는 진단이나 상담을 대신하지 않습니다. 위험하거나 혼자 감당하기 "

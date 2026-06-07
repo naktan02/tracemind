@@ -85,8 +85,8 @@ uv run ruff format --check main_server/src agent/src shared/src scripts tests
 | `shared/tests/unit/test_adapter_contracts.py` | adapter family state/update payload |
 | `shared/tests/unit/test_new_training_contracts.py` | training task/update/feedback signal |
 | `shared/tests/unit/test_prototype_contracts.py` | prototype pack serialization/helper |
-| `shared/tests/unit/test_family_access_contracts.py` | family setup/unlock contract |
-| `shared/tests/unit/test_wellbeing_signal_contracts.py` | wellbeing summary/timeseries contract |
+| `agent/tests/unit/test_family_access_contracts.py` | family setup/unlock contract |
+| `agent/tests/unit/test_wellbeing_signal_contracts.py` | wellbeing summary/timeseries contract |
 
 Contract 변경은 producer, consumer, serialization/compatibility test, 관련 docs를 같은 변경에서 닫는다.
 

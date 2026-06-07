@@ -4,17 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from agent.src.contracts.child_support_contracts import (
+    ChildSupportSafetyLevel,
+    ChildSupportScopeStatus,
+)
+from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 from agent.src.services.wellbeing.child_support_context_provider import (
     ChildSupportConversationContext,
 )
 from agent.src.services.wellbeing.child_support_safety_intent import (
     ChildSupportSafetyIntent,
 )
-from shared.src.contracts.child_support_contracts import (
-    ChildSupportSafetyLevel,
-    ChildSupportScopeStatus,
-)
-from shared.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 
 _SELF_HARM_KEYWORDS = (
     "죽고",

@@ -7,6 +7,7 @@ classifier/prototype scoring은 scorer backend와 local asset provider로 분리
 
 코드 읽기 시작점:
 
+- `agent/src/contracts/`
 - `agent/src/services/README.md`
 - 로컬 추론 rail: `agent/src/services/inference/`
 - scorer asset runtime: `agent/src/services/assets/`

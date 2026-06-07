@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from shared.src.contracts.captured_text_contracts import (
+from agent.src.contracts.captured_text_contracts import (
     CapturedTextBatchIngestRequestPayload,
     CapturedTextDebugJobConfigRequestPayload,
     CapturedTextDebugJobRunResultPayload,
@@ -93,3 +93,4 @@ def test_captured_text_debug_job_contracts_are_strict() -> None:
     assert status.schema_version == "captured_text_debug_job_status.v1"
     assert status.last_run_result is not None
     assert status.last_run_result.generated_count == 2
+    assert status.last_run_result.analysis_processed_count == 0

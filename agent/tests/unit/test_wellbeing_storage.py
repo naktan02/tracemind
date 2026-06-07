@@ -5,6 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agent.src.contracts.family_access_contracts import FamilyAccessRole
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalRange,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
 from agent.src.infrastructure.repositories.family_access_repository import (
     FamilyAccessRepository,
     FamilyAccessState,
@@ -19,14 +27,6 @@ from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import 
 from agent.src.services.wellbeing.family_access_service import FamilyAccessService
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
-from shared.src.contracts.family_access_contracts import FamilyAccessRole
-from shared.src.contracts.wellbeing_signal_contracts import (
-    WellbeingSignalConfidence,
-    WellbeingSignalLevel,
-    WellbeingSignalRange,
-    WellbeingSignalSummaryPayload,
-    WellbeingSignalTrend,
-)
 
 
 def _build_summary_payload(

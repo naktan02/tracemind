@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from shared.src.contracts.wellbeing_signal_contracts import (
+from agent.src.contracts.wellbeing_signal_contracts import (
     ParentUnlockRequestPayload,
     ParentUnlockResponsePayload,
     WellbeingSignalConfidence,

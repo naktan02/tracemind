@@ -9,11 +9,11 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter
 
-import shared.src.contracts.captured_text_contracts as captured_text_contracts
-import shared.src.contracts.child_support_contracts as child_support_contracts
-import shared.src.contracts.family_access_contracts as family_access_contracts
-import shared.src.contracts.typing_segment_contracts as typing_segment_contracts
-import shared.src.contracts.wellbeing_signal_contracts as wellbeing_signal_contracts
+import agent.src.contracts.captured_text_contracts as captured_text_contracts
+import agent.src.contracts.child_support_contracts as child_support_contracts
+import agent.src.contracts.family_access_contracts as family_access_contracts
+import agent.src.contracts.typing_segment_contracts as typing_segment_contracts
+import agent.src.contracts.wellbeing_signal_contracts as wellbeing_signal_contracts
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_PATH = ROOT / "apps/family_extension/src/contracts/generated.ts"

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from shared.src.contracts.child_support_contracts import (
+from agent.src.contracts.child_support_contracts import (
     ChildSupportAssistantMode,
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,

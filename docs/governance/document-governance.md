@@ -28,13 +28,13 @@
 | Hydra config group 경계 | `conf/README.md` |
 | 활성 연구/시스템 계획 | `docs/project_execution_plan.md` |
 | API endpoint 표면 | `docs/api/api-surface.md`, `agent/src/api/*`, `main_server/src/api/*` |
-| payload 필드와 의미 | `shared/src/contracts/*.py`, `shared/src/contracts/README.md` |
+| payload 필드와 의미 | `shared/src/contracts/*.py`, `shared/src/contracts/README.md`, `agent/src/contracts/*.py` |
 | local run/smoke 절차 | `docs/operations/local-runbook.md` |
 | 테스트 전략 | `docs/quality/test-strategy.md` |
 | 알고리즘/전략 추가 절차 | `docs/architecture/target-method-runtime-structure.md`, `methods/README.md`, 해당 `methods/**/NEW_METHOD.md`, `conf/README.md` |
 | query buffer local boundary | `docs/contracts/query_buffer_v1.md`, `agent/src/infrastructure/repositories/query_buffer_repository.py` |
-| child-support local boundary | `shared/src/contracts/child_support_contracts.py`, `agent/src/services/wellbeing/child_support_service.py` |
-| family extension surface | `apps/family_extension/README.md`, `apps/family_extension/AGENTS.md`, `shared/src/contracts/wellbeing_signal_contracts.py` |
+| child-support local boundary | `agent/src/contracts/child_support_contracts.py`, `agent/src/services/wellbeing/child_support_service.py` |
+| family extension surface | `apps/family_extension/README.md`, `apps/family_extension/AGENTS.md`, `agent/src/contracts/wellbeing_signal_contracts.py` |
 
 ## 3. 작성 원칙
 

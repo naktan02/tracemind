@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from agent.src.contracts.captured_text_contracts import (
+    CapturedTextBatchIngestResponsePayload,
+    CapturedTextEventPayload,
+    CapturedTextIngestResponsePayload,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
     captured_text_record_from_payload,
@@ -14,11 +19,6 @@ from agent.src.services.inference.pipeline_service import (
 )
 from agent.src.services.ingest.captured_text_lifecycle_service import (
     CapturedTextLifecycleService,
-)
-from shared.src.contracts.captured_text_contracts import (
-    CapturedTextBatchIngestResponsePayload,
-    CapturedTextEventPayload,
-    CapturedTextIngestResponsePayload,
 )
 from shared.src.domain.entities.inference.events import QueryEvent
 

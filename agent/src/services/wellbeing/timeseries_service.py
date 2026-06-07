@@ -5,16 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalRange,
+    WellbeingSignalTimeseriesPayload,
+    WellbeingSignalTimeseriesPointPayload,
+)
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
 from agent.src.services.wellbeing.projection_service import (
     WellbeingSignalProjectionService,
-)
-from shared.src.contracts.wellbeing_signal_contracts import (
-    WellbeingSignalRange,
-    WellbeingSignalTimeseriesPayload,
-    WellbeingSignalTimeseriesPointPayload,
 )
 
 _RANGE_TO_DAYS: dict[WellbeingSignalRange, int] = {

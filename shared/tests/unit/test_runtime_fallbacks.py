@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from methods.adaptation.peft_text_encoder.config import PEFT_ENCODER_DELTA_FORMAT_INLINE
+from methods.classification.linear_head.scoring import (
+    CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
+)
 from methods.federated_ssl.runtime_fallbacks import (
     FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK,
     FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
@@ -53,6 +56,7 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
         config.scorer_backend_name
         == RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
     )
+    assert config.scorer_backend_name == CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
     assert (
         config.privacy_guard_name
         == RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name

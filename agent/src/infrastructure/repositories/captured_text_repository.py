@@ -10,7 +10,7 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
-from shared.src.contracts.captured_text_contracts import (
+from agent.src.contracts.captured_text_contracts import (
     CAPTURED_TEXT_EVENT_V1,
     CapturedTextEventPayload,
 )
@@ -160,6 +160,11 @@ SELECT event_id, schema_version, generated_at, weak_text, strong_text_0,
        strong_text_1, generator_name, generator_version, source_text_fingerprint,
        metadata
 FROM captured_text_generated_views
+WHERE event_id = ?;
+"""
+
+_DELETE_GENERATED_VIEW_SQL = """
+DELETE FROM captured_text_generated_views
 WHERE event_id = ?;
 """
 
@@ -436,6 +441,13 @@ class CapturedTextRepository:
         with self._connect() as conn:
             row = conn.execute(_SELECT_GENERATED_VIEW_SQL, (event_id,)).fetchone()
         return None if row is None else _row_to_generated_view(row)
+
+    def delete_generated_view(self, event_id: str) -> int:
+        """event_id에 해당하는 generated view를 삭제한다."""
+
+        with self._connect() as conn:
+            cursor = conn.execute(_DELETE_GENERATED_VIEW_SQL, (event_id,))
+        return max(cursor.rowcount, 0)
 
     def get_recent_generated_views(
         self,

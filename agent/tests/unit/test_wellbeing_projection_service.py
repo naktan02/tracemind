@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
@@ -16,7 +17,6 @@ from agent.src.services.wellbeing.projection_service import (
 )
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
-from shared.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
 

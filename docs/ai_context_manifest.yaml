@@ -11,8 +11,10 @@ canonical_layers:
 
 source_of_truth_priority:
   - shared/src/contracts/*.py
+  - agent/src/contracts/*.py
   - shared/src/domain/entities/*
   - shared/src/contracts/README.md
+  - agent/src/contracts/README.md
   - plan.md
   - docs/project_execution_plan.md
   - docs/architecture/target-method-runtime-structure.md
@@ -66,7 +68,9 @@ task_routes:
       - AGENTS.md
       - relevant path-specific AGENTS.md
       - shared/src/contracts/README.md
+      - agent/src/contracts/README.md when changing agent-local API/UI payloads
       - relevant shared/src/contracts file
+      - relevant agent/src/contracts file for agent-local API/UI payloads
       - relevant producer and consumer files
     conditional_read:
       - docs/contracts/central_peft_text_encoder_trainer_contract.md for query-domain PEFT text encoder trainer contracts

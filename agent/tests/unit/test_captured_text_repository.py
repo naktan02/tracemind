@@ -8,6 +8,11 @@ from pathlib import Path
 
 import pytest
 
+from agent.src.contracts.captured_text_contracts import (
+    CapturedTextEventPayload,
+    CapturedTextSourceType,
+    CapturedTextSurfaceType,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
     CAPTURED_TEXT_VIEW_STATUS_FAILED,
@@ -28,11 +33,6 @@ from agent.src.services.ingest.captured_text_view_generation_service import (
 )
 from agent.src.services.training.datasets.captured_text_training_source_service import (
     CapturedTextTrainingSourceService,
-)
-from shared.src.contracts.captured_text_contracts import (
-    CapturedTextEventPayload,
-    CapturedTextSourceType,
-    CapturedTextSurfaceType,
 )
 
 
@@ -218,6 +218,51 @@ def test_view_generation_service_materializes_identity_fallback(
     assert generated.metadata["weak_text_provider"] == "identity"
     assert loaded.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_READY
     assert result.generated_count == 1
+
+
+def test_view_generation_service_regenerates_stale_ready_views(
+    tmp_repo: CapturedTextRepository,
+) -> None:
+    class TranslationProvider:
+        model_id = "translation-provider"
+
+        def translate_batch(self, texts: list[str]) -> list[str]:
+            return [f"translated:{text}" for text in texts]
+
+    class StrongViewProvider:
+        model_id = "strong-provider"
+
+        def build_candidate_pairs(self, *, texts):
+            class Pair:
+                def __init__(self, text: str) -> None:
+                    self.aug_0 = f"{text}:aug0"
+                    self.aug_1 = f"{text}:aug1"
+
+            return [Pair(str(text)) for text in texts]
+
+    tmp_repo.save(_make_record(event_id="event_1", text="불안해"))
+    identity_service = CapturedTextViewGenerationService(repository=tmp_repo)
+    identity_service.generate_pending_views(limit=10)
+
+    service = CapturedTextViewGenerationService(
+        repository=tmp_repo,
+        translation_provider=TranslationProvider(),
+        strong_view_provider=StrongViewProvider(),
+    )
+    result = service.generate_pending_views(limit=10)
+
+    generated = tmp_repo.get_generated_view("event_1")
+    loaded = tmp_repo.get("event_1")
+    assert generated is not None
+    assert loaded is not None
+    assert result.selected_count == 1
+    assert result.generated_count == 1
+    assert "stale generated view" in result.message
+    assert generated.weak_text == "translated:불안해"
+    assert generated.strong_text_0 == "translated:불안해:aug0"
+    assert generated.metadata["weak_text_provider"] == "translation-provider"
+    assert generated.metadata["strong_text_provider"] == "strong-provider"
+    assert loaded.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_READY
 
 
 def test_generated_view_training_source_projection_uses_ready_views(

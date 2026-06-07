@@ -140,7 +140,7 @@ class CapturedTextDebugJobConfigRequestPayload(BaseModel):
 
 
 class CapturedTextDebugJobRunResultPayload(BaseModel):
-    """captured text view generation 실행 결과."""
+    """captured text view generation과 local analysis 실행 결과."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -152,6 +152,9 @@ class CapturedTextDebugJobRunResultPayload(BaseModel):
     failed_count: int = Field(ge=0)
     pending_remaining_count: int = Field(ge=0)
     generated_view_count: int = Field(ge=0)
+    analysis_selected_count: int = Field(default=0, ge=0)
+    analysis_processed_count: int = Field(default=0, ge=0)
+    analysis_failed_count: int = Field(default=0, ge=0)
     message: str = ""
 
 

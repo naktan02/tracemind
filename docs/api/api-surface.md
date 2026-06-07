@@ -2,7 +2,9 @@
 
 이 문서는 현재 FastAPI route 표면을 빠르게 찾기 위한 문서다.
 
-요청/응답 payload 필드의 최종 source of truth는 각 route의 Pydantic 모델과 `shared/src/contracts/*.py`다. 이 문서는 endpoint 위치와 책임 경계만 요약한다.
+요청/응답 payload 필드의 최종 source of truth는 각 route의 Pydantic 모델,
+`shared/src/contracts/*.py`, 그리고 agent-local raw text 계약의 경우
+`agent/src/contracts/*.py`다. 이 문서는 endpoint 위치와 책임 경계만 요약한다.
 
 ## 1. App Entry Points
 
@@ -49,6 +51,12 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | GET | `/api/v1/ingest/status` | 저장된 scored event 수 조회 | `agent/src/api/ingest.py` |
 | POST | `/api/v1/typing-segments` | 브라우저 확장 typing segment를 agent-local inference pipeline으로 처리 | `agent/src/api/typing_segments.py` |
 | POST | `/api/v1/typing-segments/batch` | 최대 100개 typing segment 일괄 처리 | `agent/src/api/typing_segments.py` |
+| POST | `/api/v1/captured-text/events` | 브라우저 확장 captured text event를 agent-local 저장소에 저장하고 즉시 분석 | `agent/src/api/captured_text.py` |
+| POST | `/api/v1/captured-text/batch` | 최대 100개 captured text event 일괄 저장/분석 | `agent/src/api/captured_text.py` |
+| GET | `/api/v1/captured-text/status` | captured text 저장/분석 상태 조회 | `agent/src/api/captured_text.py` |
+| GET | `/api/v1/captured-text/debug-job/status` | captured text view generation/debug job 상태 조회 | `agent/src/api/captured_text.py` |
+| POST | `/api/v1/captured-text/debug-job/config` | captured text debug job 주기 실행 on/off 설정 | `agent/src/api/captured_text.py` |
+| POST | `/api/v1/captured-text/debug-job/run-view-generation` | pending view 생성과 미분석 ready event 분석을 즉시 실행 | `agent/src/api/captured_text.py` |
 
 주요 payload:
 
@@ -57,12 +65,18 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | `IngestEventRequest` | `agent/src/api/ingest.py` |
 | `IngestEventResponse` | `agent/src/api/ingest.py` |
 | `QueryEvent` | `shared/src/domain/entities/inference/events.py` |
-| `TypingSegmentPayload` | `shared/src/contracts/typing_segment_contracts.py` |
-| `TypingSegmentIngestResponsePayload` | `shared/src/contracts/typing_segment_contracts.py` |
+| `TypingSegmentPayload` | `agent/src/contracts/typing_segment_contracts.py` |
+| `TypingSegmentIngestResponsePayload` | `agent/src/contracts/typing_segment_contracts.py` |
+| `CapturedTextEventPayload` | `agent/src/contracts/captured_text_contracts.py` |
+| `CapturedTextDebugJob*Payload` | `agent/src/contracts/captured_text_contracts.py` |
 
 `TypingSegmentPayload`는 extension/collector -> local agent 전용 raw segment 계약이다.
 `final_text`, `deleted_text`, `field_hint`, page context는 main_server API나 FL update
 envelope으로 전달하지 않는다.
+
+`CapturedTextEventPayload`와 debug job payload도 agent-local 계약이다. 원문,
+page context, generated weak/strong view는 main_server나 FL update envelope으로
+전달하지 않는다.
 
 ### Agent Sync
 
@@ -109,11 +123,11 @@ shared/prototype sync, example build, update upload까지의 실행 흐름은
 
 | Contract | Source |
 |---|---|
-| `ChildSupportConversation*` | `shared/src/contracts/child_support_contracts.py` |
-| `ChildSupportProactivePromptPayload` | `shared/src/contracts/child_support_contracts.py` |
-| `FamilySetup*`, `FamilyUnlock*` | `shared/src/contracts/family_access_contracts.py` |
-| `WellbeingSignalSummaryPayload` | `shared/src/contracts/wellbeing_signal_contracts.py` |
-| `WellbeingSignalTimeseriesPayload` | `shared/src/contracts/wellbeing_signal_contracts.py` |
+| `ChildSupportConversation*` | `agent/src/contracts/child_support_contracts.py` |
+| `ChildSupportProactivePromptPayload` | `agent/src/contracts/child_support_contracts.py` |
+| `FamilySetup*`, `FamilyUnlock*` | `agent/src/contracts/family_access_contracts.py` |
+| `WellbeingSignalSummaryPayload` | `agent/src/contracts/wellbeing_signal_contracts.py` |
+| `WellbeingSignalTimeseriesPayload` | `agent/src/contracts/wellbeing_signal_contracts.py` |
 
 `ChildSupportConversation*` raw message와 conversation 저장은 agent-local
 SQLite 경계다. main_server API는 child-support 원문을 읽지 않는다.
@@ -166,6 +180,7 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | 변경 | 같이 확인할 것 |
 |---|---|
 | shared payload 변경 | `shared/src/contracts/*.py`, contract tests, producer/consumer, 관련 `docs/contracts/*` |
+| agent-local raw text payload 변경 | `agent/src/contracts/*.py`, agent contract/API tests, generated app types |
 | agent route 변경 | `agent/tests/unit/*_api.py`, `docs/api/api-surface.md`, relevant app consumer |
 | main_server route 변경 | `main_server/tests/unit/*_api.py`, root integration tests, `docs/api/api-surface.md` |
 | family/wellbeing route 변경 | `apps/family_extension`, generated types, 관련 shared wellbeing/family contract |

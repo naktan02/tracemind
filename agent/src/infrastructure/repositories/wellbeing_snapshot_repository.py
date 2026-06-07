@@ -7,15 +7,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from agent.src.infrastructure.repositories.wellbeing_storage import (
-    DEFAULT_WELLBEING_DB_PATH,
-    connect_wellbeing_db,
-)
-from shared.src.contracts.wellbeing_signal_contracts import (
+from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalConfidence,
     WellbeingSignalLevel,
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
+)
+from agent.src.infrastructure.repositories.wellbeing_storage import (
+    DEFAULT_WELLBEING_DB_PATH,
+    connect_wellbeing_db,
 )
 
 _CREATE_TABLE_SQL = """

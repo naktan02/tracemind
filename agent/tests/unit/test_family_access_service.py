@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from agent.src.contracts.family_access_contracts import FamilyAccessRole
 from agent.src.infrastructure.repositories.family_access_repository import (
     FamilyAccessRepository,
 )
@@ -17,7 +18,6 @@ from agent.src.services.wellbeing.family_access_service import (
     FamilyAccessService,
     FamilyAccessSetupAlreadyCompletedError,
 )
-from shared.src.contracts.family_access_contracts import FamilyAccessRole
 
 
 def test_family_access_service_reports_setup_incomplete_before_initial_setup(

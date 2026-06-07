@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalSummaryPayload,
+)
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
     ChildSupportMessageRecord,
@@ -18,9 +21,6 @@ from agent.src.services.wellbeing.child_support_conversation_state import (
     derive_child_support_conversation_state,
 )
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from shared.src.contracts.wellbeing_signal_contracts import (
-    WellbeingSignalSummaryPayload,
-)
 
 
 @dataclass(frozen=True, slots=True)

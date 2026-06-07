@@ -1,4 +1,4 @@
-"""프로토타입 점수 계산 서비스."""
+"""로컬 category score 계산 서비스."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ from agent.src.services.inference.scoring_backends.helpers import (
     resolve_scoring_backend_name,
     resolve_scoring_confidence_kind,
 )
-from agent.src.services.inference.scoring_backends.prototype_similarity import (
-    PrototypeSimilarityScoringBackend,
-)
 from agent.src.services.inference.scoring_backends.registry import (
     build_scoring_backend,
+)
+from methods.classification.linear_head.scoring import (
+    ClassifierHeadLogitsScoringBackend,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
@@ -28,7 +28,7 @@ from shared.src.domain.entities.training.shared_adapter_state import SharedAdapt
 class ScoringService:
     """설정된 scoring backend로 category score dict를 계산한다."""
 
-    backend: ScoringBackend = field(default_factory=PrototypeSimilarityScoringBackend)
+    backend: ScoringBackend = field(default_factory=ClassifierHeadLogitsScoringBackend)
     shared_state: SharedAdapterState | None = None
 
     @classmethod

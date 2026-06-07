@@ -229,6 +229,9 @@ export interface CapturedTextDebugJobRunResultPayload {
   failed_count: number;
   pending_remaining_count: number;
   generated_view_count: number;
+  analysis_selected_count: number;
+  analysis_processed_count: number;
+  analysis_failed_count: number;
   message: string;
 }
 

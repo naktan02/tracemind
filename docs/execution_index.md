@@ -35,6 +35,7 @@ central fixed embedding + classifier seed
 | `docs/contracts/central_peft_text_encoder_trainer_contract.md` | 중앙 SSL control scaffold |
 | `docs/contracts/legacy_contract_ledger.md` | legacy/compatibility 표면의 소유자와 제거 조건 |
 | `docs/api/api-surface.md` | FastAPI endpoint 표면과 owner |
+| `agent/src/contracts/README.md` | agent-local API/UI payload 계약 해석 |
 | `apps/family_extension/README.md` | family extension 현재 UI/runtime 표면 |
 
 ## Fast Code Paths

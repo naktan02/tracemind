@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from shared.src.contracts.typing_segment_contracts import (
+from agent.src.contracts.typing_segment_contracts import (
     TypingCaptureConfidence,
     TypingSegmentBatchIngestRequestPayload,
     TypingSegmentPayload,

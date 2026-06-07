@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Protocol
 
+from agent.src.contracts.captured_text_contracts import (
+    CapturedTextDebugJobRunResultPayload,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CAPTURED_TEXT_VIEW_STATUS_FAILED,
     CAPTURED_TEXT_VIEW_STATUS_PENDING,
@@ -14,9 +17,6 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
     CapturedTextRepository,
-)
-from shared.src.contracts.captured_text_contracts import (
-    CapturedTextDebugJobRunResultPayload,
 )
 
 
@@ -94,9 +94,15 @@ class CapturedTextViewGenerationService:
     ) -> CapturedTextDebugJobRunResultPayload:
         """pending raw event를 읽어 generated view를 저장한다."""
 
+        stale_count = self._reset_stale_ready_views(limit=limit)
         records = self.repository.get_pending_view_generation(limit=limit)
         if not records:
-            return self._result(selected_count=0, generated_count=0, failed_count=0)
+            return self._result(
+                selected_count=0,
+                generated_count=0,
+                failed_count=0,
+                message=_stale_view_message(stale_count),
+            )
 
         try:
             weak_texts, weak_metadata = self._build_weak_texts(records)
@@ -159,6 +165,52 @@ class CapturedTextViewGenerationService:
             selected_count=len(records),
             generated_count=generated_count,
             failed_count=failed_count,
+            message=_stale_view_message(stale_count),
+        )
+
+    def _reset_stale_ready_views(self, *, limit: int) -> int:
+        """현재 provider와 맞지 않는 ready generated view를 재생성 대상으로 돌린다."""
+
+        reset_count = 0
+        for record in self.repository.get_recent(limit=limit):
+            if record.view_generation_status != CAPTURED_TEXT_VIEW_STATUS_READY:
+                continue
+            generated_view = self.repository.get_generated_view(record.event_id)
+            if generated_view is None:
+                reset_count += self.repository.mark_view_generation_status(
+                    event_id=record.event_id,
+                    status=CAPTURED_TEXT_VIEW_STATUS_PENDING,
+                )
+                continue
+            if self._generated_view_matches_current_providers(
+                record=record,
+                generated_view=generated_view,
+            ):
+                continue
+            self.repository.delete_generated_view(record.event_id)
+            reset_count += self.repository.mark_view_generation_status(
+                event_id=record.event_id,
+                status=CAPTURED_TEXT_VIEW_STATUS_PENDING,
+            )
+        return reset_count
+
+    def _generated_view_matches_current_providers(
+        self,
+        *,
+        record: CapturedTextRecord,
+        generated_view: CapturedTextGeneratedViewRecord,
+    ) -> bool:
+        metadata = generated_view.metadata
+        expected_weak_provider = (
+            self.weak_text_provider_name
+            if self.translation_provider is not None
+            and record.locale in self.translation_locales
+            else "identity"
+        )
+        expected_strong_provider = self.strong_text_provider_name
+        return (
+            metadata.get("weak_text_provider") == expected_weak_provider
+            and metadata.get("strong_text_provider") == expected_strong_provider
         )
 
     def _build_weak_texts(
@@ -261,3 +313,9 @@ def _provider_name(provider: object | None) -> str:
     if isinstance(provider_name, str) and provider_name:
         return provider_name
     return provider.__class__.__name__
+
+
+def _stale_view_message(stale_count: int) -> str:
+    if stale_count <= 0:
+        return ""
+    return f"stale generated view {stale_count}건을 재생성했습니다."

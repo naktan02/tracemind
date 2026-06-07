@@ -97,6 +97,13 @@ ORDER BY category ASC;
 
 _COUNT_SQL = "SELECT COUNT(*) FROM analysis_events;"
 
+_EXISTS_SOURCE_EVENT_SQL = """
+SELECT 1
+FROM analysis_events
+WHERE source_event_id = ?
+LIMIT 1;
+"""
+
 
 @dataclass(slots=True)
 class StoredAnalysisEvent:
@@ -204,6 +211,13 @@ class AnalysisEventRepository:
         """저장된 총 이벤트 수를 반환한다."""
         with self._connect() as conn:
             return conn.execute(_COUNT_SQL).fetchone()[0]
+
+    def has_source_event_id(self, source_event_id: str) -> bool:
+        """source_event_id로 저장된 분석 결과가 이미 있는지 확인한다."""
+
+        with self._connect() as conn:
+            row = conn.execute(_EXISTS_SOURCE_EVENT_SQL, (source_event_id,)).fetchone()
+        return row is not None
 
     # ------------------------------------------------------------------ #
     # 내부                                                                 #
