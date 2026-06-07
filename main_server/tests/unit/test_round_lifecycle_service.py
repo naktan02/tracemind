@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,6 +41,7 @@ from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
     RoundOpenDraftRequest,
     RoundStatus,
+    RoundStrategyConfig,
 )
 from main_server.src.services.federation.rounds.payload_adapters.models import (
     SharedAdapterRoundPayloadAdapter,
@@ -103,6 +105,10 @@ from shared.src.domain.services.clock import FixedClock
 ModelManifestRepository = model_manifest_repository_module.ModelManifestRepository
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
+)
+peft_encoder_partitioned_projection = importlib.import_module(
+    "methods.adaptation.peft_text_encoder.aggregation."
+    "peft_encoder_partitioned_projection"
 )
 TEST_METHOD_DESCRIPTOR = FederatedSslMethodDescriptor(
     name="test_round_runtime_method",
@@ -549,6 +555,33 @@ def test_round_lifecycle_rejects_duplicate_update_id(tmp_path: Path) -> None:
     assert acceptance.update_count == 1
     with pytest.raises(RoundConflictError):
         service.accept_update_submission(record.round_id, update)
+
+
+def test_round_lifecycle_uses_partitioned_backend_for_fedmatch_finalize(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    service, _active_manifest, _round_repository = _build_peft_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    record = service.open_round(
+        RoundOpenDraftRequest(
+            round_id="round_fedmatch",
+            strategy=RoundStrategyConfig(
+                mode="method_owned",
+                ssl_method="fixmatch_usb_v1",
+                fssl_method="fedmatch",
+            ),
+        )
+    )
+
+    round_manager = service._round_manager_for_finalize(record)
+
+    assert (
+        round_manager.payload_adapter.aggregation_backend.strategy.method_name
+        == peft_encoder_partitioned_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME
+    )
 
 
 def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(

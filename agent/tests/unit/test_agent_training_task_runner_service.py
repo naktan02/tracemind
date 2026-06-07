@@ -23,7 +23,11 @@ from shared.src.contracts.training_contracts import (
 )
 
 
-def _build_query_ssl_task_payload() -> TrainingTaskPayload:
+def _build_query_ssl_task_payload(
+    *,
+    fssl_method: str | None = None,
+    fssl_context: dict[str, object] | None = None,
+) -> TrainingTaskPayload:
     return TrainingTaskPayload(
         schema_version="training_task.v1",
         task_id="task_query_ssl",
@@ -59,6 +63,8 @@ def _build_query_ssl_task_payload() -> TrainingTaskPayload:
             },
         ),
         selection_policy=TrainingSelectionPolicyPayload(),
+        fssl_method=fssl_method,
+        fssl_context=fssl_context,
     )
 
 
@@ -143,7 +149,18 @@ def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
     shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
     shared_adapter_runtime_service.get_active_state.return_value = active_state
     round_client = MagicMock()
-    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        fssl_method="fedmatch",
+        fssl_context={
+            "schema_version": "fssl_context.v1",
+            "method_name": "fedmatch",
+            "context_kind": "peer_context",
+            "peer_context": {
+                "schema_version": "peer_context_task.v1",
+                "policy_name": "previous_round_metric_summary",
+            },
+        },
+    )
     round_client_factory = MagicMock(return_value=round_client)
     runtime_factory = MagicMock()
     query_ssl_task_service = MagicMock()
@@ -178,6 +195,8 @@ def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
     )
     query_ssl_request = query_ssl_task_service.run_current_task.call_args.args[0]
     assert query_ssl_request.training_task.task_id == "task_query_ssl"
+    assert query_ssl_request.training_task.fssl_method == "fedmatch"
+    assert query_ssl_request.training_task.fssl_context["method_name"] == "fedmatch"
     assert query_ssl_request.model_manifest is active_manifest
     assert query_ssl_request.active_state is active_state
     runtime_factory.assert_not_called()

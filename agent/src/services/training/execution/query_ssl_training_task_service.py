@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
+from types import SimpleNamespace
 
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
@@ -40,6 +41,9 @@ from agent.src.services.training.execution.query_ssl_local_training_service impo
     QuerySslPeftEncoderLocalTrainingRequest,
 )
 from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
+from methods.adaptation.peft_text_encoder.federated_ssl.method_owned_training import (
+    run_method_owned_peft_encoder_training_core,
+)
 from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
     PeftEncoderTrainerRuntimeConfig,
 )
@@ -47,15 +51,27 @@ from methods.adaptation.peft_text_encoder.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
+    PeftEncoderMaterializedState,
     materialize_base_peft_encoder_state,
 )
 from methods.adaptation.peft_text_encoder.update_family_runtime import (
+    build_training_backend_config_for_peft_encoder_state,
     build_training_backend_for_peft_encoder_state,
 )
 from methods.federated.aggregation.base import (
     AggregationJsonArtifactLoader,
     FederatedAggregationContext,
 )
+from methods.federated_ssl.hooks.peer_context import FederatedSslPeerContext
+from methods.federated_ssl.method_config_surface import (
+    DEFAULT_LOCAL_BUDGET_POLICY,
+    default_method_local_ssl_policy_name,
+    default_method_peer_context_policy_name,
+)
+from methods.federated_ssl.method_parameters import (
+    build_federated_ssl_method_parameter_snapshot,
+)
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
@@ -67,6 +83,11 @@ from shared.src.contracts.training_contracts import (
     make_training_update_submission,
 )
 from shared.src.domain.services.clock import Clock, SystemUtcClock
+
+MethodOwnedPeftEncoderTrainingCore = Callable[
+    ...,
+    QuerySslPeftEncoderClientTrainingResult,
+]
 
 
 @dataclass(slots=True, frozen=True)
@@ -106,6 +127,9 @@ class AgentQuerySslTrainingTaskService:
         default_factory=TrainingUsageLedgerRepository
     )
     backend: SharedAdapterTrainingBackend | None = None
+    method_owned_training_core: MethodOwnedPeftEncoderTrainingCore = (
+        run_method_owned_peft_encoder_training_core
+    )
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig = field(
         default_factory=AgentQuerySslTrainerRuntimeConfig
     )
@@ -172,24 +196,15 @@ class AgentQuerySslTrainingTaskService:
                 artifact_loader=request.artifact_loader,
             ),
         )
-        local_result = local_service.run_peft_encoder(
-            QuerySslPeftEncoderLocalTrainingRequest(
-                client_id=request.agent_id or "agent",
-                seed=_seed_from_task(request.training_task),
-                labeled_rows=labeled_rows,
-                unlabeled_rows=unlabeled_rows,
-                labels=labels,
-                base_parameters=base_parameters,
-                training_task=request.training_task,
-                model_manifest=request.model_manifest,
-                query_ssl_config=query_ssl_config,
-                trainer_runtime_config=self.trainer_runtime_config,
-                created_at=created_at,
-                delta_materializer=PeftEncoderDeltaMaterializer(
-                    artifact_store=_InlineOnlyPeftEncoderArtifactStore()
-                ),
-                agent_id=request.agent_id,
-            )
+        local_result = self._run_local_update(
+            request=request,
+            local_service=local_service,
+            labels=labels,
+            labeled_rows=labeled_rows,
+            unlabeled_rows=unlabeled_rows,
+            base_parameters=base_parameters,
+            query_ssl_config=query_ssl_config,
+            created_at=created_at,
         )
         request.round_client.upload_update(
             request.training_task.round_id,
@@ -222,6 +237,122 @@ class AgentQuerySslTrainingTaskService:
             example_count=local_result.candidate_count,
             accepted_count=local_result.accepted_count,
             message="Query SSL update 업로드 완료.",
+        )
+
+    def _run_local_update(
+        self,
+        *,
+        request: AgentQuerySslTrainingTaskRunRequest,
+        local_service: QuerySslLocalTrainingService,
+        labels: Sequence[str],
+        labeled_rows: Sequence[LabeledQueryRow],
+        unlabeled_rows: Sequence[LabeledQueryRow],
+        base_parameters: PeftEncoderMaterializedState,
+        query_ssl_config: QuerySslObjectiveRuntimeConfig,
+        created_at: datetime,
+    ) -> QuerySslPeftEncoderClientTrainingResult:
+        fssl_method = _optional_name(request.training_task.fssl_method)
+        if fssl_method is None:
+            return local_service.run_peft_encoder(
+                QuerySslPeftEncoderLocalTrainingRequest(
+                    client_id=request.agent_id or "agent",
+                    seed=_seed_from_task(request.training_task),
+                    labeled_rows=labeled_rows,
+                    unlabeled_rows=unlabeled_rows,
+                    labels=labels,
+                    base_parameters=base_parameters,
+                    training_task=request.training_task,
+                    model_manifest=request.model_manifest,
+                    query_ssl_config=query_ssl_config,
+                    trainer_runtime_config=self.trainer_runtime_config,
+                    created_at=created_at,
+                    delta_materializer=PeftEncoderDeltaMaterializer(
+                        artifact_store=_InlineOnlyPeftEncoderArtifactStore()
+                    ),
+                    agent_id=request.agent_id,
+                )
+            )
+        return self._run_method_owned_local_update(
+            request=request,
+            method_name=fssl_method,
+            labels=labels,
+            labeled_rows=labeled_rows,
+            unlabeled_rows=unlabeled_rows,
+            base_parameters=base_parameters,
+            query_ssl_config=query_ssl_config,
+            created_at=created_at,
+        )
+
+    def _run_method_owned_local_update(
+        self,
+        *,
+        request: AgentQuerySslTrainingTaskRunRequest,
+        method_name: str,
+        labels: Sequence[str],
+        labeled_rows: Sequence[LabeledQueryRow],
+        unlabeled_rows: Sequence[LabeledQueryRow],
+        base_parameters: PeftEncoderMaterializedState,
+        query_ssl_config: QuerySslObjectiveRuntimeConfig,
+        created_at: datetime,
+    ) -> QuerySslPeftEncoderClientTrainingResult:
+        descriptor = resolve_federated_ssl_method_descriptor(method_name)
+        if not descriptor.runtime_capabilities.live_agent_supported:
+            raise ValueError(
+                f"fssl_method={method_name!r}는 live agent runtime을 지원하지 않습니다."
+            )
+        method_config = _method_config_from_task_context(request.training_task)
+        parameter_snapshot = build_federated_ssl_method_parameter_snapshot(
+            method_name=descriptor.name,
+            method_config=method_config,
+        )
+        local_ssl_policy = default_method_local_ssl_policy_name(descriptor)
+        if local_ssl_policy is None:
+            raise ValueError(
+                f"fssl_method={method_name!r}의 기본 local SSL policy가 없습니다."
+            )
+        peft_config = build_training_backend_config_for_peft_encoder_state(
+            active_adapter_state=request.active_state,
+            objective_config=request.training_task.objective_config,
+        )
+        client_id = request.agent_id or "agent"
+        return self.method_owned_training_core(
+            client_id=client_id,
+            seed=_seed_from_task(request.training_task),
+            labeled_rows=labeled_rows,
+            unlabeled_rows=unlabeled_rows,
+            labels=labels,
+            base_parameters=base_parameters,
+            training_task=request.training_task,
+            model_manifest=request.model_manifest,
+            ssl_method_config=SimpleNamespace(
+                name=descriptor.name,
+                scenario=parameter_snapshot.scenario,
+                local_budget_policy=str(
+                    method_config.get(
+                        "local_budget_policy",
+                        DEFAULT_LOCAL_BUDGET_POLICY,
+                    )
+                ),
+                effective_parameters=parameter_snapshot.effective_parameters,
+            ),
+            local_ssl_policy_name=local_ssl_policy,
+            query_ssl_config=query_ssl_config,
+            strong_view_policy=query_ssl_config.strong_view_policy,
+            unlabeled_batch_size=query_ssl_config.unlabeled_batch_size,
+            peft_config=peft_config,
+            trainer_runtime_config=self.trainer_runtime_config,
+            created_at=created_at,
+            delta_materializer=PeftEncoderDeltaMaterializer(
+                artifact_store=_InlineOnlyPeftEncoderArtifactStore()
+            ),
+            peer_context=_peer_context_from_task(
+                training_task=request.training_task,
+                client_id=client_id,
+                default_policy_name=default_method_peer_context_policy_name(
+                    descriptor,
+                    method_config,
+                ),
+            ),
         )
 
 
@@ -262,6 +393,102 @@ def _top_label(category_scores: Mapping[str, float]) -> str:
 def _seed_from_task(training_task: TrainingTask) -> int:
     source = f"{training_task.round_id}:{training_task.task_id}".encode("utf-8")
     return int.from_bytes(sha256(source).digest()[:4], byteorder="big") % (2**31)
+
+
+def _method_config_from_task_context(training_task: TrainingTask) -> dict[str, object]:
+    context = training_task.fssl_context or {}
+    method_name = _optional_name(training_task.fssl_method)
+    if method_name is None:
+        raise ValueError("fssl_method is required for method-owned local runtime.")
+    method_config = {
+        "name": method_name,
+        "use_original_parameters": True,
+        "parameter_overrides": {},
+    }
+    raw_method_config = context.get("method_config")
+    if isinstance(raw_method_config, Mapping):
+        method_config.update(dict(raw_method_config))
+        method_config["name"] = method_name
+    raw_peer_context = context.get("peer_context")
+    if isinstance(raw_peer_context, Mapping):
+        scenario = _optional_name(raw_peer_context.get("scenario"))
+        if scenario is not None:
+            method_config["scenario"] = scenario
+    return method_config
+
+
+def _peer_context_from_task(
+    *,
+    training_task: TrainingTask,
+    client_id: str,
+    default_policy_name: str | None = None,
+) -> FederatedSslPeerContext | None:
+    context = training_task.fssl_context or {}
+    raw_peer_context = context.get("peer_context")
+    if not isinstance(raw_peer_context, Mapping):
+        return None
+    policy_name = _optional_name(raw_peer_context.get("policy_name"))
+    if policy_name is None:
+        policy_name = _optional_name(default_policy_name)
+    if policy_name is None:
+        return None
+    client_payload = _find_peer_context_client_payload(
+        raw_peer_context=raw_peer_context,
+        client_id=client_id,
+    )
+    return FederatedSslPeerContext(
+        client_id=client_id,
+        policy_name=policy_name,
+        round_index_zero_based=_round_index_zero_based(raw_peer_context),
+        helper_client_ids=(
+            ()
+            if client_payload is None
+            else tuple(
+                str(helper_id)
+                for helper_id in client_payload.get("helper_client_ids", ())
+            )
+        ),
+        refreshed=not bool(raw_peer_context.get("warmup", False)),
+        metadata={
+            "source_round_id": raw_peer_context.get("source_round_id"),
+            "context_kind": context.get("context_kind"),
+            "method_name": context.get("method_name"),
+            "summary_metrics": dict(raw_peer_context.get("summary_metrics", {})),
+        },
+    )
+
+
+def _find_peer_context_client_payload(
+    *,
+    raw_peer_context: Mapping[str, object],
+    client_id: str,
+) -> Mapping[str, object] | None:
+    raw_client_contexts = raw_peer_context.get("client_contexts", ())
+    if not isinstance(raw_client_contexts, Sequence) or isinstance(
+        raw_client_contexts,
+        (str, bytes),
+    ):
+        return None
+    for item in raw_client_contexts:
+        if not isinstance(item, Mapping):
+            continue
+        if str(item.get("client_id", "")).strip() == client_id:
+            return item
+    return None
+
+
+def _round_index_zero_based(raw_peer_context: Mapping[str, object]) -> int:
+    raw_round_index = raw_peer_context.get("round_index_zero_based")
+    if raw_round_index is None:
+        return 0
+    return max(0, int(raw_round_index))
+
+
+def _optional_name(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
 
 
 def _build_usage_run_record(

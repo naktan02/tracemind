@@ -81,7 +81,7 @@ descriptor = FederatedSslMethodDescriptor(
     ),
     runtime_capabilities=FederatedSslRuntimeCapabilities(
         simulation_supported=True,
-        live_agent_supported=False,
+        live_agent_supported=True,
         live_server_supported=True,
         requires_custom_client_runtime=True,
         requires_custom_server_runtime=False,

@@ -219,7 +219,165 @@ def test_query_ssl_training_task_service_uploads_query_ssl_update(tmp_path) -> N
     }
 
 
-def _query_ssl_task() -> TrainingTaskPayload:
+def test_query_ssl_training_task_service_routes_fedmatch_method_owned_runtime(
+    tmp_path,
+) -> None:
+    occurred_at = datetime(2026, 6, 7, 1, 0, tzinfo=timezone.utc)
+    scored_repo = AnalysisEventRepository(db_path=tmp_path / "scored.db")
+    scored_repo.save(
+        AnalysisEvent(
+            query_id="labeled_1",
+            occurred_at=occurred_at,
+            translated_text="I feel anxious",
+            embedding_model_id="embed",
+            translation_model_id="nllb",
+            category_scores={"anxiety": 0.9, "normal": 0.1},
+        )
+    )
+    captured_repo = CapturedTextRepository(db_path=tmp_path / "captured.db")
+    captured_repo.save(
+        CapturedTextRecord(
+            event_id="unlabeled_1",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="불안해",
+            locale="ko",
+            source_type="search",
+            surface_type="search_box",
+        )
+    )
+    stored = captured_repo.get("unlabeled_1")
+    assert stored is not None
+    captured_repo.save_generated_view(
+        CapturedTextGeneratedViewRecord(
+            event_id="unlabeled_1",
+            generated_at=occurred_at,
+            weak_text="I am anxious",
+            strong_text_0="I feel anxious now",
+            strong_text_1="I am worried now",
+            generator_name="unit-test",
+            generator_version="v1",
+            source_text_fingerprint=stored.text_fingerprint,
+            metadata={"weak_text_translated": True},
+        )
+    )
+    captured_repo.mark_view_generation_status(
+        event_id="unlabeled_1",
+        status=CAPTURED_TEXT_VIEW_STATUS_READY,
+    )
+    active_state = make_peft_classifier_state_payload(
+        model_id="tracemind-embed",
+        model_revision="rev_001",
+        training_scope="adapter_only",
+        backbone=peft_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),
+        peft_adapter_config=(
+            peft_config.PeftEncoderTrainingBackendConfig().to_peft_adapter_config_payload()
+        ),
+        label_schema=("anxiety", "normal"),
+        updated_at=occurred_at,
+    )
+    update_payload = make_peft_classifier_delta_payload(
+        model_id="tracemind-embed",
+        base_model_revision="rev_001",
+        training_scope="adapter_only",
+        backbone=peft_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),
+        peft_adapter_config=(
+            peft_config.PeftEncoderTrainingBackendConfig().to_peft_adapter_config_payload()
+        ),
+        label_schema=("anxiety", "normal"),
+        example_count=1,
+        peft_parameter_deltas={"lora.test": [0.1]},
+        classifier_head_weight_deltas={"anxiety": [0.1], "normal": [-0.1]},
+        classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
+        delta_format="inline_delta",
+    )
+    captured_call: dict[str, object] = {}
+
+    def _method_core(**kwargs: object) -> QuerySslPeftEncoderClientTrainingResult:
+        captured_call.update(kwargs)
+        training_task = kwargs["training_task"]
+        model_manifest = kwargs["model_manifest"]
+        update_envelope = make_training_update_envelope(
+            update_id="update_fedmatch_test",
+            round_id=training_task.round_id,
+            task_id=training_task.task_id,
+            model_id=model_manifest.model_id,
+            base_model_revision=model_manifest.model_revision,
+            training_scope=training_task.training_scope,
+            payload_ref="client-submission::update_fedmatch_test",
+            payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+            example_count=update_payload.example_count,
+            client_metrics={"fedmatch_local_runtime": 1.0},
+        )
+        return QuerySslPeftEncoderClientTrainingResult(
+            update_envelope=update_envelope,
+            update_payload=update_payload,
+            candidate_count=2,
+            accepted_count=1,
+            local_step_plan=build_query_ssl_local_step_plan(
+                labeled_loader_steps=1,
+                unlabeled_loader_steps=1,
+                uses_labeled_batches=True,
+                local_epochs=1,
+                max_steps=1,
+            ),
+            client_metrics=update_envelope.client_metrics,
+        )
+
+    round_client = MagicMock()
+    service = AgentQuerySslTrainingTaskService(method_owned_training_core=_method_core)
+
+    result = service.run_current_task(
+        AgentQuerySslTrainingTaskRunRequest(
+            training_task=_query_ssl_task(
+                fssl_method="fedmatch",
+                fssl_context={
+                    "schema_version": "fssl_context.v1",
+                    "method_name": "fedmatch",
+                    "context_kind": "peer_context",
+                    "peer_context": {
+                        "schema_version": "peer_context_task.v1",
+                        "policy_name": "previous_round_metric_summary",
+                        "source_round_id": "round_prev",
+                        "warmup": False,
+                        "client_contexts": [
+                            {
+                                "client_id": "agent_01",
+                                "helper_client_ids": ["helper_02"],
+                            }
+                        ],
+                    },
+                },
+            ),
+            model_manifest=make_embedding_manifest(
+                model_id="tracemind-embed",
+                model_revision="rev_001",
+                training_scope="adapter_only",
+                artifact_ref="/tmp/rev_001.json",
+            ),
+            active_state=active_state,
+            round_client=round_client,
+            analysis_event_repository=scored_repo,
+            captured_text_repository=captured_repo,
+            analysis_event_days=7,
+            agent_id="agent_01",
+        )
+    )
+
+    assert result.status == "uploaded"
+    assert result.update_id == "update_fedmatch_test"
+    assert captured_call["local_ssl_policy_name"] == "fedmatch_agreement"
+    assert captured_call["ssl_method_config"].name == "fedmatch"
+    assert captured_call["ssl_method_config"].scenario == "labels-at-client"
+    assert captured_call["peer_context"].helper_client_ids == ("helper_02",)
+    round_client.upload_update.assert_called_once()
+
+
+def _query_ssl_task(
+    *,
+    fssl_method: str | None = None,
+    fssl_context: dict[str, object] | None = None,
+) -> TrainingTaskPayload:
     return TrainingTaskPayload(
         schema_version="training_task.v1",
         task_id="task_query_ssl",
@@ -256,4 +414,6 @@ def _query_ssl_task() -> TrainingTaskPayload:
             },
         ),
         selection_policy=TrainingSelectionPolicyPayload(max_examples=10),
+        fssl_method=fssl_method,
+        fssl_context=fssl_context,
     )

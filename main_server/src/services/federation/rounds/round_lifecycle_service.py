@@ -36,6 +36,9 @@ from main_server.src.services.federation.rounds.boundary.models import (
 from main_server.src.services.federation.rounds.initial_publication_service import (
     InitialSharedArtifactPublicationService,
 )
+from main_server.src.services.federation.rounds.payload_adapters.registry import (
+    build_shared_adapter_round_payload_adapter,
+)
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
     RoundPublicationRequest,
@@ -53,6 +56,9 @@ from main_server.src.services.federation.rounds.server_policy.executor import (
 )
 from main_server.src.services.federation.strategy.active_strategy_service import (
     ActiveStrategyService,
+)
+from methods.adaptation.federated_ssl_server_update import (
+    resolve_federated_ssl_server_update_backend_name,
 )
 from methods.adaptation.server_update_compatibility import (
     require_server_compatible_update_payload,
@@ -83,6 +89,9 @@ if TYPE_CHECKING:
         RoundRepository,
     )
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.method_config_surface import (
+    default_method_server_update_policy_name,
+)
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 
 SharedAdapterUpdateRepository = (
@@ -120,6 +129,14 @@ def _runtime_update_family_name(round_runtime_config: object | None) -> str:
             "round runtime update_family_name must not be empty."
         )
     return normalized
+
+
+def _runtime_aggregation_backend_name(round_runtime_config: object | None) -> str:
+    value = getattr(round_runtime_config, "aggregation_backend_name", None)
+    if value is None:
+        return "fedavg"
+    normalized = str(value).strip()
+    return normalized or "fedavg"
 
 
 @dataclass(slots=True)
@@ -350,7 +367,8 @@ class RoundLifecycleService:
 
         self._prepare_method_server_policy(record)
         round_state_exchange = self._summarize_round_state_exchange(record)
-        publication = self.round_manager_service.publish_next_pair(
+        round_manager = self._round_manager_for_finalize(record)
+        publication = round_manager.publish_next_pair(
             RoundPublicationRequest(
                 base_manifest=record.active_manifest,
                 updates=record.updates,
@@ -386,6 +404,38 @@ class RoundLifecycleService:
             activated_at=finalized_at,
         )
         return finalized_record
+
+    def _round_manager_for_finalize(self, record: RoundRecord) -> RoundManagerService:
+        method_name = getattr(record.training_task, "fssl_method", None)
+        if method_name is None:
+            return self.round_manager_service
+        descriptor = resolve_federated_ssl_method_descriptor(str(method_name))
+        server_update_policy = default_method_server_update_policy_name(descriptor)
+        effective_backend_name = resolve_federated_ssl_server_update_backend_name(
+            payload_adapter_kind=self.round_manager_service.payload_adapter.adapter_kind,
+            server_update_policy_name=server_update_policy,
+            aggregation_backend_name=_runtime_aggregation_backend_name(
+                self.round_runtime_config
+            ),
+        )
+        current_backend = self.round_manager_service.payload_adapter.aggregation_backend
+        effective_payload_adapter = build_shared_adapter_round_payload_adapter(
+            self.round_manager_service.payload_adapter.adapter_kind,
+            aggregation_backend_name=effective_backend_name,
+            aggregation_artifact_store=getattr(
+                current_backend,
+                "artifact_loader",
+                None,
+            ),
+        )
+        return RoundManagerService(
+            payload_adapter=effective_payload_adapter,
+            artifact_repository=self.round_manager_service.artifact_repository,
+            update_payload_repository=(
+                self.round_manager_service.update_payload_repository
+            ),
+            clock=self.round_manager_service.clock,
+        )
 
     def _prepare_method_server_policy(self, record: RoundRecord) -> None:
         if self.method_descriptor is None:
