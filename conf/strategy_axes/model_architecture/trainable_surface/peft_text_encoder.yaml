@@ -5,3 +5,7 @@ model_artifact_kind: peft_text_encoder_with_linear_head
 trainable_state: peft_adapter_and_classifier_head
 requires_peft_adapter: true
 supports_initial_adapter: true
+central_ssl:
+  model_builder: methods.adaptation.peft_text_encoder.training.modeling.build_model
+  trainer: methods.adaptation.peft_text_encoder.training.loops.train_query_ssl_classifier
+  trainer_version_prefix: peft

@@ -35,6 +35,7 @@ from scripts.experiments.fl_ssl.federated_simulation.config_request import (
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_federated_training_backend_adapter_kind,
 )
+from scripts.support.configured_callable import load_configured_callable
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
@@ -221,6 +222,40 @@ def test_trainable_state_update_family_leafs_are_executable_surfaces() -> None:
         assert cfg.get("update_family_name"), path
         assert cfg.get("payload_adapter_kind"), path
         assert cfg.get("initial_state_builder"), path
+
+
+def test_central_ssl_trainable_surface_leafs_declare_runtime_callables() -> None:
+    trainable_surface_dir = (
+        REPO_ROOT
+        / "conf"
+        / "strategy_axes"
+        / "model_architecture"
+        / "trainable_surface"
+    )
+    leaf_paths = sorted(
+        path
+        for path in trainable_surface_dir.glob("*.yaml")
+        if path.name != "__init__.py"
+    )
+
+    central_ssl_leaf_count = 0
+    for path in leaf_paths:
+        cfg = OmegaConf.load(path)
+        central_ssl = cfg.get("central_ssl")
+        if central_ssl is None:
+            continue
+        central_ssl_leaf_count += 1
+        assert cfg.get("name"), path
+        assert central_ssl.get("trainer_version_prefix"), path
+        for field_name in ("model_builder", "trainer"):
+            callable_path = central_ssl.get(field_name)
+            assert callable_path, path
+            load_configured_callable(
+                str(callable_path),
+                field_name=f"trainable_surface.central_ssl.{field_name}",
+            )
+
+    assert central_ssl_leaf_count >= 1
 
 
 @pytest.mark.parametrize(

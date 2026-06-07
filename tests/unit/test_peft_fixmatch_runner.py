@@ -61,6 +61,20 @@ def _build_cfg() -> object:
                 "normal",
                 "suicidal",
             ],
+            "trainable_surface": {
+                "name": "peft_text_encoder",
+                "central_ssl": {
+                    "model_builder": (
+                        "methods.adaptation.peft_text_encoder.training.modeling."
+                        "build_model"
+                    ),
+                    "trainer": (
+                        "methods.adaptation.peft_text_encoder.training.loops."
+                        "train_query_ssl_classifier"
+                    ),
+                    "trainer_version_prefix": "peft",
+                },
+            },
             "paper_backbone": {
                 "max_length": 32,
                 "task_prefix": "",
@@ -160,7 +174,7 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
         }
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.build_query_peft_model",
+        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -168,8 +182,8 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency."
-        "train_query_ssl_peft_classifier",
+        "methods.adaptation.peft_text_encoder.training.loops."
+        "train_query_ssl_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
@@ -272,7 +286,7 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
         )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.build_query_peft_model",
+        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -280,8 +294,8 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency."
-        "train_query_ssl_peft_classifier",
+        "methods.adaptation.peft_text_encoder.training.loops."
+        "train_query_ssl_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
@@ -369,7 +383,7 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
         )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.build_query_peft_model",
+        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -377,8 +391,8 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency."
-        "train_query_ssl_peft_classifier",
+        "methods.adaptation.peft_text_encoder.training.loops."
+        "train_query_ssl_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
@@ -481,7 +495,7 @@ def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
         )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.build_query_peft_model",
+        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
         lambda **_kwargs: (
             _DummyFeatureModel(),
             _DummyTokenizer(),
@@ -489,8 +503,8 @@ def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency."
-        "train_query_ssl_peft_classifier",
+        "methods.adaptation.peft_text_encoder.training.loops."
+        "train_query_ssl_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
@@ -565,7 +579,7 @@ def test_query_ssl_peft_runner_rejects_unsupported_descriptor_capability(
     )
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.build_query_peft_model",
+        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -645,7 +659,7 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
         }
 
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.build_query_peft_model",
+        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -653,8 +667,8 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
         ),
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency."
-        "train_query_ssl_peft_classifier",
+        "methods.adaptation.peft_text_encoder.training.loops."
+        "train_query_ssl_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(

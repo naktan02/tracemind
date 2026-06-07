@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from methods.adaptation.peft_text_encoder.training.loops import (
-    train_query_ssl_classifier as train_query_ssl_peft_classifier,
-)
-from methods.adaptation.peft_text_encoder.training.modeling import (
-    build_model as build_query_peft_model,
-)
 from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.adaptation.query_text_views.query_ssl_views import (
     build_query_ssl_unlabeled_dataloader,
@@ -34,6 +29,7 @@ from methods.ssl.base import (
 from methods.ssl.model_capabilities import require_pooled_feature_classifier
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from methods.ssl.state import export_query_ssl_algorithm_report_state_summary
+from scripts.support.configured_callable import load_configured_callable
 from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
 from scripts.support.query_ssl_text_encoder.query_ssl.run_context import (
     QuerySslRunContext,
@@ -53,6 +49,16 @@ from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     load_labeled_query_rows,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class _CentralSslSurfaceRuntime:
+    """중앙 SSL runner가 trainable_surface leaf에서 읽은 runtime callable."""
+
+    surface_name: str
+    model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]]
+    trainer: Callable[..., tuple[Any, list[dict[str, Any]], dict[str, Any]]]
+    trainer_version_prefix: str
 
 
 def run_query_ssl_peft_baseline(
@@ -99,6 +105,7 @@ def run_consistency_query_ssl_peft_baseline(
         context,
         unlabeled_loader,
         algorithm,
+        surface_runtime,
     ) = _prepare_query_ssl_training_runtime(
         cfg=cfg,
         descriptor=descriptor,
@@ -114,6 +121,7 @@ def run_consistency_query_ssl_peft_baseline(
         context=context,
         unlabeled_loader=unlabeled_loader,
         algorithm=algorithm,
+        surface_runtime=surface_runtime,
         max_train_steps=max_train_steps,
     )
     results = evaluate_query_ssl_run_context(
@@ -160,9 +168,16 @@ def _prepare_query_ssl_training_runtime(
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None,
     selection_set_name: str | None,
     categories_override: list[str] | tuple[str, ...] | None,
-) -> tuple[PreparedQuerySslUnlabeledRows, QuerySslRunContext, Any, QuerySslAlgorithm]:
+) -> tuple[
+    PreparedQuerySslUnlabeledRows,
+    QuerySslRunContext,
+    Any,
+    QuerySslAlgorithm,
+    _CentralSslSurfaceRuntime,
+]:
     """unlabeled view, run context, loader, algorithm runtime을 준비한다."""
 
+    surface_runtime = _resolve_trainable_surface_runtime(cfg)
     if unlabeled_rows is None:
         if getattr(cfg, "unlabeled_jsonl", None) is None:
             raise ValueError(
@@ -185,13 +200,17 @@ def _prepare_query_ssl_training_runtime(
         eval_rows_by_name=eval_rows_by_name,
         selection_set_name=selection_set_name,
         categories_override=categories_override,
-        model_builder=build_query_peft_model,
-        trainer_version_prefix=_build_trainer_version_prefix(descriptor),
+        model_builder=surface_runtime.model_builder,
+        trainer_version_prefix=_build_trainer_version_prefix(
+            descriptor=descriptor,
+            surface_runtime=surface_runtime,
+        ),
         algorithm_name=descriptor.display_name,
     )
     _validate_query_ssl_runner_capabilities(
         descriptor=descriptor,
         model=context.model,
+        surface_runtime=surface_runtime,
     )
     unlabeled_loader = _build_unlabeled_loader(
         cfg=cfg,
@@ -199,7 +218,13 @@ def _prepare_query_ssl_training_runtime(
         context=context,
     )
     algorithm = descriptor.build_algorithm(build_query_ssl_method_parameters(cfg))
-    return prepared_unlabeled_rows, context, unlabeled_loader, algorithm
+    return (
+        prepared_unlabeled_rows,
+        context,
+        unlabeled_loader,
+        algorithm,
+        surface_runtime,
+    )
 
 
 def _train_query_ssl_context(
@@ -208,6 +233,7 @@ def _train_query_ssl_context(
     context: QuerySslRunContext,
     unlabeled_loader: Any,
     algorithm: QuerySslAlgorithm,
+    surface_runtime: _CentralSslSurfaceRuntime,
     max_train_steps: int | None,
 ) -> tuple[Any, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     """준비된 Query SSL context로 학습을 실행하고 runtime metric을 반환한다."""
@@ -216,7 +242,7 @@ def _train_query_ssl_context(
         (model, history, best_selection_report),
         runtime_metrics,
     ) = run_with_training_runtime_metrics(
-        lambda: train_query_ssl_peft_classifier(
+        lambda: surface_runtime.trainer(
             model=context.model,
             train_loader=context.train_loader,
             unlabeled_loader=unlabeled_loader,
@@ -308,8 +334,9 @@ def _validate_query_ssl_runner_capabilities(
     *,
     descriptor: QuerySslAlgorithmDescriptor,
     model: Any,
+    surface_runtime: _CentralSslSurfaceRuntime,
 ) -> None:
-    """현재 PEFT Query SSL runner가 지원하는 descriptor capability를 검증한다."""
+    """현재 중앙 SSL surface runtime이 지원하는 descriptor capability를 검증한다."""
 
     requirements = descriptor.runtime_requirements
     supported_model_outputs = frozenset(
@@ -321,7 +348,8 @@ def _validate_query_ssl_runner_capabilities(
     unsupported_model_outputs = requirements.model_outputs - supported_model_outputs
     if unsupported_model_outputs:
         raise ValueError(
-            "Unsupported Query SSL model outputs for PEFT runner: "
+            "Unsupported Query SSL model outputs for central SSL surface "
+            f"{surface_runtime.surface_name!r}: "
             f"{sorted(unsupported_model_outputs)}."
         )
     if QUERY_SSL_MODEL_OUTPUT_POOLED_FEATURES in requirements.model_outputs:
@@ -339,12 +367,14 @@ def _validate_query_ssl_runner_capabilities(
     )
     if unsupported_optimizer_lifecycle:
         raise ValueError(
-            "Unsupported Query SSL optimizer lifecycle for PEFT runner: "
+            "Unsupported Query SSL optimizer lifecycle for central SSL surface "
+            f"{surface_runtime.surface_name!r}: "
             f"{sorted(unsupported_optimizer_lifecycle)}."
         )
     if requirements.input_transform_surface != QUERY_SSL_INPUT_TRANSFORM_NONE:
         raise ValueError(
-            "Unsupported Query SSL input transform for PEFT runner: "
+            "Unsupported Query SSL input transform for central SSL surface "
+            f"{surface_runtime.surface_name!r}: "
             f"{requirements.input_transform_surface!r}."
         )
     supported_teacher_states = frozenset(
@@ -355,7 +385,8 @@ def _validate_query_ssl_runner_capabilities(
     )
     if requirements.teacher_state not in supported_teacher_states:
         raise ValueError(
-            "Unsupported Query SSL teacher state for PEFT runner: "
+            "Unsupported Query SSL teacher state for central SSL surface "
+            f"{surface_runtime.surface_name!r}: "
             f"{requirements.teacher_state!r}."
         )
 
@@ -427,5 +458,62 @@ def _build_query_ssl_resume_manifest(cfg: Any) -> dict[str, object]:
     }
 
 
-def _build_trainer_version_prefix(descriptor: QuerySslAlgorithmDescriptor) -> str:
-    return f"peft_{descriptor.algorithm_name.strip().lower()}"
+def _build_trainer_version_prefix(
+    *,
+    descriptor: QuerySslAlgorithmDescriptor,
+    surface_runtime: _CentralSslSurfaceRuntime,
+) -> str:
+    surface_prefix = surface_runtime.trainer_version_prefix.strip().lower()
+    algorithm_name = descriptor.algorithm_name.strip().lower()
+    return f"{surface_prefix}_{algorithm_name}"
+
+
+def _resolve_trainable_surface_runtime(cfg: Any) -> _CentralSslSurfaceRuntime:
+    trainable_surface = getattr(cfg, "trainable_surface", None)
+    if trainable_surface is None:
+        raise ValueError("trainable_surface config is required for central SSL.")
+    surface_name = _read_required_config_str(
+        trainable_surface,
+        "name",
+        field_name="trainable_surface.name",
+    )
+    central_ssl = getattr(trainable_surface, "central_ssl", None)
+    if central_ssl is None:
+        raise ValueError(
+            "trainable_surface.central_ssl is required for central SSL: "
+            f"surface={surface_name!r}."
+        )
+    return _CentralSslSurfaceRuntime(
+        surface_name=surface_name,
+        model_builder=load_configured_callable(
+            _read_required_config_str(
+                central_ssl,
+                "model_builder",
+                field_name="trainable_surface.central_ssl.model_builder",
+            ),
+            field_name="trainable_surface.central_ssl.model_builder",
+        ),
+        trainer=load_configured_callable(
+            _read_required_config_str(
+                central_ssl,
+                "trainer",
+                field_name="trainable_surface.central_ssl.trainer",
+            ),
+            field_name="trainable_surface.central_ssl.trainer",
+        ),
+        trainer_version_prefix=_read_required_config_str(
+            central_ssl,
+            "trainer_version_prefix",
+            field_name="trainable_surface.central_ssl.trainer_version_prefix",
+        ),
+    )
+
+
+def _read_required_config_str(source: Any, key: str, *, field_name: str) -> str:
+    raw_value = getattr(source, key, None)
+    if raw_value is None and hasattr(source, "get"):
+        raw_value = source.get(key)
+    value = "" if raw_value is None else str(raw_value).strip()
+    if not value:
+        raise ValueError(f"{field_name} is required.")
+    return value
