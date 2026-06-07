@@ -26,7 +26,7 @@ trainable state identity를 직접 분기하면 Seam이 얕은 구조로 본다.
 | PEFT adapter mechanism | encoder에 붙는 PEFT mechanism | `lora`, `dora` |
 | trainable state / update family | client가 학습하고 server가 해석하는 공유 가능 상태 family | `linear_head`, `peft_text_encoder`, `prototype_pack` |
 | scorer family | local inference/training에서 score를 만드는 방식 | `classifier_logits`, `prototype_similarity` |
-| method descriptor | FedMatch/FedLGMatch/(FL)^2 같은 논문 method identity와 local/server policy 요구사항 | `fedmatch` |
+| method descriptor | FedMatch 같은 논문 method identity와 local/server policy 요구사항 | `fedmatch` |
 | runtime capability | 여러 method가 공유할 수 있는 실행 능력 | `peer_context`, `server_step`, `artifact_ref_materializer`, `security_policy` |
 
 `adapter_family_name`은 제거된 v1 입력 이름이다. 새 실행 config, runtime model,
@@ -78,8 +78,6 @@ methods/
     {execution_plan,capability_axes,compatibility_validator}.py
     manual_baseline/descriptor.py
     fedmatch/{descriptor,method_surface,original_spec,local_objective}.py
-    fedlgmatch/
-    fl2/
 
 conf/
   entrypoints/
@@ -228,8 +226,8 @@ Adapter 뒤로 옮긴다.
 ### 0단계: target 문서 고정
 
 - 이 문서를 active 구조 판단 기준으로 등록한다.
-- 기존 text-classifier migration plan archive와 `strategy_surface_map.md`는 현행
-  상태와 migration history로 읽고, 최종 구조 판단은 이 문서를 따른다.
+- 기존 text-classifier migration archive는 historical context로만 읽고, 최종 구조
+  판단은 이 문서를 따른다.
 
 ### 1단계: execution plan Interface 깊게 만들기
 

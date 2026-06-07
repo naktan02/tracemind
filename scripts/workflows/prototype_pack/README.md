@@ -68,6 +68,5 @@ python -m scripts.workflows.prototype_pack.seed_prototypes \
 - prototype pack의 translation 관련 필드 의미는
   [docs/contracts/prototype_pack_v1.md](../../../docs/contracts/prototype_pack_v1.md)를
   같이 보는 편이 빠르다.
-- 현재 전략 축 전체 상태는
-  [docs/strategy_surface_map.md](../../../docs/strategy_surface_map.md)에
-  요약돼 있다.
+- 현재 전략 축 전체 상태는 `conf/README.md`와 관련 `conf/strategy_axes/**`
+  leaf를 기준으로 본다.

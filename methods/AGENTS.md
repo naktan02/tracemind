@@ -9,7 +9,7 @@ aggregation 계산 core를 소유한다.
 
 1. `methods/README.md`
 2. `docs/architecture/target-method-runtime-structure.md`
-3. 새 전략 축이면 `docs/strategy_surface_map.md`
+3. 새 strategy/method 축이면 해당 `methods/**/NEW_METHOD.md`
 4. 관련 `conf/strategy_axes/**` leaf
 5. 변경 대상 family의 code-adjacent README
 

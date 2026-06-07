@@ -85,8 +85,7 @@ python -m scripts.experiments.prototype_analysis.prototype_threshold_sweep \
   `methods/prototype/building/strategy_factory.py`에 catalog entry를 추가한다.
   `strategies.py`는 builder 이름으로 분기하지 않는다.
 - threshold와 scorer 관련 knob가 실제로 어디까지 열려 있는지는
-  [docs/strategy_surface_map.md](../../../../docs/strategy_surface_map.md)를
-  같이 보면 빠르다.
+  `conf/README.md`와 관련 `conf/strategy_axes/**` leaf를 같이 보면 빠르다.
 - 이 패키지는 prototype 전략 비교 실험용이다.
   threshold policy와 선택 기준의 method core는 `methods/prototype/thresholding/`이
   소유하고, 이 패키지는 sweep 실행과 artifact 저장만 맡는다.

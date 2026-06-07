@@ -151,8 +151,8 @@ Query Buffer (raw text)
   strong candidate로 읽고, 알고리즘별 실행 중 backtranslation을 다시 수행하지 않는다.
 - 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
   newly accepted query-derived rows only로 `PEFT text encoder` same-family continual adaptation을 연다.
-- `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL-specific 제약이 핵심이므로
-  central query-domain control family에는 넣지 않고, FL SSL non-IID 메인 비교선으로 둔다.
+- FedMatch 같은 FL-specific 방법론은 central query-domain control family에는
+  넣지 않고, FL SSL non-IID 비교선에서만 다룬다.
 
 ## 고정해야 할 입력 조건
 

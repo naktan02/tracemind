@@ -9,9 +9,8 @@
 - 이 디렉터리는 그 코어를 조합하는 실험 CLI와 실험 전용 helper만 둔다.
 - Hydra entrypoint config는 `conf/entrypoints/**/*.yaml`이 source of truth다.
 
-전략 축 전체와 현재 override 가능 여부는
-[docs/strategy_surface_map.md](../../docs/strategy_surface_map.md)를
-먼저 보는 편이 빠르다.
+전략 축 전체와 현재 override 가능 여부는 `conf/README.md`와 관련
+`conf/strategy_axes/**` leaf를 먼저 보는 편이 빠르다.
 
 ## 구조
 

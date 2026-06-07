@@ -150,8 +150,7 @@ Reddit Labeled Data
 
 - 이 레일의 중앙 SSL 비교는 pooled/offline control table이다.
 - prototype 기반 pseudo-label/SSL도 SSL 비교군 중 하나다.
-- `FedMatch`, `FedLGMatch`, `(FL)^2`처럼 non-IID client 제약이 핵심인 방법은
-  FL runtime rail에서 메인 논문 비교로 다룬다.
+- FedMatch처럼 non-IID client 제약이 핵심인 방법은 FL runtime rail에서 다룬다.
 
 ### 3.4 FL Runtime Rail
 
@@ -233,7 +232,6 @@ Raw Event / Local Signal
 |---|---|
 | `docs/execution_index.md` | 짧은 진입점과 문서 지도 |
 | `docs/project_execution_plan.md` | 활성 연구/시스템 계획과 현재 Phase |
-| `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 guard |
 | `shared/src/contracts/README.md` | contract 파일 가까운 payload 해석 |
 | `docs/api/api-surface.md` | 현재 FastAPI endpoint 표면 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke 절차 |

@@ -117,5 +117,5 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
 - `methods/prototype/evidence/`: prototype score를 pseudo-label evidence로 정규화
 - `methods/prototype/training_inputs/`: prototype single/multiview input view 계산
 
-구현 상태와 기본 선택값은 `docs/strategy_surface_map.md`와 `conf/README.md`를
+구현 상태와 기본 선택값은 `conf/README.md`와 실제 `conf/strategy_axes/**` leaf를
 기준으로 본다. 이 문서는 `methods/`의 책임 경계만 설명한다.

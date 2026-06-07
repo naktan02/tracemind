@@ -66,8 +66,6 @@ LEGACY_AGENT_QUERY_TEXT_VIEWS_SRC = (
 TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS: set[Path] = set()
 RUNTIME_LAYER_METHOD_NAME_FRAGMENTS = (
     "fedmatch",
-    "fedlgmatch",
-    "fl2",
     "fixmatch",
     "refixmatch",
     "remixmatch",
@@ -87,9 +85,6 @@ FL_SCRIPT_RUNTIME_ROOTS = (
 )
 PAPER_METHOD_NAME_FRAGMENTS = (
     "fedmatch",
-    "fedlgmatch",
-    "fl2",
-    "fl_2",
 )
 
 
@@ -2350,7 +2345,7 @@ def test_fl_scripts_do_not_define_paper_method_specific_runtime_modules() -> Non
                 violations.append(relative_path)
 
     assert not violations, (
-        "FL scripts/runtime adapters는 FedMatch/FedLGMatch/(FL)^2 같은 논문 method "
+        "FL scripts/runtime adapters는 FedMatch 같은 논문 method "
         "구현을 파일명으로 소유하지 않는다. method identity와 policy 의미는 "
         "methods/federated_ssl/<method>/에 두고, scripts는 entrypoint/report/runtime "
         "bridge만 맡긴다.\n"
@@ -2910,8 +2905,6 @@ def test_federated_ssl_method_packages_do_not_own_payload_adapter_runtime_files(
 def test_payload_adapter_federated_ssl_files_do_not_multiply_by_method_name() -> None:
     method_fragments = (
         "fedmatch",
-        "fedlgmatch",
-        "fl2",
         "fixmatch",
         "flexmatch",
         "freematch",
@@ -3170,9 +3163,6 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
         CONF_SRC / "strategy_axes" / "fl" / "README.md",
         REPO_ROOT / "docs" / "project_execution_plan.md",
-        REPO_ROOT / "docs" / "strategy_surface_map.md",
-        REPO_ROOT / "docs" / "contracts" / "fl_ssl_method_capability_matrix.md",
-        REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md",
         REPO_ROOT / "docs" / "operations" / "local-runbook.md",
     )
     forbidden_snippets = (
@@ -3221,7 +3211,6 @@ def test_active_docs_use_current_trainable_state_vocabulary() -> None:
         / "contracts"
         / "central_peft_text_encoder_trainer_contract.md",
         REPO_ROOT / "docs" / "contracts" / "shared_adapter_contracts_v1.md",
-        REPO_ROOT / "docs" / "contracts" / "strategy_addition_playbook.md",
         REPO_ROOT / "docs" / "contracts" / "training_task_v1.md",
         REPO_ROOT / "docs" / "contracts" / "training_update_envelope_v1.md",
     )
@@ -3253,9 +3242,6 @@ def test_active_surface_and_runbook_docs_stay_concise() -> None:
         CONF_SRC / "README.md",
         SCRIPTS_SRC / "README.md",
         REPO_ROOT / "docs" / "project_execution_plan.md",
-        REPO_ROOT / "docs" / "experiment_results.md",
-        REPO_ROOT / "docs" / "strategy_surface_map.md",
-        REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md",
         SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "README.md",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
@@ -3264,9 +3250,6 @@ def test_active_surface_and_runbook_docs_stay_concise() -> None:
         CONF_SRC / "README.md": 160,
         SCRIPTS_SRC / "README.md": 120,
         REPO_ROOT / "docs" / "project_execution_plan.md": 160,
-        REPO_ROOT / "docs" / "experiment_results.md": 100,
-        REPO_ROOT / "docs" / "strategy_surface_map.md": 120,
-        REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md": 120,
         SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "README.md": 100,
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md": 160,
         SCRIPTS_SRC

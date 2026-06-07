@@ -173,11 +173,10 @@
 - pseudo-label acceptance/selection 정책 추가: `methods/ssl/hooks/`
 - privacy guard 추가: `methods/adaptation/privacy_guards/`
 
-FedMatch, FedLGMatch, FreeMatch 같은 method 이름을 가진 파일은 `agent`에 만들지
+FedMatch, FreeMatch 같은 method 이름을 가진 파일은 `agent`에 만들지
 않는다. 해당 method의 local objective, hook, selection/threshold 의미는
 `methods/`가 소유하고, `agent`는 선택된 method core를 local data와 contract
 payload에 연결한다.
 
-확장 전에 `shared/src/contracts/README.md`,
-`docs/contracts/algorithm_extension_guide.md`,
-`docs/contracts/strategy_addition_playbook.md`를 함께 읽는 것을 권장한다.
+확장 전에 `shared/src/contracts/README.md`, `methods/README.md`, `conf/README.md`를
+함께 읽는 것을 권장한다.

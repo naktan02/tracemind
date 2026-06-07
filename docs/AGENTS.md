@@ -17,7 +17,7 @@
 - `docs/governance/`
   - 문서 class와 source-of-truth 운영 규칙
 - `docs/contracts/`
-  - contract 설계 배경과 전략 확장 절차
+  - contract 설계 배경과 payload별 해석 보조
 - `docs/notes/`
   - 세션, incident, decision archive
 
@@ -45,9 +45,9 @@ docs나 code-adjacent 문서로 요약 승격한다.
   명령만 담는다.
 - `docs/quality/test-strategy.md`는 테스트 층과 보호 범위를 설명한다.
 - `docs/governance/document-governance.md`는 문서 class와 갱신 기준을 소유한다.
-- `docs/ai_harness_operating_model.md`와 `docs/ai_harness_eval_cases.yaml`은
-  maintainer 전용 보조 문서로만 둔다.
-- `docs/contracts/*`는 설계 배경과 확장 절차를 설명한다.
+- `docs/contracts/*`는 설계 배경과 payload별 해석 보조를 설명한다. 새 method나
+  strategy 추가 절차는 `methods/README.md`, 해당 `methods/**/NEW_METHOD.md`,
+  `conf/README.md`를 우선한다.
 - `docs/contracts/central_peft_text_encoder_trainer_contract.md`는 논문 트랙의
   canonical PEFT text encoder scaffold와 산출물 경계를 설명한다.
 - `docs/notes/**`는 참고/아카이브 용도이며 source of truth로 취급하지 않는다.

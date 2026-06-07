@@ -12,9 +12,8 @@
 | Canonical Active Docs | 현재 구현, 현재 계획, 운영 경계를 설명하는 공식 문서 | `README.md`, `docs/execution_index.md`, `docs/architecture/system-overview.md` |
 | Contract Design Docs | contract 설계 배경과 확장 절차 | `docs/contracts/*` |
 | Operational Docs | 로컬 실행, smoke, test, runbook | `docs/operations/*`, `docs/quality/*` |
-| Harness Docs | AI/Codex 작업 라우팅과 eval case | `docs/ai_context_manifest.yaml`, `docs/ai_harness_*` |
+| Harness Docs | AI/Codex 작업 라우팅 | `docs/ai_context_manifest.yaml`, `.codex/skills/*`, `AGENTS.md` |
 | Notes | 세션, 사건, 결정 아카이브 | `docs/notes/**` |
-| Mockups | UI/제품 실험용 정적 산출물 | `docs/mockups/**` |
 
 ## 2. Source of Truth 표
 
@@ -28,15 +27,14 @@
 | algorithm/method core 경계 | `methods/README.md`, `methods/**/README.md` |
 | Hydra config group 경계 | `conf/README.md` |
 | 활성 연구/시스템 계획 | `docs/project_execution_plan.md` |
-| staged phase map | `docs/staged_execution_roadmap.md`는 phase 이름 축약본이며 현재 우선순위는 `docs/project_execution_plan.md` |
 | API endpoint 표면 | `docs/api/api-surface.md`, `agent/src/api/*`, `main_server/src/api/*` |
 | payload 필드와 의미 | `shared/src/contracts/*.py`, `shared/src/contracts/README.md` |
 | local run/smoke 절차 | `docs/operations/local-runbook.md` |
 | 테스트 전략 | `docs/quality/test-strategy.md` |
-| 알고리즘/전략 추가 절차 | `docs/architecture/target-method-runtime-structure.md`, `docs/strategy_surface_map.md`, `docs/contracts/strategy_addition_playbook.md`, 필요 시 `docs/contracts/algorithm_extension_guide.md` |
+| 알고리즘/전략 추가 절차 | `docs/architecture/target-method-runtime-structure.md`, `methods/README.md`, 해당 `methods/**/NEW_METHOD.md`, `conf/README.md` |
 | query buffer local boundary | `docs/contracts/query_buffer_v1.md`, `agent/src/infrastructure/repositories/query_buffer_repository.py` |
 | child-support local boundary | `shared/src/contracts/child_support_contracts.py`, `agent/src/services/wellbeing/child_support_service.py` |
-| family extension planning | `docs/family_extension_wellbeing_signal_mvp_plan.md`, `shared/src/contracts/wellbeing_signal_contracts.py` |
+| family extension surface | `apps/family_extension/README.md`, `apps/family_extension/AGENTS.md`, `shared/src/contracts/wellbeing_signal_contracts.py` |
 
 ## 3. 작성 원칙
 

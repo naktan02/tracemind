@@ -178,4 +178,4 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | shared payload 변경 | `shared/src/contracts/*.py`, contract tests, producer/consumer, 관련 `docs/contracts/*` |
 | agent route 변경 | `agent/tests/unit/*_api.py`, `docs/api/api-surface.md`, relevant app consumer |
 | main_server route 변경 | `main_server/tests/unit/*_api.py`, root integration tests, `docs/api/api-surface.md` |
-| family/wellbeing route 변경 | `apps/family_extension`, generated types, `docs/family_extension_wellbeing_signal_mvp_plan.md` |
+| family/wellbeing route 변경 | `apps/family_extension`, generated types, 관련 shared wellbeing/family contract |

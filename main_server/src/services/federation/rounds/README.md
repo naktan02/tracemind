@@ -109,6 +109,5 @@ server-side calibration을 요구하면 먼저
 추가한다. method 이름을 가진 server 파일이 늘어나면 runtime adapter가 method
 framework 역할을 흡수하고 있다는 신호다.
 
-새 payload adapter나 backend를 추가할 때는
-`docs/contracts/algorithm_extension_guide.md`와
-`docs/contracts/strategy_addition_playbook.md`를 먼저 읽는 편이 빠르다.
+새 payload adapter나 backend를 추가할 때는 `methods/README.md`,
+`conf/README.md`, 관련 shared contract를 먼저 읽는 편이 빠르다.
