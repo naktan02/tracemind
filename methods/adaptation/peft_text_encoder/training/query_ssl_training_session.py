@@ -6,6 +6,7 @@ import random
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Protocol
 
 from methods.adaptation.peft_text_encoder.config import (
@@ -58,6 +59,8 @@ class QuerySslPeftEncoderObjectiveRuntimeConfig(Protocol):
     parameters: Mapping[str, object]
     strong_view_policy: str
     unlabeled_batch_size: int | None
+    drop_last_train_batches: bool
+    drop_last_unlabeled_batches: bool
 
 
 class PeftEncoderTrainerRuntimeConfig(Protocol):
@@ -83,10 +86,23 @@ class QuerySslPeftEncoderLocalSslResult:
     selection_rows: tuple[LabeledQueryRow, ...]
     local_step_plan: QuerySslLocalStepPlan
     history: tuple[dict[str, Any], ...]
+    best_selection_report: Mapping[str, Any]
     pseudo_label_quality: PseudoLabelQualitySummary
     diagnostic_client_metrics: Mapping[str, float]
     tokenization_cache: TextTokenizationCache | None
     tokenization_cache_namespace: str
+
+
+@dataclass(frozen=True, slots=True)
+class QuerySslPeftEncoderLocalTrainerOptions:
+    """문맥별 runner가 공통 local session에 넘기는 trainer 실행 옵션."""
+
+    classifier_learning_rate: float | None = None
+    weight_decay: float = 0.0
+    log_every_steps: int = 0
+    resume_checkpoint_path: str | Path | None = None
+    resume_checkpoint_output_dir: str | Path | None = None
+    resume_checkpoint_every_epochs: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +130,7 @@ def run_query_ssl_peft_encoder_local_ssl(
     labeled_rows: Sequence[LabeledQueryRow],
     unlabeled_rows: Sequence[LabeledQueryRow],
     diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None,
+    selection_rows: Sequence[LabeledQueryRow] | None = None,
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
     training_task: TrainingTask,
@@ -123,13 +140,20 @@ def run_query_ssl_peft_encoder_local_ssl(
     runtime_resource_cache: RuntimeResourceCache | None = None,
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
+    trainer_options: QuerySslPeftEncoderLocalTrainerOptions | None = None,
 ) -> QuerySslPeftEncoderLocalSslResult:
     """PEFT text encoder Query SSL local 학습을 실행한다."""
 
+    effective_trainer_options = (
+        QuerySslPeftEncoderLocalTrainerOptions()
+        if trainer_options is None
+        else trainer_options
+    )
     runtime = _prepare_query_ssl_local_runtime(
         seed=seed,
         labeled_rows=labeled_rows,
         unlabeled_rows=unlabeled_rows,
+        selection_rows=selection_rows,
         labels=labels,
         base_parameters=base_parameters,
         training_task=training_task,
@@ -151,13 +175,24 @@ def run_query_ssl_peft_encoder_local_ssl(
             epochs=int(training_task.local_epochs),
             max_train_steps=runtime.step_plan.total_steps,
             learning_rate=float(training_task.learning_rate),
-            classifier_learning_rate=float(training_task.learning_rate),
-            weight_decay=0.0,
+            classifier_learning_rate=(
+                float(training_task.learning_rate)
+                if effective_trainer_options.classifier_learning_rate is None
+                else float(effective_trainer_options.classifier_learning_rate)
+            ),
+            weight_decay=float(effective_trainer_options.weight_decay),
             proximal_mu=float(peft_config.proximal_mu),
             max_grad_norm=_training_gradient_clip_norm(training_task),
-            log_every_steps=0,
+            log_every_steps=int(effective_trainer_options.log_every_steps),
             algorithm=runtime.algorithm,
             initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+            resume_checkpoint_path=effective_trainer_options.resume_checkpoint_path,
+            resume_checkpoint_output_dir=(
+                effective_trainer_options.resume_checkpoint_output_dir
+            ),
+            resume_checkpoint_every_epochs=int(
+                effective_trainer_options.resume_checkpoint_every_epochs
+            ),
         )
 
     diagnostic_threshold = resolve_fixed_pseudo_label_diagnostic_threshold(
@@ -191,6 +226,7 @@ def run_query_ssl_peft_encoder_local_ssl(
         selection_rows=runtime.selection_rows,
         local_step_plan=runtime.step_plan,
         history=tuple(history),
+        best_selection_report=dict(_best_selection_report),
         pseudo_label_quality=pseudo_label_quality,
         diagnostic_client_metrics=diagnostic_threshold.to_client_metrics(),
         tokenization_cache=runtime.tokenization_cache,
@@ -203,6 +239,7 @@ def _prepare_query_ssl_local_runtime(
     seed: int,
     labeled_rows: Sequence[LabeledQueryRow],
     unlabeled_rows: Sequence[LabeledQueryRow],
+    selection_rows: Sequence[LabeledQueryRow] | None,
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
     training_task: TrainingTask,
@@ -237,6 +274,14 @@ def _prepare_query_ssl_local_runtime(
         rows=effective_labeled_rows,
         labels=effective_labels,
     )
+    effective_selection_rows = (
+        tuple(selection_rows) if selection_rows is not None else None
+    )
+    if effective_selection_rows is not None:
+        _validate_labeled_rows_have_known_labels(
+            rows=effective_selection_rows,
+            labels=effective_labels,
+        )
     tokenization_cache = resolve_text_tokenization_cache(runtime_resource_cache)
     tokenization_cache_namespace_value = tokenization_cache_namespace(peft_config)
 
@@ -260,11 +305,15 @@ def _prepare_query_ssl_local_runtime(
 
     with _measure(timing_recorder, "core_dataloader_prepare_seconds"):
         label_to_index = {label: index for index, label in enumerate(effective_labels)}
-        selection_rows = tuple(
-            _build_bounded_label_balanced_selection_rows(
-                rows=effective_labeled_rows,
-                max_examples=training_task.selection_policy.max_examples,
-                seed=int(seed),
+        prepared_selection_rows = (
+            effective_selection_rows
+            if effective_selection_rows is not None
+            else tuple(
+                _build_bounded_label_balanced_selection_rows(
+                    rows=effective_labeled_rows,
+                    max_examples=training_task.selection_policy.max_examples,
+                    seed=int(seed),
+                )
             )
         )
         train_loader = build_dataloader(
@@ -277,9 +326,14 @@ def _prepare_query_ssl_local_runtime(
             shuffle=True,
             tokenization_cache=tokenization_cache,
             tokenization_cache_namespace=tokenization_cache_namespace_value,
+            drop_last=getattr(
+                query_ssl_config,
+                "drop_last_train_batches",
+                False,
+            ),
         )
         selection_loader = build_dataloader(
-            rows=selection_rows,
+            rows=prepared_selection_rows,
             label_to_index=label_to_index,
             tokenizer=tokenizer,
             batch_size=int(training_task.batch_size),
@@ -288,6 +342,11 @@ def _prepare_query_ssl_local_runtime(
             shuffle=False,
             tokenization_cache=tokenization_cache,
             tokenization_cache_namespace=tokenization_cache_namespace_value,
+            drop_last=getattr(
+                query_ssl_config,
+                "drop_last_unlabeled_batches",
+                False,
+            ),
         )
         unlabeled_loader = _build_unlabeled_loader(
             rows=effective_unlabeled_rows,
@@ -316,7 +375,7 @@ def _prepare_query_ssl_local_runtime(
         effective_labeled_rows=effective_labeled_rows,
         effective_unlabeled_rows=effective_unlabeled_rows,
         effective_labels=effective_labels,
-        selection_rows=selection_rows,
+        selection_rows=prepared_selection_rows,
         train_loader=train_loader,
         selection_loader=selection_loader,
         unlabeled_loader=unlabeled_loader,
@@ -400,6 +459,7 @@ def _build_unlabeled_loader(
     view_builder_name: str,
     tokenization_cache: TextTokenizationCache | None,
     tokenization_cache_namespace: str,
+    drop_last: bool = False,
 ) -> Any:
     return build_query_ssl_unlabeled_dataloader(
         rows=rows,
@@ -412,6 +472,7 @@ def _build_unlabeled_loader(
         strong_view_policy=strong_view_policy,
         tokenization_cache=tokenization_cache,
         tokenization_cache_namespace=tokenization_cache_namespace,
+        drop_last=drop_last,
     )
 
 

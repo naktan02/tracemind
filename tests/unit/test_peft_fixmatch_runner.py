@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import torch
 from omegaconf import OmegaConf
 from torch import nn
 
+from methods.adaptation.peft_text_encoder.update.materialization import (
+    PeftEncoderMaterializedState,
+)
+from methods.adaptation.query_text_views.local_training_budget import (
+    QuerySslLocalStepPlan,
+)
 from methods.ssl.base import (
     QuerySslAlgorithmDescriptor,
     QuerySslRequiredViews,
     QuerySslRuntimeRequirements,
 )
+from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from scripts.support.query_ssl_text_encoder.runners.consistency import (
     run_consistency_query_ssl_peft_baseline,
     run_query_ssl_peft_baseline,
@@ -68,16 +77,34 @@ def _build_cfg() -> object:
                         "methods.adaptation.peft_text_encoder.training.modeling."
                         "build_model"
                     ),
-                    "trainer": (
-                        "methods.adaptation.peft_text_encoder.training.loops."
-                        "train_query_ssl_classifier"
+                    "local_session_runner": (
+                        "methods.adaptation.peft_text_encoder.training."
+                        "query_ssl_training_session."
+                        "run_query_ssl_peft_encoder_local_ssl"
                     ),
                     "trainer_version_prefix": "peft",
                 },
             },
             "paper_backbone": {
+                "model_id": "dummy-backbone",
+                "revision": "main",
+                "tokenizer_model_id": "dummy-tokenizer",
+                "tokenizer_revision": "main",
+                "pooling": "mean",
                 "max_length": 32,
                 "task_prefix": "",
+                "classifier_dropout": 0.1,
+                "cache_dir": "",
+                "trust_remote_code": False,
+            },
+            "peft_adapter": {
+                "peft_adapter_name": "lora",
+                "rank": 8,
+                "alpha": 16,
+                "dropout": 0.1,
+                "bias": "none",
+                "target_modules": "all-linear",
+                "use_rslora": False,
             },
             "eval_sets": {
                 "validation": VALIDATION_JSONL,
@@ -95,6 +122,114 @@ def _build_cfg() -> object:
             "log_every_steps": 10,
             "output_dir": "runs/run_peft_ssl_control/consistency",
         }
+    )
+
+
+class _DummyModel:
+    pass
+
+
+class _DummyFeatureModel:
+    classifier = nn.Linear(2, 2)
+
+    def extract_pooled_features(self, *, input_ids, attention_mask):
+        del attention_mask
+        return torch.ones((input_ids.shape[0], 2), dtype=torch.float32)
+
+
+class _DummyTokenizer:
+    def __call__(self, texts, **_kwargs):
+        batch = len(texts)
+        return {
+            "input_ids": torch.ones((batch, 2), dtype=torch.long),
+            "attention_mask": torch.ones((batch, 2), dtype=torch.long),
+        }
+
+
+def _patch_central_local_session(
+    monkeypatch,
+    captured: dict[str, object],
+    *,
+    model: object | None = None,
+) -> None:
+    session_model = model or _DummyModel()
+    tokenizer = _DummyTokenizer()
+
+    monkeypatch.setattr(
+        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
+        lambda **_kwargs: (
+            session_model,
+            tokenizer,
+            {
+                "backbone_model_id": "dummy-backbone",
+                "backbone_revision": "main",
+                "parameter_counts": {"trainable": 10, "total": 20},
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.support.query_ssl_text_encoder.runners.consistency."
+        "extract_peft_encoder_materialized_state",
+        lambda **_kwargs: PeftEncoderMaterializedState(
+            peft_parameters={"adapter.weight": [0.0]},
+            classifier_head_weights={
+                "anxiety": [0.0, 0.0],
+                "depression": [0.0, 0.0],
+                "normal": [0.0, 0.0],
+                "suicidal": [0.0, 0.0],
+            },
+            classifier_head_biases={
+                "anxiety": 0.0,
+                "depression": 0.0,
+                "normal": 0.0,
+                "suicidal": 0.0,
+            },
+        ),
+    )
+
+    def _fake_local_session_runner(**kwargs):
+        captured["local_session_request"] = kwargs
+        query_ssl_config = kwargs["query_ssl_config"]
+        algorithm = resolve_query_ssl_algorithm_descriptor(
+            query_ssl_config.algorithm_name
+        ).build_algorithm(query_ssl_config.parameters)
+        return SimpleNamespace(
+            model=session_model,
+            tokenizer=tokenizer,
+            algorithm=algorithm,
+            effective_labeled_rows=tuple(kwargs["labeled_rows"]),
+            effective_unlabeled_rows=tuple(kwargs["unlabeled_rows"]),
+            effective_labels=tuple(kwargs["labels"]),
+            selection_rows=tuple(kwargs["selection_rows"]),
+            local_step_plan=QuerySslLocalStepPlan(
+                labeled_loader_steps=1,
+                unlabeled_loader_steps=1,
+                full_epoch_steps=1,
+                local_epochs=1,
+                max_steps=1,
+                total_steps=1,
+            ),
+            history=({"epoch": 1, "train_loss": 0.1},),
+            best_selection_report={
+                "loss": 0.2,
+                "accuracy_top_1": 0.75,
+                "rows_total": 2,
+                "mean_true_label_probability": 0.7,
+                "mean_top_1_probability": 0.8,
+                "mean_margin_top1_top2": 0.3,
+                "confusion_matrix": {},
+                "per_category": {},
+            },
+            pseudo_label_quality=SimpleNamespace(),
+            diagnostic_client_metrics={},
+            tokenization_cache=None,
+            tokenization_cache_namespace="test",
+        )
+
+    monkeypatch.setattr(
+        "methods.adaptation.peft_text_encoder.training.query_ssl_training_session."
+        "run_query_ssl_peft_encoder_local_ssl",
+        _fake_local_session_runner,
     )
 
 
@@ -134,36 +269,7 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
-
-    class _DummyModel:
-        pass
-
-    class _DummyTokenizer:
-        def __call__(self, texts, **_kwargs):
-            batch = len(texts)
-            return {
-                "input_ids": torch.ones((batch, 2), dtype=torch.long),
-                "attention_mask": torch.ones((batch, 2), dtype=torch.long),
-            }
-
-    def _fake_train_query_ssl_classifier(**kwargs):
-        captured["algorithm"] = kwargs["algorithm"]
-        captured["train_loader"] = kwargs["train_loader"]
-        captured["unlabeled_loader"] = kwargs["unlabeled_loader"]
-        return (
-            kwargs["model"],
-            [{"epoch": 1, "train_loss": 0.1}],
-            {
-                "loss": 0.2,
-                "accuracy_top_1": 0.75,
-                "rows_total": 2,
-                "mean_true_label_probability": 0.7,
-                "mean_top_1_probability": 0.8,
-                "mean_margin_top1_top2": 0.3,
-                "confusion_matrix": {},
-                "per_category": {},
-            },
-        )
+    _patch_central_local_session(monkeypatch, captured)
 
     def _fake_write_run_artifacts(**kwargs):
         captured["extra_manifest"] = kwargs["extra_manifest"]
@@ -173,19 +279,6 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
             "report_json": "runs/fake_fixmatch/report.json",
         }
 
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
-        lambda **_kwargs: (
-            _DummyModel(),
-            _DummyTokenizer(),
-            {"parameter_counts": {"trainable": 10, "total": 20}},
-        ),
-    )
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.loops."
-        "train_query_ssl_classifier",
-        _fake_train_query_ssl_classifier,
-    )
     monkeypatch.setattr(
         "scripts.support.query_ssl_text_encoder.text_encoder_run_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
@@ -216,9 +309,14 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
 
     assert outputs["output_dir"] == "runs/fake_fixmatch"
     assert captured["history"] == [{"epoch": 1, "train_loss": 0.1}]
-    assert captured["algorithm"].p_cutoff == 0.95
-    assert captured["algorithm"].hard_label is True
-    assert captured["algorithm"].supervised_loss_weight == 1.0
+    local_request = captured["local_session_request"]
+    query_ssl_config = local_request["query_ssl_config"]
+    assert query_ssl_config.algorithm_name == "fixmatch"
+    assert query_ssl_config.parameters["p_cutoff"] == 0.95
+    assert query_ssl_config.parameters["hard_label"] is True
+    assert query_ssl_config.parameters["supervised_loss_weight"] == 1.0
+    assert local_request["training_task"].max_steps == 1
+    assert local_request["trainer_options"].classifier_learning_rate == 0.001
     assert captured["extra_manifest"]["unlabeled_row_count"] == 1
     assert (
         captured["extra_manifest"]["query_ssl_method"]["preset_name"]
@@ -256,48 +354,7 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
-
-    class _DummyModel:
-        pass
-
-    class _DummyTokenizer:
-        def __call__(self, texts, **_kwargs):
-            batch = len(texts)
-            return {
-                "input_ids": torch.ones((batch, 2), dtype=torch.long),
-                "attention_mask": torch.ones((batch, 2), dtype=torch.long),
-            }
-
-    def _fake_train_query_ssl_classifier(**kwargs):
-        captured["algorithm"] = kwargs["algorithm"]
-        return (
-            kwargs["model"],
-            [{"epoch": 1, "train_loss": 0.1}],
-            {
-                "loss": 0.2,
-                "accuracy_top_1": 0.75,
-                "rows_total": 2,
-                "mean_true_label_probability": 0.7,
-                "mean_top_1_probability": 0.8,
-                "mean_margin_top1_top2": 0.3,
-                "confusion_matrix": {},
-                "per_category": {},
-            },
-        )
-
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
-        lambda **_kwargs: (
-            _DummyModel(),
-            _DummyTokenizer(),
-            {"parameter_counts": {"trainable": 10, "total": 20}},
-        ),
-    )
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.loops."
-        "train_query_ssl_classifier",
-        _fake_train_query_ssl_classifier,
-    )
+    _patch_central_local_session(monkeypatch, captured)
     monkeypatch.setattr(
         "scripts.support.query_ssl_text_encoder.text_encoder_run_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
@@ -329,8 +386,9 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
         },
     )
 
-    assert captured["algorithm"].algorithm_name == "fixmatch"
-    assert captured["algorithm"].uses_labeled_batches is True
+    query_ssl_config = captured["local_session_request"]["query_ssl_config"]
+    assert query_ssl_config.algorithm_name == "fixmatch"
+    assert query_ssl_config.parameters["require_multiview"] is True
 
 
 def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
@@ -353,48 +411,7 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
         }
     )
 
-    class _DummyModel:
-        pass
-
-    class _DummyTokenizer:
-        def __call__(self, texts, **_kwargs):
-            batch = len(texts)
-            return {
-                "input_ids": torch.ones((batch, 2), dtype=torch.long),
-                "attention_mask": torch.ones((batch, 2), dtype=torch.long),
-            }
-
-    def _fake_train_query_ssl_classifier(**kwargs):
-        captured["algorithm"] = kwargs["algorithm"]
-        captured["unlabeled_loader"] = kwargs["unlabeled_loader"]
-        return (
-            kwargs["model"],
-            [{"epoch": 1, "train_loss": 0.1}],
-            {
-                "loss": 0.2,
-                "accuracy_top_1": 0.75,
-                "rows_total": 2,
-                "mean_true_label_probability": 0.7,
-                "mean_top_1_probability": 0.8,
-                "mean_margin_top1_top2": 0.3,
-                "confusion_matrix": {},
-                "per_category": {},
-            },
-        )
-
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
-        lambda **_kwargs: (
-            _DummyModel(),
-            _DummyTokenizer(),
-            {"parameter_counts": {"trainable": 10, "total": 20}},
-        ),
-    )
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.loops."
-        "train_query_ssl_classifier",
-        _fake_train_query_ssl_classifier,
-    )
+    _patch_central_local_session(monkeypatch, captured)
     monkeypatch.setattr(
         "scripts.support.query_ssl_text_encoder.text_encoder_run_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
@@ -428,12 +445,13 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
             "test": [_labeled_row("t1", "depression", "테스트")],
         },
     )
-    unlabeled_batch = next(iter(captured["unlabeled_loader"]))
 
-    assert captured["algorithm"].algorithm_name == "flexmatch"
-    assert captured["algorithm"].thresh_warmup is True
-    assert "strong_input_ids" in unlabeled_batch
-    assert unlabeled_batch["row_indices"].tolist() == [0, 1]
+    local_request = captured["local_session_request"]
+    query_ssl_config = local_request["query_ssl_config"]
+    assert query_ssl_config.algorithm_name == "flexmatch"
+    assert query_ssl_config.parameters["thresh_warmup"] is True
+    assert local_request["unlabeled_rows"][0]["aug_0"] == "de::우울해요"
+    assert local_request["unlabeled_rows"][1]["aug_1"] == "fr::괜찮아요"
 
 
 def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
@@ -461,51 +479,10 @@ def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
         }
     )
 
-    class _DummyFeatureModel:
-        classifier = nn.Linear(2, 2)
-
-        def extract_pooled_features(self, *, input_ids, attention_mask):
-            del attention_mask
-            return torch.ones((input_ids.shape[0], 2), dtype=torch.float32)
-
-    class _DummyTokenizer:
-        def __call__(self, texts, **_kwargs):
-            batch = len(texts)
-            return {
-                "input_ids": torch.ones((batch, 2), dtype=torch.long),
-                "attention_mask": torch.ones((batch, 2), dtype=torch.long),
-            }
-
-    def _fake_train_query_ssl_classifier(**kwargs):
-        captured["algorithm"] = kwargs["algorithm"]
-        captured["unlabeled_loader"] = kwargs["unlabeled_loader"]
-        return (
-            kwargs["model"],
-            [{"epoch": 1, "train_loss": 0.1}],
-            {
-                "loss": 0.2,
-                "accuracy_top_1": 0.75,
-                "rows_total": 2,
-                "mean_true_label_probability": 0.7,
-                "mean_top_1_probability": 0.8,
-                "mean_margin_top1_top2": 0.3,
-                "confusion_matrix": {},
-                "per_category": {},
-            },
-        )
-
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
-        lambda **_kwargs: (
-            _DummyFeatureModel(),
-            _DummyTokenizer(),
-            {"parameter_counts": {"trainable": 10, "total": 20}},
-        ),
-    )
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.loops."
-        "train_query_ssl_classifier",
-        _fake_train_query_ssl_classifier,
+    _patch_central_local_session(
+        monkeypatch,
+        captured,
+        model=_DummyFeatureModel(),
     )
     monkeypatch.setattr(
         "scripts.support.query_ssl_text_encoder.text_encoder_run_context.evaluate_text_encoder_classifier",
@@ -540,13 +517,11 @@ def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
             "test": [_labeled_row("t1", "depression", "테스트")],
         },
     )
-    unlabeled_batch = next(iter(captured["unlabeled_loader"]))
 
-    assert captured["algorithm"].algorithm_name == "comatch"
-    assert captured["algorithm"].proj_size == 2
-    assert "strong_0_input_ids" in unlabeled_batch
-    assert "strong_1_input_ids" in unlabeled_batch
-    assert "strong_input_ids" not in unlabeled_batch
+    query_ssl_config = captured["local_session_request"]["query_ssl_config"]
+    assert query_ssl_config.algorithm_name == "comatch"
+    assert query_ssl_config.parameters["proj_size"] == 2
+    assert query_ssl_config.parameters["require_weak_strong_pair"] is True
 
 
 def test_query_ssl_peft_runner_rejects_unsupported_descriptor_capability(
@@ -622,34 +597,7 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
         }
     )
 
-    class _DummyModel:
-        pass
-
-    class _DummyTokenizer:
-        def __call__(self, texts, **_kwargs):
-            batch = len(texts)
-            return {
-                "input_ids": torch.ones((batch, 2), dtype=torch.long),
-                "attention_mask": torch.ones((batch, 2), dtype=torch.long),
-            }
-
-    def _fake_train_query_ssl_classifier(**kwargs):
-        captured["algorithm"] = kwargs["algorithm"]
-        captured["unlabeled_loader"] = kwargs["unlabeled_loader"]
-        return (
-            kwargs["model"],
-            [{"epoch": 1, "train_loss": 0.1}],
-            {
-                "loss": 0.2,
-                "accuracy_top_1": 0.75,
-                "rows_total": 2,
-                "mean_true_label_probability": 0.7,
-                "mean_top_1_probability": 0.8,
-                "mean_margin_top1_top2": 0.3,
-                "confusion_matrix": {},
-                "per_category": {},
-            },
-        )
+    _patch_central_local_session(monkeypatch, captured)
 
     def _fake_write_run_artifacts(**kwargs):
         captured["extra_manifest"] = kwargs["extra_manifest"]
@@ -658,19 +606,6 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
             "report_json": "runs/fake_pseudolabel/report.json",
         }
 
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.modeling.build_model",
-        lambda **_kwargs: (
-            _DummyModel(),
-            _DummyTokenizer(),
-            {"parameter_counts": {"trainable": 10, "total": 20}},
-        ),
-    )
-    monkeypatch.setattr(
-        "methods.adaptation.peft_text_encoder.training.loops."
-        "train_query_ssl_classifier",
-        _fake_train_query_ssl_classifier,
-    )
     monkeypatch.setattr(
         "scripts.support.query_ssl_text_encoder.text_encoder_run_context.evaluate_text_encoder_classifier",
         lambda **_kwargs: {
@@ -698,12 +633,12 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
             "test": [_labeled_row("t1", "depression", "테스트")],
         },
     )
-    unlabeled_batch = next(iter(captured["unlabeled_loader"]))
 
     assert outputs["output_dir"] == "runs/fake_pseudolabel"
-    assert captured["algorithm"].algorithm_name == "pseudolabel"
-    assert captured["algorithm"].unsup_warm_up == 0.4
-    assert "strong_input_ids" not in unlabeled_batch
+    query_ssl_config = captured["local_session_request"]["query_ssl_config"]
+    assert query_ssl_config.algorithm_name == "pseudolabel"
+    assert query_ssl_config.parameters["unsup_warm_up"] == 0.4
+    assert "aug_0" not in captured["local_session_request"]["unlabeled_rows"][0]
     assert (
         captured["extra_manifest"]["query_ssl_method"]["preset_name"]
         == "pseudolabel_usb_v1"

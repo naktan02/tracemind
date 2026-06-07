@@ -247,7 +247,7 @@ def test_central_ssl_trainable_surface_leafs_declare_runtime_callables() -> None
         central_ssl_leaf_count += 1
         assert cfg.get("name"), path
         assert central_ssl.get("trainer_version_prefix"), path
-        for field_name in ("model_builder", "trainer"):
+        for field_name in ("model_builder", "local_session_runner"):
             callable_path = central_ssl.get(field_name)
             assert callable_path, path
             load_configured_callable(

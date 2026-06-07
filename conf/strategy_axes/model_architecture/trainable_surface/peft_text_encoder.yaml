@@ -7,5 +7,5 @@ requires_peft_adapter: true
 supports_initial_adapter: true
 central_ssl:
   model_builder: methods.adaptation.peft_text_encoder.training.modeling.build_model
-  trainer: methods.adaptation.peft_text_encoder.training.loops.train_query_ssl_classifier
+  local_session_runner: methods.adaptation.peft_text_encoder.training.query_ssl_training_session.run_query_ssl_peft_encoder_local_ssl
   trainer_version_prefix: peft

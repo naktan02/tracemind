@@ -47,6 +47,7 @@ class TextEncoderRunContext:
     effective_selection_set: str
     eval_set_map: dict[str, Path]
     effective_train_rows: list[LabeledQueryRow]
+    eval_rows_by_name: dict[str, list[LabeledQueryRow]] | None
     categories: list[str]
     label_to_index: dict[str, int]
     training_device: str
@@ -154,6 +155,11 @@ def prepare_text_encoder_run_context(
         effective_selection_set=effective_selection_set,
         eval_set_map=eval_set_map,
         effective_train_rows=effective_train_rows,
+        eval_rows_by_name=(
+            None
+            if eval_rows_by_name is None
+            else {name: list(rows) for name, rows in eval_rows_by_name.items()}
+        ),
         categories=categories,
         label_to_index=label_to_index,
         training_device=training_device,

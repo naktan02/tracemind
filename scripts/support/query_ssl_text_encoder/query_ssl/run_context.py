@@ -29,6 +29,7 @@ class QuerySslRunContext:
     effective_selection_set: str
     eval_set_map: dict[str, Path]
     effective_train_rows: list[LabeledQueryRow]
+    eval_rows_by_name: dict[str, list[LabeledQueryRow]] | None
     categories: list[str]
     label_to_index: dict[str, int]
     training_device: str
@@ -143,6 +144,7 @@ def _build_query_ssl_run_context(
         effective_selection_set=base_context.effective_selection_set,
         eval_set_map=base_context.eval_set_map,
         effective_train_rows=base_context.effective_train_rows,
+        eval_rows_by_name=base_context.eval_rows_by_name,
         effective_unlabeled_rows=effective_unlabeled_rows,
         categories=base_context.categories,
         label_to_index=base_context.label_to_index,

@@ -27,6 +27,7 @@ conf/entrypoints/central/ssl_control/*.yaml
 -> scripts/support/query_ssl_text_encoder/runners/supervised_text_encoder.py
    또는 scripts/support/query_ssl_text_encoder/runners/consistency.py
 -> scripts/support/query_ssl_text_encoder/{text_encoder_run_context.py,query_ssl/run_context.py}
+-> methods/adaptation/peft_text_encoder/training/query_ssl_training_session.py
 -> scripts/support/query_ssl_text_encoder/io/artifacts.py
 ```
 
@@ -92,3 +93,6 @@ Hydra group이 아니다. 기본 중앙 supervised/SSL 실행은 `selection_set=
 `conf/strategy_axes/ssl_objective/**`, `conf/strategy_axes/model_architecture/**`,
 `methods/ssl/**`, `methods/adaptation/{peft_text_encoder,full_text_encoder}/**`
 순서로 본다.
+중앙 Query SSL runner는 pooled/offline orchestration만 맡고, PEFT local SSL 학습은
+FL과 같은 `methods/adaptation/peft_text_encoder/training/query_ssl_training_session.py`
+session을 호출한다.

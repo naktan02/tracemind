@@ -2,15 +2,27 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
-from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
-from methods.adaptation.query_text_views.query_ssl_views import (
-    build_query_ssl_unlabeled_dataloader,
+from methods.adaptation.peft_text_encoder.config import (
+    PEFT_ENCODER_TRAINING_BACKEND_NAME,
+    PeftEncoderTrainingBackendConfig,
 )
+from methods.adaptation.peft_text_encoder.training.delta_extraction import (
+    extract_peft_encoder_materialized_state,
+)
+from methods.adaptation.peft_text_encoder.training.query_ssl_training_session import (
+    QuerySslPeftEncoderLocalSslResult,
+    QuerySslPeftEncoderLocalTrainerOptions,
+)
+from methods.adaptation.peft_text_encoder.update.materialization import (
+    PeftEncoderMaterializedState,
+)
+from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.adaptation.query_text_views.unlabeled_preparation import (
     PreparedQuerySslUnlabeledRows,
 )
@@ -45,9 +57,15 @@ from scripts.support.query_ssl_text_encoder.query_ssl.view_preparation import (
 from scripts.support.query_ssl_text_encoder.runtime_metrics import (
     run_with_training_runtime_metrics,
 )
+from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     load_labeled_query_rows,
+)
+from shared.src.contracts.training_contracts import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+    TrainingTask,
 )
 
 
@@ -57,7 +75,7 @@ class _CentralSslSurfaceRuntime:
 
     surface_name: str
     model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]]
-    trainer: Callable[..., tuple[Any, list[dict[str, Any]], dict[str, Any]]]
+    local_session_runner: Callable[..., QuerySslPeftEncoderLocalSslResult]
     trainer_version_prefix: str
 
 
@@ -103,7 +121,6 @@ def run_consistency_query_ssl_peft_baseline(
     (
         prepared_unlabeled_rows,
         context,
-        unlabeled_loader,
         algorithm,
         surface_runtime,
     ) = _prepare_query_ssl_training_runtime(
@@ -116,16 +133,15 @@ def run_consistency_query_ssl_peft_baseline(
         categories_override=categories_override,
     )
     max_train_steps = _resolve_max_train_steps(cfg)
-    model, history, best_selection_report, runtime_metrics = _train_query_ssl_context(
+    local_ssl_result, runtime_metrics = _train_query_ssl_context(
         cfg=cfg,
         context=context,
-        unlabeled_loader=unlabeled_loader,
         algorithm=algorithm,
         surface_runtime=surface_runtime,
         max_train_steps=max_train_steps,
     )
     results = evaluate_query_ssl_run_context(
-        model=model,
+        model=local_ssl_result.model,
         eval_loaders=context.eval_loaders,
         categories=context.categories,
         device=context.training_device,
@@ -134,7 +150,7 @@ def run_consistency_query_ssl_peft_baseline(
         cfg=cfg,
         context=context,
         prepared_unlabeled_rows=prepared_unlabeled_rows,
-        algorithm=algorithm,
+        algorithm=local_ssl_result.algorithm,
         runtime_metrics=runtime_metrics,
         extra_manifest=extra_manifest,
     )
@@ -142,14 +158,14 @@ def run_consistency_query_ssl_peft_baseline(
         cfg=context.cfg,
         trainer_version=context.trainer_version,
         created_at=context.created_at,
-        model=model,
-        tokenizer=context.tokenizer,
+        model=local_ssl_result.model,
+        tokenizer=local_ssl_result.tokenizer,
         categories=context.categories,
         eval_set_map=context.eval_set_map,
         training_device=context.training_device,
         backbone_summary=context.backbone_summary,
-        history=history,
-        best_selection_report=best_selection_report,
+        history=list(local_ssl_result.history),
+        best_selection_report=dict(local_ssl_result.best_selection_report),
         results=results,
         extra_manifest=effective_extra_manifest,
         eval_loaders=context.eval_loaders,
@@ -171,7 +187,6 @@ def _prepare_query_ssl_training_runtime(
 ) -> tuple[
     PreparedQuerySslUnlabeledRows,
     QuerySslRunContext,
-    Any,
     QuerySslAlgorithm,
     _CentralSslSurfaceRuntime,
 ]:
@@ -212,16 +227,10 @@ def _prepare_query_ssl_training_runtime(
         model=context.model,
         surface_runtime=surface_runtime,
     )
-    unlabeled_loader = _build_unlabeled_loader(
-        cfg=cfg,
-        descriptor=descriptor,
-        context=context,
-    )
     algorithm = descriptor.build_algorithm(build_query_ssl_method_parameters(cfg))
     return (
         prepared_unlabeled_rows,
         context,
-        unlabeled_loader,
         algorithm,
         surface_runtime,
     )
@@ -231,41 +240,20 @@ def _train_query_ssl_context(
     *,
     cfg: Any,
     context: QuerySslRunContext,
-    unlabeled_loader: Any,
     algorithm: QuerySslAlgorithm,
     surface_runtime: _CentralSslSurfaceRuntime,
     max_train_steps: int | None,
-) -> tuple[Any, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+) -> tuple[QuerySslPeftEncoderLocalSslResult, dict[str, Any]]:
     """준비된 Query SSL context로 학습을 실행하고 runtime metric을 반환한다."""
 
-    (
-        (model, history, best_selection_report),
-        runtime_metrics,
-    ) = run_with_training_runtime_metrics(
-        lambda: surface_runtime.trainer(
-            model=context.model,
-            train_loader=context.train_loader,
-            unlabeled_loader=unlabeled_loader,
-            selection_loader=context.selection_loader,
-            categories=context.categories,
-            device=context.training_device,
-            epochs=int(cfg.epochs),
-            max_train_steps=max_train_steps,
-            learning_rate=float(cfg.learning_rate),
-            classifier_learning_rate=float(cfg.classifier_learning_rate),
-            weight_decay=float(cfg.weight_decay),
-            max_grad_norm=float(cfg.max_grad_norm),
-            log_every_steps=int(cfg.log_every_steps),
-            algorithm=algorithm,
-            resume_checkpoint_path=getattr(cfg, "resume_checkpoint_path", None),
-            resume_checkpoint_output_dir=getattr(
-                cfg,
-                "resume_checkpoint_output_dir",
-                None,
-            ),
-            resume_checkpoint_every_epochs=int(
-                getattr(cfg, "resume_checkpoint_every_epochs", 0)
-            ),
+    local_session_request = _build_central_local_session_request(
+        cfg=cfg,
+        context=context,
+        max_train_steps=max_train_steps,
+    )
+    local_ssl_result, runtime_metrics = run_with_training_runtime_metrics(
+        lambda: surface_runtime.local_session_runner(
+            **local_session_request,
         ),
         training_example_count=_estimate_query_ssl_training_example_count(
             cfg=cfg,
@@ -277,7 +265,201 @@ def _train_query_ssl_context(
         parameter_counts=context.backbone_summary["parameter_counts"],
         device=context.training_device,
     )
-    return model, history, best_selection_report, runtime_metrics
+    return local_ssl_result, runtime_metrics
+
+
+def _build_central_local_session_request(
+    *,
+    cfg: Any,
+    context: QuerySslRunContext,
+    max_train_steps: int | None,
+) -> dict[str, Any]:
+    """중앙 pooled SSL cfg/context를 공통 local session 입력으로 변환한다."""
+
+    return {
+        "seed": int(cfg.seed),
+        "labeled_rows": list(context.effective_train_rows),
+        "unlabeled_rows": list(context.effective_unlabeled_rows),
+        "diagnostic_unlabeled_rows": list(context.effective_unlabeled_rows),
+        "selection_rows": _load_selection_rows(context),
+        "labels": list(context.categories),
+        "base_parameters": _extract_central_base_parameters(context),
+        "training_task": _build_central_training_task(
+            cfg=cfg,
+            context=context,
+            max_train_steps=max_train_steps,
+        ),
+        "query_ssl_config": _build_central_query_ssl_config(cfg),
+        "peft_config": _build_central_peft_config(
+            cfg=context.cfg,
+            labels=context.categories,
+        ),
+        "trainer_runtime_config": _build_central_trainer_runtime_config(
+            cfg=context.cfg,
+            device=context.training_device,
+        ),
+        "trainer_options": QuerySslPeftEncoderLocalTrainerOptions(
+            classifier_learning_rate=float(cfg.classifier_learning_rate),
+            weight_decay=float(cfg.weight_decay),
+            log_every_steps=int(cfg.log_every_steps),
+            resume_checkpoint_path=getattr(cfg, "resume_checkpoint_path", None),
+            resume_checkpoint_output_dir=getattr(
+                cfg,
+                "resume_checkpoint_output_dir",
+                None,
+            ),
+            resume_checkpoint_every_epochs=int(
+                getattr(cfg, "resume_checkpoint_every_epochs", 0)
+            ),
+        ),
+    }
+
+
+def _extract_central_base_parameters(
+    context: QuerySslRunContext,
+) -> PeftEncoderMaterializedState:
+    return extract_peft_encoder_materialized_state(
+        model=context.model,
+        labels=context.categories,
+    )
+
+
+def _load_selection_rows(context: QuerySslRunContext) -> list[LabeledQueryRow]:
+    selection_name = context.effective_selection_set
+    if context.eval_rows_by_name is not None:
+        return list(context.eval_rows_by_name[selection_name])
+    selection_path = context.eval_set_map[selection_name]
+    return load_labeled_query_rows(selection_path)
+
+
+def _build_central_training_task(
+    *,
+    cfg: Any,
+    context: QuerySslRunContext,
+    max_train_steps: int | None,
+) -> TrainingTask:
+    return TrainingTask(
+        schema_version="training_task.v1",
+        round_id="central_ssl_control",
+        task_id=f"central_ssl_{context.trainer_version}",
+        model_id=str(context.backbone_summary["backbone_model_id"]),
+        model_revision=str(context.backbone_summary["backbone_revision"]),
+        task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
+        training_scope="adapter_only",
+        local_epochs=int(cfg.epochs),
+        batch_size=int(cfg.train_batch_size),
+        learning_rate=float(cfg.learning_rate),
+        max_steps=int(max_train_steps or int(cfg.epochs)),
+        objective_config=TrainingObjectiveConfig.from_mapping(
+            {"training_backend_name": PEFT_ENCODER_TRAINING_BACKEND_NAME}
+        ),
+        selection_policy=TrainingSelectionPolicy.from_mapping(
+            {"max_examples": len(context.effective_train_rows)}
+        ),
+        gradient_clip_norm=float(cfg.max_grad_norm),
+    )
+
+
+def _build_central_query_ssl_config(cfg: Any) -> SimpleNamespace:
+    return SimpleNamespace(
+        algorithm_name=str(cfg.query_ssl_method.algorithm_name),
+        parameters=build_query_ssl_method_parameters(cfg),
+        strong_view_policy=_resolve_strong_view_policy(cfg),
+        unlabeled_batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
+        drop_last_train_batches=bool(
+            getattr(cfg, "drop_last_train_batches", False)
+        ),
+        drop_last_unlabeled_batches=bool(
+            getattr(cfg, "drop_last_unlabeled_batches", False)
+        ),
+    )
+
+
+def _build_central_peft_config(
+    *,
+    cfg: Any,
+    labels: Sequence[str],
+) -> PeftEncoderTrainingBackendConfig:
+    defaults = PeftEncoderTrainingBackendConfig()
+    paper_backbone = getattr(cfg, "paper_backbone", None)
+    peft_adapter = getattr(cfg, "peft_adapter", None)
+    return PeftEncoderTrainingBackendConfig(
+        backbone_model_id=_optional_str_attr(
+            paper_backbone,
+            "model_id",
+            defaults.backbone_model_id,
+        ),
+        backbone_revision=_optional_str_attr(
+            paper_backbone,
+            "revision",
+            defaults.backbone_revision,
+        ),
+        tokenizer_model_id=_optional_str_attr(
+            paper_backbone,
+            "tokenizer_model_id",
+            defaults.tokenizer_model_id,
+        ),
+        tokenizer_revision=_optional_str_attr(
+            paper_backbone,
+            "tokenizer_revision",
+            defaults.tokenizer_revision,
+        ),
+        pooling=_optional_str_attr(paper_backbone, "pooling", defaults.pooling),
+        max_length=int(getattr(paper_backbone, "max_length", defaults.max_length)),
+        task_prefix=_optional_str_attr(
+            paper_backbone,
+            "task_prefix",
+            defaults.task_prefix,
+        ),
+        peft_adapter_name=_optional_str_attr(
+            peft_adapter,
+            "peft_adapter_name",
+            defaults.peft_adapter_name,
+        ),
+        rank=int(getattr(peft_adapter, "rank", defaults.rank)),
+        alpha=int(getattr(peft_adapter, "alpha", defaults.alpha)),
+        dropout=float(getattr(peft_adapter, "dropout", defaults.dropout)),
+        bias=_optional_str_attr(peft_adapter, "bias", defaults.bias),
+        target_modules=_optional_str_attr(
+            peft_adapter,
+            "target_modules",
+            defaults.target_modules,
+        ),
+        use_rslora=bool(getattr(peft_adapter, "use_rslora", defaults.use_rslora)),
+        delta_format=defaults.delta_format,
+        artifact_ref_prefix=defaults.artifact_ref_prefix,
+        label_schema=tuple(str(label) for label in labels),
+    )
+
+
+def _build_central_trainer_runtime_config(
+    *,
+    cfg: Any,
+    device: str,
+) -> SimpleNamespace:
+    paper_backbone = getattr(cfg, "paper_backbone", None)
+    runtime = getattr(cfg, "runtime", None)
+    return SimpleNamespace(
+        device=device,
+        classifier_dropout=float(
+            getattr(
+                paper_backbone,
+                "classifier_dropout",
+                0.1,
+            )
+        ),
+        cache_dir=getattr(paper_backbone, "cache_dir", None),
+        local_files_only=bool(getattr(runtime, "local_files_only", False)),
+        trust_remote_code=bool(getattr(paper_backbone, "trust_remote_code", False)),
+    )
+
+
+def _optional_str_attr(source: Any, key: str, default: str) -> str:
+    value = getattr(source, key, None)
+    if value is None:
+        return default
+    normalized = str(value).strip()
+    return normalized if normalized else default
 
 
 def _build_query_ssl_extra_manifest(
@@ -411,25 +593,6 @@ def _estimate_query_ssl_training_example_count(
     return int(max_train_steps) * (labeled_batch_size + unlabeled_batch_size)
 
 
-def _build_unlabeled_loader(
-    *,
-    cfg,
-    descriptor: QuerySslAlgorithmDescriptor,
-    context: QuerySslRunContext,
-):
-    return build_query_ssl_unlabeled_dataloader(
-        rows=context.effective_unlabeled_rows,
-        tokenizer=context.tokenizer,
-        batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
-        max_length=int(cfg.paper_backbone.max_length),
-        task_prefix=str(cfg.paper_backbone.task_prefix),
-        shuffle=True,
-        view_builder_name=descriptor.required_views.view_builder_name,
-        strong_view_policy=_resolve_strong_view_policy(cfg),
-        drop_last=bool(getattr(cfg, "drop_last_unlabeled_batches", False)),
-    )
-
-
 def _resolve_strong_view_policy(cfg: Any) -> str:
     raw_policy = getattr(cfg, "query_ssl_strong_view_policy", None)
     if raw_policy is None:
@@ -493,13 +656,13 @@ def _resolve_trainable_surface_runtime(cfg: Any) -> _CentralSslSurfaceRuntime:
             ),
             field_name="trainable_surface.central_ssl.model_builder",
         ),
-        trainer=load_configured_callable(
+        local_session_runner=load_configured_callable(
             _read_required_config_str(
                 central_ssl,
-                "trainer",
-                field_name="trainable_surface.central_ssl.trainer",
+                "local_session_runner",
+                field_name="trainable_surface.central_ssl.local_session_runner",
             ),
-            field_name="trainable_surface.central_ssl.trainer",
+            field_name="trainable_surface.central_ssl.local_session_runner",
         ),
         trainer_version_prefix=_read_required_config_str(
             central_ssl,
