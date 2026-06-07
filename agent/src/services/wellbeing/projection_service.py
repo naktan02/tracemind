@@ -19,12 +19,8 @@ from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import 
 )
 from agent.src.services.inference.baseline_service import BaselineService
 from agent.src.services.inference.decision_service import DecisionService
-from shared.src.contracts.personalization_contracts import (
-    PersonalizationState,
-    PersonalizationWarmupStatus,
-)
-from shared.src.domain.entities.inference.result import AssessmentResult
-from shared.src.domain.entities.inference.state import BaselineProfile, TimeSeriesState
+from agent.src.services.inference.result import AssessmentResult
+from agent.src.services.inference.state import BaselineProfile, TimeSeriesState
 
 
 @dataclass(slots=True)
@@ -56,14 +52,9 @@ class WellbeingSignalProjectionService:
                 history,
                 as_of=analysis_event.occurred_at,
             )
-            personalization_state = _build_personalization_state(
-                baseline_profile=baseline_profile,
-                updated_at=analysis_event.occurred_at,
-            )
             evaluation = self.decision_service.evaluate(
                 analysis_event=analysis_event,
                 baseline_profile=baseline_profile,
-                personalization_state=personalization_state,
                 previous_state=previous_state,
                 assessment_id=analysis_event.query_id,
             )
@@ -77,25 +68,6 @@ class WellbeingSignalProjectionService:
             history.append(analysis_event)
 
         self._last_refresh_at = datetime.now(tz=timezone.utc)
-
-
-def _build_personalization_state(
-    *,
-    baseline_profile: BaselineProfile,
-    updated_at: datetime,
-) -> PersonalizationState:
-    if baseline_profile.event_count == 0:
-        warmup_status = PersonalizationWarmupStatus.COLD_START
-    elif baseline_profile.warmup_complete:
-        warmup_status = PersonalizationWarmupStatus.READY
-    else:
-        warmup_status = PersonalizationWarmupStatus.WARMING_UP
-
-    return PersonalizationState(
-        state_version="personalization_state.v1",
-        warmup_status=warmup_status,
-        updated_at=updated_at,
-    )
 
 
 def _translate_to_wellbeing_summary(

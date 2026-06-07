@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from shared.src.domain.entities.inference.events import AnalysisEvent
-from shared.src.domain.entities.inference.state import (
+from agent.src.services.inference.state import (
     BaselineProfile,
-    PersonalizationState,
     TimeSeriesState,
 )
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
 @dataclass(slots=True)
@@ -31,7 +30,6 @@ class TimeSeriesAccumulator:
         *,
         analysis_event: AnalysisEvent,
         baseline_profile: BaselineProfile,
-        personalization_state: PersonalizationState,
         previous_state: TimeSeriesState | None = None,
         state_version: str = "time_series_state.v1",
     ) -> TimeSeriesState:
@@ -39,7 +37,6 @@ class TimeSeriesAccumulator:
         if previous_state is not None:
             categories.update(previous_state.latest_scores)
         categories.update(baseline_profile.category_means)
-        categories.update(personalization_state.threshold_by_category)
 
         latest_scores: dict[str, float] = {}
         latest_deltas: dict[str, float] = {}
@@ -69,10 +66,7 @@ class TimeSeriesAccumulator:
                 if previous_state
                 else delta
             )
-            threshold = personalization_state.threshold_by_category.get(
-                category,
-                self.config.default_delta_threshold,
-            )
+            threshold = self.config.default_delta_threshold
             previous_streak = (
                 previous_state.elevated_streaks.get(category, 0)
                 if previous_state

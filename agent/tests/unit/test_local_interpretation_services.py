@@ -8,17 +8,16 @@ from agent.src.services.inference.baseline_service import (
     BaselineConfig,
     BaselineService,
 )
+from agent.src.services.inference.decision_policy import RuleBasedDecisionPolicy
 from agent.src.services.inference.decision_service import DecisionService
+from agent.src.services.inference.state import (
+    BaselineProfile,
+)
 from agent.src.services.inference.time_series_service import (
     TimeSeriesAccumulator,
     TimeSeriesConfig,
 )
 from shared.src.domain.entities.inference.events import AnalysisEvent
-from shared.src.domain.entities.inference.state import (
-    BaselineProfile,
-    PersonalizationState,
-)
-from shared.src.domain.policies.decision_policy import RuleBasedDecisionPolicy
 
 
 def _analysis_event(
@@ -77,12 +76,6 @@ def test_time_series_accumulator_tracks_elevated_streaks() -> None:
         warmup_complete=True,
         category_means={"depression": 0.2},
     )
-    personalization_state = PersonalizationState(
-        schema_version="personalization_state.v1",
-        state_version="ps_001",
-        threshold_by_category={"depression": 0.15},
-        warmup_status="ready",
-    )
     accumulator = TimeSeriesAccumulator(
         config=TimeSeriesConfig(ewma_alpha=0.5, default_delta_threshold=0.15)
     )
@@ -94,7 +87,6 @@ def test_time_series_accumulator_tracks_elevated_streaks() -> None:
             depression=0.5,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
     )
     second_state = accumulator.update(
         analysis_event=_analysis_event(
@@ -103,7 +95,6 @@ def test_time_series_accumulator_tracks_elevated_streaks() -> None:
             depression=0.55,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
         previous_state=first_state,
     )
 
@@ -120,12 +111,6 @@ def test_decision_service_distinguishes_spike_from_persistent_change() -> None:
         warmup_complete=True,
         category_means={"depression": 0.2},
         category_sigmas={"depression": 0.05},
-    )
-    personalization_state = PersonalizationState(
-        schema_version="personalization_state.v1",
-        state_version="ps_001",
-        threshold_by_category={"depression": 0.2},
-        warmup_status="ready",
     )
     service = DecisionService(
         accumulator=TimeSeriesAccumulator(
@@ -149,7 +134,6 @@ def test_decision_service_distinguishes_spike_from_persistent_change() -> None:
             depression=0.55,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
     )
     second = service.evaluate(
         analysis_event=_analysis_event(
@@ -158,7 +142,6 @@ def test_decision_service_distinguishes_spike_from_persistent_change() -> None:
             depression=0.62,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
         previous_state=first.time_series_state,
     )
     third = service.evaluate(
@@ -168,7 +151,6 @@ def test_decision_service_distinguishes_spike_from_persistent_change() -> None:
             depression=0.68,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
         previous_state=second.time_series_state,
     )
 

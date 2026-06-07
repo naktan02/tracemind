@@ -8,8 +8,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
+from agent.src.services.inference.state import BaselineProfile
 from shared.src.domain.entities.inference.events import AnalysisEvent
-from shared.src.domain.entities.inference.state import BaselineProfile
 
 
 @dataclass(slots=True)

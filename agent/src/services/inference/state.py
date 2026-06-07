@@ -5,12 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from shared.src.contracts.personalization_contracts import (
-    PersonalizationState as _PersonalizationState,
-)
-
-PersonalizationState = _PersonalizationState
-
 
 @dataclass(slots=True)
 class BaselineProfile:

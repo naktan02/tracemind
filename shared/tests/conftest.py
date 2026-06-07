@@ -19,10 +19,6 @@ from shared.src.contracts.model_contracts import (
     ModelManifest,
     ModelManifestPayload,
 )
-from shared.src.contracts.personalization_contracts import (
-    PersonalizationStatePayload,
-    PersonalizationWarmupStatus,
-)
 from shared.src.contracts.training_contracts import (
     DecisionFeedbackSignalPayload,
     FeedbackSignalType,
@@ -171,22 +167,5 @@ def make_feedback_signal_payload(
             "occurred_at": fixed_utc_time,
         }
         return DecisionFeedbackSignalPayload(**(defaults | overrides))
-
-    return _make
-
-
-@pytest.fixture
-def make_personalization_state_payload(
-    fixed_utc_time: datetime,
-) -> Callable[..., PersonalizationStatePayload]:
-    def _make(**overrides: object) -> PersonalizationStatePayload:
-        defaults = {
-            "state_version": "ps_001",
-            "baseline_by_category": {"depression": 0.2},
-            "threshold_by_category": {"depression": 0.6},
-            "warmup_status": PersonalizationWarmupStatus.READY,
-            "updated_at": fixed_utc_time,
-        }
-        return PersonalizationStatePayload(**(defaults | overrides))
 
     return _make

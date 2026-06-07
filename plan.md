@@ -67,13 +67,10 @@ TraceMind는 아동·청소년의 온라인 위험 신호를 다룬다.
 ### 4-2. 로컬에서만 유지하는 것
 
 1. 원문 텍스트와 이벤트
-2. `PersonalizationState`
-3. 개인 baseline
-4. 개인 threshold
-5. personal prototype 또는 개인 보정 상태(필요 시)
-6. persistence와 시계열 누적 상태
-7. 로컬 query buffer와 학습 후보
-8. 최종 `AssessmentResult`
+2. 로컬 baseline
+3. persistence와 시계열 누적 상태
+4. 로컬 query buffer와 학습 후보
+5. 최종 `AssessmentResult`
 
 핵심 문장은 아래와 같다.
 

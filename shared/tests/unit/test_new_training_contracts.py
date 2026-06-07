@@ -7,9 +7,6 @@ from shared.src.contracts.common_types import (
     TrainingTaskType,
 )
 from shared.src.contracts.model_contracts import ArtifactKind
-from shared.src.contracts.personalization_contracts import (
-    PersonalizationWarmupStatus,
-)
 from shared.src.contracts.training_contracts import (
     FeedbackSignalType,
     SecureAggregationConfig,
@@ -143,20 +140,16 @@ def test_training_update_envelope_accepts_custom_payload_format(
     assert payload.payload_format == "lora_update"
 
 
-def test_feedback_and_personalization_payloads_are_local_friendly(
+def test_feedback_signal_payload_is_local_friendly(
     make_feedback_signal_payload,
-    make_personalization_state_payload,
 ) -> None:
     signal = make_feedback_signal_payload(
         signal_type=FeedbackSignalType.PSEUDO_LABEL,
         label="depression_rising",
     )
-    state = make_personalization_state_payload(
-        warmup_status=PersonalizationWarmupStatus.READY,
-    )
 
     assert signal.signal_type == FeedbackSignalType.PSEUDO_LABEL
-    assert state.threshold_by_category["depression"] == 0.6
+    assert signal.label == "depression_rising"
 
 
 def test_training_objective_config_payload_accepts_policy_fields() -> None:

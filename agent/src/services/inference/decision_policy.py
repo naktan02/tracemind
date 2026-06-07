@@ -1,17 +1,16 @@
-"""규칙 기반 로컬 판단 정책."""
+"""Agent-local 규칙 기반 판단 정책."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from shared.src.domain.entities.inference.events import AnalysisEvent
-from shared.src.domain.entities.inference.result import AssessmentResult
-from shared.src.domain.entities.inference.state import (
+from agent.src.services.inference.result import AssessmentResult
+from agent.src.services.inference.state import (
     BaselineProfile,
-    PersonalizationState,
     TimeSeriesState,
 )
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
 class DecisionLevel(StrEnum):
@@ -44,7 +43,6 @@ class RuleBasedDecisionPolicy:
         *,
         analysis_event: AnalysisEvent,
         baseline_profile: BaselineProfile,
-        personalization_state: PersonalizationState,
         time_series_state: TimeSeriesState,
         assessment_id: str,
     ) -> AssessmentResult:
@@ -70,16 +68,12 @@ class RuleBasedDecisionPolicy:
             ewma_delta = time_series_state.ewma_deltas.get(category, delta)
             streak = time_series_state.elevated_streaks.get(category, 0)
 
-            threshold = personalization_state.threshold_by_category.get(
-                category,
-                self.default_delta_threshold,
-            )
             level = self._classify_level(
                 score=score,
                 delta=delta,
                 ewma_delta=ewma_delta,
                 streak=streak,
-                threshold=threshold,
+                threshold=self.default_delta_threshold,
             )
 
             if self._level_rank(level) > self._level_rank(best_level) or (
@@ -109,7 +103,6 @@ class RuleBasedDecisionPolicy:
             decision=best_level.value,
             explanation=explanation,
             global_score=best_score if best_category is not None else None,
-            personalized_score=best_delta if best_category is not None else None,
             baseline_shift=best_delta if best_category is not None else None,
             persistence=best_persistence if best_category is not None else None,
             confidence=self._confidence_from_level(best_level),
@@ -186,7 +179,7 @@ class RuleBasedDecisionPolicy:
     ) -> str:
         if category is None:
             if warmup_complete:
-                return "No category crossed the personalized decision threshold."
+                return "No category crossed the local decision threshold."
             return (
                 "Warm-up is not complete and no category crossed the watch threshold."
             )

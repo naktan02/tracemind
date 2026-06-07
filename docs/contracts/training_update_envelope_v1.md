@@ -72,7 +72,7 @@ v1 원칙:
 
 1. raw text
 2. 개별 pseudo-label 목록
-3. `PersonalizationState` 본문
+3. agent-local runtime 해석 상태 본문
 4. `AssessmentResult` 본문
 
 ---

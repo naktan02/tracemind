@@ -2,7 +2,10 @@
 
 이 문서는 TraceMind의 현재 런타임, 코드 경계, 활성 연구/시스템 레일을 설명하는 canonical 개요다.
 
-세부 payload 필드의 source of truth는 문서가 아니라 `shared/src/contracts/*.py`와 `shared/src/domain/entities/*`다.
+세부 payload 필드의 source of truth는 문서가 아니라 `shared/src/contracts/*.py`,
+`shared/src/domain/entities/*`, agent-local API/UI payload의 경우
+`agent/src/contracts/*.py`, agent-local inference state/result의 경우
+`agent/src/services/inference/*`다.
 
 ## 1. 현재 목표
 
@@ -56,9 +59,8 @@ Raw Event
 -> Preprocess / Translation
 -> Embedding
 -> Global Classifier
--> PersonalizationState
 -> Time-Series Accumulator / Persistence
--> DecisionPolicy
+-> Agent-local Rule Decision
 -> AssessmentResult
 ```
 
@@ -70,6 +72,7 @@ Raw Event
 | pipeline 조합 | `agent/src/services/inference/pipeline_service.py` |
 | prototype scoring core | `methods/prototype/scoring/*` |
 | scoring backend adapter | `agent/src/services/inference/scoring_backends/*` |
+| local baseline/time-series state | `agent/src/services/inference/state.py` |
 | final decision | `agent/src/services/inference/decision_service.py` |
 | wellbeing projection | `agent/src/services/wellbeing/*` |
 
