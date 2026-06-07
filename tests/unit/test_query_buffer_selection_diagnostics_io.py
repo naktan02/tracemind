@@ -90,7 +90,7 @@ def test_write_query_buffer_selection_diagnostics_writes_summary_and_trace(
             event=query_event,
             analysis_event=analysis_event,
             model_revision="rev_001",
-            confidence_kind="prototype_similarity_top1",
+            confidence_kind="classifier_head_logit_top1",
             metadata={"was_translated": False},
         )
         for query_event, analysis_event in (pair_1, pair_2)

@@ -16,11 +16,10 @@ split_name: ourafla_train_split.v1
 train_jsonl: data/datasets/ourafla_mental_health/splits/ourafla_train_split.v1.train.jsonl
 validation_jsonl: data/datasets/ourafla_mental_health/splits/ourafla_train_split.v1.validation.jsonl
 test_jsonl: ${dataset.test_labeled_jsonl}
-prototype_input_jsonl: ${dataset.train_jsonl}
 query_dev_jsonl: null
 query_calibration_jsonl: null
 unlabeled_query_pool_jsonl: null
-prototype_expected_categories:
+label_categories:
   - anxiety
   - depression
   - normal
@@ -29,7 +28,6 @@ stages:
   - download
   - map
   - split
-  - prototype
 sources:
   train:
     download:
@@ -58,14 +56,3 @@ split:
   split_name: ${dataset.split_name}
   validation_ratio: 0.1
   seed: 42
-prototype:
-  input_ref:
-    kind: split_train
-  backend: transformers_mxbai
-  embedding_model_id: mixedbread-ai/mxbai-embed-large-v1
-  embedding_model_revision: main
-  batch_size: 16
-  task_prefix: ""
-  expected_categories: ${dataset.prototype_expected_categories}
-  prototype_version_prefix: ourafla_mxbai
-  hash_dim: 256

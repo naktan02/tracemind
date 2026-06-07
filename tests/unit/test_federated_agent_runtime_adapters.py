@@ -231,7 +231,7 @@ def test_query_text_view_requirement_rejects_partial_usb_augmentation_fields() -
 def test_query_text_view_requirement_accepts_single_view_backend() -> None:
     require_rows_supported_by_example_backend(
         rows=[{"query_id": "q1", "text": "panic"}],
-        backend_name="prototype_rescore",
+        backend_name="peft_classifier_raw_rows",
     )
 
 

@@ -13,7 +13,6 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
 
 ANY_ADAPTER_KIND = "*"
 ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME = "analysis_score_evidence"
-PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME = "prototype_similarity_evidence"
 
 
 class PseudoLabelEvidenceBackend(Protocol):

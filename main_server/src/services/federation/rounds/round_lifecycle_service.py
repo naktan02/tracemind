@@ -62,10 +62,7 @@ from shared.src.contracts.adapter_contract_families.base import (
 from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,
 )
-from shared.src.contracts.model_contracts import (
-    PROTOTYPE_PACK_AUXILIARY_KEY,
-    ModelManifest,
-)
+from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingUpdateEnvelope,
     TrainingUpdateSubmission,
@@ -74,13 +71,6 @@ from shared.src.domain.services.clock import Clock, SystemUtcClock
 from shared.src.services.secure_update_codec import (
     NoOpSecureUpdateCodec,
     SecureUpdateCodec,
-)
-
-from ..prototypes.models import (
-    StoredReferencePrototypeRebuildRequest,
-)
-from ..prototypes.stored_input_rebuild_service import (
-    StoredReferencePrototypeRebuildService,
 )
 
 if TYPE_CHECKING:
@@ -139,9 +129,6 @@ class RoundLifecycleService:
     )
     round_manager_service: RoundManagerService = field(
         default_factory=RoundManagerService
-    )
-    prototype_rebuild_runtime_service: StoredReferencePrototypeRebuildService | None = (
-        None
     )
     update_acceptance_policy: RoundUpdateAcceptancePolicy = field(
         default_factory=StrictRoundUpdateAcceptancePolicy
@@ -329,41 +316,8 @@ class RoundLifecycleService:
             )
         )
         finalized_at = publication.next_manifest.published_at
-        rebuild_result = None
         auxiliary_artifact_refs: dict[str, str] = {}
         auxiliary_artifact_metadata: dict[str, str] = {}
-        if self.prototype_rebuild_runtime_service is not None:
-            prototype_version = (
-                publication.next_manifest.auxiliary_artifact_versions.get(
-                    PROTOTYPE_PACK_AUXILIARY_KEY
-                )
-            )
-            if prototype_version is None:
-                raise RoundValidationError(
-                    "Prototype rebuild runtime requires prototype_pack auxiliary "
-                    "artifact version."
-                )
-            rebuild_result = self.prototype_rebuild_runtime_service.rebuild(
-                StoredReferencePrototypeRebuildRequest(
-                    adapter_state=publication.next_state,
-                    prototype_version=prototype_version,
-                    embedding_model_id=publication.next_manifest.model_id,
-                    embedding_model_revision=publication.next_manifest.model_revision,
-                    built_at=publication.next_manifest.published_at,
-                )
-            )
-            if rebuild_result.published_pack_path is not None:
-                auxiliary_artifact_refs["prototype_pack"] = str(
-                    rebuild_result.published_pack_path
-                )
-            if rebuild_result.published_build_state_path is not None:
-                auxiliary_artifact_refs["prototype_build_state"] = str(
-                    rebuild_result.published_build_state_path
-                )
-            if rebuild_result.source_input_id:
-                auxiliary_artifact_metadata["prototype_rebuild_input_id"] = (
-                    rebuild_result.source_input_id
-                )
         finalized_record = replace(
             record,
             status=RoundStatus.FINALIZED,

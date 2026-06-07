@@ -85,7 +85,7 @@ def _build_service(
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
-        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+        auxiliary_artifact_versions={"calibration_set": "calib_000"},
         training_scope="head_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -210,7 +210,7 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     finalize_response = fl_rounds_api.finalize_round(
         "round_0001",
         RoundFinalizeRequestPayload(
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            next_auxiliary_artifact_versions={"calibration_set": "calib_001"},
             next_model_revision="rev_001",
         ),
         service=service,
@@ -220,7 +220,7 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     assert finalize_response.publication is not None
     assert finalize_response.publication.next_manifest.model_revision == "rev_001"
     assert finalize_response.publication.next_manifest.auxiliary_artifact_versions == {
-        "prototype_pack": "proto_001"
+        "calibration_set": "calib_001"
     }
     active_manifest_response = fl_rounds_api.get_active_model_manifest(service=service)
     assert active_manifest_response.model_revision == "rev_001"

@@ -9,7 +9,6 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
     StoredAnalysisEvent,
 )
 from agent.src.services.inference.scoring_service import ScoringService
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
@@ -35,7 +34,6 @@ class TrainingExampleBuildRequest:
     source_rows: tuple[TrainingExampleSource, ...] | list[TrainingExampleSource]
     adapter: EmbeddingAdapter
     adapter_state: SharedAdapterState
-    prototype_pack: PrototypePackPayload
     model_id: str
     scoring_service: ScoringService
 
@@ -45,6 +43,5 @@ class StoredEventTrainingExampleBuildRequest:
     """저장된 analysis event를 학습 예시로 재구성하는 요청."""
 
     stored_events: tuple[StoredAnalysisEvent, ...] | list[StoredAnalysisEvent]
-    prototype_pack: PrototypePackPayload
     scoring_service: ScoringService
     adapter_state: SharedAdapterState | None = None

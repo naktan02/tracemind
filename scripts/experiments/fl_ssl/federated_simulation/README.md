@@ -48,9 +48,6 @@ summary assembly phase를 따라간다.
   `methods/federated_ssl/<method>/`에 둔다.
 - row sampling, aggregation weight, labeled row label 해석 같은 공통 의미는 각각
   `methods/federated_ssl`, `methods/federated`, `shared` helper를 사용한다.
-- prototype 기반 방법론이 확정되면 runner 분기가 아니라 update-family leaf와
-  `methods/` capability/core를 추가한다.
-
 ## 주요 축
 
 - `fl_method.composition_mode=manual`: Query SSL lower axes를 직접 조합하는 baseline

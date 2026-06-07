@@ -49,7 +49,7 @@ def _current_payload() -> dict:
     manifest = make_embedding_manifest(
         model_id="model",
         model_revision="rev_001",
-        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+        auxiliary_artifact_versions={"calibration_set": "calib_001"},
         artifact_ref="/server/state/rev_001.json",
     )
     return make_current_shared_adapter_state_payload(
@@ -65,7 +65,7 @@ def test_shared_adapter_runtime_reads_active_state(tmp_path: Path) -> None:
         manifest=make_embedding_manifest(
             model_id="model",
             model_revision="rev_001",
-            auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            auxiliary_artifact_versions={"calibration_set": "calib_001"},
             artifact_ref="/server/state/rev_001.json",
         ),
         state=_peft_state(model_revision="rev_001"),

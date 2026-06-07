@@ -63,7 +63,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
     )
     score_policy_name: str | None = Field(
         default=None,
-        description="카테고리 내 다중 prototype score 집계 정책 식별자.",
+        description="카테고리별 score 집계 정책 식별자.",
     )
     score_top_k: int | None = Field(
         default=None,

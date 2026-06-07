@@ -21,7 +21,6 @@ def build_federated_training_examples(
     rows: list[Mapping[str, Any]],
     adapter: Any,
     adapter_state: Any,
-    prototype_pack: Any,
     model_id: str,
     scoring_service: Any,
     objective_config: Any | None,
@@ -65,7 +64,6 @@ def build_federated_training_examples(
             source_rows=source_rows,
             adapter=adapter,
             adapter_state=adapter_state,
-            prototype_pack=prototype_pack,
             model_id=model_id,
             scoring_service=scoring_service,
         )

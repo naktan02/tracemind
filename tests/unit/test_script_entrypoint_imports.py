@@ -10,8 +10,6 @@ import pytest
 @pytest.mark.parametrize(
     "module_name",
     [
-        "scripts.experiments.prototype_analysis.prototype_strategy_experiment",
-        "scripts.experiments.prototype_analysis.prototype_threshold_sweep",
         "scripts.experiments.fl_ssl.materialize_fl_client_split",
         "scripts.experiments.fl_ssl.run_federated_simulation",
         "scripts.experiments.central.ssl_control.run_peft_supervised_control",

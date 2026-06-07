@@ -196,7 +196,7 @@ def _build_manifest() -> ModelManifest:
         published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref="/tmp/rev_000.json",
-        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+        auxiliary_artifact_versions={"calibration_set": "calib_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -324,9 +324,7 @@ def test_local_training_service_creates_update_from_top_candidates(
     assert candidates["q1"].selection_context.selection_stage.value == "accepted"
     assert candidates["q2"].selection_context.selection_stage.value == "dropped_by_cap"
     assert candidates["q3"].selection_context.selection_stage.value == "dropped_by_cap"
-    assert (
-        candidates["q4"].selection_context.selection_stage.value == "policy_rejected"
-    )
+    assert candidates["q4"].selection_context.selection_stage.value == "policy_rejected"
     assert candidates["q2"].selection_context.policy_accepted is True
     assert candidates["q4"].selection_context.policy_accepted is False
 
@@ -790,8 +788,8 @@ def test_local_training_service_rejects_incompatible_scoring_backend(
         backend_name: str = "peft_only_test_scorer"
         supported_adapter_kinds: tuple[str, ...] = ("peft_classifier",)
 
-        def score(self, embedding, prototypes):
-            del embedding, prototypes
+        def score(self, embedding, scoring_assets):
+            del embedding, scoring_assets
             return {"anxiety": 1.0}
 
     register_shared_adapter_update_payload_type(

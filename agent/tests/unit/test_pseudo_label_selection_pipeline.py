@@ -58,7 +58,7 @@ def test_candidate_builder_preserves_hook_decision_and_context_seed() -> None:
     assert built.candidate.evidence_ref == "evidence:q1"
     assert built.context_seed.pseudo_label_algorithm_name == "top1_margin_threshold"
     assert built.context_seed.evidence_backend_name == "metadata_backend"
-    assert built.context_seed.evidence_confidence_kind == "prototype_similarity"
+    assert built.context_seed.evidence_confidence_kind == "classifier_head_logits"
     assert built.context_seed.evidence_view_kind == "single_view"
 
 
@@ -183,7 +183,7 @@ def _build_evidence(
         occurred_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
         label="anxiety",
         confidence=top1_score,
-        confidence_kind="prototype_similarity",
+        confidence_kind="classifier_head_logits",
         margin=margin,
         top1_label="anxiety",
         top1_score=top1_score,
@@ -214,7 +214,7 @@ def _build_candidate(
         runner_up_label="normal",
         runner_up_score=confidence - margin,
         evidence_ref=f"evidence:{source_event_ref}",
-        confidence_kind="prototype_similarity",
+        confidence_kind="classifier_head_logits",
         sample_weight=confidence,
         task_id="task_001",
         round_id="round_0001",
@@ -228,8 +228,8 @@ def _build_built_candidate(
         candidate=candidate,
         context_seed=SelectionContextSeed(
             pseudo_label_algorithm_name="top1_margin_threshold",
-            evidence_backend_name="prototype_similarity_evidence",
-            evidence_confidence_kind="prototype_similarity",
+            evidence_backend_name="analysis_score_evidence",
+            evidence_confidence_kind="classifier_head_logits",
             evidence_view_kind="single_view",
         ),
     )

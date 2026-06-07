@@ -25,7 +25,6 @@
 - query-domain 적응 단계에서만 `PEFT text encoder + linear head`를 연다.
 - 시스템/FL 트랙의 우선 baseline은 `embedding -> shared scoring state -> local interpretation`이다.
 - 여기서 linear classifier head는 공통 class evidence를 만드는 shared scoring artifact 중 하나로 본다.
-- `PrototypePack`과 shared adapter 계열 계약은 제거 대상이 아니라 비교 실험/확장 축으로 유지한다.
 - 이 README의 계약은 현재 `시스템/FL runtime`의 source of truth다. 중앙집중형 PEFT text encoder 논문 trainer는 별도 실험 레일로 다루며, paper-track scaffold는 `docs/contracts/central_peft_text_encoder_trainer_contract.md`를 기준으로 본다.
 
 ## 주요 파일
@@ -37,11 +36,8 @@
 - `ModelManifest`
   - `model_id`, `model_revision`, `artifact_ref`, `training_scope`를 묶은 현재
     전역 shared artifact 설명
-  - `auxiliary_artifact_versions`는 prototype pack처럼 주 artifact에 부속되는
-    artifact version을 중립 이름으로 기록한다. prototype pack은
-    `auxiliary_artifact_versions["prototype_pack"]`로만 표현한다
-  - 구형 payload의 top-level `prototype_version`은 파싱 시 위 auxiliary map으로
-    승격하지만 canonical dump에는 다시 쓰지 않는다
+  - `auxiliary_artifact_versions`는 주 artifact에 부속되는 artifact version을
+    중립 이름으로 기록한다
   - main server가 revision별 manifest와 active pointer를 소유한다
   - `artifact_ref`는 server-owned opaque ref이며, 파일 경로 해석은
     main server repository 내부 compatibility로만 처리한다
@@ -127,8 +123,6 @@ agent training example backend 이름 중 여러 계층이 함께 읽는 canonic
 - `WEAK_STRONG_PAIR_EXAMPLE_BACKEND`
   - source row가 weak/strong view pair를 제공해야 하는 backend 이름
   - 실제 row shape 검증은 text view owner인 `methods/adaptation/query_text_views`가 맡는다
-- `PROTOTYPE_RESCORE_EXAMPLE_BACKEND`
-  - prototype 기반 single-view rescore backend 이름
 
 ### `secure_aggregation_contracts.py`
 
@@ -178,30 +172,6 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 Agent-local API/UI 계약은 `agent/src/contracts/`가 소유한다. captured text,
 typing segment, child support, family access, wellbeing signal처럼 main_server나
 FL envelope이 해석하지 않는 payload는 shared 계약으로 두지 않는다.
-
-### `prototype_contracts.py`
-
-Prototype runtime이 직접 읽는 semantic artifact 계약을 정의한다.
-
-- `PrototypePackPayload`
-  - category마다 하나 이상의 prototype을 가진다
-  - single prototype도 길이 1 리스트로 정규화해서 해석한다
-  - v1 classifier-first baseline에서는 bootstrap/comparison artifact로도 쓴다
-- `CategoryPrototypePayload`
-  - `prototype_id`, `centroid`, `sample_count`를 담는다
-- `extract_category_prototypes(...)`
-  - runtime scoring용 `category -> prototype vectors` 변환 helper
-- `extract_category_centroids(...)`
-  - single-prototype pack에서만 쓰는 legacy helper
-
-### `prototype_build_state_contracts.py`
-
-Prototype exact incremental merge용 build-state 계약을 정의한다.
-
-- `PrototypeBuildStatePayload`
-  - 현재 v1은 category별 `embedding_sum`, `sample_count`만 담는다
-  - 따라서 exact incremental merge는 single mean-centroid builder 전용이다
-  - multi-prototype builder는 build-state 없이 pack만 생성할 수 있다
 
 ## 해석 규칙
 

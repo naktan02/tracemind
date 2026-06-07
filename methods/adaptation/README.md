@@ -15,12 +15,12 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
   root로 해석하는 resolver. concrete alias는 resolver가 아니라 구현 owner 옆
   `payload_adapter_module.py` manifest가 등록한다.
 - `initial_state.py`: payload adapter kind별 initial shared adapter state builder를
-  구현 owner의 `initial_state.py`로 dispatch한다. `main_server`는 classifier/prototype
+  구현 owner의 `initial_state.py`로 dispatch한다. `main_server`는 family
   같은 family 내부 필드를 직접 만들지 않는다.
 - `server_update_materialization.py`: payload family별 서버 materialization
   preflight를 찾아 실행하는 dispatcher
 - `update_family_report_artifacts.py`: FL report verifier가 참조하는 update family별
-  artifact field/snapshot 규칙. `scripts`는 PEFT/prototype 같은 family별 파일명을
+  artifact field/snapshot 규칙. `scripts`는 PEFT 같은 family별 파일명을
   직접 소유하지 않는다.
 - `privacy_guards/`: shared adapter update clipping/DP policy core와 registry
 - `peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와 registry.

@@ -19,7 +19,6 @@ def write_pipeline_run_manifest(
     raw_outputs: dict[str, str],
     mapped_outputs: dict[str, dict[str, Path]],
     split_output: dict[str, Path] | None,
-    prototype_output: dict[str, str | None] | None,
     pipeline_run_dir: Path,
 ) -> Path:
     """pipeline 실행 요약 manifest를 기록한다."""
@@ -54,7 +53,6 @@ def write_pipeline_run_manifest(
         "split_output": None
         if split_output is None
         else {name: str(path) for name, path in split_output.items()},
-        "prototype_output": prototype_output,
         "sources": {
             source_name: {
                 "kind": str(source_cfg.get("kind")),

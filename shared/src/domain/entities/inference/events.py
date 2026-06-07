@@ -23,7 +23,7 @@ class QueryEvent:
 class AnalysisEvent:
     """method-agnostic 로컬 분석 결과.
 
-    classifier, prototype, hybrid scorer 모두 같은 analysis event로 저장한다.
+    scorer backend 결과는 같은 analysis event로 저장한다.
     """
 
     query_id: str

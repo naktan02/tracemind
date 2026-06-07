@@ -15,7 +15,7 @@ defaults:
 
 train_jsonl: ${query_source.train_jsonl}
 output_dir: ${central_ssl_budget.output_root}/central/supervised/peft_classifier
-fixed_categories: ${dataset.prototype_expected_categories}
+fixed_categories: ${dataset.label_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
 selection_set: test

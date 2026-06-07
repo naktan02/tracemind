@@ -39,7 +39,7 @@ def _make_record(
         margin=0.42,
         runner_up_label="depression",
         runner_up_score=0.45,
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
         metadata={"source": "unit-test"},
     )
 
@@ -78,12 +78,8 @@ def test_repo_get_recent_returns_latest_first(
 ) -> None:
     """recent 조회는 최신 occurred_at 순서와 limit를 지킨다."""
     now = datetime.now(tz=timezone.utc)
-    tmp_repo.save(
-        _make_record(query_id="old", occurred_at=now - timedelta(minutes=5))
-    )
-    tmp_repo.save(
-        _make_record(query_id="new", occurred_at=now)
-    )
+    tmp_repo.save(_make_record(query_id="old", occurred_at=now - timedelta(minutes=5)))
+    tmp_repo.save(_make_record(query_id="new", occurred_at=now))
 
     recent = tmp_repo.get_recent(limit=1)
 
@@ -96,9 +92,7 @@ def test_repo_delete_older_than_removes_old_records(
 ) -> None:
     """cutoff 이전 레코드는 purge 대상이다."""
     now = datetime.now(tz=timezone.utc)
-    tmp_repo.save(
-        _make_record(query_id="old", occurred_at=now - timedelta(days=31))
-    )
+    tmp_repo.save(_make_record(query_id="old", occurred_at=now - timedelta(days=31)))
     tmp_repo.save(_make_record(query_id="new", occurred_at=now))
 
     deleted = tmp_repo.delete_older_than(cutoff=now - timedelta(days=30))
@@ -148,7 +142,7 @@ def test_build_query_buffer_record_uses_query_text_and_score_snapshot() -> None:
         event=event,
         analysis_event=analysis_event,
         model_revision="seed_rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
         metadata={"was_translated": False},
     )
 

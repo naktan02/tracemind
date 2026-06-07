@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from methods.prototype.evidence.helpers import (
+from agent.src.services.training.selection.evidence_projection import (
     build_ranked_evidence,
     rank_category_scores,
 )

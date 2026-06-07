@@ -6,7 +6,6 @@ from hydra import compose, initialize_config_module
 
 from scripts.workflows.datasets.run_dataset_pipeline import (
     resolve_pipeline_output_dir,
-    resolve_prototype_input_jsonl,
     supported_dataset_aliases,
 )
 
@@ -26,9 +25,8 @@ def test_hydra_dataset_group_contains_pipeline_metadata() -> None:
             overrides=["execution_context/dataset_asset=ourafla"],
         )
 
-    assert cfg.dataset.stages == ["download", "map", "split", "prototype"]
+    assert cfg.dataset.stages == ["download", "map", "split"]
     assert cfg.dataset.split.source == "train"
-    assert cfg.dataset.prototype.input_ref.kind == "split_train"
     assert cfg.dataset.sources.train.data_file == "mental_heath_unbanlanced.csv"
     assert (
         cfg.dataset.sources.train.download.callable_path
@@ -86,27 +84,3 @@ def test_kaggle_mental_health_dataset_overrides_pipeline_output_dirs() -> None:
 
     assert str(raw_dir).endswith("data/datasets/szegeelim_mental_health/raw")
     assert str(split_dir).endswith("data/datasets/szegeelim_mental_health/splits")
-
-
-def test_resolve_prototype_input_jsonl_uses_structured_input_ref(tmp_path) -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/dataset_pipeline/run_dataset_pipeline",
-            overrides=["execution_context/dataset_asset=ourafla"],
-        )
-
-    split_output = {
-        "train_jsonl": tmp_path / "train.jsonl",
-        "validation_jsonl": tmp_path / "validation.jsonl",
-        "manifest": tmp_path / "manifest.json",
-    }
-
-    assert (
-        resolve_prototype_input_jsonl(
-            dataset_cfg=cfg.dataset,
-            mapped_outputs={},
-            split_output=split_output,
-            split_dir=tmp_path,
-        )
-        == split_output["train_jsonl"]
-    )

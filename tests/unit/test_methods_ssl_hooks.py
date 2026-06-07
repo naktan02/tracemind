@@ -33,7 +33,7 @@ def _build_evidence() -> PseudoLabelEvidence:
         occurred_at=datetime(2026, 4, 19, tzinfo=timezone.utc),
         label="anxiety",
         confidence=0.62,
-        confidence_kind="prototype_similarity",
+        confidence_kind="classifier_head_logits",
         margin=0.01,
         top1_label="anxiety",
         top1_score=0.62,

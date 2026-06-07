@@ -1,7 +1,0 @@
-# @package prototype_builder
-
-_target_: methods.prototype.building.kmeans.KMeansPrototypeBuildStrategy
-name: kmeans
-candidate_ks: [2, 3, 4, 5]
-silhouette_sample_size: 2000
-random_state: 42

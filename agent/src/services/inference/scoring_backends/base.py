@@ -8,9 +8,6 @@ from typing import Protocol
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
-PROTOTYPE_SIMILARITY_BACKEND_NAME = "prototype_similarity"
-PROTOTYPE_SIMILARITY_CONFIDENCE_KIND = "prototype_similarity_top1"
-
 ScoringAssets = Mapping[str, Sequence[float] | Sequence[Sequence[float]]]
 
 

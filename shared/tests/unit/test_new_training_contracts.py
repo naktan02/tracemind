@@ -32,34 +32,16 @@ def test_model_manifest_payload_accepts_active_fields(
 
     assert payload.training_enabled is True
     assert payload.training_scope == TrainingScope.ADAPTER_ONLY
-    assert "prototype_version" not in payload.model_dump(mode="json")
 
 
-def test_model_manifest_payload_keeps_prototype_only_as_auxiliary(
+def test_model_manifest_payload_keeps_auxiliary_artifact_versions(
     make_model_manifest_payload,
 ) -> None:
     payload = make_model_manifest_payload(
-        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+        auxiliary_artifact_versions={"calibration_set": "calib_001"},
     )
 
-    assert payload.auxiliary_artifact_versions == {"prototype_pack": "proto_001"}
-    assert "prototype_version" not in payload.model_dump(mode="json")
-
-
-def test_model_manifest_payload_migrates_legacy_prototype_version(
-    make_model_manifest_payload,
-) -> None:
-    payload = make_model_manifest_payload(
-        prototype_version="proto_001",
-        translation_model_id="legacy-translator",
-        translation_model_revision="legacy-rev",
-    )
-
-    assert payload.auxiliary_artifact_versions == {"prototype_pack": "proto_001"}
-    dumped = payload.model_dump(mode="json")
-    assert "prototype_version" not in dumped
-    assert "translation_model_id" not in dumped
-    assert "translation_model_revision" not in dumped
+    assert payload.auxiliary_artifact_versions == {"calibration_set": "calib_001"}
 
 
 def test_training_payloads_capture_round_and_revision(
@@ -155,26 +137,26 @@ def test_feedback_signal_payload_is_local_friendly(
 def test_training_objective_config_payload_accepts_policy_fields() -> None:
     payload = TrainingObjectiveConfigPayload(
         training_backend_name="contrastive",
-        algorithm_profile_name="prototype_pseudo_label_v1",
+        algorithm_profile_name="peft_classifier_update_v1",
         loss_name="cross_entropy",
-        example_generation_backend_name="prototype_rescore",
-        evidence_backend_name="prototype_similarity_evidence",
-        scorer_backend_name="prototype_similarity",
-        score_policy_name="topk_mean_cosine",
-        score_top_k=3,
+        example_generation_backend_name="weak_strong_pair",
+        evidence_backend_name="analysis_score_evidence",
+        scorer_backend_name="classifier_head_logits",
+        score_policy_name=None,
+        score_top_k=None,
         pseudo_label_algorithm_name="top1_margin_threshold",
         acceptance_policy_name="top1_margin_threshold",
         privacy_guard_name="clip_only",
     )
 
     assert payload.training_backend_name == "contrastive"
-    assert payload.algorithm_profile_name == "prototype_pseudo_label_v1"
+    assert payload.algorithm_profile_name == "peft_classifier_update_v1"
     assert payload.loss_name == "cross_entropy"
-    assert payload.example_generation_backend_name == "prototype_rescore"
-    assert payload.evidence_backend_name == "prototype_similarity_evidence"
-    assert payload.scorer_backend_name == "prototype_similarity"
-    assert payload.score_policy_name == "topk_mean_cosine"
-    assert payload.score_top_k == 3
+    assert payload.example_generation_backend_name == "weak_strong_pair"
+    assert payload.evidence_backend_name == "analysis_score_evidence"
+    assert payload.scorer_backend_name == "classifier_head_logits"
+    assert payload.score_policy_name is None
+    assert payload.score_top_k is None
     assert payload.pseudo_label_algorithm_name == "top1_margin_threshold"
     assert payload.acceptance_policy_name == "top1_margin_threshold"
     assert payload.privacy_guard_name == "clip_only"
@@ -184,15 +166,13 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {
             "training_backend_name": "peft_classifier_trainer",
-            "algorithm_profile_name": "prototype_pseudo_label_v1",
+            "algorithm_profile_name": "peft_classifier_update_v1",
             "loss_name": "cross_entropy",
             "selection.confidence_threshold": 0.65,
             "selection.margin_threshold": 0.03,
-            "example_generation_backend_name": "prototype_rescore",
-            "evidence_backend_name": "prototype_similarity_evidence",
-            "scorer_backend_name": "prototype_similarity",
-            "score_policy_name": "topk_mean_cosine",
-            "score_top_k": 2,
+            "example_generation_backend_name": "weak_strong_pair",
+            "evidence_backend_name": "analysis_score_evidence",
+            "scorer_backend_name": "classifier_head_logits",
             "pseudo_label_algorithm_name": "top1_confidence_only",
             "acceptance_policy_name": "top1_confidence_only",
             "privacy_guard_name": "noop",
@@ -201,13 +181,13 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     )
 
     assert config.training_backend_name == "peft_classifier_trainer"
-    assert config.algorithm_profile_name == "prototype_pseudo_label_v1"
+    assert config.algorithm_profile_name == "peft_classifier_update_v1"
     assert config.loss_name == "cross_entropy"
-    assert config.example_generation_backend_name == "prototype_rescore"
-    assert config.evidence_backend_name == "prototype_similarity_evidence"
-    assert config.scorer_backend_name == "prototype_similarity"
-    assert config.score_policy_name == "topk_mean_cosine"
-    assert config.score_top_k == 2
+    assert config.example_generation_backend_name == "weak_strong_pair"
+    assert config.evidence_backend_name == "analysis_score_evidence"
+    assert config.scorer_backend_name == "classifier_head_logits"
+    assert config.score_policy_name is None
+    assert config.score_top_k is None
     assert config.pseudo_label_algorithm_name == "top1_confidence_only"
     assert config.acceptance_policy_name == "top1_confidence_only"
     assert config.privacy_guard_name == "noop"
@@ -218,15 +198,13 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     }
     assert config.to_mapping() == {
         "training_backend_name": "peft_classifier_trainer",
-        "algorithm_profile_name": "prototype_pseudo_label_v1",
+        "algorithm_profile_name": "peft_classifier_update_v1",
         "loss_name": "cross_entropy",
         "selection.confidence_threshold": 0.65,
         "selection.margin_threshold": 0.03,
-        "example_generation_backend_name": "prototype_rescore",
-        "evidence_backend_name": "prototype_similarity_evidence",
-        "scorer_backend_name": "prototype_similarity",
-        "score_policy_name": "topk_mean_cosine",
-        "score_top_k": 2,
+        "example_generation_backend_name": "weak_strong_pair",
+        "evidence_backend_name": "analysis_score_evidence",
+        "scorer_backend_name": "classifier_head_logits",
         "pseudo_label_algorithm_name": "top1_confidence_only",
         "acceptance_policy_name": "top1_confidence_only",
         "privacy_guard_name": "noop",
@@ -273,11 +251,11 @@ def test_training_objective_config_preserves_algorithm_profile_without_expansion
     config = TrainingObjectiveConfig.from_mapping(
         {
             "training_backend_name": "peft_classifier_trainer",
-            "algorithm_profile_name": "prototype_top1_confidence_v1",
+            "algorithm_profile_name": "peft_classifier_update_v1",
         }
     )
 
-    assert config.algorithm_profile_name == "prototype_top1_confidence_v1"
+    assert config.algorithm_profile_name == "peft_classifier_update_v1"
     assert config.training_backend_name == "peft_classifier_trainer"
     assert config.example_generation_backend_name is None
     assert config.evidence_backend_name is None
@@ -305,7 +283,7 @@ def test_training_objective_config_does_not_expand_unknown_algorithm_profile() -
 def test_training_objective_config_requires_training_backend_name() -> None:
     with pytest.raises(ValueError, match="training_backend_name is required"):
         TrainingObjectiveConfig.from_mapping(
-            {"algorithm_profile_name": "prototype_top1_confidence_v1"}
+            {"algorithm_profile_name": "peft_classifier_update_v1"}
         )
 
 

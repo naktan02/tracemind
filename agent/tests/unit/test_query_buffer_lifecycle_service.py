@@ -32,7 +32,7 @@ def _make_record(
         margin=0.42,
         runner_up_label="depression",
         runner_up_score=0.45,
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
         metadata={},
     )
 

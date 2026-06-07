@@ -1,1 +1,0 @@
-"""Prototype thresholding method core."""

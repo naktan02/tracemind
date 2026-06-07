@@ -166,8 +166,8 @@ def _make_pipeline(
 
     scoring_service = MagicMock()
     scoring_service.score.return_value = {"anxiety": 0.85, "depression": 0.25}
-    scoring_service.backend_name = "prototype_similarity"
-    scoring_service.confidence_kind = "prototype_similarity_top1"
+    scoring_service.backend_name = "classifier_head_logits"
+    scoring_service.confidence_kind = "classifier_head_logit_top1"
 
     scoring_asset_provider = None
     if with_scoring_asset_provider:
@@ -289,7 +289,7 @@ def test_pipeline_stores_query_buffer_record_with_same_query_id(tmp_path: Path) 
     assert stored_record is not None
     assert stored_record.query_id == result.analysis_event.query_id
     assert stored_record.raw_text == "I feel anxious"
-    assert stored_record.confidence_kind == "prototype_similarity_top1"
+    assert stored_record.confidence_kind == "classifier_head_logit_top1"
     assert stored_record.metadata["embedding_model_id"] == "test-embed"
     assert stored_record.metadata["was_translated"] is False
 
@@ -307,7 +307,7 @@ def test_pipeline_uses_active_shared_adapter_state_for_scoring(
     shared_adapter_provider.get_active_manifest.return_value = make_embedding_manifest(
         model_id="test-embed",
         model_revision="global_rev_001",
-        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+        auxiliary_artifact_versions={"calibration_set": "calib_001"},
         artifact_ref="shared_adapter_state::global_rev_001",
     )
     pipeline = _make_pipeline(
@@ -342,7 +342,7 @@ def test_pipeline_can_apply_future_local_adapter_after_shared_state(
     shared_adapter_provider.get_active_manifest.return_value = make_embedding_manifest(
         model_id="test-embed",
         model_revision="global_rev_001",
-        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+        auxiliary_artifact_versions={"calibration_set": "calib_001"},
         artifact_ref="shared_adapter_state::global_rev_001",
     )
     local_state = MagicMock()
@@ -446,8 +446,8 @@ def test_pipeline_stores_scorer_metadata_in_analysis_event(tmp_path: Path) -> No
         ).fetchone()
 
     assert row == (
-        "prototype",
-        "prototype_similarity",
+        "classifier",
+        "classifier_head_logits",
         "seed_rev_001",
-        "prototype_similarity_top1",
+        "classifier_head_logit_top1",
     )

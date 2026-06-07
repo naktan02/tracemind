@@ -139,8 +139,6 @@ verifier는 `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`를
 ## 주의
 
 - scripts runner에 새 method core를 추가하지 않는다.
-- prototype 기반 방법론이 확정되면 scripts 분기가 아니라 update-family leaf와
-  `methods/` core/capability를 추가한다.
 - 논문용 산출물은 `report.protocol.embedding_adapter`와
   `local_trainer_runtime`으로 `gpu_local + mxbai` 여부를 확인한다.
 - smoke/test artifact는 `runs/_smoke` 아래에 둔다.

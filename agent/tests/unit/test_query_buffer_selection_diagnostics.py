@@ -97,9 +97,9 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
             event=query_event,
             analysis_event=analysis_event,
             model_revision="rev_001",
-            confidence_kind="prototype_similarity_top1",
+            confidence_kind="classifier_head_logit_top1",
             metadata={
-                "scorer_backend_name": "prototype_similarity",
+                "scorer_backend_name": "classifier_head_logits",
                 "was_translated": False,
             },
         )
@@ -164,7 +164,7 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
         "normal": 0.1,
     }
     assert trace_by_query_id["q1"]["query_buffer_metadata"] == {
-        "scorer_backend_name": "prototype_similarity",
+        "scorer_backend_name": "classifier_head_logits",
         "was_translated": False,
     }
     q1_payload = trace_by_query_id["q1"]
@@ -195,7 +195,7 @@ def test_query_buffer_selection_diagnostics_service_requires_matching_record() -
         event=query_event,
         analysis_event=analysis_event,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record,),

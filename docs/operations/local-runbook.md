@@ -386,12 +386,12 @@ ps aux | rg "pytest|uv run python|uvicorn|train_peft|run_federated"
 | 위치 | 용도 |
 |---|---|
 | `data/datasets/` | 새 dataset별 raw/mapped/split/query_ssl/view 산출물 |
-| `data/artifacts/` | 새 classifier head, LoRA adapter, prototype pack 등 재사용 산출물 |
+| `data/artifacts/` | 새 classifier head, LoRA adapter 등 재사용 산출물 |
 | `data/cache/` | 새 모델/cache/translation/query view cache |
-| `data/processed/` | legacy dataset/model/prototype 산출물 |
+| `data/processed/` | legacy dataset/model 산출물 |
 | `runs/` | 실험 실행별 report/log/artifact |
-| `agent/state/` | local prototype pack, query/scored event 등 agent state |
-| `main_server/state/` | server prototype/model/round state |
+| `agent/state/` | query/scored event 등 agent state |
+| `main_server/state/` | server model/round state |
 | `hf_cache/` | legacy model cache |
 | `tmp/` | 임시 비교/외부 reference checkout |
 

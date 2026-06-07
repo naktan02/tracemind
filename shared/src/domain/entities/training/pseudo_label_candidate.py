@@ -88,7 +88,7 @@ class PseudoLabelSelectionContext:
 
 @dataclass(slots=True)
 class PseudoLabelCandidate:
-    """prototype score에서 뽑은 로컬 pseudo-label 후보."""
+    """로컬 score에서 뽑은 pseudo-label 후보."""
 
     schema_version: str
     candidate_id: str

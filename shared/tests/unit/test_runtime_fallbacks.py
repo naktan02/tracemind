@@ -117,8 +117,8 @@ def test_runtime_fallback_resolves_example_generation_backend_name() -> None:
             type(
                 "Objective",
                 (),
-                {"example_generation_backend_name": "prototype_rescore"},
+                {"example_generation_backend_name": "peft_classifier_raw_rows"},
             )()
         )
-        == "prototype_rescore"
+        == "peft_classifier_raw_rows"
     )

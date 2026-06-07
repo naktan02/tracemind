@@ -89,14 +89,14 @@ def test_query_adaptation_dataset_service_builds_raw_text_examples() -> None:
         event=query_event_1,
         analysis_event=analysis_event_1,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
         metadata={"was_translated": True},
     )
     record_2 = build_query_buffer_record(
         event=query_event_2,
         analysis_event=analysis_event_2,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
         metadata={"was_translated": False},
     )
     selection_result = QueryBufferSelectionService().select(
@@ -147,7 +147,7 @@ def test_query_adaptation_dataset_service_requires_query_buffer_record() -> None
         event=query_event,
         analysis_event=analysis_event,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record,),
@@ -174,7 +174,7 @@ def test_query_adaptation_dataset_service_rejects_duplicate_record_key() -> None
         event=query_event,
         analysis_event=analysis_event,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record,),
@@ -203,7 +203,7 @@ def test_query_adaptation_dataset_service_rejects_manual_labels_in_pseudo_mode()
         event=query_event,
         analysis_event=analysis_event,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record,),
@@ -231,7 +231,7 @@ def test_query_adaptation_dataset_service_can_prefer_manual_labels_later() -> No
         event=query_event,
         analysis_event=analysis_event,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record,),

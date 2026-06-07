@@ -297,7 +297,7 @@ def _active_manifest_payload(round_service: RoundLifecycleService) -> dict:
     manifest = make_embedding_manifest(
         model_id=MODEL_ID,
         model_revision=MODEL_REVISION,
-        auxiliary_artifact_versions={"prototype_pack": "proto_test"},
+        auxiliary_artifact_versions={"calibration_set": "calib_test"},
         artifact_ref=state_repository.ref_for_revision(MODEL_REVISION),
         training_scope=TrainingScope.HEAD_ONLY,
     )
@@ -388,7 +388,7 @@ def _make_domain_manifest(base_state_path: Path) -> ModelManifest:
         published_at=datetime.now(tz=timezone.utc),
         artifact_kind="embedding",
         artifact_ref=str(base_state_path),
-        auxiliary_artifact_versions={"prototype_pack": "proto_test"},
+        auxiliary_artifact_versions={"calibration_set": "calib_test"},
         training_scope=TrainingScope.HEAD_ONLY,
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -789,7 +789,7 @@ def test_full_round_lifecycle(
     # 3. finalize
     r = server_client.post(
         f"/api/v1/fl/rounds/{round_id}/finalize",
-        json={"next_auxiliary_artifact_versions": {"prototype_pack": "proto_test_v2"}},
+        json={"next_auxiliary_artifact_versions": {"calibration_set": "calib_test_v2"}},
     )
     assert r.status_code == 200
     final = r.json()

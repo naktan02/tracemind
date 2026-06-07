@@ -15,7 +15,7 @@
 
 - `inference/`
   - 로컬 추론 rail
-  - classifier/prototype 같은 scorer-family별 분석 계산, 의사결정, 시계열 누적 담당
+  - scorer backend별 분석 계산, 의사결정, 시계열 누적 담당
 - `training/`
   - 로컬 학습 rail
   - selection, example assembly, execution, dataset 조립, backend 구현 담당
@@ -35,7 +35,7 @@
 
 현재 v1에서 권장하는 읽기 관점:
 
-- scorer backend는 classifier/prototype/hybrid 후보를 같은 analysis event로 투영한다.
+- scorer backend는 같은 analysis event로 투영한다.
 - `local interpretation`이 final decision owner다.
 - shared adapter와 scorer asset은 비교/확장 경로로 유지한다.
 
@@ -86,8 +86,6 @@
 - `inference/scoring_backends/`
   - scorer backend registry와 agent runtime adapter 구현
   - backend 구현 옆 catalog entry와 decorator 등록을 둔다
-- `methods/prototype/scoring/`
-  - prototype similarity와 score 집계 policy core
 - `training/selection/pseudo_label_service.py`
   - score를 pseudo-label candidate/accepted set으로 해석
 - `docs/contracts/query_buffer_v1.md`
@@ -143,8 +141,6 @@
   - raw row 또는 stored event를 `EmbeddedTrainingExample`으로 변환
 - `training/backends/inputs/`
   - single-view, weak/strong pair 같은 training input backend 구현
-- `methods/prototype/training_inputs/`
-  - prototype 방식이 명시 선택될 때 쓰는 input view 계산 core
 - `training/backends/evidence/`
   - analysis score를 pseudo-label evidence로 정규화하는 backend 구현
 - local update backend registry는 `methods/adaptation/local_update_registry.py`가 소유한다
@@ -163,9 +159,8 @@
     adapter 내부에서 섞지 않는다.
 - example-generation backend 추가: 해당 method core와 `training/backends/inputs/`,
   `training/examples/service.py`
-- scorer backend 추가: `methods/prototype/scoring/` 또는 다른 methods core를 먼저
-  추가하고, `inference/scoring_backends/`에는 agent runtime adapter만 둔다
-- prototype score policy 추가: `methods/prototype/scoring/`
+- scorer backend 추가: method core를 먼저 추가하고,
+  `inference/scoring_backends/`에는 agent runtime adapter만 둔다
 - pseudo-label acceptance/selection 정책 추가: `methods/ssl/hooks/`
 - privacy guard 추가: `methods/adaptation/privacy_guards/`
 

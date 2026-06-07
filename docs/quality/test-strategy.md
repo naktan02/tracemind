@@ -27,7 +27,7 @@ TraceMind의 주요 위험은 아래에 있다.
 
 1. `shared` contract와 canonical helper
 2. `agent` local inference/training/query buffer/wellbeing service
-3. `main_server` round/prototype orchestration
+3. `main_server` round orchestration
 4. script entrypoint, Hydra config, artifact IO
 5. cross-boundary integration과 architecture guard
 
@@ -35,10 +35,10 @@ TraceMind의 주요 위험은 아래에 있다.
 
 | 위치 | 책임 |
 |---|---|
-| `shared/tests/unit` | shared contract, prototype contract, training defaults, generated UI contract |
+| `shared/tests/unit` | shared contract, training defaults, generated UI contract |
 | `agent/tests/unit` | local inference, query buffer, query adaptation, training, wellbeing API/service |
-| `main_server/tests/unit` | FL round lifecycle, aggregation, prototype publication |
-| `tests/unit` | scripts, Hydra config, prototype builder/projection, generated app types |
+| `main_server/tests/unit` | FL round lifecycle, aggregation, publication |
+| `tests/unit` | scripts, Hydra config, generated app types |
 | `tests/integration` | cross-boundary integration |
 | `tests/federation/e2e` | multi-agent federation scenario용 위치 |
 | `tests/architecture` | dependency direction과 layer rule guard |
@@ -84,7 +84,6 @@ uv run ruff format --check main_server/src agent/src shared/src scripts tests
 |---|---|
 | `shared/tests/unit/test_adapter_contracts.py` | adapter family state/update payload |
 | `shared/tests/unit/test_new_training_contracts.py` | training task/update/feedback signal |
-| `shared/tests/unit/test_prototype_contracts.py` | prototype pack serialization/helper |
 | `agent/tests/unit/test_family_access_contracts.py` | family setup/unlock contract |
 | `agent/tests/unit/test_wellbeing_signal_contracts.py` | wellbeing summary/timeseries contract |
 
@@ -104,9 +103,6 @@ Contract 변경은 producer, consumer, serialization/compatibility test, 관련 
 | `tests/unit/test_methods_freematch.py` | reusable FreeMatch method objective |
 | `tests/unit/test_methods_federated_ssl.py` | reusable FL SSL method descriptor |
 | `tests/unit/test_methods_federated_shard_policy.py` | reusable FL shard policy method core |
-| `tests/unit/test_methods_prototype_scoring.py` | reusable prototype scoring method core |
-| `tests/unit/test_methods_prototype_evidence.py` | reusable prototype evidence method core |
-| `tests/unit/test_methods_prototype_training_inputs.py` | reusable prototype training input method core |
 | `agent/tests/unit/test_local_training_service.py` | local training execution |
 | `agent/tests/unit/test_training_api.py` | agent training route |
 | `agent/tests/unit/test_wellbeing_api.py` | family/wellbeing route |
@@ -124,7 +120,6 @@ Agent 테스트는 raw text, local retention, private state가 server boundary�
 | `main_server/tests/unit/test_aggregation_service.py` | aggregation backend |
 | `tests/unit/test_methods_fedavg.py` | FedAvg generic/family aggregation core |
 | `main_server/tests/unit/test_fl_rounds_api.py` | FL round API |
-| `main_server/tests/unit/test_prototype_pack_service.py` | prototype pack publication |
 Server 테스트는 round state, aggregation policy, publication side effect가 agent local concern과 섞이지 않는지 확인해야 한다.
 
 ### Scripts and Experiment Surface

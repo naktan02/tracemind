@@ -18,18 +18,12 @@
   - 중앙 pooled/offline SSL control entrypoint를 둔다.
 - `fl_ssl/`
   - client split, round loop, aggregation, per-client metric 같은 FL SSL orchestration을 둔다.
-- `prototype_analysis/`
-  - prototype 전략 비교와 threshold sweep entrypoint를 둔다.
 
-공용 text encoder SSL runner/helper는 `scripts/support/query_ssl_text_encoder/`, dataset/prototype
-pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
+공용 text encoder SSL runner/helper는 `scripts/support/query_ssl_text_encoder/`,
+dataset/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
 
 ## 직접 실행하는 entrypoint
 
-- `prototype_analysis/prototype_strategy_experiment.py`
-  - single/kmeans/dbscan prototype 전략 비교.
-- `prototype_analysis/prototype_threshold_sweep.py`
-  - 선택된 prototype 전략 위에서 threshold policy 비교.
 - `fl_ssl/run_federated_simulation.py`
   - agent/main_server 코어를 조합한 synthetic FL loop.
   - runtime/task/validation/report shape는
@@ -69,22 +63,7 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
 
 - `scripts/support/reporting/query_buffer_selection_diagnostics.py`: query-buffer selection summary/trace dump 저장 helper
 
-## `scripts/workflows/prototype_pack`와의 차이
-
-- `scripts/experiments/prototype_analysis/*`
-  - prototype 전략이나 threshold 정책을 비교하는 연구형 실험 레일
-- `scripts/workflows/prototype_pack/*`
-  - prototype pack을 실제로 seed/evaluate/activate/report 하는
-    artifact workflow 레일
-
-즉 이름은 비슷하지만, 전자는 `비교/탐색`, 후자는 `artifact lifecycle`이 핵심이다.
-
 ## 먼저 읽을 파일
-
-prototype 전략 실험:
-
-1. `prototype_analysis/prototype_strategy_experiment.py`
-2. `prototype_analysis/prototype_strategy/README.md`
 
 federated simulation:
 

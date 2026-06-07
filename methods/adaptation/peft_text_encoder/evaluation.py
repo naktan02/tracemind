@@ -218,9 +218,9 @@ def require_peft_encoder_validation_backend(
     *,
     adapter_state: object,
     scorer_backend_name: str,
-    prototype_scorer_backend_name: str,
+    selection_only_scorer_backend_name: str,
 ) -> None:
-    """PEFT encoder state에 prototype scorer validation이 붙는 drift를 막는다."""
+    """PEFT encoder state에 selection-only scorer validation이 붙는 drift를 막는다."""
 
     if not isinstance(adapter_state, PeftClassifierState):
         return
@@ -229,7 +229,7 @@ def require_peft_encoder_validation_backend(
     raise ValueError(
         "PEFT text encoder/head validation must use one of "
         f"{PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES!r}. "
-        f"{prototype_scorer_backend_name!r} is prototype/selection-only "
+        f"{selection_only_scorer_backend_name!r} is selection-only "
         "and does not read PEFT encoder/head global state."
     )
 

@@ -187,8 +187,6 @@ def _get_translation_model_id(service: TranslationService) -> str | None:
 def _resolve_scorer_family(scorer_name: str) -> str:
     """backend name에서 큰 scorer family를 추론한다."""
     lowered = scorer_name.lower()
-    if "prototype" in lowered:
-        return "prototype"
     if "classifier" in lowered or "linear_head" in lowered:
         return "classifier"
     return "unknown"

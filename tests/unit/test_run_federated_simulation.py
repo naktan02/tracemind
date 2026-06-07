@@ -2898,10 +2898,10 @@ def test_run_simulation_request_bootstraps_peft_classifier_profile(
     assert result.final_validation == result.initial_validation
 
 
-def test_peft_classifier_validation_rejects_prototype_similarity(tmp_path) -> None:
+def test_peft_classifier_validation_rejects_unsupported_scorer(tmp_path) -> None:
     request = _default_simulation_request(
         tmp_path,
-        output_name="peft_prototype_validation_rejected",
+        output_name="peft_unsupported_validation_rejected",
         model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
@@ -2919,8 +2919,8 @@ def test_peft_classifier_validation_rejects_prototype_similarity(tmp_path) -> No
         validation_config=_default_validation_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
-            scorer_backend_name="prototype_similarity",
-            score_policy_name="max_cosine",
+            scorer_backend_name="unsupported_legacy_scorer",
+            score_policy_name="unsupported_legacy_policy",
         ),
     )
 

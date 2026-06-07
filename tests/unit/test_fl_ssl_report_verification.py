@@ -361,7 +361,7 @@ def test_verify_federated_report_flags_update_family_drift() -> None:
             client_count=2,
             completed_rounds=1,
             round_budget=1,
-            update_family="prototype_pack",
+            update_family="unsupported_update_family",
         ),
         expectation=_expectation(),
     )
@@ -369,7 +369,7 @@ def test_verify_federated_report_flags_update_family_drift() -> None:
     assert not result.passed
     assert (
         "round_runtime.update_family_name expected 'peft_text_encoder', "
-        "got 'prototype_pack'." in result.errors
+        "got 'unsupported_update_family'." in result.errors
     )
 
 

@@ -91,9 +91,9 @@ def test_build_query_buffer_evidence_preserves_snapshot_metadata() -> None:
         event=query_event,
         analysis_event=analysis_event,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
         metadata={
-            "scorer_backend_name": "prototype_similarity",
+            "scorer_backend_name": "classifier_head_logits",
             "was_translated": False,
         },
     )
@@ -108,7 +108,7 @@ def test_build_query_buffer_evidence_preserves_snapshot_metadata() -> None:
     assert evidence.top1_label == "anxiety"
     assert evidence.top2_label == "depression"
     assert evidence.margin == pytest.approx(0.5)
-    assert evidence.confidence_kind == "prototype_similarity_top1"
+    assert evidence.confidence_kind == "classifier_head_logit_top1"
     assert evidence.raw_scores == analysis_event.category_scores
     assert (
         evidence.metadata["evidence_backend_name"]
@@ -117,8 +117,8 @@ def test_build_query_buffer_evidence_preserves_snapshot_metadata() -> None:
     assert evidence.metadata["query_buffer_model_revision"] == "rev_001"
     assert evidence.metadata["query_buffer_locale"] == "ko-KR"
     assert evidence.metadata["query_buffer_source_type"] == "user_message"
-    assert (
-        evidence.metadata["query_buffer.scorer_backend_name"] == "prototype_similarity"
+    assert evidence.metadata["query_buffer.scorer_backend_name"] == (
+        "classifier_head_logits"
     )
     assert evidence.metadata["translation_used"] is False
 
@@ -133,7 +133,7 @@ def test_build_query_buffer_evidences_requires_matching_analysis_event() -> None
         event=query_event,
         analysis_event=analysis_event,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
     )
 
     with pytest.raises(ValueError, match="Missing AnalysisEvent"):
@@ -150,7 +150,7 @@ def test_build_query_buffer_evidence_rejects_snapshot_mismatch() -> None:
         event=query_event,
         analysis_event=analysis_event,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
     )
     mismatched_record = replace(record, confidence=0.1)
 
@@ -176,13 +176,13 @@ def test_query_buffer_selection_service_filters_candidates_with_policy() -> None
         event=query_event_1,
         analysis_event=analysis_event_1,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
     )
     record_2 = build_query_buffer_record(
         event=query_event_2,
         analysis_event=analysis_event_2,
         model_revision="rev_001",
-        confidence_kind="prototype_similarity_top1",
+        confidence_kind="classifier_head_logit_top1",
     )
 
     service = QueryBufferSelectionService()
@@ -207,5 +207,5 @@ def test_query_buffer_selection_service_filters_candidates_with_policy() -> None
     assert accepted.selection_context.evidence_backend_name == (
         QUERY_BUFFER_PROJECTION_BACKEND_NAME
     )
-    assert accepted.confidence_kind == "prototype_similarity_top1"
+    assert accepted.confidence_kind == "classifier_head_logit_top1"
     assert rejected.accepted is False

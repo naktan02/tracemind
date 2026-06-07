@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRecord,
 )
-from methods.prototype.evidence.helpers import (
+from agent.src.services.training.selection.evidence_projection import (
     build_ranked_evidence,
     rank_category_scores,
 )

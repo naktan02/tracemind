@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import hydra
-from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from scripts.support.configured_callable import load_configured_callable
@@ -22,11 +20,10 @@ from scripts.workflows.datasets.lib.pipeline_run_manifest import (
 from scripts.workflows.datasets.lib.split import (
     build_split_artifacts,
 )
-from scripts.workflows.prototype_pack.seeding import seed_prototype_pack
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
-PIPELINE_STAGE_ORDER = ("download", "map", "split", "prototype")
+PIPELINE_STAGE_ORDER = ("download", "map", "split")
 DATASET_CONFIG_DIR = PROJECT_ROOT / "conf/execution_context/dataset_asset"
 DATASET_CONFIG_GROUP = "execution_context/dataset_asset"
 
@@ -131,70 +128,6 @@ def resolve_split_output_paths(
         "validation_jsonl": split_dir / f"{split_name}.validation.jsonl",
         "manifest": split_dir / f"{split_name}.manifest.json",
     }
-
-
-def resolve_prototype_input_jsonl(
-    *,
-    dataset_cfg: DictConfig,
-    mapped_outputs: dict[str, dict[str, Path]],
-    split_output: dict[str, Path] | None,
-    split_dir: Path,
-) -> Path:
-    """prototype stage 입력 JSONL 경로를 결정한다."""
-    prototype_cfg = dataset_cfg.get("prototype")
-    if prototype_cfg is None:
-        raise ValueError(f"Dataset '{dataset_cfg.name}' has no prototype config.")
-
-    input_ref = prototype_cfg.get("input_ref")
-    if input_ref is None:
-        raise ValueError(
-            f"Dataset '{dataset_cfg.name}' prototype.input_ref is required."
-        )
-    input_ref_kind = _require_string(
-        input_ref.get("kind"),
-        field_name="prototype.input_ref.kind",
-    )
-    if input_ref_kind == "split_train":
-        if split_output is not None:
-            return split_output["train_jsonl"]
-        split_cfg = dataset_cfg.get("split")
-        if split_cfg is None:
-            raise ValueError(
-                f"Dataset '{dataset_cfg.name}' prototype input split_train "
-                "requires split config."
-            )
-        split_name = _require_string(
-            split_cfg.get("split_name"),
-            field_name="split.split_name",
-        )
-        return split_dir / f"{split_name}.train.jsonl"
-
-    if input_ref_kind == "mapped_source":
-        mapped_name = _require_string(
-            input_ref.get("source_name"),
-            field_name="prototype.input_ref.source_name",
-        )
-        mapped_output = mapped_outputs.get(mapped_name)
-        if mapped_output is not None:
-            return mapped_output["jsonl"]
-
-        source_cfg = dataset_cfg.sources.get(mapped_name)
-        if source_cfg is None:
-            raise ValueError(
-                f"Dataset '{dataset_cfg.name}' prototype source "
-                f"'{mapped_name}' is unknown."
-            )
-        return resolve_mapped_output_paths(
-            source_cfg=source_cfg,
-            labeled_query_set_dir=_resolve_project_path(
-                dataset_cfg.train_labeled_jsonl
-            ).parent,
-        )["jsonl"]
-
-    raise ValueError(
-        f"Dataset '{dataset_cfg.name}' has unsupported "
-        f"prototype.input_ref.kind='{input_ref_kind}'."
-    )
 
 
 def _selected_stages(dataset_cfg: DictConfig, only_stages: set[str]) -> list[str]:
@@ -354,82 +287,6 @@ def _resolve_declared_split_output(
     )
 
 
-def _run_prototype_stage(
-    *,
-    cfg: DictConfig,
-    dataset_cfg: DictConfig,
-    mapped_outputs: dict[str, dict[str, Path]],
-    split_output: dict[str, Path] | None,
-    split_dir: Path,
-    prototype_pack_dir: Path,
-    prototype_build_state_dir: Path,
-    cache_dir: Path,
-) -> dict[str, str | None]:
-    """prototype stage를 실행하고 pack/build-state 산출물을 반환한다."""
-    prototype_cfg = dataset_cfg.get("prototype")
-    if prototype_cfg is None:
-        raise ValueError(
-            f"Dataset '{dataset_cfg.name}' does not define prototype config."
-        )
-
-    prototype_input_jsonl = resolve_prototype_input_jsonl(
-        dataset_cfg=dataset_cfg,
-        mapped_outputs=mapped_outputs,
-        split_output=split_output,
-        split_dir=split_dir,
-    )
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    prototype_version = f"{prototype_cfg.prototype_version_prefix}_{timestamp}"
-    (
-        pack_path,
-        build_state_path,
-        manifest_path,
-        main_server_pack_path,
-        main_server_build_state_path,
-    ) = seed_prototype_pack(
-        input_jsonl=prototype_input_jsonl,
-        output_dir=prototype_pack_dir,
-        build_state_output_dir=prototype_build_state_dir,
-        prototype_version=prototype_version,
-        backend=_require_string(
-            prototype_cfg.get("backend"),
-            field_name="prototype.backend",
-        ),
-        embedding_model_id=_require_string(
-            prototype_cfg.get("embedding_model_id"),
-            field_name="prototype.embedding_model_id",
-        ),
-        embedding_model_revision=str(
-            prototype_cfg.get("embedding_model_revision", "main")
-        ),
-        translation_model_id=prototype_cfg.get("translation_model_id"),
-        translation_model_revision=prototype_cfg.get("translation_model_revision"),
-        translation_direction=prototype_cfg.get("translation_direction"),
-        batch_size=int(prototype_cfg.get("batch_size", 16)),
-        cache_dir=cache_dir,
-        device=str(cfg.runtime.device),
-        task_prefix=str(prototype_cfg.get("task_prefix", "")),
-        local_files_only=bool(cfg.runtime.local_files_only),
-        expected_categories=[
-            str(value) for value in prototype_cfg.get("expected_categories", [])
-        ],
-        hash_dim=int(prototype_cfg.get("hash_dim", 256)),
-        build_strategy=instantiate(cfg.prototype_builder),
-    )
-    return {
-        "prototype_build_state": None
-        if build_state_path is None
-        else str(build_state_path),
-        "prototype_pack": str(pack_path),
-        "manifest": str(manifest_path),
-        "main_server_build_state": None
-        if main_server_build_state_path is None
-        else str(main_server_build_state_path),
-        "main_server_pack": str(main_server_pack_path),
-        "input_jsonl": str(prototype_input_jsonl),
-    }
-
-
 def run_dataset(
     *,
     cfg: DictConfig,
@@ -454,16 +311,6 @@ def run_dataset(
         dataset_cfg=dataset_cfg,
         path_key="split_dir",
     )
-    prototype_pack_dir = resolve_pipeline_output_dir(
-        cfg=cfg,
-        dataset_cfg=dataset_cfg,
-        path_key="prototype_pack_dir",
-    )
-    prototype_build_state_dir = resolve_pipeline_output_dir(
-        cfg=cfg,
-        dataset_cfg=dataset_cfg,
-        path_key="prototype_build_state_dir",
-    )
     pipeline_run_dir = resolve_pipeline_output_dir(
         cfg=cfg,
         dataset_cfg=dataset_cfg,
@@ -478,7 +325,6 @@ def run_dataset(
     raw_outputs: dict[str, str] = {}
     mapped_outputs: dict[str, dict[str, Path]] = {}
     split_output: dict[str, Path] | None = None
-    prototype_output: dict[str, str | None] | None = None
 
     if "download" in selected_stages:
         raw_outputs = _run_download_stage(
@@ -508,18 +354,6 @@ def run_dataset(
             split_dir=split_dir,
         )
 
-    if "prototype" in selected_stages:
-        prototype_output = _run_prototype_stage(
-            cfg=cfg,
-            dataset_cfg=dataset_cfg,
-            mapped_outputs=mapped_outputs,
-            split_output=split_output,
-            split_dir=split_dir,
-            prototype_pack_dir=prototype_pack_dir,
-            prototype_build_state_dir=prototype_build_state_dir,
-            cache_dir=cache_dir,
-        )
-
     return write_pipeline_run_manifest(
         cfg=cfg,
         dataset_cfg=dataset_cfg,
@@ -529,7 +363,6 @@ def run_dataset(
         raw_outputs=raw_outputs,
         mapped_outputs=mapped_outputs,
         split_output=split_output,
-        prototype_output=prototype_output,
         pipeline_run_dir=pipeline_run_dir,
     )
 

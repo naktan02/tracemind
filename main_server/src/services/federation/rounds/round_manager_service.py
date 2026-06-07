@@ -260,7 +260,7 @@ def _build_next_auxiliary_artifact_versions(
     base_manifest: ModelManifest,
     next_auxiliary_artifact_versions: Mapping[str, str],
 ) -> dict[str, str]:
-    """prototype 같은 부속 artifact version을 중립 map으로 누적한다."""
+    """부속 artifact version을 중립 map으로 누적한다."""
 
     result = dict(base_manifest.auxiliary_artifact_versions)
     result.update(

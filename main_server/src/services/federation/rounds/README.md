@@ -58,7 +58,7 @@
 - `initial_publication_service.py`
   - selected payload adapter/update family의 initial state builder를 호출하고
     server-owned state repository와 active manifest pointer에 publish
-  - classifier, prototype 같은 family 내부 payload 의미는 `methods/adaptation/<family>/`
+  - family 내부 payload 의미는 `methods/adaptation/<family>/`
     initial state builder가 소유한다
 - `active_manifest_service.py`
   - 서버 current `ModelManifest` 저장/활성화

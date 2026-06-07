@@ -13,8 +13,6 @@
 - FL-SSL composition에서 재사용되는 method 조립 규칙
 - FedProx 같은 payload/update-family 중립 local objective regularizer 계산
 - FL SSL method별 local objective, server policy, round policy 의미
-- prototype scoring/evidence 같은 local inference/training 공통 mechanism
-- prototype 기반 학습 input view 계산
 
 ## 제외
 
@@ -37,15 +35,15 @@ agent / main_server / scripts
 `methods`는 `shared`와 외부 ML 라이브러리만 import한다. `agent`,
 `main_server`, `scripts`를 import하지 않는다.
 
-Prototype 기반 classifier 대체가 추가되어도 `scripts`, `agent`, `main_server` 전반을
-고치는 구조가 아니어야 한다. 새 scoring/building/update family는 `methods/`와
-`conf/`에 추가하고, runtime 계층은 이미 합의된 capability contract만 호출한다.
+새 scoring/update family가 추가되어도 `scripts`, `agent`, `main_server` 전반을
+고치는 구조가 아니어야 한다. 새 method core는 `methods/`와 `conf/`에 추가하고,
+runtime 계층은 이미 합의된 capability contract만 호출한다.
 
 최종 method/runtime 구조와 migration plan은
 `docs/architecture/target-method-runtime-structure.md`를 우선한다. 현재 코드의
 `adapter_family`, `lora_classifier` 이름은 legacy compatibility 표면을 설명할 수
 있지만, 새 설계 판단에서는 `update_family`, `trainable_state`, `linear_head`,
-`peft_text_encoder`, `prototype_pack` 용어를 기준으로 삼는다.
+`peft_text_encoder` 용어를 기준으로 삼는다.
 
 새 알고리즘이나 논문 method를 추가할 때는 먼저 `methods/`에 method-local module을
 만든다. `agent`와 `main_server`에 method 이름을 가진 runtime 파일을 늘리는 방식은
@@ -56,7 +54,7 @@ core interface로 변환하는 adapter만 소유한다.
 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다. 이
 폴더는 descriptor, recipe, local objective, server/round policy, method-only
 aggregation 변형을 묶는다. 반대로 두 개 이상 방법론에서 재사용되는 SSL hook,
-aggregation backend, adapter projection, prototype builder는 축별 패키지로 승격한다.
+aggregation backend, adapter projection은 축별 패키지로 승격한다.
 이 기준은 method 응집도와 교체 가능한 core 재사용성을 동시에 지키기 위한 것이다.
 새 방법론이 기존 algorithm file 하나로 표현되지 않고 view, pseudo-label 생성,
 confidence/weighting, consistency loss, distribution alignment, local regularizer,
@@ -107,15 +105,5 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
 - `methods/federated/shard_policy/`: FL non-IID client shard assignment 계산
 - `methods/federated_ssl/`: FL SSL method descriptor, recipe, local objective,
   server/round policy, method-local variant
-- `methods/prototype/building/`: prototype pack builder와 single/kmeans/dbscan
-  생성 전략
-- `methods/prototype/projections.py`: prototype pack을 평가/리포트용 centroid view로
-  투영하는 helper
-- `methods/prototype/distance_report.py`: prototype centroid pairwise similarity/
-  distance report 계산
-- `methods/prototype/scoring/`: prototype similarity와 category score policy 계산
-- `methods/prototype/evidence/`: prototype score를 pseudo-label evidence로 정규화
-- `methods/prototype/training_inputs/`: prototype single/multiview input view 계산
-
 구현 상태와 기본 선택값은 `conf/README.md`와 실제 `conf/strategy_axes/**` leaf를
 기준으로 본다. 이 문서는 `methods/`의 책임 경계만 설명한다.

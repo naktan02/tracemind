@@ -180,7 +180,7 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
                 artifact_ref="/tmp/rev_000.json",
-                auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+                auxiliary_artifact_versions={"calibration_set": "calib_000"},
                 training_scope="adapter_only",
                 training_enabled=True,
                 compatible_task_types=("pseudo_label_self_training",),
@@ -258,12 +258,8 @@ def test_round_manager_builds_objective_from_round_strategy() -> None:
         )
     )
 
-    assert task.objective_config.algorithm_profile_name == (
-        "peft_classifier_update_v1"
-    )
-    assert task.objective_config.extras["query_ssl.method_name"] == (
-        "flexmatch_usb_v1"
-    )
+    assert task.objective_config.algorithm_profile_name == ("peft_classifier_update_v1")
+    assert task.objective_config.extras["query_ssl.method_name"] == ("flexmatch_usb_v1")
     assert task.objective_config.extras["query_ssl.algorithm_name"] == "flexmatch"
     assert task.objective_config.extras["query_ssl.unlabeled_batch_size"] == 8
     assert task.objective_config.extras["query_ssl.thresh_warmup"] is True
@@ -285,7 +281,7 @@ def test_round_manager_accepts_secure_aggregation_config_on_training_task() -> N
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
                 artifact_ref="/tmp/rev_000.json",
-                auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+                auxiliary_artifact_versions={"calibration_set": "calib_000"},
                 training_scope="adapter_only",
                 training_enabled=True,
                 compatible_task_types=("pseudo_label_self_training",),
@@ -375,7 +371,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
                 artifact_ref=repository.ref_for_revision("rev_000"),
-                auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+                auxiliary_artifact_versions={"calibration_set": "calib_000"},
                 training_scope="adapter_only",
                 training_enabled=True,
                 compatible_task_types=("pseudo_label_self_training",),
@@ -396,7 +392,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
                 )
             ],
             next_model_revision="rev_001",
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            next_auxiliary_artifact_versions={"calibration_set": "calib_001"},
         )
     )
 

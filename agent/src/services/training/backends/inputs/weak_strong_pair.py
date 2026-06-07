@@ -7,13 +7,9 @@ from dataclasses import dataclass
 from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
 )
-from methods.prototype.training_inputs.examples import (
-    PrototypeWeakStrongTrainingInput,
-    build_prototype_weak_strong_inputs,
-    require_weak_strong_texts,
-)
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 from .base import ANY_ADAPTER_KIND, WEAK_STRONG_PAIR_BACKEND_NAME
 from .models import (
@@ -49,24 +45,20 @@ class WeakStrongPairTrainingExampleBackend:
         if not request.source_rows:
             return ()
 
-        weak_texts, strong_texts = require_weak_strong_texts(request.source_rows)
+        weak_texts, strong_texts = _require_weak_strong_texts(request.source_rows)
         weak_base_embeddings = request.adapter.embed_texts(weak_texts)
         strong_base_embeddings = request.adapter.embed_texts(strong_texts)
-        inputs = build_prototype_weak_strong_inputs(
-            source_rows=request.source_rows,
-            weak_base_embeddings=weak_base_embeddings,
-            strong_base_embeddings=strong_base_embeddings,
-            adapter_state=request.adapter_state,
-            prototype_pack=request.prototype_pack,
-            model_id=request.model_id,
-            scorer=request.scoring_service,
-            backend_name=self.backend_name,
-        )
         return tuple(
-            _to_embedded_example(input_item=input_item, source_row=source_row)
-            for source_row, input_item in zip(
+            _to_embedded_example(
+                source_row=source_row,
+                weak_base_embedding=list(weak_base_embedding),
+                strong_base_embedding=list(strong_base_embedding),
+                request=request,
+            )
+            for source_row, weak_base_embedding, strong_base_embedding in zip(
                 request.source_rows,
-                inputs,
+                weak_base_embeddings,
+                strong_base_embeddings,
                 strict=True,
             )
         )
@@ -82,18 +74,58 @@ class WeakStrongPairTrainingExampleBackend:
         )
 
 
+def _require_weak_strong_texts(
+    source_rows: tuple[TrainingExampleSource, ...] | list[TrainingExampleSource],
+) -> tuple[list[str], list[str]]:
+    weak_texts: list[str] = []
+    strong_texts: list[str] = []
+    for row in source_rows:
+        weak_text = row.weak_translated_text or row.weak_text
+        strong_text = row.strong_translated_text or row.strong_text
+        if weak_text is None or strong_text is None:
+            raise ValueError(
+                "weak_strong_pair backend requires weak and strong text for each row."
+            )
+        weak_texts.append(weak_text)
+        strong_texts.append(strong_text)
+    return weak_texts, strong_texts
+
+
 def _to_embedded_example(
-    input_item: PrototypeWeakStrongTrainingInput,
     *,
     source_row: TrainingExampleSource,
+    weak_base_embedding: list[float],
+    strong_base_embedding: list[float],
+    request: TrainingExampleBuildRequest,
 ) -> EmbeddedTrainingExample:
-    metadata = dict(input_item.metadata)
-    metadata.update(
-        {
-            "raw_text": source_row.text,
-            "training_text": source_row.strong_text or source_row.text,
-        }
+    weak_scores = request.scoring_service.score(
+        weak_base_embedding,
+        {},
+        shared_state=request.adapter_state,
     )
+    strong_scores = request.scoring_service.score(
+        strong_base_embedding,
+        {},
+        shared_state=request.adapter_state,
+    )
+    weak_event = _analysis_event_for_view(
+        source_row=source_row,
+        category_scores=weak_scores,
+        model_id=request.model_id,
+        confidence_kind=request.scoring_service.confidence_kind,
+        view_kind="weak",
+    )
+    strong_event = _analysis_event_for_view(
+        source_row=source_row,
+        category_scores=strong_scores,
+        model_id=request.model_id,
+        confidence_kind=request.scoring_service.confidence_kind,
+        view_kind="strong",
+    )
+    metadata: dict[str, str | int | float | bool] = {
+        "raw_text": source_row.text,
+        "training_text": source_row.strong_text or source_row.text,
+    }
     if source_row.weak_text is not None:
         metadata["weak_text"] = source_row.weak_text
     if source_row.strong_text is not None:
@@ -101,16 +133,43 @@ def _to_embedded_example(
     if source_row.translated_text is not None:
         metadata["translated_text"] = source_row.translated_text
     return EmbeddedTrainingExample(
-        analysis_event=input_item.weak_analysis_event,
-        embedding=list(input_item.strong_embedding),
-        base_embedding=list(input_item.weak_base_embedding),
+        analysis_event=weak_event,
+        embedding=strong_base_embedding,
+        base_embedding=weak_base_embedding,
         view_kind=WEAK_STRONG_PAIR_BACKEND_NAME,
-        weak_analysis_event=input_item.weak_analysis_event,
-        weak_embedding=list(input_item.weak_embedding),
-        strong_analysis_event=input_item.strong_analysis_event,
-        strong_embedding=list(input_item.strong_embedding),
-        strong_base_embedding=list(input_item.strong_base_embedding),
+        weak_analysis_event=weak_event,
+        weak_embedding=weak_base_embedding,
+        strong_analysis_event=strong_event,
+        strong_embedding=strong_base_embedding,
+        strong_base_embedding=strong_base_embedding,
         metadata=metadata,
+    )
+
+
+def _analysis_event_for_view(
+    *,
+    source_row: TrainingExampleSource,
+    category_scores: dict[str, float],
+    model_id: str,
+    confidence_kind: str,
+    view_kind: str,
+) -> AnalysisEvent:
+    translated_text = (
+        source_row.weak_translated_text
+        if view_kind == "weak"
+        else source_row.strong_translated_text
+    )
+    return AnalysisEvent(
+        query_id=source_row.query_id,
+        occurred_at=source_row.occurred_at,
+        translated_text=translated_text or source_row.translated_text,
+        embedding_model_id=model_id,
+        translation_model_id=None,
+        category_scores=category_scores,
+        scorer_family="classifier",
+        scorer_name="weak_strong_pair",
+        confidence_kind=confidence_kind,
+        metadata={"view_kind": view_kind},
     )
 
 

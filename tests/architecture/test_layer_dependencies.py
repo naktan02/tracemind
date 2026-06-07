@@ -32,9 +32,6 @@ FL_SIMULATION_IO_SRC = (
 QUERY_SSL_TEXT_ENCODER_SRC = SCRIPTS_SRC / "support" / "query_ssl_text_encoder"
 QUERY_SSL_TEXT_ENCODER_CONFIG_SRC = QUERY_SSL_TEXT_ENCODER_SRC / "config"
 QUERY_SSL_TEXT_ENCODER_IO_SRC = QUERY_SSL_TEXT_ENCODER_SRC / "io"
-PROTOTYPE_STRATEGY_SRC = (
-    SCRIPTS_SRC / "experiments" / "prototype_analysis" / "prototype_strategy"
-)
 PYTHON_SOURCE_ROOTS = (
     SHARED_SRC,
     METHODS_SRC,
@@ -45,13 +42,6 @@ PYTHON_SOURCE_ROOTS = (
 )
 TEST_FIXTURES_SRC = REPO_ROOT / "tests" / "fixtures"
 FORBIDDEN_DUNDER_ALL = "__" + "all__"
-LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
-    SHARED_SRC / "services" / "prototypes" / "build_strategies.py",
-    SHARED_SRC / "services" / "prototypes" / "prototype_pack_builder.py",
-)
-PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
-PROTOTYPE_SRC = REPO_ROOT / "methods" / "prototype"
-PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
 METHODS_SSL_SRC = METHODS_SRC / "ssl"
 METHODS_SSL_ALGORITHMS_SRC = METHODS_SSL_SRC / "algorithms"
@@ -83,9 +73,7 @@ FL_SCRIPT_RUNTIME_ROOTS = (
     SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
     SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server",
 )
-PAPER_METHOD_NAME_FRAGMENTS = (
-    "fedmatch",
-)
+PAPER_METHOD_NAME_FRAGMENTS = ("fedmatch",)
 
 
 def _iter_python_files(root: Path) -> list[Path]:
@@ -396,106 +384,26 @@ def test_hydra_config_groups_are_python_package_markers() -> None:
     )
 
 
-def test_prototype_builder_core_stays_in_methods_layer() -> None:
-    existing_paths = [
-        _relative_repo_path(path)
-        for path in LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS
-        if path.exists()
-    ]
-    assert not existing_paths, (
-        "prototype builder 알고리즘 core는 methods/prototype/building에 둔다. "
-        f"legacy shared paths={sorted(str(path) for path in existing_paths)}"
-    )
-
-
-def test_prototype_projection_and_evaluation_core_stays_in_methods_layer() -> None:
-    forbidden_paths = (
-        SHARED_SRC / "services" / "prototypes" / "projections.py",
-        SCRIPTS_SRC / "workflows" / "prototype_pack" / "evaluation.py",
+def test_active_prototype_surface_is_removed_until_method_is_adopted() -> None:
+    removed_paths = (
+        METHODS_SRC / "prototype",
+        SHARED_SRC / "contracts" / "prototype_contracts.py",
+        SHARED_SRC / "contracts" / "prototype_build_state_contracts.py",
+        SHARED_SRC / "services" / "prototypes",
+        MAIN_SERVER_SRC / "services" / "federation" / "prototypes",
+        SCRIPTS_SRC / "workflows" / "prototype_pack",
+        CONF_SRC / "strategy_axes" / "prototype",
+        CONF_SRC / "entrypoints" / "prototype_pack",
     )
     existing_paths = [
-        _relative_repo_path(path) for path in forbidden_paths if path.exists()
+        _relative_repo_path(path) for path in removed_paths if path.exists()
     ]
-    distance_report_script = (
-        SCRIPTS_SRC / "workflows" / "prototype_pack" / "report_prototype_distances.py"
-    )
-    distance_report_source = distance_report_script.read_text(encoding="utf-8")
-    forbidden_script_snippets = (
-        "def cosine_similarity(",
-        "def l2_distance(",
-        'args.centroid_view == "strict_single"',
-        "project_category_centroids_by_largest_cluster(",
-        "require_single_category_centroids(",
-    )
-    script_violations = [
-        snippet
-        for snippet in forbidden_script_snippets
-        if snippet in distance_report_source
-    ]
-    assert (PROTOTYPE_SRC / "projections.py").exists()
-    assert (PROTOTYPE_SRC / "distance_report.py").exists()
+
     assert not existing_paths, (
-        "prototype projection/evaluation 계산 core는 methods/prototype에 둔다. "
-        "shared는 contract/serialization을, scripts는 artifact workflow만 소유한다.\n"
+        "prototype 방법론은 현재 active 연구/운영 surface가 아니다. 다시 도입할 때 "
+        "methods/conf/runtime adapter를 한 번에 열고, 지금은 잔재를 두지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_paths)}"
     )
-    assert not script_violations, (
-        "prototype distance report script는 CLI와 출력만 맡고 centroid view 선택과 "
-        "거리 계산은 methods/prototype/distance_report.py에 둔다.\n"
-        f"violations={script_violations}"
-    )
-
-
-def test_prototype_building_keeps_strategy_files_separate() -> None:
-    monolith_path = PROTOTYPE_BUILDING_SRC / "build_strategies.py"
-    assert not monolith_path.exists(), (
-        "prototype builder strategy는 base/single/kmeans/dbscan 파일로 나눈다. "
-        f"monolith path={_relative_repo_path(monolith_path)}"
-    )
-
-
-def test_prototype_analysis_scripts_do_not_own_build_strategy_catalog() -> None:
-    strategies_path = PROTOTYPE_STRATEGY_SRC / "strategies.py"
-    models_path = PROTOTYPE_STRATEGY_SRC / "models.py"
-    dbscan_config_path = (
-        CONF_SRC / "strategy_axes" / "prototype" / "build_strategy" / "dbscan.yaml"
-    )
-    source = strategies_path.read_text(encoding="utf-8")
-    models_source = models_path.read_text(encoding="utf-8")
-    forbidden_snippets = (
-        "from methods.prototype.building.single import",
-        "from methods.prototype.building.kmeans import",
-        "from methods.prototype.building.dbscan import",
-        'normalized_name == "single"',
-        'normalized_name == "kmeans"',
-        'normalized_name == "dbscan"',
-        'normalized_name == "all"',
-    )
-    violations = [snippet for snippet in forbidden_snippets if snippet in source]
-
-    assert (PROTOTYPE_BUILDING_SRC / "strategy_factory.py").exists()
-    assert dbscan_config_path.exists()
-    assert "class PrototypeIndex" not in models_source
-    assert "class PrototypeVector" not in models_source
-    assert not violations, (
-        "prototype build strategy catalog와 name 분기는 methods/prototype/building이 "
-        "소유한다. prototype analysis scripts는 methods-owned runtime strategy를 "
-        "실험용 PrototypeIndex로 변환하는 adapter만 맡는다.\n"
-        f"violations={violations}"
-    )
-
-
-def test_prototype_scoring_does_not_keep_policy_facade() -> None:
-    facade_path = PROTOTYPE_SCORING_SRC / "policies.py"
-    implementation_root = PROTOTYPE_SCORING_SRC / "score_policies"
-
-    assert not facade_path.exists(), (
-        "prototype score policy는 중앙 facade 없이 registry와 구현 파일로 분리한다. "
-        "runtime은 policy_registry.py를, concrete 구현은 "
-        "score_policies/<policy>.py를 직접 import한다.\n"
-        f"facade path={_relative_repo_path(facade_path)}"
-    )
-    assert implementation_root.is_dir()
 
 
 def test_methods_layer_does_not_import_runtime_or_research_layers() -> None:
@@ -694,25 +602,6 @@ def test_dataset_pipeline_download_sources_are_config_declared() -> None:
         "dataset pipeline runner는 source provider 이름을 직접 분기하지 않는다. "
         "dataset asset YAML의 sources.<name>.download.callable_path가 download "
         "adapter를 선언하고 runner는 configured callable만 실행한다.\n"
-        f"violations={violations}"
-    )
-
-
-def test_dataset_pipeline_prototype_input_ref_is_structured() -> None:
-    source = (
-        SCRIPTS_SRC / "workflows" / "datasets" / "run_dataset_pipeline.py"
-    ).read_text(encoding="utf-8")
-    forbidden_snippets = (
-        'prototype_source == "split_train"',
-        'prototype_source.startswith("mapped:")',
-        'removeprefix("mapped:")',
-        "prototype.source",
-    )
-    violations = [snippet for snippet in forbidden_snippets if snippet in source]
-
-    assert not violations, (
-        "prototype input은 접두어 문자열이 아니라 dataset config의 "
-        "prototype.input_ref 구조로 해석한다.\n"
         f"violations={violations}"
     )
 
@@ -3221,7 +3110,6 @@ def test_active_docs_use_current_trainable_state_vocabulary() -> None:
         REPO_ROOT / "agent" / "src" / "services" / "README.md",
         REPO_ROOT / "docs" / "ai_context_manifest.yaml",
         REPO_ROOT / "docs" / "contracts" / "model_manifest_v1.md",
-        REPO_ROOT / "docs" / "contracts" / "prototype_pack_v1.md",
         REPO_ROOT
         / "docs"
         / "contracts"
@@ -3787,76 +3675,6 @@ def test_query_peft_teacher_pseudo_label_export_surface_is_removed() -> None:
     )
 
 
-def test_prototype_threshold_sweep_runner_splits_eval_selection_and_write() -> None:
-    runner_path = PROTOTYPE_STRATEGY_SRC / "sweep.py"
-    evaluator_path = PROTOTYPE_STRATEGY_SRC / "threshold_policy_evaluator.py"
-    selection_path = METHODS_SRC / "prototype" / "thresholding" / "selection.py"
-    policies_path = METHODS_SRC / "prototype" / "thresholding" / "policies.py"
-    writer_path = PROTOTYPE_STRATEGY_SRC / "threshold_artifact_writer.py"
-    required_files = (evaluator_path, selection_path, policies_path, writer_path)
-    runner_source = runner_path.read_text(encoding="utf-8")
-    evaluator_source = evaluator_path.read_text(encoding="utf-8")
-    runner_forbidden_snippets = (
-        "policy.build_evaluations(",
-        "score_embeddings(",
-        "dump_json(",
-        ".write_text(",
-        ".mkdir(",
-        "_confidence_threshold_or_floor",
-    )
-    evaluator_forbidden_snippets = (
-        "dump_json(",
-        ".write_text(",
-        ".mkdir(",
-    )
-    missing_files = [
-        _relative_repo_path(path) for path in required_files if not path.exists()
-    ]
-    runner_violations = [
-        snippet for snippet in runner_forbidden_snippets if snippet in runner_source
-    ]
-    evaluator_violations = [
-        snippet
-        for snippet in evaluator_forbidden_snippets
-        if snippet in evaluator_source
-    ]
-
-    assert not missing_files, (
-        "prototype threshold sweep는 policy 평가, selection policy, artifact writer를 "
-        "전용 module로 분리한다.\n"
-        f"{chr(10).join(f'- {path}' for path in missing_files)}"
-    )
-    assert not runner_violations, (
-        "ThresholdPolicyExperimentRunner는 orchestration만 맡는다. threshold 후보 "
-        "평가, 선택 정렬 기준, JSON artifact 저장은 전용 module이 맡는다.\n"
-        f"violations={runner_violations}"
-    )
-    assert not evaluator_violations, (
-        "threshold_policy_evaluator.py는 후보 평가만 맡는다. JSON 저장과 directory "
-        "생성은 threshold_artifact_writer.py가 맡는다.\n"
-        f"violations={evaluator_violations}"
-    )
-    assert not (PROTOTYPE_STRATEGY_SRC / "threshold_policies.py").exists()
-    assert not (PROTOTYPE_STRATEGY_SRC / "threshold_selection.py").exists()
-
-
-def test_prototype_strategy_scoring_does_not_use_runtime_fallback_profile() -> None:
-    path = (
-        SCRIPTS_SRC
-        / "experiments"
-        / "prototype_analysis"
-        / "prototype_strategy"
-        / "scoring.py"
-    )
-    imports = _collect_absolute_imports(path)
-
-    assert "methods.federated_ssl.runtime_fallbacks" not in imports, (
-        "prototype strategy scorer 기본값은 prototype 실험 축의 로컬 상수가 "
-        "소유한다. FL SSL API/runtime fallback profile을 실험 기본값 "
-        "source-of-truth처럼 import하지 않는다."
-    )
-
-
 def test_scripts_reporting_does_not_wrap_shared_classification_report() -> None:
     facade_path = SCRIPTS_SRC / "reporting" / "classification_report.py"
 
@@ -4098,8 +3916,8 @@ def test_main_server_federation_assets_package_has_no_source_modules() -> None:
 
     assert not violations, (
         "main_server federation assets package는 넓은 catch-all source package로 "
-        "사용하지 않는다. server-owned prototype artifact lifecycle은 "
-        "main_server/src/services/federation/prototypes에 둔다.\n"
+        "사용하지 않는다. server-owned artifact lifecycle은 좁은 capability "
+        "package에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 

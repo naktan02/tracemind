@@ -40,10 +40,6 @@ from main_server.src.services.federation.rounds.runtime.config import (
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 
-from ...prototypes.stored_input_rebuild_service import (
-    StoredReferencePrototypeRebuildService,
-)
-
 if TYPE_CHECKING:
     from main_server.src.infrastructure.repositories.round_repository import (
         RoundRepository,
@@ -96,9 +92,6 @@ def build_round_lifecycle_service_from_config(
     artifact_repository: (
         shared_adapter_state_repository_module.SharedAdapterStateRepository | None
     ) = None,
-    prototype_rebuild_runtime_service: (
-        StoredReferencePrototypeRebuildService | None
-    ) = None,
     update_acceptance_policy: RoundUpdateAcceptancePolicy | None = None,
     clock: Clock | None = None,
 ) -> RoundLifecycleService:
@@ -138,7 +131,6 @@ def build_round_lifecycle_service_from_config(
             update_payload_repository=effective_update_payload_repository,
             clock=effective_clock,
         ),
-        prototype_rebuild_runtime_service=prototype_rebuild_runtime_service,
         update_acceptance_policy=(
             update_acceptance_policy or StrictRoundUpdateAcceptancePolicy()
         ),

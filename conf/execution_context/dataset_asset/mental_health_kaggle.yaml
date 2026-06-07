@@ -16,11 +16,10 @@ split_name: train_split.v1
 train_jsonl: data/datasets/szegeelim_mental_health/splits/train_split.v1.train.jsonl
 validation_jsonl: data/datasets/szegeelim_mental_health/splits/train_split.v1.validation.jsonl
 test_jsonl: ${dataset.test_labeled_jsonl}
-prototype_input_jsonl: null
 query_dev_jsonl: null
 query_calibration_jsonl: null
 unlabeled_query_pool_jsonl: null
-prototype_expected_categories:
+label_categories:
   - anxiety
   - depression
   - normal

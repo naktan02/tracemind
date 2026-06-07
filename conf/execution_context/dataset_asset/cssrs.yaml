@@ -16,11 +16,10 @@ split_name: null
 train_jsonl: null
 validation_jsonl: null
 test_jsonl: null
-prototype_input_jsonl: null
 query_dev_jsonl: null
 query_calibration_jsonl: null
 unlabeled_query_pool_jsonl: null
-prototype_expected_categories:
+label_categories:
   - suicidal
 stages:
   - download

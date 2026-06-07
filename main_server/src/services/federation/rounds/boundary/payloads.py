@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from main_server.src.services.federation.rounds.boundary.models import RoundStatus
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
@@ -54,35 +54,6 @@ class RoundPublicationPayload(BaseModel):
     round_state_summary_metrics: dict[str, float] = Field(default_factory=dict)
     auxiliary_artifact_refs: dict[str, str] = Field(default_factory=dict)
     auxiliary_artifact_metadata: dict[str, str] = Field(default_factory=dict)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _migrate_legacy_prototype_publication_fields(cls, data: object) -> object:
-        """구형 prototype-specific publication 필드를 auxiliary map으로 승격한다."""
-
-        if not isinstance(data, dict):
-            return data
-        migrated = dict(data)
-        artifact_refs = dict(migrated.get("auxiliary_artifact_refs") or {})
-        metadata = dict(migrated.get("auxiliary_artifact_metadata") or {})
-        prototype_pack_ref = migrated.pop("prototype_pack_ref", None)
-        if prototype_pack_ref:
-            artifact_refs.setdefault("prototype_pack", str(prototype_pack_ref))
-        prototype_build_state_ref = migrated.pop("prototype_build_state_ref", None)
-        if prototype_build_state_ref:
-            artifact_refs.setdefault(
-                "prototype_build_state",
-                str(prototype_build_state_ref),
-            )
-        prototype_rebuild_input_id = migrated.pop("prototype_rebuild_input_id", None)
-        if prototype_rebuild_input_id:
-            metadata.setdefault(
-                "prototype_rebuild_input_id",
-                str(prototype_rebuild_input_id),
-            )
-        migrated["auxiliary_artifact_refs"] = artifact_refs
-        migrated["auxiliary_artifact_metadata"] = metadata
-        return migrated
 
 
 class RoundRecordPayload(BaseModel):

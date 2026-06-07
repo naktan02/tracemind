@@ -7,12 +7,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    StoredAnalysisEvent,
-)
-from agent.src.services.inference.scoring_backends.prototype_similarity import (
-    PrototypeSimilarityScoringBackend,
-)
+from agent.src.services.inference.scoring_backends.base import ScoringAssets
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.backends.inputs import (
     registry as training_example_backend_registry,
@@ -21,9 +16,6 @@ from agent.src.services.training.backends.inputs.models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
     TrainingExampleSource,
-)
-from agent.src.services.training.backends.inputs.prototype_rescore import (
-    PrototypeRescoringTrainingExampleBackend,
 )
 from agent.src.services.training.backends.inputs.weak_strong_pair import (
     WeakStrongPairTrainingExampleBackend,
@@ -35,10 +27,9 @@ from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
-from shared.src.domain.entities.inference.events import AnalysisEvent
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 
 class _StaticEmbeddingAdapter:
@@ -63,51 +54,6 @@ class _IdentitySharedAdapterState:
         return [float(value) for value in embedding]
 
 
-@dataclass(slots=True)
-class _CustomSharedAdapterState:
-    schema_version: str = "custom_state.v1"
-    adapter_kind: str = "custom_state"
-    model_id: str = "hash_debug"
-    model_revision: str = "main"
-    training_scope: str = "adapter_only"
-    updated_at: datetime = datetime(2026, 4, 2, tzinfo=timezone.utc)
-    embedding_dim: int = 2
-
-    def apply(self, embedding) -> list[float]:
-        return [float(embedding[0]), 0.0]
-
-
-def _pack_payload() -> PrototypePackPayload:
-    return PrototypePackPayload.model_validate(
-        {
-            "schema_version": "prototype_pack.v1",
-            "prototype_version": "proto_test_v1",
-            "embedding_model_id": "hash_debug",
-            "embedding_model_revision": "main",
-            "mapping_version": "ourafla_to_4cat.v1",
-            "build_method": "mean_centroid_l2_normalized",
-            "distance_metric": "cosine",
-            "built_at": "2026-04-02T00:00:00+00:00",
-            "categories": {
-                "anxiety": [
-                    {
-                        "prototype_id": "anxiety:single",
-                        "centroid": [1.0, 0.0],
-                        "sample_count": 2,
-                    }
-                ],
-                "normal": [
-                    {
-                        "prototype_id": "normal:single",
-                        "centroid": [0.0, 1.0],
-                        "sample_count": 2,
-                    }
-                ],
-            },
-        }
-    )
-
-
 def _registry_catalog_entry(
     *,
     item_name: str,
@@ -124,124 +70,28 @@ def _registry_catalog_entry(
     )
 
 
-def _prototype_scoring_service() -> ScoringService:
-    return ScoringService(backend=PrototypeSimilarityScoringBackend())
+@dataclass(slots=True)
+class _VectorScoringBackend:
+    backend_name: str = "test_vector_classifier"
+    confidence_kind: str = "test_vector_top1"
+    supported_adapter_kinds: tuple[str, ...] = ("*",)
+    requires_shared_state: bool = True
 
-
-def test_training_example_service_builds_scored_examples_from_source_rows() -> None:
-    service = TrainingExampleService(backend=PrototypeRescoringTrainingExampleBackend())
-    adapter = _StaticEmbeddingAdapter(
-        {
-            "panic panic": [1.0, 0.0],
-            "calm calm": [0.0, 1.0],
-        }
-    )
-    adapter_state = _IdentitySharedAdapterState()
-
-    examples = service.build_examples(
-        TrainingExampleBuildRequest(
-            source_rows=(
-                TrainingExampleSource(
-                    query_id="q1",
-                    text="panic panic",
-                    occurred_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-                ),
-                TrainingExampleSource(
-                    query_id="q2",
-                    text="calm calm",
-                    occurred_at=datetime(2026, 4, 2, 0, 1, tzinfo=timezone.utc),
-                ),
-            ),
-            adapter=adapter,
-            adapter_state=adapter_state,
-            prototype_pack=_pack_payload(),
-            model_id="hash_debug",
-            scoring_service=_prototype_scoring_service(),
+    def score(
+        self,
+        embedding,
+        scoring_assets: ScoringAssets,
+        shared_state: SharedAdapterState | None = None,
+    ) -> dict[str, float]:
+        del scoring_assets
+        transformed = (
+            shared_state.apply(embedding) if shared_state is not None else embedding
         )
-    )
-
-    assert len(examples) == 2
-    assert examples[0].analysis_event.query_id == "q1"
-    assert examples[0].base_embedding == [1.0, 0.0]
-    assert examples[0].embedding == [1.0, 0.0]
-    assert examples[0].analysis_event.category_scores["anxiety"] == 1.0
-    assert examples[0].metadata["raw_text"] == "panic panic"
-    assert examples[0].metadata["training_text"] == "panic panic"
-    assert examples[1].analysis_event.query_id == "q2"
-    assert examples[1].analysis_event.category_scores["normal"] == 1.0
+        return {"anxiety": float(transformed[0]), "normal": float(transformed[1])}
 
 
-def test_training_example_service_returns_empty_tuple_for_empty_rows() -> None:
-    service = TrainingExampleService(backend=PrototypeRescoringTrainingExampleBackend())
-    adapter_state = _IdentitySharedAdapterState()
-
-    examples = service.build_examples(
-        TrainingExampleBuildRequest(
-            source_rows=(),
-            adapter=_StaticEmbeddingAdapter({}),
-            adapter_state=adapter_state,
-            prototype_pack=_pack_payload(),
-            model_id="hash_debug",
-            scoring_service=_prototype_scoring_service(),
-        )
-    )
-
-    assert examples == ()
-
-
-def test_training_example_service_rebuilds_examples_from_stored_events() -> None:
-    service = TrainingExampleService(backend=PrototypeRescoringTrainingExampleBackend())
-    examples = service.build_examples_from_stored_events(
-        StoredEventTrainingExampleBuildRequest(
-            stored_events=(
-                StoredAnalysisEvent(
-                    analysis_event=AnalysisEvent(
-                        query_id="q1",
-                        occurred_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-                        translated_text="panic panic",
-                        embedding_model_id="hash_debug",
-                        translation_model_id=None,
-                        category_scores={"anxiety": 0.4, "normal": 0.6},
-                    ),
-                    base_embedding=[1.0, 0.0],
-                ),
-            ),
-            prototype_pack=_pack_payload(),
-            scoring_service=_prototype_scoring_service(),
-        )
-    )
-
-    assert len(examples) == 1
-    assert examples[0].base_embedding == [1.0, 0.0]
-    assert examples[0].embedding == [1.0, 0.0]
-    assert examples[0].analysis_event.category_scores["anxiety"] == 1.0
-
-
-def test_training_example_service_accepts_custom_shared_adapter_state() -> None:
-    service = TrainingExampleService(backend=PrototypeRescoringTrainingExampleBackend())
-    adapter = _StaticEmbeddingAdapter({"panic panic": [0.2, 1.0]})
-
-    examples = service.build_examples(
-        TrainingExampleBuildRequest(
-            source_rows=(
-                TrainingExampleSource(
-                    query_id="q1",
-                    text="panic panic",
-                    occurred_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-                ),
-            ),
-            adapter=adapter,
-            adapter_state=_CustomSharedAdapterState(),
-            prototype_pack=_pack_payload(),
-            model_id="hash_debug",
-            scoring_service=_prototype_scoring_service(),
-        )
-    )
-
-    assert len(examples) == 1
-    assert examples[0].base_embedding == [0.2, 1.0]
-    assert examples[0].embedding == [0.2, 0.0]
-    assert examples[0].analysis_event.category_scores["anxiety"] == 1.0
+def _classifier_scoring_service() -> ScoringService:
+    return ScoringService(backend=_VectorScoringBackend())
 
 
 def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
@@ -267,9 +117,8 @@ def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
             ),
             adapter=adapter,
             adapter_state=adapter_state,
-            prototype_pack=_pack_payload(),
             model_id="hash_debug",
-            scoring_service=_prototype_scoring_service(),
+            scoring_service=_classifier_scoring_service(),
         )
     )
 
@@ -281,11 +130,11 @@ def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
     assert example.weak_embedding == [1.0, 0.0]
     assert example.strong_embedding == [0.8, 0.2]
     assert example.update_embedding == [0.8, 0.2]
-    assert example.metadata["selection_view"] == "weak"
-    assert example.metadata["update_view"] == "strong"
     assert example.metadata["raw_text"] == "panic panic"
     assert example.metadata["training_text"] == "panic strong"
     assert example.metadata["strong_text"] == "panic strong"
+    assert example.weak_analysis_event.category_scores["anxiety"] == 1.0
+    assert example.strong_analysis_event.category_scores["anxiety"] == 0.8
 
 
 def test_training_example_service_requires_explicit_backend() -> None:
@@ -297,9 +146,8 @@ def test_training_example_service_requires_explicit_backend() -> None:
                 source_rows=(),
                 adapter=_StaticEmbeddingAdapter({}),
                 adapter_state=_IdentitySharedAdapterState(),
-                prototype_pack=_pack_payload(),
                 model_id="hash_debug",
-                scoring_service=_prototype_scoring_service(),
+                scoring_service=_classifier_scoring_service(),
             )
         )
 
@@ -314,8 +162,7 @@ def test_weak_strong_pair_backend_rejects_stored_event_rebuild() -> None:
         service.build_examples_from_stored_events(
             StoredEventTrainingExampleBuildRequest(
                 stored_events=(),
-                prototype_pack=_pack_payload(),
-                scoring_service=_prototype_scoring_service(),
+                scoring_service=_classifier_scoring_service(),
             )
         )
 
@@ -324,6 +171,7 @@ def test_weak_strong_pair_backend_rejects_stored_event_rebuild() -> None:
 class _ConstantTrainingExampleBackend:
     backend_name: str = "constant_examples"
     supported_adapter_kinds: tuple[str, ...] = ("*",)
+    supports_stored_event_rebuild: bool = True
 
     def build_examples(
         self,
@@ -357,7 +205,6 @@ def test_training_example_service_selects_backend_from_objective_config() -> Non
 
     assert isinstance(service.backend, _ConstantTrainingExampleBackend)
     assert service.backend.backend_name == "constant_examples"
-    assert not isinstance(service.backend, PrototypeRescoringTrainingExampleBackend)
 
 
 def test_training_example_service_uses_profile_default_backend_when_omitted() -> None:

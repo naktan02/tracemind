@@ -24,9 +24,8 @@ v1 원칙:
 2. 로컬 `agent`는 이를 pull해서 현재 활성 모델 구성을 동기화한다.
 3. artifact 자체와 manifest를 분리한다.
 4. 추론 호환성과 학습 가능 범위를 함께 명시한다.
-5. prototype은 manifest의 필수 의미가 아니다. 필요한 방법론만 선택적
-   auxiliary artifact로 `prototype_pack` version을 기록한다.
-   top-level `prototype_version`은 canonical 필드가 아니다.
+5. 부속 artifact가 필요하면 `auxiliary_artifact_versions`에 중립 이름으로
+   기록한다. 특정 방법론 artifact 이름은 manifest의 필수 의미가 아니다.
 6. 이 문서는 현재 시스템/FL runtime의 배포 메타데이터를 설명한다. 논문 트랙의
    중앙집중형 PEFT text encoder trainer checkpoint/optimizer state는 범위 밖이다.
 
@@ -69,7 +68,7 @@ v1 원칙:
 1. `base_model_id`
 2. `base_model_revision`
 3. `auxiliary_artifact_versions`
-   - 예: `{ "prototype_pack": "proto_2026_03_28_163056" }`
+   - 예: `{ "calibration_set": "calib_2026_03_28_163056" }`
 4. `notes`
 
 ---
@@ -82,13 +81,11 @@ v1에서는 아래를 포함하지 않는다.
 2. agent별 설정
 3. 개별 학습 샘플
 4. raw gradient나 update payload
-5. top-level `prototype_version`
+5. method-specific top-level artifact version
 6. top-level `translation_model_id` / `translation_model_revision`
 
-구형 manifest JSON에 `prototype_version`이 있으면 runtime parser가
-`auxiliary_artifact_versions["prototype_pack"]`로 승격한다. 새 manifest는 이 필드를
-출력하지 않는다. 구형 manifest JSON의 translation model 필드는 artifact-specific
-metadata로 보고 canonical manifest에서는 버린다.
+구형 manifest JSON의 translation model 필드는 artifact-specific metadata로 보고
+canonical manifest에서는 버린다.
 
 ---
 

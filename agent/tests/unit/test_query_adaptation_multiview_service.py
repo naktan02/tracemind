@@ -35,7 +35,7 @@ def _build_dataset() -> QueryAdaptationDataset:
                     locale="ko-KR",
                     source_type="user_message",
                     model_revision="rev_001",
-                    selection_confidence_kind="prototype_similarity_top1",
+                    selection_confidence_kind="classifier_head_logit_top1",
                     translated_text_present=True,
                     candidate_id="round_001:q1",
                 ),
@@ -60,9 +60,7 @@ def test_query_adaptation_multiview_service_builds_identity_views() -> None:
     assert example.views.augmenter_name == "identity_multiview"
     assert example.views.weak_text == "불안해서 숨이 가빠요"
     assert example.views.strong_text == "불안해서 숨이 가빠요"
-    assert example.views.weak_translated_text == (
-        "I feel anxious and short of breath"
-    )
+    assert example.views.weak_translated_text == ("I feel anxious and short of breath")
     assert example.source_row.weak_text == "불안해서 숨이 가빠요"
     assert example.source_row.strong_text == "불안해서 숨이 가빠요"
 
@@ -117,6 +115,6 @@ def test_query_adaptation_multiview_service_rejects_mismatched_augmenter_name() 
     dataset = _build_dataset()
 
     with pytest.raises(ValueError, match="augmenter_name"):
-        QueryAdaptationMultiviewService(
-            augmenter=_MismatchedAugmenter()
-        ).build_dataset(dataset=dataset)
+        QueryAdaptationMultiviewService(augmenter=_MismatchedAugmenter()).build_dataset(
+            dataset=dataset
+        )

@@ -8,7 +8,7 @@ YAML은 조합과 값만 소유하고, method 계산 의미나 runtime 구현은
 
 - `entrypoints/`: `@hydra.main(config_name=...)`이 읽는 실행 시작점.
 - `execution_context/`: 데이터 자산, embedding adapter, runtime 환경.
-- `strategy_axes/`: 중앙 SSL/FL SSL/prototype/adaptation에서 교체 가능한 전략 축.
+- `strategy_axes/`: 중앙 SSL/FL SSL/adaptation에서 교체 가능한 전략 축.
 - `run_controls/`: 논문 비교 track의 budget, output root, safety guard.
 
 대표 구조:
@@ -22,7 +22,6 @@ conf/
 │   ├── fl_topology/
 │   ├── fssl_method/
 │   ├── model_architecture/
-│   ├── prototype/
 │   └── ssl_objective/
 └── run_controls/
 ```

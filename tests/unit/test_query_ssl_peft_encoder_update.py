@@ -76,7 +76,7 @@ def test_query_ssl_peft_encoder_update_payload_uses_server_refs_without_inline()
         model_manifest=make_embedding_manifest(
             model_id="mxbai-peft-classifier",
             model_revision="sim_rev_0000",
-            auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
+            auxiliary_artifact_versions={"calibration_set": "calib_v0"},
             artifact_ref="shared_adapter_state::sim_rev_0000",
         ),
         peft_config=PeftEncoderTrainingBackendConfig(
@@ -138,7 +138,7 @@ def test_query_ssl_peft_encoder_update_payload_requires_refs_for_artifact_mode()
             model_manifest=make_embedding_manifest(
                 model_id="mxbai-peft-classifier",
                 model_revision="sim_rev_0000",
-                auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
+                auxiliary_artifact_versions={"calibration_set": "calib_v0"},
                 artifact_ref="shared_adapter_state::sim_rev_0000",
             ),
             peft_config=PeftEncoderTrainingBackendConfig(),

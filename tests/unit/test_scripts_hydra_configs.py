@@ -264,10 +264,6 @@ def test_central_ssl_trainable_surface_leafs_declare_runtime_callables() -> None
         "entrypoints/dataset_pipeline/run_dataset_pipeline",
         "entrypoints/dataset_pipeline/materialize_query_ssl_split",
         "entrypoints/dataset_pipeline/materialize_query_ssl_views",
-        "entrypoints/prototype_pack/seed_prototypes",
-        "entrypoints/prototype_pack/evaluate_prototype_pack",
-        "entrypoints/prototype_analysis/prototype_strategy",
-        "entrypoints/prototype_analysis/prototype_threshold_sweep",
         "entrypoints/fl_ssl/materialize_fl_client_split",
         "entrypoints/fl_ssl/run_federated_simulation",
         "entrypoints/central/ssl_control/run_peft_supervised_control",
@@ -341,23 +337,6 @@ def test_query_ssl_split_materialization_entrypoint_uses_dataset_scoped_root() -
     assert cfg.query_ssl_split_materialization.seed == 42
 
 
-def test_seed_prototypes_default_runtime_is_gpu_online() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(config_name="entrypoints/prototype_pack/seed_prototypes")
-
-    assert cfg.dataset.name == "ourafla"
-    assert cfg.embedding.backend == "transformers_mxbai"
-    assert cfg.runtime.name == "gpu_online"
-    assert cfg.runtime.device == "cuda"
-    assert cfg.runtime.local_files_only is False
-    assert cfg.prototype_builder.name == "single"
-    assert (
-        cfg.dataset.sources.train.download.callable_path
-        == "scripts.workflows.datasets.lib.download_sources.download_huggingface_source"
-    )
-    assert cfg.dataset.prototype.input_ref.kind == "split_train"
-
-
 @pytest.mark.parametrize(
     ("embedding_override", "expected_backend"),
     [
@@ -383,61 +362,6 @@ def test_embedding_adapter_spec_config_instantiates(
     assert isinstance(embedding_spec, EmbeddingAdapterSpec)
     assert embedding_spec.backend == expected_backend
     assert embedding_spec.device == "cpu"
-
-
-def test_seed_prototypes_supports_short_builder_override() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/prototype_pack/seed_prototypes",
-            overrides=[
-                "strategy_axes/prototype/build_strategy=kmeans",
-                "prototype_builder.candidate_ks=[2]",
-            ],
-        )
-
-    assert cfg.prototype_builder.name == "kmeans"
-    assert list(cfg.prototype_builder.candidate_ks) == [2]
-
-
-def test_seed_prototypes_supports_dbscan_builder_override() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/prototype_pack/seed_prototypes",
-            overrides=[
-                "strategy_axes/prototype/build_strategy=dbscan",
-                "prototype_builder.eps_values=[0.1]",
-                "prototype_builder.min_samples_values=[2]",
-            ],
-        )
-
-    assert cfg.prototype_builder.name == "dbscan"
-    assert list(cfg.prototype_builder.eps_values) == [0.1]
-    assert list(cfg.prototype_builder.min_samples_values) == [2]
-
-
-def test_prototype_strategy_supports_short_group_override() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/prototype_analysis/prototype_strategy",
-            overrides=[
-                "execution_context/runtime_env=gpu_local",
-                "execution_context/embedding_adapter=hash_debug",
-                "strategy.name=kmeans",
-                "strategy.kmeans_candidate_ks=[2]",
-                "runner.score_policy_name=topk_mean_cosine",
-                "runner.score_top_k=2",
-            ],
-        )
-
-    assert cfg.runtime.name == "gpu_local"
-    assert cfg.runtime.device == "cuda"
-    assert cfg.runtime.local_files_only is True
-    assert cfg.embedding.backend == "hash_debug"
-    assert cfg.embedding.model_id == "hash_debug"
-    assert cfg.strategy.name == "kmeans"
-    assert list(cfg.strategy.kmeans_candidate_ks) == [2]
-    assert cfg.runner.score_policy_name == "topk_mean_cosine"
-    assert cfg.runner.score_top_k == 2
 
 
 def test_run_peft_supervised_control_supports_auto_local_runtime_override() -> None:
@@ -482,7 +406,7 @@ def test_run_peft_supervised_control_supports_source_and_budget_overrides() -> N
     assert cfg.classifier_learning_rate == 0.0002
     assert cfg.weight_decay == 0.01
     assert cfg.log_every_steps == 100
-    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert list(cfg.fixed_categories) == list(cfg.dataset.label_categories)
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
@@ -580,7 +504,7 @@ def test_run_peft_ssl_control_supports_source_budget_and_leaf_overrides() -> Non
     assert cfg.classifier_learning_rate == 0.0002
     assert cfg.weight_decay == 0.01
     assert cfg.log_every_steps == 20
-    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert list(cfg.fixed_categories) == list(cfg.dataset.label_categories)
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
@@ -1083,30 +1007,6 @@ def test_federated_ssl_smoke_orchestration_contract_snapshot(
             "dataset_names": ["validation", "test"],
         },
     }
-
-
-def test_threshold_sweep_supports_short_leaf_override() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/prototype_analysis/prototype_threshold_sweep",
-            overrides=[
-                "strategy.name=single",
-                "runner.score_policy_name=topk_mean_cosine",
-                "runner.score_top_k=2",
-            ],
-        )
-
-    assert cfg.strategy.name == "single"
-    assert cfg.runtime.name == "gpu_online"
-    assert cfg.runner.score_policy_name == "topk_mean_cosine"
-    assert cfg.runner.score_top_k == 2
-    assert len(cfg.threshold_policies) == 3
-    assert cfg.threshold_policies[0]._target_ == (
-        "methods.prototype.thresholding.policies.FixMatchFixedConfidencePolicy"
-    )
-    assert cfg.threshold_policies[2]._target_ == (
-        "methods.prototype.thresholding.policies.ClasswiseStaticConfidencePolicy"
-    )
 
 
 def test_federated_simulation_uses_smoke_preset_by_default() -> None:
@@ -2362,4 +2262,3 @@ def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:
     assert cfg.runtime.name == "gpu_online"
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is False
-    assert cfg.prototype_builder.name == "single"

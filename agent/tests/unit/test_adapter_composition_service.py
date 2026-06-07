@@ -46,7 +46,7 @@ class _SharedProvider:
         return make_embedding_manifest(
             model_id=self.state.model_id,
             model_revision=self.state.model_revision,
-            auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            auxiliary_artifact_versions={"calibration_set": "calib_001"},
             artifact_ref=f"shared_adapter_state::{self.state.model_revision}",
         )
 

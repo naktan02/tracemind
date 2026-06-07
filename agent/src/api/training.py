@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
@@ -36,7 +36,10 @@ class RunCurrentTaskRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    server_base_url: str
+    server_base_url: str = Field(
+        validation_alias=AliasChoices("server_base_url", "serverBaseUrl"),
+        description="Main server base URL.",
+    )
     analysis_event_days: int = Field(
         default=7,
         ge=1,

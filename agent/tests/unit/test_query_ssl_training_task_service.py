@@ -210,11 +210,11 @@ def _query_ssl_task() -> TrainingTaskPayload:
         learning_rate=1e-4,
         max_steps=2,
         objective_config=TrainingObjectiveConfigPayload(
-            algorithm_profile_name="peft_pseudo_label_v1",
+            algorithm_profile_name="peft_classifier_update_v1",
             training_backend_name="peft_classifier_trainer",
             example_generation_backend_name="weak_strong_pair",
-            evidence_backend_name="prototype_similarity_evidence",
-            scorer_backend_name="prototype_similarity",
+            evidence_backend_name="analysis_score_evidence",
+            scorer_backend_name="classifier_head_logits",
             acceptance_policy_name="top1_margin_threshold",
             privacy_guard_name="noop",
             extras={

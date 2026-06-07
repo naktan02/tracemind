@@ -11,7 +11,7 @@
 | 앱 | import path | 기본 역할 |
 |---|---|---|
 | Agent API | `agent.src.api.main:app` | 로컬 수집, inference, query/local state, training participation, family/wellbeing output |
-| Main Server API | `main_server.src.api.main:app` | FL round orchestration, prototype publication |
+| Main Server API | `main_server.src.api.main:app` | FL round orchestration, aggregation/publication |
 
 로컬 실행 예시:
 
@@ -93,7 +93,7 @@ page context, generated weak/strong view는 main_server나 FL update envelope으
 | GET | `/api/v1/training/status` | server active task 존재 여부 조회 | `agent/src/api/training.py` |
 
 `run-current-task` route는 HTTP 요청/응답 변환만 맡고, active task 조회부터
-shared/prototype sync, example build, update upload까지의 실행 흐름은
+shared adapter sync, example build, update upload까지의 실행 흐름은
 `agent/src/services/training/execution/agent_training_task_runner_service.py`가
 소유한다.
 
@@ -175,13 +175,6 @@ method, server update policy, aggregation backend 이름을 받는 일반 입력
 `objective_config`는 debug/advanced override용 raw task objective이며, 둘을 동시에
 제공하면 거부한다.
 | `TrainingUpdateSubmissionPayload` | `shared/src/contracts/training_contracts.py` |
-
-주요 contract:
-
-| Contract | Source |
-|---|---|
-| `PrototypePackPayload` | `shared/src/contracts/prototype_contracts.py` |
-| `PrototypePackActivation*` | `shared/src/contracts/prototype_contracts.py` |
 
 ## 5. API 변경 시 갱신 기준
 
