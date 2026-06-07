@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -14,11 +15,31 @@ from shared.src.contracts.common_types import TrainingScope, TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifestPayload
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfigPayload,
+    TrainingConfigScalar,
     TrainingObjectiveConfigPayload,
     TrainingSelectionPolicyPayload,
     TrainingTaskPayload,
     TrainingUpdateEnvelopePayload,
 )
+
+
+class RoundStrategyPayload(BaseModel):
+    """운영 round strategy 선택 payload.
+
+    raw objective_config 대신 method/profile 이름을 받아 서버가 canonical task
+    objective를 조립한다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["composed", "method_owned"] = "composed"
+    local_update_profile: str | None = None
+    ssl_method: str | None = None
+    fssl_method: str | None = None
+    scenario: str | None = None
+    server_update_policy: str | None = None
+    aggregation_backend: str | None = None
+    parameter_overrides: dict[str, TrainingConfigScalar] = Field(default_factory=dict)
 
 
 class RoundPublicationPayload(BaseModel):
@@ -130,6 +151,7 @@ class RoundTaskConfigPayload(BaseModel):
         gt=0.0,
     )
     max_steps: int = Field(default=RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps, ge=1)
+    strategy: RoundStrategyPayload | None = None
     objective_config: TrainingObjectiveConfigPayload | None = None
     selection_policy: TrainingSelectionPolicyPayload | None = None
     secure_aggregation: SecureAggregationConfigPayload | None = None

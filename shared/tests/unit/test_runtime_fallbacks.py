@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 from methods.adaptation.peft_text_encoder.config import PEFT_ENCODER_DELTA_FORMAT_INLINE
-from methods.classification.linear_head.scoring import (
-    CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
-)
 from methods.federated_ssl.runtime_fallbacks import (
     FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK,
     FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
@@ -43,27 +40,15 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
         config.example_generation_backend_name
         == RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     )
-    assert (
-        config.evidence_backend_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.evidence_backend_name
-    )
-    assert (
-        config.scorer_backend_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-    )
-    assert config.scorer_backend_name == CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
+    assert config.evidence_backend_name is None
+    assert config.scorer_backend_name is None
+    assert config.score_policy_name is None
     assert (
         config.privacy_guard_name
         == RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name
     )
-    assert (
-        config.pseudo_label_algorithm_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.pseudo_label_algorithm_name
-    )
-    assert (
-        config.acceptance_policy_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
-    )
+    assert config.pseudo_label_algorithm_name is None
+    assert config.acceptance_policy_name is None
     assert config.extras == {
         "query_ssl.method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
         "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,

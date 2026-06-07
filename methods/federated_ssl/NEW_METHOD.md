@@ -62,7 +62,7 @@ owner에서 드러낸다.
 - `local_ssl_policy`: manual baseline/ablation에서 local SSL objective source를 고르는
   축이다. Method-owned 실행에서는 descriptor required capability와 method surface default로
   파생한다. `fedmatch_agreement` 같은 method-local objective를 Hydra leaf로 추가하지 않는다.
-- `local_update_profile`: local update backend/evidence/scorer/privacy recipe다. Manual
+- `local_update_profile`: local update backend/example/privacy recipe다. Manual
   baseline에는 필요하고, method-owned에서는 descriptor recipe가 지원 profile을 검증한다.
   새 method 이름별 profile을 기본으로 만들지 않는다.
 - `multiview_source=materialized_rows`: 현재 FL SSL simulation의 materialized row view source다.

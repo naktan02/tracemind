@@ -433,19 +433,18 @@ def _default_training_task_config(
 
 def _default_validation_config(
     *,
-    confidence_threshold: float,
-    margin_threshold: float,
     scorer_backend_name: str = PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
     score_policy_name: str | None = None,
     score_top_k: int | None = None,
+    confidence_threshold: float | None = None,
+    margin_threshold: float | None = None,
 ) -> FederatedValidationConfig:
+    _ = confidence_threshold, margin_threshold
     return FederatedValidationConfig(
         similarity_name="cosine",
         scorer_backend_name=scorer_backend_name,
         score_policy_name=score_policy_name,
         score_top_k=score_top_k,
-        confidence_threshold=confidence_threshold,
-        margin_threshold=margin_threshold,
     )
 
 

@@ -27,7 +27,7 @@ defaults:
   - /strategy_axes/ssl_objective/consistency_method: fixmatch_usb_v1
   - /strategy_axes/ssl_objective/multiview_source: materialized_rows
   - /strategy_axes/ssl_objective/local_ssl_policy: query_ssl_method
-  - /strategy_axes/ssl_objective/local_update_profile: peft_pseudo_label_v1
+  - /strategy_axes/ssl_objective/local_update_profile: peft_classifier_update_v1
   # fssl_method: FL+SSL 결합 방법론
   - /strategy_axes/fssl_method: null
   - _self_
@@ -78,18 +78,7 @@ training_task:
     algorithm_profile_name: ${local_update_profile.algorithm_profile_name}
     training_backend_name: ${local_update_profile.training_backend_name}
     example_generation_backend_name: ${local_update_profile.example_generation_backend_name}
-    evidence_backend_name: ${local_update_profile.evidence_backend_name}
-    scorer_backend_name: ${local_update_profile.scorer_backend_name}
-    score_policy_name: ${local_update_profile.score_policy_name}
-    score_top_k: ${local_update_profile.score_top_k}
-    pseudo_label_algorithm_name: ${local_update_profile.pseudo_label_algorithm_name}
-    acceptance_policy_name: ${local_update_profile.acceptance_policy_name}
     privacy_guard_name: ${local_update_profile.privacy_guard_name}
-    # Contract 경계에서는 dotted flat key로 정규화된다. YAML은 사람이 읽기 쉽도록
-    # owner scope별로 묶는다.
-    selection: ${local_update_profile.selection_parameters}
-    evidence_backend:
-      temperature: ${local_update_profile.evidence_backend_temperature}
     query_ssl:
       method_name: ${query_ssl_method.name}
       algorithm_name: ${query_ssl_method.algorithm_name}

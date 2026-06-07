@@ -60,7 +60,7 @@ summary assembly phase를 따라간다.
 - `strategy_axes/fl_topology/*`: shard, labeled exposure, participation, server
   step/update, peer context 등 FL split/topology와 round capability
 - `strategy_axes/ssl_objective/local_update_profile`: local update backend,
-  scoring/evidence, privacy guard recipe
+  training example surface, privacy guard recipe
 
 `local_update_profile`과 `consistency_method`는 manual baseline/ablation에서는
 의미 있는 lower axis다. `method_owned` 실행에서는 descriptor/capability plan이

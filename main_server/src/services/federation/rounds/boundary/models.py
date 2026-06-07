@@ -71,6 +71,22 @@ class InitialSharedArtifactPublicationRequest:
 
 
 @dataclass(slots=True, kw_only=True)
+class RoundStrategyConfig:
+    """운영 round strategy 선택값."""
+
+    mode: str = "composed"
+    local_update_profile: str | None = None
+    ssl_method: str | None = None
+    fssl_method: str | None = None
+    scenario: str | None = None
+    server_update_policy: str | None = None
+    aggregation_backend: str | None = None
+    parameter_overrides: Mapping[str, TrainingConfigScalar] = field(
+        default_factory=dict
+    )
+
+
+@dataclass(slots=True, kw_only=True)
 class RoundTaskConfig:
     """active manifest를 제외한 reusable round task 설정."""
 
@@ -79,6 +95,7 @@ class RoundTaskConfig:
     batch_size: int = RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size
     learning_rate: float = RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate
     max_steps: int = RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps
+    strategy: RoundStrategyConfig | None = None
     objective_config: (
         TrainingObjectiveConfig | Mapping[str, TrainingConfigScalar] | None
     ) = None
@@ -115,6 +132,7 @@ class RoundTaskConfig:
             batch_size=self.batch_size,
             learning_rate=self.learning_rate,
             max_steps=self.max_steps,
+            strategy=self.strategy,
             objective_config=self.objective_config,
             selection_policy=self.selection_policy,
             secure_aggregation=self.secure_aggregation,

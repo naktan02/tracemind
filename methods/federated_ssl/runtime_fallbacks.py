@@ -64,6 +64,11 @@ class RuntimeFallbackTrainingProfile:
     selection_mapping: Mapping[str, TrainingConfigScalar]
     secure_aggregation_mapping: Mapping[str, TrainingConfigScalar]
     task_runtime_defaults: RuntimeTrainingTaskDefaults
+    default_acceptance_policy_name: str = "top1_ranked"
+    default_pseudo_label_algorithm_name: str = "top1_ranked"
+    default_evidence_backend_name: str = "analysis_score_evidence"
+    default_scorer_backend_name: str = CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
+    default_score_policy_name: str = "max_cosine"
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -84,11 +89,17 @@ class RuntimeFallbackTrainingProfile:
 
     @property
     def acceptance_policy_name(self) -> str:
-        return self._objective_str("acceptance_policy_name")
+        return self._objective_str(
+            "acceptance_policy_name",
+            default=self.default_acceptance_policy_name,
+        )
 
     @property
     def pseudo_label_algorithm_name(self) -> str:
-        return self._objective_str("pseudo_label_algorithm_name")
+        return self._objective_str(
+            "pseudo_label_algorithm_name",
+            default=self.default_pseudo_label_algorithm_name,
+        )
 
     @property
     def training_backend_name(self) -> str:
@@ -104,15 +115,24 @@ class RuntimeFallbackTrainingProfile:
 
     @property
     def evidence_backend_name(self) -> str:
-        return self._objective_str("evidence_backend_name")
+        return self._objective_str(
+            "evidence_backend_name",
+            default=self.default_evidence_backend_name,
+        )
 
     @property
     def scorer_backend_name(self) -> str:
-        return self._objective_str("scorer_backend_name")
+        return self._objective_str(
+            "scorer_backend_name",
+            default=self.default_scorer_backend_name,
+        )
 
     @property
     def score_policy_name(self) -> str:
-        return self._objective_str("score_policy_name")
+        return self._objective_str(
+            "score_policy_name",
+            default=self.default_score_policy_name,
+        )
 
     @property
     def privacy_guard_name(self) -> str:
@@ -178,7 +198,9 @@ class RuntimeFallbackTrainingProfile:
             _merged_mapping(self.secure_aggregation_mapping, overrides)
         )
 
-    def _objective_str(self, key: str) -> str:
+    def _objective_str(self, key: str, *, default: str | None = None) -> str:
+        if key not in self.objective_mapping and default is not None:
+            return default
         return self._require_str(self.objective_mapping, key)
 
     def _objective_float(self, key: str) -> float:
@@ -234,23 +256,49 @@ FIXMATCH_QUERY_SSL_ALGORITHM_NAME = "fixmatch"
 FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY = "first_aug"
 FIXMATCH_QUERY_SSL_TEMPERATURE = 0.5
 FIXMATCH_QUERY_SSL_P_CUTOFF = 0.95
-PEFT_PSEUDO_LABEL_LOCAL_UPDATE_PROFILE_NAME = "peft_pseudo_label_v1"
+FLEXMATCH_QUERY_SSL_METHOD_NAME = "flexmatch_usb_v1"
+FLEXMATCH_QUERY_SSL_ALGORITHM_NAME = "flexmatch"
+PEFT_CLASSIFIER_UPDATE_PROFILE_NAME = "peft_classifier_update_v1"
 PEFT_TEXT_ENCODER_FEDAVG_SERVER_ROUND_RUNTIME_FALLBACK_NAME = (
     "default_peft_text_encoder_fedavg.v1"
 )
 PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME = "peft_text_encoder"
 FEDAVG_AGGREGATION_BACKEND_NAME = "fedavg"
+FEDAVG_MERGED_DELTA_SERVER_UPDATE_POLICY_NAME = "fedavg_merged_delta"
+
+QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS = freeze_mapping(
+    {
+        FIXMATCH_QUERY_SSL_METHOD_NAME: freeze_mapping(
+            {
+                "method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
+                "algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
+                "temperature": FIXMATCH_QUERY_SSL_TEMPERATURE,
+                "p_cutoff": FIXMATCH_QUERY_SSL_P_CUTOFF,
+                "hard_label": True,
+                "lambda_u": 1.0,
+                "supervised_loss_weight": 1.0,
+            }
+        ),
+        FLEXMATCH_QUERY_SSL_METHOD_NAME: freeze_mapping(
+            {
+                "method_name": FLEXMATCH_QUERY_SSL_METHOD_NAME,
+                "algorithm_name": FLEXMATCH_QUERY_SSL_ALGORITHM_NAME,
+                "temperature": 0.5,
+                "p_cutoff": 0.95,
+                "hard_label": True,
+                "thresh_warmup": True,
+                "lambda_u": 1.0,
+                "supervised_loss_weight": 1.0,
+            }
+        ),
+    }
+)
 
 RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
     {
-        "algorithm_profile_name": PEFT_PSEUDO_LABEL_LOCAL_UPDATE_PROFILE_NAME,
+        "algorithm_profile_name": PEFT_CLASSIFIER_UPDATE_PROFILE_NAME,
         "training_backend_name": PEFT_ENCODER_TRAINING_BACKEND_NAME,
         "example_generation_backend_name": WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
-        "evidence_backend_name": "analysis_score_evidence",
-        "scorer_backend_name": CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
-        "score_policy_name": "max_cosine",
-        "acceptance_policy_name": "top1_ranked",
-        "pseudo_label_algorithm_name": "top1_ranked",
         "privacy_guard_name": NOOP_PRIVACY_GUARD_NAME,
         "query_ssl.method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
         "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
@@ -302,6 +350,104 @@ def build_runtime_fallback_training_objective_config(
     """명시 objective가 없는 runtime 요청용 fallback config를 조립한다."""
 
     return RUNTIME_FALLBACK_TRAINING_PROFILE.build_objective_config(overrides=overrides)
+
+
+def build_runtime_strategy_training_objective_config(
+    *,
+    local_update_profile_name: str | None = None,
+    strategy_mode: str = "composed",
+    ssl_method_name: str | None = None,
+    fssl_method_name: str | None = None,
+    server_update_policy_name: str | None = None,
+    aggregation_backend_name: str | None = None,
+    strong_view_policy: str = FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
+    unlabeled_batch_size: int = RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS.batch_size,
+    parameter_overrides: Mapping[str, TrainingConfigScalar] | None = None,
+) -> TrainingObjectiveConfig:
+    """운영 round strategy 입력을 canonical TrainingObjectiveConfig로 조립한다."""
+
+    normalized_mode = _optional_name(strategy_mode) or "composed"
+    if normalized_mode not in {"composed", "method_owned"}:
+        raise ValueError(f"Unsupported live strategy mode: {normalized_mode!r}.")
+    normalized_fssl_method = _optional_name(fssl_method_name)
+    if normalized_mode == "method_owned" and normalized_fssl_method is None:
+        raise ValueError("method_owned live strategy requires fssl_method.")
+    if normalized_mode == "composed" and normalized_fssl_method is not None:
+        raise ValueError("composed live strategy must not provide fssl_method.")
+    if normalized_fssl_method is not None:
+        raise ValueError(
+            "main_server live runtime does not support method-owned FSSL tasks yet: "
+            f"{normalized_fssl_method!r}."
+        )
+    normalized_profile = (
+        _optional_name(local_update_profile_name) or PEFT_CLASSIFIER_UPDATE_PROFILE_NAME
+    )
+    if normalized_profile != PEFT_CLASSIFIER_UPDATE_PROFILE_NAME:
+        raise ValueError(
+            "Unsupported live local_update_profile: "
+            f"{normalized_profile!r}. Supported: "
+            f"{PEFT_CLASSIFIER_UPDATE_PROFILE_NAME!r}."
+        )
+    normalized_server_update = (
+        _optional_name(server_update_policy_name)
+        or FEDAVG_MERGED_DELTA_SERVER_UPDATE_POLICY_NAME
+    )
+    if normalized_server_update != FEDAVG_MERGED_DELTA_SERVER_UPDATE_POLICY_NAME:
+        raise ValueError(
+            "Unsupported live server_update_policy: "
+            f"{normalized_server_update!r}."
+        )
+    normalized_aggregation = _optional_name(aggregation_backend_name)
+    if (
+        normalized_aggregation is not None
+        and normalized_aggregation != FEDAVG_AGGREGATION_BACKEND_NAME
+    ):
+        raise ValueError(
+            "Unsupported live aggregation_backend: "
+            f"{normalized_aggregation!r}."
+        )
+
+    query_ssl_method = _optional_name(ssl_method_name) or FIXMATCH_QUERY_SSL_METHOD_NAME
+    query_ssl_defaults = QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS.get(query_ssl_method)
+    if query_ssl_defaults is None:
+        raise ValueError(f"Unsupported live ssl_method: {query_ssl_method!r}.")
+    if unlabeled_batch_size <= 0:
+        raise ValueError("unlabeled_batch_size must be positive.")
+
+    objective = dict(RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING)
+    objective["algorithm_profile_name"] = normalized_profile
+    for key, value in query_ssl_defaults.items():
+        objective[f"query_ssl.{key}"] = value
+    objective["query_ssl.strong_view_policy"] = strong_view_policy
+    objective["query_ssl.unlabeled_batch_size"] = unlabeled_batch_size
+    if parameter_overrides:
+        objective.update(
+            _normalize_runtime_strategy_parameter_overrides(parameter_overrides)
+        )
+    return TrainingObjectiveConfig.from_mapping(objective)
+
+
+def _normalize_runtime_strategy_parameter_overrides(
+    source: Mapping[str, TrainingConfigScalar],
+) -> dict[str, TrainingConfigScalar]:
+    """운영 strategy override를 method parameter scope로 정규화한다."""
+
+    result: dict[str, TrainingConfigScalar] = {}
+    for key, value in source.items():
+        normalized_key = str(key).strip()
+        if not normalized_key:
+            raise ValueError("strategy parameter override keys must not be empty.")
+        if "." not in normalized_key:
+            normalized_key = f"query_ssl.{normalized_key}"
+        result[normalized_key] = value
+    return result
+
+
+def _optional_name(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
 
 
 def resolve_runtime_example_generation_backend_name(

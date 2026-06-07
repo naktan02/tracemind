@@ -1114,7 +1114,9 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
     assert cfg.federated_run_budget.name == "smoke"
-    assert cfg.local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
+    assert cfg.local_update_profile.algorithm_profile_name == (
+        "peft_classifier_update_v1"
+    )
     assert "fl_profile" not in cfg
     assert "round_runtime_profile" not in cfg
     assert cfg.round_runtime.update_family_name == "peft_text_encoder"
@@ -1175,7 +1177,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.peft_adapter.name == "default"
     assert cfg.training_task.objective.algorithm_profile_name == (
-        "peft_pseudo_label_v1"
+        "peft_classifier_update_v1"
     )
     assert cfg.training_task.objective.training_backend_name == (
         "peft_classifier_trainer"
@@ -1183,10 +1185,9 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.training_task.objective.example_generation_backend_name == (
         "peft_classifier_raw_rows"
     )
-    assert cfg.training_task.objective.evidence_backend_name == (
-        "peft_classifier_logits"
-    )
-    assert cfg.training_task.objective.scorer_backend_name == "peft_classifier_logits"
+    assert "evidence_backend_name" not in cfg.training_task.objective
+    assert "scorer_backend_name" not in cfg.training_task.objective
+    assert "score_policy_name" not in cfg.training_task.objective
     assert cfg.training_task.objective.privacy_guard_name == "noop"
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
@@ -1205,10 +1206,9 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.validation.scorer_backend_name == "peft_classifier_eval"
     assert cfg.validation.score_policy_name is None
     assert cfg.validation.score_top_k is None
-    assert dict(cfg.local_update_profile.selection_parameters) == {}
-    assert dict(cfg.training_task.objective.selection) == {}
-    assert cfg.training_task.objective.pseudo_label_algorithm_name == "top1_ranked"
-    assert cfg.training_task.objective.acceptance_policy_name == "top1_ranked"
+    assert "selection" not in cfg.training_task.objective
+    assert "pseudo_label_algorithm_name" not in cfg.training_task.objective
+    assert "acceptance_policy_name" not in cfg.training_task.objective
     assert cfg.federated_run_budget.output_dir == "runs/_smoke/fl_ssl"
     assert cfg.federated_run_budget.client_count == 4
     assert cfg.federated_run_budget.rounds == 3
@@ -1567,7 +1567,7 @@ def test_method_owned_fedmatch_keeps_single_local_profile() -> None:
         execution_plan=execution_plan,
     )
 
-    assert local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
+    assert local_update_profile.algorithm_profile_name == "peft_classifier_update_v1"
 
 
 def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
@@ -1695,7 +1695,7 @@ def test_method_owned_fedmatch_ignores_query_ssl_lower_axis_objective_payload(
     objective = request.training_task_config.objective_config.to_mapping()
     assert "query_ssl.algorithm_name" not in objective
     assert "query_ssl.method_name" not in objective
-    assert objective["algorithm_profile_name"] == "peft_pseudo_label_v1"
+    assert objective["algorithm_profile_name"] == "peft_classifier_update_v1"
 
 
 def test_federated_simulation_main_default_gives_each_client_unlabeled_rows(
@@ -1881,7 +1881,7 @@ def test_fedmatch_leaf_is_public_method_identity_with_scenario_axis() -> None:
 @pytest.mark.parametrize(
     "profile_name",
     [
-        "peft_pseudo_label_v1",
+        "peft_classifier_update_v1",
     ],
 )
 def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
@@ -2026,7 +2026,6 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
             overrides=[
                 "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.6",
-                "+local_update_profile.selection_parameters.test_parameter=0.7",
                 "diagnostics.dump_dir_name=custom_dumps",
             ],
         )
@@ -2034,10 +2033,8 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
     assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.6
     assert cfg.training_task.objective.algorithm_profile_name == (
-        "peft_pseudo_label_v1"
+        "peft_classifier_update_v1"
     )
-    assert cfg.local_update_profile.selection_parameters.test_parameter == 0.7
-    assert cfg.training_task.objective.selection.test_parameter == 0.7
     assert cfg.validation.scorer_backend_name == "peft_classifier_eval"
     assert cfg.diagnostics.dump_dir_name == "custom_dumps"
 
@@ -2112,7 +2109,9 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
         method_descriptor=None,
     )
 
-    assert cfg.local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
+    assert cfg.local_update_profile.algorithm_profile_name == (
+        "peft_classifier_update_v1"
+    )
     assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert plan.method_name == "manual"

@@ -58,7 +58,9 @@ conf/
 - local SSL algorithm은 `strategy_axes/ssl_objective/consistency_method`가 고르고,
   실제 objective core는 `methods/ssl/algorithms/*`가 소유한다.
 - local update recipe는 `strategy_axes/ssl_objective/local_update_profile`이
-  소유한다. 특정 논문 method를 뜻하는 값은 아니므로 `fssl_method` 아래에 두지 않는다.
+  소유한다. 이 leaf는 update backend, example surface, privacy guard를 고르고,
+  pseudo-label/selection/scoring 세부값은 SSL/FSSL method가 소유한다.
+  특정 논문 method를 뜻하는 값은 아니므로 `fssl_method` 아래에 두지 않는다.
 - `strategy_axes/ssl_objective/local_ssl_policy`는 manual baseline/ablation에서만 직접
   고르는 축이다. Method-owned 실행은 descriptor required capability와 method surface
   default에서 local SSL policy를 파생한다.

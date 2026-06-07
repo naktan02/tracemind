@@ -161,11 +161,19 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | Payload | Source |
 |---|---|
 | `RoundOpenRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
+| `RoundStrategyPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `RoundRecordPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `RoundFinalizeRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `InitialSharedArtifactPublicationRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `ModelManifestPayload` | `shared/src/contracts/model_contracts.py` |
 | `CurrentSharedAdapterStatePayload` | `shared/src/contracts/adapter_contract_families/base.py` |
+
+`RoundOpenRequestPayload.strategy`는 운영 round에서 local update profile, SSL/FSSL
+method, server update policy, aggregation backend 이름을 받는 일반 입력 표면이다.
+`strategy.parameter_overrides`의 bare key는 선택한 SSL method 파라미터로 해석되어
+`query_ssl.*` scope로 정규화된다.
+`objective_config`는 debug/advanced override용 raw task objective이며, 둘을 동시에
+제공하면 거부한다.
 | `TrainingUpdateSubmissionPayload` | `shared/src/contracts/training_contracts.py` |
 
 주요 contract:

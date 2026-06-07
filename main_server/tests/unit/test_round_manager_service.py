@@ -16,6 +16,7 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
 )
 from main_server.src.services.federation.rounds.boundary.models import (  # noqa: E402
     RoundOpenRequest,
+    RoundStrategyConfig,
 )
 from main_server.src.services.federation.rounds.payload_adapters.registry import (  # noqa: E402
     build_shared_adapter_round_payload_adapter,
@@ -203,18 +204,11 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
         task.objective_config.example_generation_backend_name
         == RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     )
-    assert task.objective_config.evidence_backend_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.evidence_backend_name
-    )
-    assert task.objective_config.scorer_backend_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-    )
-    assert task.objective_config.score_policy_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.score_policy_name
-    )
-    assert task.objective_config.acceptance_policy_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
-    )
+    assert task.objective_config.evidence_backend_name is None
+    assert task.objective_config.scorer_backend_name is None
+    assert task.objective_config.score_policy_name is None
+    assert task.objective_config.acceptance_policy_name is None
+    assert task.objective_config.pseudo_label_algorithm_name is None
     assert task.objective_config.privacy_guard_name == (
         RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name
     )
@@ -231,6 +225,50 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
         "peft_classifier.delta_format": PEFT_ENCODER_DELTA_FORMAT_INLINE,
     }
     assert task.secure_aggregation.required is False
+
+
+def test_round_manager_builds_objective_from_round_strategy() -> None:
+    service = RoundManagerService(
+        payload_adapter=_build_peft_classifier_round_payload_adapter()
+    )
+
+    task = service.create_training_task(
+        RoundOpenRequest(
+            active_manifest=ModelManifest(
+                schema_version="model_manifest.v1",
+                model_id="tracemind-embed",
+                model_revision="rev_000",
+                published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+                artifact_kind="shared_adapter_state",
+                artifact_ref="/tmp/rev_000.json",
+                auxiliary_artifact_versions={},
+                training_scope="adapter_only",
+                training_enabled=True,
+                compatible_task_types=("pseudo_label_self_training",),
+            ),
+            round_id="round_0001",
+            batch_size=8,
+            strategy=RoundStrategyConfig(
+                local_update_profile="peft_classifier_update_v1",
+                ssl_method="flexmatch_usb_v1",
+                server_update_policy="fedavg_merged_delta",
+                aggregation_backend="fedavg",
+                parameter_overrides={"p_cutoff": 0.9},
+            ),
+        )
+    )
+
+    assert task.objective_config.algorithm_profile_name == (
+        "peft_classifier_update_v1"
+    )
+    assert task.objective_config.extras["query_ssl.method_name"] == (
+        "flexmatch_usb_v1"
+    )
+    assert task.objective_config.extras["query_ssl.algorithm_name"] == "flexmatch"
+    assert task.objective_config.extras["query_ssl.unlabeled_batch_size"] == 8
+    assert task.objective_config.extras["query_ssl.thresh_warmup"] is True
+    assert task.objective_config.extras["query_ssl.p_cutoff"] == 0.9
+    assert "p_cutoff" not in task.objective_config.extras
 
 
 def test_round_manager_accepts_secure_aggregation_config_on_training_task() -> None:

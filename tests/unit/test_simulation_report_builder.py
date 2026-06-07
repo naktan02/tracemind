@@ -338,8 +338,6 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             similarity_name="cosine",
             scorer_backend_name="prototype_similarity",
             score_policy_name="max_cosine",
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
         ),
         round_runtime_config=FederatedRoundRuntimeConfig(
             payload_adapter_kind="peft_classifier",
@@ -708,8 +706,6 @@ def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
                 similarity_name="cosine",
                 scorer_backend_name="prototype_similarity",
                 score_policy_name="max_cosine",
-                confidence_threshold=0.0,
-                margin_threshold=0.0,
             ),
             round_runtime_config=FederatedRoundRuntimeConfig(
                 payload_adapter_kind="peft_classifier",

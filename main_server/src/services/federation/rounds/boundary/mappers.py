@@ -16,6 +16,7 @@ from .models import (
     RoundOpenDraftRequest,
     RoundPublicationSummary,
     RoundRecord,
+    RoundStrategyConfig,
     RoundUpdateAcceptance,
 )
 from .payloads import (
@@ -163,6 +164,20 @@ def round_open_draft_request_from_payload(
         batch_size=payload.batch_size,
         learning_rate=payload.learning_rate,
         max_steps=payload.max_steps,
+        strategy=(
+            RoundStrategyConfig(
+                mode=payload.strategy.mode,
+                local_update_profile=payload.strategy.local_update_profile,
+                ssl_method=payload.strategy.ssl_method,
+                fssl_method=payload.strategy.fssl_method,
+                scenario=payload.strategy.scenario,
+                server_update_policy=payload.strategy.server_update_policy,
+                aggregation_backend=payload.strategy.aggregation_backend,
+                parameter_overrides=dict(payload.strategy.parameter_overrides),
+            )
+            if payload.strategy is not None
+            else None
+        ),
         objective_config=(
             payload.objective_config if payload.objective_config is not None else None
         ),

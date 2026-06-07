@@ -23,6 +23,7 @@ from methods.federated_ssl.runtime_fallbacks import (
     build_runtime_fallback_secure_aggregation_config,
     build_runtime_fallback_training_objective_config,
     build_runtime_fallback_training_selection_policy,
+    build_runtime_strategy_training_objective_config,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
@@ -93,7 +94,11 @@ class RoundManagerService:
             batch_size=request.batch_size,
             learning_rate=request.learning_rate,
             max_steps=request.max_steps,
-            objective_config=self._resolve_objective_config(request.objective_config),
+            objective_config=self._resolve_objective_config(
+                request.objective_config,
+                strategy=request.strategy,
+                batch_size=request.batch_size,
+            ),
             selection_policy=self._resolve_selection_policy(request.selection_policy),
             secure_aggregation=self._resolve_secure_aggregation(
                 request.secure_aggregation
@@ -185,7 +190,38 @@ class RoundManagerService:
     @staticmethod
     def _resolve_objective_config(
         source: TrainingObjectiveConfig | Mapping[str, TrainingConfigScalar] | None,
+        *,
+        strategy: object | None = None,
+        batch_size: int,
     ) -> TrainingObjectiveConfig:
+        if source is not None and strategy is not None:
+            raise ValueError(
+                "Round open request must not provide both strategy and "
+                "objective_config."
+            )
+        if strategy is not None:
+            return build_runtime_strategy_training_objective_config(
+                local_update_profile_name=getattr(
+                    strategy,
+                    "local_update_profile",
+                    None,
+                ),
+                strategy_mode=getattr(strategy, "mode", "composed"),
+                ssl_method_name=getattr(strategy, "ssl_method", None),
+                fssl_method_name=getattr(strategy, "fssl_method", None),
+                server_update_policy_name=getattr(
+                    strategy,
+                    "server_update_policy",
+                    None,
+                ),
+                aggregation_backend_name=getattr(
+                    strategy,
+                    "aggregation_backend",
+                    None,
+                ),
+                unlabeled_batch_size=batch_size,
+                parameter_overrides=getattr(strategy, "parameter_overrides", None),
+            )
         if isinstance(source, TrainingObjectiveConfig):
             return source
         if source is None:

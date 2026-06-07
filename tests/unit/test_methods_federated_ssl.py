@@ -64,19 +64,11 @@ def _local_update_profile_mapping(
         "algorithm_profile_name": profile_name,
         "training_scope": "adapter_only",
         "training_backend_name": "test_only_training_backend",
-        "selection_parameters": {"test_parameter": 0.6},
         "example_generation_backend_name": "test_only_example_generation_backend",
-        "evidence_backend_name": "test_only_evidence_backend",
-        "scorer_backend_name": "test_only_scorer_backend",
-        "score_policy_name": "test_only_score_policy",
-        "score_top_k": None,
         "validation_scorer_backend_name": "test_only_validation_scorer_backend",
         "validation_score_policy_name": "test_only_validation_score_policy",
         "validation_score_top_k": None,
-        "pseudo_label_algorithm_name": "test_only_pseudo_label_algorithm",
-        "acceptance_policy_name": "test_only_acceptance_policy",
         "privacy_guard_name": "test_only_privacy_guard",
-        "evidence_backend_temperature": 1.0,
     }
 
 
@@ -150,7 +142,7 @@ def test_fedmatch_descriptor_prefers_peft_encoder_recipe_surface() -> None:
     )
     assert descriptor.recipe is not None
     assert descriptor.recipe.supported_local_update_profile_names == (
-        "peft_pseudo_label_v1",
+        "peft_classifier_update_v1",
     )
     assert [
         pair.normalized_key for pair in descriptor.recipe.supported_runtime_pairs

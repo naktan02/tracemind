@@ -771,7 +771,7 @@ def test_fl_local_update_profiles_do_not_keep_lora_classifier_leaf() -> None:
     profile_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "local_update_profile"
     forbidden_path = profile_root / "lora_pseudo_label_v1.yaml"
     assert not forbidden_path.exists(), (
-        "active FL local update profile leaf는 peft_pseudo_label_v1을 사용한다. "
+        "active FL local update profile leaf는 peft_classifier_update_v1을 사용한다. "
         "lora_pseudo_label_v1은 old-run artifact/report reader compatibility "
         "표면으로만 남기고 Hydra 실행 profile로 되살리지 않는다."
     )
@@ -931,6 +931,22 @@ def test_fl_local_ssl_policy_does_not_expose_method_local_fedmatch_leaf() -> Non
         "fedmatch_agreement는 FedMatch method-local objective다. generic "
         "local_ssl_policy Hydra leaf로 선택하지 말고 FedMatch descriptor와 "
         "scenario default에서 파생한다."
+    )
+
+
+def test_fl_local_ssl_policy_does_not_point_to_local_update_profile() -> None:
+    policy_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "local_ssl_policy"
+    violations: list[Path] = []
+    for path in policy_root.glob("*.yaml"):
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        if payload.get("parameter_source") == "local_update_profile":
+            violations.append(path)
+
+    assert not violations, (
+        "local_ssl_policy는 SSL method 파라미터 출처를 뜻한다. "
+        "local_update_profile은 update backend/example/privacy recipe만 소유하므로 "
+        "pseudo-label/selection/scoring 파라미터 출처로 쓰면 안 된다.\n"
+        f"{chr(10).join(f'- {_relative_repo_path(path)}' for path in violations)}"
     )
 
 

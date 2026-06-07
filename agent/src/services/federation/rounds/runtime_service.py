@@ -98,6 +98,16 @@ class FederationRuntimeService:
                 message=f"이미 완료한 task입니다: {task_id}",
             )
 
+        if not training_examples:
+            return FederationRunResult(
+                status=FederationRunStatus.INSUFFICIENT_EXAMPLES,
+                round_id=round_id,
+                task_id=task_id,
+                example_count=0,
+                accepted_count=0,
+                message="학습에 사용할 예시가 없습니다.",
+            )
+
         training_task = _task_from_payload(effective_task_payload)
         effective_manifest = model_manifest or _fallback_manifest_from_task(
             training_task

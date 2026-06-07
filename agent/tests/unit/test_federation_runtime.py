@@ -13,6 +13,7 @@ from agent.src.services.federation.rounds.runtime_service import (
     FederationRunStatus,
     FederationRuntimeService,
 )
+from agent.src.services.training.examples.models import EmbeddedTrainingExample
 from agent.src.services.training.execution.local_training_service import (
     LocalTrainingResult,
 )
@@ -31,6 +32,7 @@ from shared.src.contracts.training_contracts import (
     TrainingTaskPayload,
     TrainingUpdateEnvelope,
 )
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 # ─── 공통 fixture ────────────────────────────────────────────────────────────
 
@@ -110,6 +112,20 @@ def _empty_selection_result() -> PseudoLabelSelectionResult:
         candidates=(),
         accepted_candidates=(),
         feedback_signals=(),
+    )
+
+
+def _training_example(query_id: str = "q1") -> EmbeddedTrainingExample:
+    return EmbeddedTrainingExample(
+        analysis_event=AnalysisEvent(
+            query_id=query_id,
+            occurred_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+            translated_text=None,
+            embedding_model_id="tracemind-embed",
+            translation_model_id=None,
+            category_scores={"anxiety": 0.9, "normal": 0.1},
+        ),
+        embedding=[1.0, 0.0],
     )
 
 
@@ -319,7 +335,7 @@ def test_federation_runtime_builds_fallback_manifest_when_none_is_given() -> Non
     )
 
     service.run_current_task(
-        training_examples=(),
+        training_examples=(_training_example(),),
         model_manifest=None,
     )
 
@@ -394,7 +410,7 @@ def test_federation_runtime_uploads_update_and_marks_completed(
     )
 
     result = service.run_current_task(
-        training_examples=(),
+        training_examples=(_training_example(),),
         model_manifest=_build_manifest(),
     )
 
