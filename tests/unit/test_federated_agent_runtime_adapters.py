@@ -21,7 +21,10 @@ from methods.adaptation.peft_text_encoder.federated_ssl import (
     helper_provider,
 )
 from methods.adaptation.peft_text_encoder.training import (
-    query_ssl_local_training as qcore,
+    query_ssl_federated_update as qfed_update,
+)
+from methods.adaptation.peft_text_encoder.training import (
+    query_ssl_training_session as qsession,
 )
 from methods.adaptation.peft_text_encoder.training_backend import (
     PeftEncoderTrainingBackend,
@@ -450,7 +453,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         return object(), object()
 
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "_build_peft_encoder_model",
         _fake_build_peft_encoder_model,
     )
@@ -462,13 +465,13 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         lambda **_kwargs: object(),
     )
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "load_peft_encoder_base_parameters_into_model",
         lambda **_kwargs: None,
     )
-    monkeypatch.setattr(qcore, "build_dataloader", lambda **_kwargs: [object()])
+    monkeypatch.setattr(qsession, "build_dataloader", lambda **_kwargs: [object()])
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "_build_unlabeled_loader",
         lambda **_kwargs: [object()],
     )
@@ -478,17 +481,17 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         return kwargs["model"], [{"train_loss": 0.1}], {}
 
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "train_query_ssl_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        qcore,
+        qfed_update,
         "extract_peft_encoder_parameter_deltas",
         lambda **_kwargs: ({}, {}, {}),
     )
     monkeypatch.setattr(
-        qcore,
+        qfed_update,
         "build_query_ssl_peft_encoder_update_payload",
         lambda **_kwargs: SimpleNamespace(
             update_payload=update_payload,
@@ -497,7 +500,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         ),
     )
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "build_final_snapshot_pseudo_label_quality",
         lambda **_kwargs: PseudoLabelQualitySummary(
             pseudo_label_confidence_mean=0.97,
