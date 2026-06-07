@@ -148,11 +148,11 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
         backend_name: str = "constant_test_backend"
         confidence_kind: str = "constant_test_backend_top1"
 
-        def score(self, embedding, prototypes, shared_state=None):
+        def score(self, embedding, scoring_assets, shared_state=None):
             del embedding, shared_state
             return {
                 category: float(index + 1)
-                for index, category in enumerate(sorted(prototypes))
+                for index, category in enumerate(sorted(scoring_assets))
             }
 
     register_scoring_backend(

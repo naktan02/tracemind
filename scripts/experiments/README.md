@@ -74,7 +74,7 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
 - `scripts/experiments/prototype_analysis/*`
   - prototype 전략이나 threshold 정책을 비교하는 연구형 실험 레일
 - `scripts/workflows/prototype_pack/*`
-  - prototype pack을 실제로 seed/evaluate/pull/activate/report 하는
+  - prototype pack을 실제로 seed/evaluate/activate/report 하는
     artifact workflow 레일
 
 즉 이름은 비슷하지만, 전자는 `비교/탐색`, 후자는 `artifact lifecycle`이 핵심이다.

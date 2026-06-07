@@ -64,11 +64,3 @@ def activate_prototype_pack_version(prototype_version: str) -> Any:
     )
 
     return pack_service_module.PrototypePackService().activate(prototype_version)
-
-
-def pull_current_prototype_pack(server_base_url: str) -> Any:
-    """agent local cache로 현재 활성 PrototypePack을 내려받는다."""
-
-    from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
-
-    return PrototypeSyncService().pull_current(server_base_url=server_base_url)

@@ -1,8 +1,7 @@
-"""ScoredEvent SQLite 저장소.
+"""로컬 analysis event SQLite 저장소.
 
-scored event를 로컬에 영속 저장하고 학습 시 조회한다.
-base_embedding을 함께 저장해 학습 시 재임베딩 없이
-EmbeddedTrainingExample을 조립할 수 있게 한다.
+기존 서비스 호환을 위해 ScoredEventRepository 이름을 유지하지만,
+실제 저장 schema는 scorer-family 독립적인 analysis_events 구조를 사용한다.
 """
 
 from __future__ import annotations
@@ -16,43 +15,90 @@ from pathlib import Path
 from shared.src.domain.entities.inference.events import ScoredEvent
 
 # 기본 DB 경로: agent 로컬 data 디렉토리
-_DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "scored_events.db"
+_DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "analysis_events.db"
 
-_CREATE_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS scored_events (
-    query_id             TEXT PRIMARY KEY,
+_CREATE_ANALYSIS_EVENTS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS analysis_events (
+    analysis_id          TEXT PRIMARY KEY,
+    source_event_id      TEXT NOT NULL,
     occurred_at          TEXT NOT NULL,
     translated_text      TEXT,
-    embedding_model_id   TEXT NOT NULL,
+    scorer_family        TEXT NOT NULL,
+    scorer_name          TEXT NOT NULL,
+    model_revision       TEXT NOT NULL,
+    top_category         TEXT,
+    top_score            REAL,
+    confidence_kind      TEXT NOT NULL,
+    embedding_model_id   TEXT,
     translation_model_id TEXT,
-    category_scores      TEXT NOT NULL,
-    base_embedding       TEXT
+    base_embedding       TEXT,
+    metadata             TEXT NOT NULL
 );
 """
 
-# 기존 DB 마이그레이션: base_embedding 컬럼이 없으면 추가
-_ADD_EMBEDDING_COLUMN_SQL = """
-ALTER TABLE scored_events ADD COLUMN base_embedding TEXT;
+_CREATE_ANALYSIS_CATEGORY_SCORES_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS analysis_category_scores (
+    analysis_id TEXT NOT NULL,
+    category    TEXT NOT NULL,
+    score       REAL NOT NULL,
+    PRIMARY KEY (analysis_id, category),
+    FOREIGN KEY (analysis_id)
+        REFERENCES analysis_events (analysis_id)
+        ON DELETE CASCADE
+);
 """
 
-_INSERT_SQL = """
-INSERT OR REPLACE INTO scored_events
-    (query_id, occurred_at, translated_text,
-     embedding_model_id, translation_model_id,
-     category_scores, base_embedding)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+_CREATE_ANALYSIS_OCCURRED_AT_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_analysis_events_occurred_at
+ON analysis_events (occurred_at);
+"""
+
+_CREATE_ANALYSIS_SCORER_FAMILY_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_analysis_events_scorer_family
+ON analysis_events (scorer_family);
+"""
+
+_CREATE_ANALYSIS_CATEGORY_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_analysis_category_scores_category
+ON analysis_category_scores (category);
+"""
+
+_DELETE_CATEGORY_SCORES_SQL = """
+DELETE FROM analysis_category_scores
+WHERE analysis_id = ?;
+"""
+
+_INSERT_ANALYSIS_EVENT_SQL = """
+INSERT OR REPLACE INTO analysis_events
+    (analysis_id, source_event_id, occurred_at, translated_text,
+     scorer_family, scorer_name, model_revision, top_category, top_score,
+     confidence_kind, embedding_model_id, translation_model_id,
+     base_embedding, metadata)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+"""
+
+_INSERT_CATEGORY_SCORE_SQL = """
+INSERT INTO analysis_category_scores
+    (analysis_id, category, score)
+VALUES (?, ?, ?);
 """
 
 _SELECT_RECENT_SQL = """
-SELECT query_id, occurred_at, translated_text,
-       embedding_model_id, translation_model_id,
-       category_scores, base_embedding
-FROM scored_events
+SELECT analysis_id, occurred_at, translated_text,
+       embedding_model_id, translation_model_id, base_embedding
+FROM analysis_events
 WHERE occurred_at >= ?
 ORDER BY occurred_at DESC;
 """
 
-_COUNT_SQL = "SELECT COUNT(*) FROM scored_events;"
+_SELECT_CATEGORY_SCORES_SQL = """
+SELECT category, score
+FROM analysis_category_scores
+WHERE analysis_id = ?
+ORDER BY category ASC;
+"""
+
+_COUNT_SQL = "SELECT COUNT(*) FROM analysis_events;"
 
 
 @dataclass(slots=True)
@@ -65,15 +111,18 @@ class StoredScoredEvent:
 
 @dataclass(slots=True)
 class ScoredEventRepository:
-    """ScoredEvent와 base_embedding을 SQLite에 저장하고 조회한다."""
+    """analysis event 저장소의 기존 ScoredEvent 호환 facade."""
 
     db_path: Path = _DEFAULT_DB_PATH
 
     def __post_init__(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
-            conn.execute(_CREATE_TABLE_SQL)
-            _migrate_add_embedding_column(conn)
+            conn.execute(_CREATE_ANALYSIS_EVENTS_TABLE_SQL)
+            conn.execute(_CREATE_ANALYSIS_CATEGORY_SCORES_TABLE_SQL)
+            conn.execute(_CREATE_ANALYSIS_OCCURRED_AT_INDEX_SQL)
+            conn.execute(_CREATE_ANALYSIS_SCORER_FAMILY_INDEX_SQL)
+            conn.execute(_CREATE_ANALYSIS_CATEGORY_INDEX_SQL)
 
     # ------------------------------------------------------------------ #
     # 쓰기                                                                 #
@@ -84,19 +133,41 @@ class ScoredEventRepository:
         event: ScoredEvent,
         *,
         base_embedding: list[float] | None = None,
+        source_event_id: str | None = None,
+        scorer_family: str = "legacy_scored_event",
+        scorer_name: str = "unknown",
+        model_revision: str = "unknown",
+        confidence_kind: str = "unknown",
+        metadata: dict[str, str | int | float | bool | None] | None = None,
     ) -> None:
-        """ScoredEvent를 저장한다. base_embedding이 있으면 함께 저장한다."""
+        """분석 결과를 저장한다. 기존 호출부는 ScoredEvent만 넘겨도 된다."""
+        top_category, top_score = _get_top_category_score(event.category_scores)
         with self._connect() as conn:
+            conn.execute(_DELETE_CATEGORY_SCORES_SQL, (event.query_id,))
             conn.execute(
-                _INSERT_SQL,
+                _INSERT_ANALYSIS_EVENT_SQL,
                 (
                     event.query_id,
+                    source_event_id or event.query_id,
                     event.occurred_at.isoformat(),
                     event.translated_text,
+                    scorer_family,
+                    scorer_name,
+                    model_revision,
+                    top_category,
+                    top_score,
+                    confidence_kind,
                     event.embedding_model_id,
                     event.translation_model_id,
-                    json.dumps(event.category_scores),
                     json.dumps(base_embedding) if base_embedding is not None else None,
+                    json.dumps(metadata or {}, sort_keys=True),
+                ),
+            )
+            conn.executemany(
+                _INSERT_CATEGORY_SCORE_SQL,
+                (
+                    (event.query_id, category, float(score))
+                    for category, score in event.category_scores.items()
                 ),
             )
 
@@ -113,7 +184,7 @@ class ScoredEventRepository:
         cutoff = (datetime.now(tz=timezone.utc) - timedelta(days=days)).isoformat()
         with self._connect() as conn:
             rows = conn.execute(_SELECT_RECENT_SQL, (cutoff,)).fetchall()
-        return [_row_to_stored(row) for row in rows]
+            return [_row_to_stored(conn, row) for row in rows]
 
     def count(self) -> int:
         """저장된 총 이벤트 수를 반환한다."""
@@ -133,32 +204,35 @@ class ScoredEventRepository:
 # ------------------------------------------------------------------ #
 
 
-def _migrate_add_embedding_column(conn: sqlite3.Connection) -> None:
-    """기존 DB에 base_embedding 컬럼이 없으면 추가한다."""
-    columns = {
-        row[1] for row in conn.execute("PRAGMA table_info(scored_events)").fetchall()
-    }
-    if "base_embedding" not in columns:
-        conn.execute(_ADD_EMBEDDING_COLUMN_SQL)
+def _get_top_category_score(
+    category_scores: dict[str, float],
+) -> tuple[str | None, float | None]:
+    if not category_scores:
+        return None, None
+    top_category = max(category_scores, key=category_scores.__getitem__)
+    return top_category, float(category_scores[top_category])
 
 
-def _row_to_stored(row: tuple) -> StoredScoredEvent:
+def _row_to_stored(conn: sqlite3.Connection, row: tuple) -> StoredScoredEvent:
     (
         query_id,
         occurred_at_str,
         translated_text,
         embedding_model_id,
         translation_model_id,
-        category_scores_json,
         base_embedding_json,
     ) = row
+    category_scores = {
+        category: float(score)
+        for category, score in conn.execute(_SELECT_CATEGORY_SCORES_SQL, (query_id,))
+    }
     scored_event = ScoredEvent(
         query_id=query_id,
         occurred_at=datetime.fromisoformat(occurred_at_str),
         translated_text=translated_text,
-        embedding_model_id=embedding_model_id,
+        embedding_model_id=embedding_model_id or "unknown",
         translation_model_id=translation_model_id,
-        category_scores=json.loads(category_scores_json),
+        category_scores=category_scores,
     )
     base_embedding = (
         json.loads(base_embedding_json) if base_embedding_json is not None else None

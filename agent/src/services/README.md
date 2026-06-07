@@ -15,7 +15,7 @@
 
 - `inference/`
   - 로컬 추론 rail
-  - shared scoring state/prototype evidence 계산, 의사결정, 시계열 누적 담당
+  - classifier/prototype 같은 scorer-family별 분석 계산, 의사결정, 시계열 누적 담당
 - `training/`
   - 로컬 학습 rail
   - selection, example assembly, execution, dataset 조립, backend 구현 담당
@@ -23,7 +23,7 @@
   - agent와 서버 사이 round orchestration rail
   - current round fetch/upload 담당
 - `assets/prototypes/`
-  - prototype artifact 동기화/로컬 runtime helper
+  - prototype scorer 후보를 위한 로컬 asset provider
 - `assets/shared_adapters/`
   - 서버 current shared adapter state 동기화/로컬 runtime helper
 - `assets/adapters/`
@@ -37,9 +37,9 @@
 
 현재 v1에서 권장하는 읽기 관점:
 
-- shared scoring state는 공통 evidence producer다.
+- scorer backend는 classifier/prototype/hybrid 후보를 같은 analysis event로 투영한다.
 - `local interpretation`이 final decision owner다.
-- shared adapter와 prototype scoring은 비교/확장 경로로 유지한다.
+- shared adapter와 scorer asset은 비교/확장 경로로 유지한다.
 
 ### 1. 로컬 추론 흐름을 보고 싶을 때
 
@@ -139,10 +139,9 @@
   - accepted example을 selected local update backend, privacy guard, payload 저장,
     submission envelope로 연결하는 agent runtime port
 - `training/execution/agent_training_task_runner_service.py`
-  - active task 조회, shared/prototype sync, example build, update upload까지의
+  - active task 조회, shared adapter sync, Query SSL task 실행, update upload까지의
     agent application flow 소유
-  - stored-event rebuild를 지원하지 않는 weak/strong backend는 ready captured text
-    generated view를 `TrainingExampleSource`로 변환해 사용한다
+  - prototype pack 기반 stored-event rebuild는 기본 runtime 경로에서 제외한다
 - `training/examples/service.py`
   - raw row 또는 stored event를 `EmbeddedTrainingExample`으로 변환
 - `training/backends/inputs/`

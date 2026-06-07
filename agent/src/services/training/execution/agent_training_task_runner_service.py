@@ -14,8 +14,6 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
 from agent.src.services.assets.adapters.composition_service import (
     AdapterCompositionService,
 )
-from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
-from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
 from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
@@ -27,16 +25,6 @@ from agent.src.services.federation.rounds.runtime_service import (
     FederationRunResult,
     FederationRuntimeService,
 )
-from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.backends.inputs.models import (
-    StoredEventTrainingExampleBuildRequest,
-    TrainingExampleBuildRequest,
-    TrainingExampleSource,
-)
-from agent.src.services.training.datasets.captured_text_training_source_service import (
-    CapturedTextTrainingSourceService,
-)
-from agent.src.services.training.examples.service import TrainingExampleService
 from agent.src.services.training.execution.query_ssl_training_task_service import (
     AgentQuerySslTrainingTaskRunRequest,
     AgentQuerySslTrainingTaskService,
@@ -45,8 +33,6 @@ from agent.src.services.training.execution.runtime_compatibility import (
     validate_local_training_runtime,
 )
 from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
-from shared.src.contracts.model_contracts import PROTOTYPE_PACK_AUXILIARY_KEY
-from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 RoundClientFactory = Callable[[str], RoundClient]
 FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
@@ -82,14 +68,11 @@ class AgentTrainingTaskRunnerService:
     """
 
     scored_event_repository: ScoredEventRepository
-    prototype_runtime_service: PrototypeRuntimeService
-    prototype_sync_service: PrototypeSyncService
     shared_adapter_runtime_service: SharedAdapterRuntimeService
     shared_adapter_sync_service: SharedAdapterSyncService
     round_client_factory: RoundClientFactory
     federation_runtime_service_factory: FederationRuntimeServiceFactory
     captured_text_repository: CapturedTextRepository | None = None
-    embedding_adapter: EmbeddingAdapter | None = None
     query_ssl_task_service: AgentQuerySslTrainingTaskService = field(
         default_factory=AgentQuerySslTrainingTaskService
     )
@@ -182,70 +165,7 @@ class AgentTrainingTaskRunnerService:
                 message=result.message,
             )
 
-        prototype_version = active_manifest.auxiliary_artifact_versions.get(
-            PROTOTYPE_PACK_AUXILIARY_KEY
-        )
-        if prototype_version is None:
-            training_examples = ()
-        else:
-            try:
-                self.prototype_sync_service.pull_version(
-                    server_base_url=request.server_base_url,
-                    prototype_version=prototype_version,
-                )
-                active_pack = self.prototype_runtime_service.get_active_pack()
-            except FileNotFoundError:
-                training_examples = ()
-            else:
-                scoring_service = ScoringService.from_objective_config(
-                    task_payload.objective_config,
-                    shared_state=active_state,
-                )
-                training_example_service = TrainingExampleService.from_objective_config(
-                    task_payload.objective_config
-                )
-                if training_example_service.backend.supports_stored_event_rebuild:
-                    stored_events = self.scored_event_repository.get_recent_stored(
-                        days=request.scored_event_days
-                    )
-                    training_examples = (
-                        training_example_service.build_examples_from_stored_events(
-                            StoredEventTrainingExampleBuildRequest(
-                                stored_events=stored_events,
-                                prototype_pack=active_pack,
-                                scoring_service=scoring_service,
-                                adapter_state=active_state,
-                            )
-                        )
-                    )
-                else:
-                    source_rows = self._load_captured_text_source_rows(
-                        days=request.scored_event_days,
-                        max_examples=task_payload.selection_policy.max_examples,
-                    )
-                    if source_rows and self.embedding_adapter is None:
-                        return AgentTrainingTaskRunResult(
-                            status="missing_embedding_adapter",
-                            round_id=task_payload.round_id,
-                            task_id=task_payload.task_id,
-                            message=(
-                                "generated captured text source를 학습에 쓰려면 "
-                                "embedding_adapter가 필요합니다."
-                            ),
-                        )
-                    if not source_rows or self.embedding_adapter is None:
-                        training_examples = ()
-                    else:
-                        training_examples = training_example_service.build_examples(
-                            TrainingExampleBuildRequest(
-                                source_rows=source_rows,
-                                adapter=self.embedding_adapter,
-                                adapter_state=active_state,
-                                prototype_pack=active_pack,
-                                model_id=task_payload.model_id,
-                                scoring_service=scoring_service,
-                            )
-                        )
+        training_examples = ()
 
         service = self.federation_runtime_service_factory(request.server_base_url)
         result: FederationRunResult = service.run_current_task(
@@ -262,20 +182,4 @@ class AgentTrainingTaskRunnerService:
             example_count=result.example_count,
             accepted_count=result.accepted_count,
             message=result.message,
-        )
-
-    def _load_captured_text_source_rows(
-        self,
-        *,
-        days: int,
-        max_examples: int | None,
-    ) -> tuple[TrainingExampleSource, ...]:
-        if self.captured_text_repository is None:
-            return ()
-        service = CapturedTextTrainingSourceService(
-            repository=self.captured_text_repository
-        )
-        return service.get_recent_source_rows(
-            days=days,
-            limit=max_examples or 100,
         )

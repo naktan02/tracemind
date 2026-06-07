@@ -8,6 +8,8 @@ from typing import Protocol
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
+ScoringAssets = Mapping[str, Sequence[float] | Sequence[Sequence[float]]]
+
 
 class SharedAdapterScoringBackend(Protocol):
     """category score dict를 계산하는 method-owned backend interface."""
@@ -20,7 +22,7 @@ class SharedAdapterScoringBackend(Protocol):
     def score(
         self,
         embedding: Sequence[float],
-        prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        scoring_assets: ScoringAssets,
         shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
         """임베딩과 optional shared state로 category score dict를 계산한다."""

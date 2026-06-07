@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
@@ -17,6 +17,7 @@ from shared.src.domain.entities.training.shared_adapter_state import SharedAdapt
 from .base import (
     PROTOTYPE_SIMILARITY_BACKEND_NAME,
     PROTOTYPE_SIMILARITY_CONFIDENCE_KIND,
+    ScoringAssets,
     ScoringBackend,
 )
 from .registry import register_scoring_backend
@@ -51,13 +52,13 @@ class PrototypeSimilarityScoringBackend:
     def score(
         self,
         embedding: Sequence[float],
-        prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        scoring_assets: ScoringAssets,
         shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
         del shared_state
         return score_prototype_categories(
             embedding=embedding,
-            prototypes=prototypes,
+            prototypes=scoring_assets,
             policy=self.policy,
             similarity_name=self.similarity_name,
         )

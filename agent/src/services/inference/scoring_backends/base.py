@@ -11,6 +11,8 @@ from shared.src.domain.entities.training.shared_adapter_state import SharedAdapt
 PROTOTYPE_SIMILARITY_BACKEND_NAME = "prototype_similarity"
 PROTOTYPE_SIMILARITY_CONFIDENCE_KIND = "prototype_similarity_top1"
 
+ScoringAssets = Mapping[str, Sequence[float] | Sequence[Sequence[float]]]
+
 
 class ScoringBackend(Protocol):
     """category score dict를 계산하는 backend 인터페이스."""
@@ -23,10 +25,10 @@ class ScoringBackend(Protocol):
     def score(
         self,
         embedding: Sequence[float],
-        prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        scoring_assets: ScoringAssets,
         shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
-        """임베딩과 prototype들로 category score dict를 계산한다."""
+        """임베딩과 scorer별 asset으로 category score dict를 계산한다."""
 
 
 ScoringBackendFactory = Callable[[TrainingObjectiveConfig, str], ScoringBackend]

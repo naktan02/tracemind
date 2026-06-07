@@ -537,8 +537,6 @@ def test_peft_round_default_query_ssl_task_routes_to_agent_query_ssl_service(
             runtime_factory = MagicMock()
             runner = AgentTrainingTaskRunnerService(
                 scored_event_repository=MagicMock(),
-                prototype_runtime_service=MagicMock(),
-                prototype_sync_service=MagicMock(),
                 shared_adapter_runtime_service=shared_runtime,
                 shared_adapter_sync_service=shared_sync,
                 round_client_factory=MagicMock(return_value=round_client),

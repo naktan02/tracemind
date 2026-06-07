@@ -1,21 +1,14 @@
-"""Prototype runtime/sync unit tests."""
+"""Prototype runtime unit tests."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import httpx
-
 from agent.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
 from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
-from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
-from shared.src.contracts.prototype_contracts import (
-    CurrentPrototypePackResponse,
-    PrototypePackActivationPointer,
-    PrototypePackPayload,
-)
+from shared.src.contracts.prototype_contracts import PrototypePackPayload
 
 
 def _load_fixture_payload() -> PrototypePackPayload:
@@ -23,23 +16,6 @@ def _load_fixture_payload() -> PrototypePackPayload:
     return PrototypePackPayload.model_validate_json(
         fixture_path.read_text(encoding="utf-8")
     )
-
-
-def _transport_with_json(
-    payload: dict[str, object] | None,
-    *,
-    status_code: int = 200,
-) -> httpx.MockTransport:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if payload is None:
-            return httpx.Response(status_code=status_code, request=request)
-        return httpx.Response(
-            status_code=status_code,
-            request=request,
-            json=payload,
-        )
-
-    return httpx.MockTransport(handler)
 
 
 def _multi_payload() -> PrototypePackPayload:
@@ -120,42 +96,3 @@ def test_runtime_service_projects_representative_centroids_for_multi_pack(
 
     assert projected["anxiety"] == [0.0, 1.0, 0.0]
     assert projected["normal"] == [0.0, 0.0, 1.0]
-
-
-def test_sync_service_pulls_current_pack_and_activates_it(tmp_path: Path) -> None:
-    repository = PrototypePackRepository(state_root=tmp_path / "prototype_packs")
-    payload = _load_fixture_payload()
-    response_payload = CurrentPrototypePackResponse(
-        active=PrototypePackActivationPointer(
-            prototype_version=payload.prototype_version,
-            activated_at=payload.built_at,
-        ),
-        pack=payload,
-    )
-    sync_service = PrototypeSyncService(
-        repository=repository,
-        _transport=_transport_with_json(response_payload.model_dump(mode="json")),
-    )
-    pointer = sync_service.pull_current(server_base_url="http://127.0.0.1:8000/")
-
-    assert pointer.prototype_version == payload.prototype_version
-    assert repository.path_for_version(payload.prototype_version).exists()
-
-
-def test_sync_service_pulls_specific_pack_version_and_activates_it(
-    tmp_path: Path,
-) -> None:
-    repository = PrototypePackRepository(state_root=tmp_path / "prototype_packs")
-    payload = _load_fixture_payload()
-    sync_service = PrototypeSyncService(
-        repository=repository,
-        _transport=_transport_with_json(payload.model_dump(mode="json")),
-    )
-
-    pointer = sync_service.pull_version(
-        server_base_url="http://127.0.0.1:8000/",
-        prototype_version=payload.prototype_version,
-    )
-
-    assert pointer.prototype_version == payload.prototype_version
-    assert repository.path_for_version(payload.prototype_version).exists()

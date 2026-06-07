@@ -39,8 +39,6 @@ from agent.src.infrastructure.repositories.wellbeing_settings_repository import 
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
-from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
-from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
 from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
@@ -81,7 +79,6 @@ from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import (
     WellbeingTimeseriesService,
 )
-from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 RoundClientFactory = Callable[[str], RoundClient]
 FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
@@ -133,15 +130,12 @@ def create_app(
     wellbeing_snapshot_repository: WellbeingSnapshotRepository | None = None,
     family_access_repository: FamilyAccessRepository | None = None,
     wellbeing_settings_repository: WellbeingSettingsRepository | None = None,
-    prototype_runtime_service: PrototypeRuntimeService | None = None,
-    prototype_sync_service: PrototypeSyncService | None = None,
     shared_adapter_runtime_service: SharedAdapterRuntimeService | None = None,
     shared_adapter_sync_service: SharedAdapterSyncService | None = None,
     child_support_coach_service: ChildSupportCoachService | None = None,
     child_support_llm_provider: ChildSupportLlmProvider | None = None,
     round_client_factory: RoundClientFactory | None = None,
     federation_runtime_service_factory: FederationRuntimeServiceFactory | None = None,
-    training_embedding_adapter: EmbeddingAdapter | None = None,
     family_extension_allowed_origins: tuple[str, ...] | None = None,
 ) -> FastAPI:
     """Agent API 앱을 생성하고 override 가능한 기본 의존성을 연결한다."""
@@ -188,10 +182,6 @@ def create_app(
     app.state.wellbeing_settings_repository = (
         wellbeing_settings_repository or WellbeingSettingsRepository()
     )
-    app.state.prototype_runtime_service = (
-        prototype_runtime_service or PrototypeRuntimeService()
-    )
-    app.state.prototype_sync_service = prototype_sync_service or PrototypeSyncService()
     app.state.shared_adapter_runtime_service = (
         shared_adapter_runtime_service or SharedAdapterRuntimeService()
     )
@@ -243,13 +233,6 @@ def create_app(
     )
     if pipeline_service is not None:
         app.state.pipeline_service = pipeline_service
-    if training_embedding_adapter is not None:
-        app.state.training_embedding_adapter = training_embedding_adapter
-    elif pipeline_service is not None:
-        embedding_service = getattr(pipeline_service, "embedding_service", None)
-        pipeline_adapter = getattr(embedding_service, "adapter", None)
-        if pipeline_adapter is not None:
-            app.state.training_embedding_adapter = pipeline_adapter
 
     app.include_router(health_router)
     app.include_router(captured_text_router)

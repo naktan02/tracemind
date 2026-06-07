@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 
+from methods.adaptation.scoring_backend import ScoringAssets
 from methods.adaptation.scoring_registry import register_shared_adapter_scoring_backend
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_ADAPTER_KIND,
@@ -44,10 +45,10 @@ class ClassifierHeadLogitsScoringBackend:
     def score(
         self,
         embedding: Sequence[float],
-        prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        scoring_assets: ScoringAssets,
         shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
-        del prototypes
+        del scoring_assets
         if not isinstance(shared_state, ClassifierHeadState):
             raise ValueError(
                 "classifier_head_logits backend requires "

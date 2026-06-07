@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from agent.src.services.inference.scoring_backends.base import ScoringBackend
+from agent.src.services.inference.scoring_backends.base import (
+    ScoringAssets,
+    ScoringBackend,
+)
 from agent.src.services.inference.scoring_backends.helpers import (
     resolve_scoring_backend_name,
     resolve_scoring_confidence_kind,
@@ -52,7 +55,7 @@ class ScoringService:
     def score(
         self,
         embedding: Sequence[float],
-        prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        scoring_assets: ScoringAssets,
         *,
         shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
@@ -61,7 +64,7 @@ class ScoringService:
         )
         return self.backend.score(
             embedding,
-            prototypes,
+            scoring_assets,
             shared_state=effective_shared_state,
         )
 

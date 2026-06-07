@@ -68,8 +68,6 @@ envelope으로 전달하지 않는다.
 
 | Method | Path | 역할 | Source |
 |---|---|---|---|
-| GET | `/api/v1/sync/prototypes/current` | agent local active prototype pack 조회 | `agent/src/api/sync.py` |
-| POST | `/api/v1/sync/prototypes/pull` | main server의 current prototype pack을 local로 pull | `agent/src/api/sync.py` |
 | GET | `/api/v1/sync/shared-adapters/current` | agent local active shared adapter state 조회 | `agent/src/api/sync.py` |
 | POST | `/api/v1/sync/shared-adapters/pull` | main server의 current shared adapter state를 local로 pull | `agent/src/api/sync.py` |
 
@@ -155,14 +153,6 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | `ModelManifestPayload` | `shared/src/contracts/model_contracts.py` |
 | `CurrentSharedAdapterStatePayload` | `shared/src/contracts/adapter_contract_families/base.py` |
 | `TrainingUpdateSubmissionPayload` | `shared/src/contracts/training_contracts.py` |
-
-### Prototype Packs
-
-| Method | Path | 역할 | Source |
-|---|---|---|---|
-| GET | `/api/v1/prototypes/current` | current prototype pack pointer와 payload 조회 | `main_server/src/api/prototypes.py` |
-| GET | `/api/v1/prototypes/{prototype_version}` | version별 prototype pack 조회 | `main_server/src/api/prototypes.py` |
-| POST | `/api/v1/prototypes/activate` | prototype pack 활성화 | `main_server/src/api/prototypes.py` |
 
 주요 contract:
 

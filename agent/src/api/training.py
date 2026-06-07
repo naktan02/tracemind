@@ -14,8 +14,6 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
-from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
-from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
 from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
@@ -31,7 +29,6 @@ from agent.src.services.training.execution.agent_training_task_runner_service im
     AgentTrainingTaskRunRequest,
 )
 from shared.src.contracts.training_contracts import TrainingTaskPayload
-from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 
 class RunCurrentTaskRequest(BaseModel):
@@ -98,28 +95,6 @@ def get_scored_event_repository(request: Request) -> ScoredEventRepository:
     return repo
 
 
-def get_prototype_runtime_service(request: Request) -> PrototypeRuntimeService:
-    """app.state에서 PrototypeRuntimeService를 읽는다."""
-    service = getattr(request.app.state, "prototype_runtime_service", None)
-    if service is None:
-        raise RuntimeError(
-            "PrototypeRuntimeService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.prototype_runtime_service를 설정하세요."
-        )
-    return service
-
-
-def get_prototype_sync_service(request: Request) -> PrototypeSyncService:
-    """app.state에서 PrototypeSyncService를 읽는다."""
-    service = getattr(request.app.state, "prototype_sync_service", None)
-    if service is None:
-        raise RuntimeError(
-            "PrototypeSyncService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.prototype_sync_service를 설정하세요."
-        )
-    return service
-
-
 def get_shared_adapter_runtime_service(request: Request) -> SharedAdapterRuntimeService:
     """app.state에서 SharedAdapterRuntimeService를 읽는다."""
     service = getattr(request.app.state, "shared_adapter_runtime_service", None)
@@ -170,14 +145,6 @@ ScoredEventRepoDep = Annotated[
     ScoredEventRepository,
     Depends(get_scored_event_repository),
 ]
-ProtoServiceDep = Annotated[
-    PrototypeRuntimeService,
-    Depends(get_prototype_runtime_service),
-]
-PrototypeSyncServiceDep = Annotated[
-    PrototypeSyncService,
-    Depends(get_prototype_sync_service),
-]
 SharedAdapterRuntimeServiceDep = Annotated[
     SharedAdapterRuntimeService,
     Depends(get_shared_adapter_runtime_service),
@@ -196,8 +163,6 @@ FederationRuntimeFactoryDep = Annotated[
 def get_training_task_runner_service(
     request: Request,
     repo: ScoredEventRepoDep,
-    proto_service: ProtoServiceDep,
-    proto_sync_service: PrototypeSyncServiceDep,
     shared_adapter_runtime_service: SharedAdapterRuntimeServiceDep,
     shared_adapter_sync_service: SharedAdapterSyncServiceDep,
     round_client_factory: RoundClientFactoryDep,
@@ -207,14 +172,11 @@ def get_training_task_runner_service(
 
     return AgentTrainingTaskRunnerService(
         scored_event_repository=repo,
-        prototype_runtime_service=proto_service,
-        prototype_sync_service=proto_sync_service,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
         federation_runtime_service_factory=runtime_factory,
         captured_text_repository=_get_optional_captured_text_repository(request),
-        embedding_adapter=_get_optional_training_embedding_adapter(request),
     )
 
 
@@ -305,15 +267,3 @@ def _get_optional_captured_text_repository(
     if repository is None:
         return None
     return repository
-
-
-def _get_optional_training_embedding_adapter(
-    request: Request,
-) -> EmbeddingAdapter | None:
-    adapter = getattr(request.app.state, "training_embedding_adapter", None)
-    if adapter is not None:
-        return adapter
-    pipeline_service = getattr(request.app.state, "pipeline_service", None)
-    embedding_service = getattr(pipeline_service, "embedding_service", None)
-    pipeline_adapter = getattr(embedding_service, "adapter", None)
-    return pipeline_adapter

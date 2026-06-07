@@ -32,6 +32,10 @@ class PrototypeRuntimeService:
     def get_active_prototypes(self) -> dict[str, tuple[list[float], ...]]:
         return extract_category_prototypes(self.get_active_pack())
 
+    def get_scoring_assets(self) -> dict[str, tuple[list[float], ...]]:
+        """prototype scorer용 asset provider 호환 표면."""
+        return self.get_active_prototypes()
+
     def get_active_single_centroids(self) -> dict[str, list[float]]:
         return require_single_category_centroids(self.get_active_pack())
 

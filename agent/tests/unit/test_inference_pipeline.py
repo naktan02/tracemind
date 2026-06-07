@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -76,6 +77,37 @@ def test_repo_save_and_get_recent(tmp_repo: ScoredEventRepository) -> None:
     assert events[0].category_scores == {"anxiety": 0.9, "depression": 0.4}
 
 
+def test_repo_uses_analysis_event_schema(tmp_repo: ScoredEventRepository) -> None:
+    """저장소가 method-agnostic analysis schema를 생성한다."""
+    with sqlite3.connect(tmp_repo.db_path) as conn:
+        table_names = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+        analysis_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(analysis_events)")
+        }
+        score_columns = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(analysis_category_scores)")
+        }
+
+    assert "analysis_events" in table_names
+    assert "analysis_category_scores" in table_names
+    assert {
+        "analysis_id",
+        "source_event_id",
+        "scorer_family",
+        "scorer_name",
+        "model_revision",
+        "confidence_kind",
+        "metadata",
+    }.issubset(analysis_columns)
+    assert {"analysis_id", "category", "score"}.issubset(score_columns)
+
+
 def test_repo_get_recent_filters_old_events(tmp_repo: ScoredEventRepository) -> None:
     """기간 밖의 이벤트는 get_recent에서 제외된다."""
     old_event = _make_scored_event(
@@ -124,6 +156,7 @@ def _make_pipeline(
     tmp_path: Path,
     *,
     with_translation: bool = False,
+    with_scoring_asset_provider: bool = True,
     shared_adapter_provider=None,
     local_adapter_provider=None,
 ) -> InferencePipelineService:
@@ -136,10 +169,12 @@ def _make_pipeline(
     scoring_service.backend_name = "prototype_similarity"
     scoring_service.confidence_kind = "prototype_similarity_top1"
 
-    prototype_provider = MagicMock()
-    prototype_provider.get_active_prototypes.return_value = {
-        "anxiety": ([0.1, 0.2, 0.3],)
-    }
+    scoring_asset_provider = None
+    if with_scoring_asset_provider:
+        scoring_asset_provider = MagicMock()
+        scoring_asset_provider.get_scoring_assets.return_value = {
+            "anxiety": ([0.1, 0.2, 0.3],)
+        }
 
     repo = ScoredEventRepository(db_path=tmp_path / "events.db")
     query_buffer_repo = QueryBufferRepository(db_path=tmp_path / "query_buffer.db")
@@ -152,8 +187,8 @@ def _make_pipeline(
     return InferencePipelineService(
         embedding_service=embedding_service,
         scoring_service=scoring_service,
-        prototype_provider=prototype_provider,
         event_repository=repo,
+        scoring_asset_provider=scoring_asset_provider,
         shared_adapter_provider=shared_adapter_provider,
         local_adapter_provider=local_adapter_provider,
         query_buffer_repository=query_buffer_repo,
@@ -173,6 +208,23 @@ def test_pipeline_processes_english_without_translation(tmp_path: Path) -> None:
     assert result.was_translated is False
     assert result.scored_event.translated_text is None
     pipeline.translation_service.translate_batch.assert_not_called()
+
+
+def test_pipeline_can_score_without_scoring_asset_provider(tmp_path: Path) -> None:
+    """classifier 계열처럼 asset 없이 점수를 내는 scorer를 허용한다."""
+    pipeline = _make_pipeline(tmp_path, with_scoring_asset_provider=False)
+    pipeline.scoring_service.backend_name = "classifier_head_logits"
+    pipeline.scoring_service.confidence_kind = "classifier_head_logit_top1"
+
+    event = _make_query_event(text="I feel anxious", locale="en")
+    result = pipeline.process(event)
+
+    assert result.scored_event.category_scores == {"anxiety": 0.85, "depression": 0.25}
+    pipeline.scoring_service.score.assert_called_once_with(
+        [0.1, 0.2, 0.3],
+        {},
+        shared_state=None,
+    )
 
 
 def test_pipeline_translates_korean_event(tmp_path: Path) -> None:
@@ -372,3 +424,27 @@ def test_pipeline_stores_base_embedding_in_repository(tmp_path: Path) -> None:
     # 저장소에도 embedding이 저장됐는지 확인
     stored = pipeline.event_repository.get_recent_stored(days=1)
     assert stored[0].base_embedding == pytest.approx([0.1, 0.2, 0.3])
+
+
+def test_pipeline_stores_scorer_metadata_in_analysis_event(tmp_path: Path) -> None:
+    """파이프라인이 analysis event에 scorer metadata를 저장한다."""
+    pipeline = _make_pipeline(tmp_path)
+    event = _make_query_event(text="I feel anxious", locale="en")
+    pipeline.process(event)
+
+    with sqlite3.connect(pipeline.event_repository.db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT scorer_family, scorer_name, model_revision, confidence_kind
+            FROM analysis_events
+            WHERE analysis_id = ?
+            """,
+            (event.query_id,),
+        ).fetchone()
+
+    assert row == (
+        "prototype",
+        "prototype_similarity",
+        "seed_rev_001",
+        "prototype_similarity_top1",
+    )
