@@ -19,6 +19,9 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.infrastructure.repositories import (
     shared_adapter_update_repository as shared_adapter_update_repository_module,
 )
+from main_server.src.infrastructure.repositories.active_strategy_repository import (
+    ActiveStrategyRepository,
+)
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.federation.rounds.active_manifest_service import (
     ActiveModelManifestService,
@@ -35,6 +38,9 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 )
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
+)
+from main_server.src.services.federation.strategy.active_strategy_service import (
+    ActiveStrategyService,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.adapter_contract_families.classifier_head import (
@@ -59,6 +65,7 @@ def _build_service(
     *,
     tmp_path: Path,
     fixed_time: datetime,
+    active_strategy_service: ActiveStrategyService | None = None,
 ) -> tuple[RoundLifecycleService, ModelManifest]:
     round_repository = RoundRepository(state_root=tmp_path / "rounds")
     state_repository = (
@@ -101,6 +108,15 @@ def _build_service(
             ),
             clock=FixedClock(fixed_time),
         ),
+        active_strategy_service=(
+            active_strategy_service
+            or ActiveStrategyService(
+                repository=ActiveStrategyRepository(
+                    state_root=tmp_path / "active_strategy"
+                ),
+                clock=FixedClock(fixed_time),
+            )
+        ),
         round_manager_service=RoundManagerService(
             payload_adapter=build_shared_adapter_round_payload_adapter(
                 "classifier_head",
@@ -116,6 +132,17 @@ def _build_service(
         activated_at=fixed_time,
     )
     return service, active_manifest
+
+
+def _build_active_strategy_service(
+    *,
+    tmp_path: Path,
+    fixed_time: datetime,
+) -> ActiveStrategyService:
+    return ActiveStrategyService(
+        repository=ActiveStrategyRepository(state_root=tmp_path / "active_strategy"),
+        clock=FixedClock(fixed_time),
+    )
 
 
 def _build_update(
@@ -228,6 +255,37 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     with pytest.raises(HTTPException) as error_info:
         fl_rounds_api.get_current_round(service=service)
     assert error_info.value.status_code == 404
+
+
+def test_fl_round_open_uses_active_strategy_ssl_method(tmp_path: Path) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    strategy_service = _build_active_strategy_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    strategy_service.switch(
+        ssl_method="flexmatch_usb_v1",
+        notes="unit-test switch",
+    )
+    service, _active_manifest = _build_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+        active_strategy_service=strategy_service,
+    )
+
+    open_response = fl_rounds_api.open_round(
+        RoundOpenRequestPayload(round_id="round_flex"),
+        service=service,
+    )
+
+    assert (
+        open_response.training_task.objective_config.extras["query_ssl.method_name"]
+        == "flexmatch_usb_v1"
+    )
+    assert (
+        open_response.training_task.objective_config.extras["query_ssl.algorithm_name"]
+        == "flexmatch"
+    )
 
 
 def test_fl_rounds_api_rejects_duplicate_update_id(

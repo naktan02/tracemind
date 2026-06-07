@@ -11,6 +11,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
 
 from methods.adaptation.peft_text_encoder.config import (
     PEFT_ENCODER_DELTA_FORMAT_INLINE,
@@ -32,6 +35,21 @@ from shared.src.contracts.training_example_backends import (
     WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
 )
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+QUERY_SSL_METHOD_CONFIG_DIR = (
+    REPO_ROOT / "conf" / "strategy_axes" / "ssl_objective" / "consistency_method"
+)
+_NON_OBJECTIVE_QUERY_SSL_CONFIG_KEYS = frozenset(
+    {
+        "name",
+        "algorithm_name",
+        "require_multiview",
+        # Hydra config may express this as ${train_batch_size}; live runtime resolves
+        # it from the round task batch size below.
+        "unlabeled_batch_size",
+    }
+)
+
 
 def _merged_mapping(
     source: Mapping[str, TrainingConfigScalar],
@@ -41,6 +59,63 @@ def _merged_mapping(
     if overrides is not None:
         merged.update(dict(overrides))
     return merged
+
+
+def _load_query_ssl_method_objective_defaults(
+    method_name: str,
+) -> Mapping[str, TrainingConfigScalar]:
+    """Hydra consistency_method YAML에서 live task objective 기본값을 읽는다."""
+
+    path = QUERY_SSL_METHOD_CONFIG_DIR / f"{method_name}.yaml"
+    if not path.exists():
+        raise ValueError(f"Query SSL method config not found: {path}")
+    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(payload, Mapping):
+        raise ValueError(f"Query SSL method config must be a mapping: {path}")
+    declared_name = str(payload.get("name", "")).strip()
+    if declared_name != method_name:
+        raise ValueError(
+            f"Query SSL method config name mismatch: {declared_name!r} != "
+            f"{method_name!r}."
+        )
+    algorithm_name = str(payload.get("algorithm_name", "")).strip()
+    if not algorithm_name:
+        raise ValueError(f"Query SSL method config requires algorithm_name: {path}")
+    defaults: dict[str, TrainingConfigScalar] = {
+        "method_name": method_name,
+        "algorithm_name": algorithm_name,
+    }
+    for key, value in payload.items():
+        normalized_key = str(key).strip()
+        if normalized_key in _NON_OBJECTIVE_QUERY_SSL_CONFIG_KEYS:
+            continue
+        defaults[normalized_key] = _normalize_query_ssl_config_scalar(
+            value,
+            key=normalized_key,
+            path=path,
+        )
+    return freeze_mapping(defaults)
+
+
+def _normalize_query_ssl_config_scalar(
+    value: object,
+    *,
+    key: str,
+    path: Path,
+) -> TrainingConfigScalar:
+    if isinstance(value, str):
+        if value.strip().startswith("${"):
+            raise ValueError(
+                f"Query SSL runtime fallback cannot use unresolved interpolation "
+                f"for {key!r}: {path}"
+            )
+        return value
+    if isinstance(value, bool | int | float):
+        return value
+    raise ValueError(
+        f"Query SSL runtime fallback only supports scalar config values for "
+        f"{key!r}: {path}"
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,8 +329,6 @@ FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK_NAME = "fixmatch_fedavg.v1"
 FIXMATCH_QUERY_SSL_METHOD_NAME = "fixmatch_usb_v1"
 FIXMATCH_QUERY_SSL_ALGORITHM_NAME = "fixmatch"
 FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY = "first_aug"
-FIXMATCH_QUERY_SSL_TEMPERATURE = 0.5
-FIXMATCH_QUERY_SSL_P_CUTOFF = 0.95
 FLEXMATCH_QUERY_SSL_METHOD_NAME = "flexmatch_usb_v1"
 FLEXMATCH_QUERY_SSL_ALGORITHM_NAME = "flexmatch"
 PEFT_CLASSIFIER_UPDATE_PROFILE_NAME = "peft_classifier_update_v1"
@@ -268,28 +341,11 @@ FEDAVG_MERGED_DELTA_SERVER_UPDATE_POLICY_NAME = "fedavg_merged_delta"
 
 QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS = freeze_mapping(
     {
-        FIXMATCH_QUERY_SSL_METHOD_NAME: freeze_mapping(
-            {
-                "method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
-                "algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
-                "temperature": FIXMATCH_QUERY_SSL_TEMPERATURE,
-                "p_cutoff": FIXMATCH_QUERY_SSL_P_CUTOFF,
-                "hard_label": True,
-                "lambda_u": 1.0,
-                "supervised_loss_weight": 1.0,
-            }
+        FIXMATCH_QUERY_SSL_METHOD_NAME: _load_query_ssl_method_objective_defaults(
+            FIXMATCH_QUERY_SSL_METHOD_NAME
         ),
-        FLEXMATCH_QUERY_SSL_METHOD_NAME: freeze_mapping(
-            {
-                "method_name": FLEXMATCH_QUERY_SSL_METHOD_NAME,
-                "algorithm_name": FLEXMATCH_QUERY_SSL_ALGORITHM_NAME,
-                "temperature": 0.5,
-                "p_cutoff": 0.95,
-                "hard_label": True,
-                "thresh_warmup": True,
-                "lambda_u": 1.0,
-                "supervised_loss_weight": 1.0,
-            }
+        FLEXMATCH_QUERY_SSL_METHOD_NAME: _load_query_ssl_method_objective_defaults(
+            FLEXMATCH_QUERY_SSL_METHOD_NAME
         ),
     }
 )
@@ -304,11 +360,13 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
         "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
         "query_ssl.strong_view_policy": FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
         "query_ssl.unlabeled_batch_size": 8,
-        "query_ssl.temperature": FIXMATCH_QUERY_SSL_TEMPERATURE,
-        "query_ssl.p_cutoff": FIXMATCH_QUERY_SSL_P_CUTOFF,
-        "query_ssl.hard_label": True,
-        "query_ssl.lambda_u": 1.0,
-        "query_ssl.supervised_loss_weight": 1.0,
+        **{
+            f"query_ssl.{key}": value
+            for key, value in QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS[
+                FIXMATCH_QUERY_SSL_METHOD_NAME
+            ].items()
+            if key not in {"method_name", "algorithm_name"}
+        },
         "peft_classifier.delta_format": PEFT_ENCODER_DELTA_FORMAT_INLINE,
     }
 )
@@ -374,11 +432,6 @@ def build_runtime_strategy_training_objective_config(
         raise ValueError("method_owned live strategy requires fssl_method.")
     if normalized_mode == "composed" and normalized_fssl_method is not None:
         raise ValueError("composed live strategy must not provide fssl_method.")
-    if normalized_fssl_method is not None:
-        raise ValueError(
-            "main_server live runtime does not support method-owned FSSL tasks yet: "
-            f"{normalized_fssl_method!r}."
-        )
     normalized_profile = (
         _optional_name(local_update_profile_name) or PEFT_CLASSIFIER_UPDATE_PROFILE_NAME
     )
@@ -394,8 +447,7 @@ def build_runtime_strategy_training_objective_config(
     )
     if normalized_server_update != FEDAVG_MERGED_DELTA_SERVER_UPDATE_POLICY_NAME:
         raise ValueError(
-            "Unsupported live server_update_policy: "
-            f"{normalized_server_update!r}."
+            f"Unsupported live server_update_policy: {normalized_server_update!r}."
         )
     normalized_aggregation = _optional_name(aggregation_backend_name)
     if (
@@ -403,8 +455,7 @@ def build_runtime_strategy_training_objective_config(
         and normalized_aggregation != FEDAVG_AGGREGATION_BACKEND_NAME
     ):
         raise ValueError(
-            "Unsupported live aggregation_backend: "
-            f"{normalized_aggregation!r}."
+            f"Unsupported live aggregation_backend: {normalized_aggregation!r}."
         )
 
     query_ssl_method = _optional_name(ssl_method_name) or FIXMATCH_QUERY_SSL_METHOD_NAME

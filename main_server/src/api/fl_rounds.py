@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from main_server.src.services.federation.rounds.boundary.mappers import (
     initial_shared_artifact_publication_request_from_payload,
@@ -130,6 +130,47 @@ def get_active_shared_adapter_state(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         ) from error
+
+
+@router.get("/aggregation-artifacts/json")
+def get_aggregation_json_artifact(
+    service: RoundServiceDep,
+    artifact_ref: str = Query(min_length=1),
+) -> dict[str, object]:
+    """server-owned aggregation JSON artifact를 반환한다."""
+
+    try:
+        return service.load_aggregation_json_artifact(artifact_ref)
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+
+
+@router.get("/aggregation-artifacts/safetensors")
+def get_aggregation_safetensors_artifact(
+    service: RoundServiceDep,
+    artifact_ref: str = Query(min_length=1),
+) -> dict[str, object]:
+    """server-owned aggregation safetensors artifact를 JSON-safe하게 반환한다."""
+
+    try:
+        tensors, metadata = service.load_aggregation_safetensors_artifact(artifact_ref)
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+    return {
+        "artifact_ref": artifact_ref,
+        "artifact_format": "safetensors",
+        "metadata": metadata,
+        "tensors": {
+            name: tensor.detach().cpu().tolist()
+            for name, tensor in sorted(tensors.items())
+        },
+    }
 
 
 @router.post("", response_model=RoundRecordPayload, status_code=status.HTTP_201_CREATED)

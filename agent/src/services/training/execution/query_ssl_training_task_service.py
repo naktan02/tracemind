@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from hashlib import sha256
 
 from agent.src.infrastructure.repositories.analysis_event_repository import (
@@ -16,6 +17,15 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
+from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
+    TRAINING_USAGE_ROLE_LABELED_ANCHOR,
+    TRAINING_USAGE_ROLE_UNLABELED_GENERATED_VIEW,
+    TRAINING_USAGE_STAGE_QUERY_SSL_INPUT,
+    TRAINING_USAGE_STATUS_UPLOADED,
+    TrainingUsageLedgerRepository,
+    TrainingUsageRowRecord,
+    TrainingUsageRunRecord,
+)
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.federation.rounds.runtime_service import (
     FederationRunResult,
@@ -26,6 +36,7 @@ from agent.src.services.training.datasets.captured_text_training_source_service 
 )
 from agent.src.services.training.execution.query_ssl_local_training_service import (
     QuerySslLocalTrainingService,
+    QuerySslPeftEncoderClientTrainingResult,
     QuerySslPeftEncoderLocalTrainingRequest,
 )
 from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
@@ -41,7 +52,10 @@ from methods.adaptation.peft_text_encoder.update.materialization import (
 from methods.adaptation.peft_text_encoder.update_family_runtime import (
     build_training_backend_for_peft_encoder_state,
 )
-from methods.federated.aggregation.base import FederatedAggregationContext
+from methods.federated.aggregation.base import (
+    AggregationJsonArtifactLoader,
+    FederatedAggregationContext,
+)
 from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
@@ -67,6 +81,7 @@ class AgentQuerySslTrainingTaskRunRequest:
     captured_text_repository: CapturedTextRepository | None
     analysis_event_days: int
     agent_id: str | None = None
+    artifact_loader: AggregationJsonArtifactLoader | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,6 +101,9 @@ class AgentQuerySslTrainingTaskService:
 
     repository: TrainingArtifactRepository = field(
         default_factory=TrainingArtifactRepository
+    )
+    usage_ledger_repository: TrainingUsageLedgerRepository = field(
+        default_factory=TrainingUsageLedgerRepository
     )
     backend: SharedAdapterTrainingBackend | None = None
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig = field(
@@ -151,6 +169,7 @@ class AgentQuerySslTrainingTaskService:
             context=FederatedAggregationContext(
                 next_model_revision=request.active_state.model_revision,
                 aggregated_at=created_at,
+                artifact_loader=request.artifact_loader,
             ),
         )
         local_result = local_service.run_peft_encoder(
@@ -177,6 +196,22 @@ class AgentQuerySslTrainingTaskService:
             make_training_update_submission(
                 envelope=local_result.update_envelope,
                 update_payload=local_result.update_payload,
+            ),
+        )
+        recorded_at = self.clock.now()
+        self.usage_ledger_repository.save_run(
+            _build_usage_run_record(
+                request=request,
+                query_ssl_config=query_ssl_config,
+                local_result=local_result,
+                recorded_at=recorded_at,
+            ),
+            rows=_build_usage_row_records(
+                update_id=local_result.update_envelope.update_id,
+                training_task=request.training_task,
+                labeled_rows=labeled_rows,
+                unlabeled_rows=unlabeled_rows,
+                recorded_at=recorded_at,
             ),
         )
         return FederationRunResult(
@@ -227,6 +262,86 @@ def _top_label(category_scores: Mapping[str, float]) -> str:
 def _seed_from_task(training_task: TrainingTask) -> int:
     source = f"{training_task.round_id}:{training_task.task_id}".encode("utf-8")
     return int.from_bytes(sha256(source).digest()[:4], byteorder="big") % (2**31)
+
+
+def _build_usage_run_record(
+    *,
+    request: AgentQuerySslTrainingTaskRunRequest,
+    query_ssl_config: QuerySslObjectiveRuntimeConfig,
+    local_result: QuerySslPeftEncoderClientTrainingResult,
+    recorded_at: datetime,
+) -> TrainingUsageRunRecord:
+    return TrainingUsageRunRecord(
+        update_id=local_result.update_envelope.update_id,
+        round_id=request.training_task.round_id,
+        task_id=request.training_task.task_id,
+        recorded_at=recorded_at,
+        agent_id=request.agent_id,
+        model_id=request.training_task.model_id,
+        model_revision=request.training_task.model_revision,
+        objective_method_name=query_ssl_config.method_name,
+        objective_algorithm_name=query_ssl_config.algorithm_name,
+        status=TRAINING_USAGE_STATUS_UPLOADED,
+        candidate_count=local_result.candidate_count,
+        accepted_count=local_result.accepted_count,
+        metadata={
+            "training_scope": str(request.training_task.training_scope),
+            "local_epochs": request.training_task.local_epochs,
+            "max_steps": request.training_task.max_steps,
+            "selection_max_examples": (
+                request.training_task.selection_policy.max_examples
+            ),
+        },
+    )
+
+
+def _build_usage_row_records(
+    *,
+    update_id: str,
+    training_task: TrainingTask,
+    labeled_rows: Sequence[LabeledQueryRow],
+    unlabeled_rows: Sequence[LabeledQueryRow],
+    recorded_at: datetime,
+) -> tuple[TrainingUsageRowRecord, ...]:
+    records: list[TrainingUsageRowRecord] = []
+    for row in labeled_rows:
+        records.append(
+            TrainingUsageRowRecord(
+                update_id=update_id,
+                source_id=str(row["query_id"]),
+                role=TRAINING_USAGE_ROLE_LABELED_ANCHOR,
+                round_id=training_task.round_id,
+                task_id=training_task.task_id,
+                recorded_at=recorded_at,
+                source_kind="analysis_event",
+                stage=TRAINING_USAGE_STAGE_QUERY_SSL_INPUT,
+                label=str(row["mapped_label_4"]),
+                metadata={
+                    "annotation_source": str(row["annotation_source"]),
+                    "raw_label_scheme": str(row["raw_label_scheme"]),
+                },
+            )
+        )
+    for row in unlabeled_rows:
+        records.append(
+            TrainingUsageRowRecord(
+                update_id=update_id,
+                source_id=str(row["query_id"]),
+                role=TRAINING_USAGE_ROLE_UNLABELED_GENERATED_VIEW,
+                round_id=training_task.round_id,
+                task_id=training_task.task_id,
+                recorded_at=recorded_at,
+                source_kind="captured_text_generated_view",
+                stage=TRAINING_USAGE_STAGE_QUERY_SSL_INPUT,
+                label=None,
+                metadata={
+                    "annotation_source": str(row["annotation_source"]),
+                    "weak_translated": bool(row.get("weak_translated_text")),
+                    "strong_translated": bool(row.get("strong_translated_text")),
+                },
+            )
+        )
+    return tuple(records)
 
 
 def _insufficient_query_ssl_examples(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from main_server.src.infrastructure.repositories import (
@@ -30,6 +30,7 @@ from main_server.src.services.federation.rounds.boundary.models import (
     RoundPublicationSummary,
     RoundRecord,
     RoundStatus,
+    RoundStrategyConfig,
     RoundUpdateAcceptance,
 )
 from main_server.src.services.federation.rounds.initial_publication_service import (
@@ -48,6 +49,9 @@ from main_server.src.services.federation.rounds.round_state_exchange.executor im
 from main_server.src.services.federation.rounds.server_policy.executor import (
     DefaultServerPolicyExecutor,
     ServerPolicyExecutor,
+)
+from main_server.src.services.federation.strategy.active_strategy_service import (
+    ActiveStrategyService,
 )
 from methods.adaptation.server_update_compatibility import (
     require_server_compatible_update_payload,
@@ -144,6 +148,9 @@ class RoundLifecycleService:
     )
     method_descriptor: FederatedSslMethodDescriptor | None = None
     round_runtime_config: object | None = None
+    active_strategy_service: ActiveStrategyService = field(
+        default_factory=ActiveStrategyService
+    )
     clock: Clock = field(default_factory=SystemUtcClock)
 
     def __post_init__(self) -> None:
@@ -178,14 +185,17 @@ class RoundLifecycleService:
                 )
             self.round_repository.clear_active(expected_round_id=active_round.round_id)
 
+        # strategy가 없거나 ssl_method가 없으면 active_strategy에서 자동 적용한다.
+        effective_request = self._apply_active_strategy(request)
+
         active_manifest = self.active_manifest_service.get_active_manifest()
-        round_id = request.round_id or f"round_{uuid4().hex[:8]}"
+        round_id = effective_request.round_id or f"round_{uuid4().hex[:8]}"
         if self.round_repository.has_round(round_id):
             raise RoundConflictError(f"Round already exists: {round_id}")
-        resolved_request = request.to_round_open_request(
+        resolved_request = effective_request.to_round_open_request(
             active_manifest=active_manifest,
             round_id=round_id,
-            task_id=request.task_id,
+            task_id=effective_request.task_id,
         )
         self._validate_open_request(resolved_request)
 
@@ -226,6 +236,27 @@ class RoundLifecycleService:
             manifest=active_manifest,
             state=state_payload,
         )
+
+    def load_aggregation_json_artifact(self, artifact_ref: str) -> dict[str, object]:
+        """server-owned aggregation JSON artifact를 materialize한다."""
+
+        loader = self._require_aggregation_artifact_loader()
+        return dict(loader.load_json_artifact(artifact_ref=artifact_ref))
+
+    def load_aggregation_safetensors_artifact(
+        self,
+        artifact_ref: str,
+    ) -> tuple[dict[str, Any], dict[str, str]]:
+        """server-owned aggregation safetensors artifact를 materialize한다."""
+
+        loader = self._require_aggregation_artifact_loader()
+        tensor_loader = getattr(loader, "load_safetensors_artifact", None)
+        if tensor_loader is None:
+            raise FileNotFoundError(
+                "Current aggregation backend does not expose safetensors artifacts."
+            )
+        tensors, metadata = tensor_loader(artifact_ref=artifact_ref)
+        return dict(tensors), dict(metadata)
 
     def accept_update_submission(
         self,
@@ -292,6 +323,17 @@ class RoundLifecycleService:
             accepted_at=accepted_at,
             idempotent=decision.is_idempotent,
         )
+
+    def _require_aggregation_artifact_loader(self) -> Any:
+        aggregation_backend = (
+            self.round_manager_service.payload_adapter.aggregation_backend
+        )
+        loader = getattr(aggregation_backend, "artifact_loader", None)
+        if loader is None:
+            raise FileNotFoundError(
+                "Current aggregation backend does not expose artifact materializer."
+            )
+        return loader
 
     def finalize_round(
         self,
@@ -408,6 +450,49 @@ class RoundLifecycleService:
             update_payload=update_payload,
             active_state=active_state,
         )
+
+    def _apply_active_strategy(
+        self, request: RoundOpenDraftRequest
+    ) -> RoundOpenDraftRequest:
+        """strategy가 없거나 ssl_method가 없으면 active_strategy를 자동으로 적용한다.
+
+        caller가 strategy를 명시한 경우 그 값을 유지하고,
+        strategy가 None이거나 ssl_method가 None인 경우에만 active_strategy_service의
+        현재 config로 채운다.
+        objective_config가 명시된 경우에는 strategy를 건드리지 않는다.
+        """
+        # objective_config가 명시된 요청은 strategy와 함께 쓸 수 없으므로 그대로 반환
+        if request.objective_config is not None:
+            return request
+
+        active = self.active_strategy_service.get_active_strategy()
+        current_strategy = request.strategy
+
+        # strategy 자체가 없으면 active strategy로 새로 만든다
+        if current_strategy is None:
+            new_strategy = RoundStrategyConfig(
+                ssl_method=active.ssl_method,
+                aggregation_backend=active.aggregation_backend,
+            )
+            return replace(request, strategy=new_strategy)
+
+        # strategy가 있지만 ssl_method가 없으면 active에서 채운다.
+        if current_strategy.ssl_method is None:
+            new_strategy = RoundStrategyConfig(
+                mode=current_strategy.mode,
+                local_update_profile=current_strategy.local_update_profile,
+                ssl_method=active.ssl_method,
+                fssl_method=current_strategy.fssl_method,
+                scenario=current_strategy.scenario,
+                server_update_policy=current_strategy.server_update_policy,
+                aggregation_backend=(
+                    current_strategy.aggregation_backend or active.aggregation_backend
+                ),
+                parameter_overrides=current_strategy.parameter_overrides,
+            )
+            return replace(request, strategy=new_strategy)
+
+        return request
 
 
 def _server_visible_update_payload(

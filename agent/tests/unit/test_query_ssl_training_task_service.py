@@ -14,6 +14,11 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRecord,
     CapturedTextRepository,
 )
+from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
+    TRAINING_USAGE_ROLE_LABELED_ANCHOR,
+    TRAINING_USAGE_ROLE_UNLABELED_GENERATED_VIEW,
+    TrainingUsageLedgerRepository,
+)
 from agent.src.services.training.execution.query_ssl_training_task_service import (
     AgentQuerySslTrainingTaskRunRequest,
     AgentQuerySslTrainingTaskService,
@@ -165,7 +170,11 @@ def test_query_ssl_training_task_service_uploads_query_ssl_update(tmp_path) -> N
     )
     backend = _QuerySslPeftBackend(update_payload)
     round_client = MagicMock()
-    service = AgentQuerySslTrainingTaskService(backend=backend)
+    usage_ledger = TrainingUsageLedgerRepository(db_path=tmp_path / "usage.db")
+    service = AgentQuerySslTrainingTaskService(
+        backend=backend,
+        usage_ledger_repository=usage_ledger,
+    )
 
     result = service.run_current_task(
         AgentQuerySslTrainingTaskRunRequest(
@@ -194,6 +203,20 @@ def test_query_ssl_training_task_service_uploads_query_ssl_update(tmp_path) -> N
         "I feel anxious now"
     )
     round_client.upload_update.assert_called_once()
+    usage_run = usage_ledger.get_run("update_query_ssl_test")
+    usage_rows = usage_ledger.get_rows_for_update("update_query_ssl_test")
+    assert usage_run is not None
+    assert usage_run.round_id == "round_001"
+    assert usage_run.task_id == "task_query_ssl"
+    assert usage_run.agent_id == "agent_01"
+    assert usage_run.objective_method_name == "fixmatch_usb_v1"
+    assert usage_run.objective_algorithm_name == "fixmatch"
+    assert usage_run.candidate_count == 2
+    assert usage_run.accepted_count == 1
+    assert {(row.source_id, row.role) for row in usage_rows} == {
+        ("labeled_1", TRAINING_USAGE_ROLE_LABELED_ANCHOR),
+        ("unlabeled_1", TRAINING_USAGE_ROLE_UNLABELED_GENERATED_VIEW),
+    }
 
 
 def _query_ssl_task() -> TrainingTaskPayload:

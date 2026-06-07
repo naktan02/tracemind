@@ -44,6 +44,9 @@ if TYPE_CHECKING:
     from main_server.src.infrastructure.repositories.round_repository import (
         RoundRepository,
     )
+    from main_server.src.services.federation.strategy.active_strategy_service import (
+        ActiveStrategyService,
+    )
 
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
@@ -89,6 +92,7 @@ def build_round_lifecycle_service_from_config(
     update_payload_repository: SharedAdapterUpdateRepository | None = None,
     model_manifest_repository: ModelManifestRepository | None = None,
     active_manifest_service: ActiveModelManifestService | None = None,
+    active_strategy_service: "ActiveStrategyService | None" = None,
     artifact_repository: (
         shared_adapter_state_repository_module.SharedAdapterStateRepository | None
     ) = None,
@@ -99,6 +103,9 @@ def build_round_lifecycle_service_from_config(
 
     from main_server.src.infrastructure.repositories.round_repository import (
         RoundRepository,
+    )
+    from main_server.src.services.federation.strategy.active_strategy_service import (
+        ActiveStrategyService,
     )
 
     effective_clock = clock or SystemUtcClock()
@@ -125,6 +132,7 @@ def build_round_lifecycle_service_from_config(
                 clock=effective_clock,
             )
         ),
+        active_strategy_service=active_strategy_service or ActiveStrategyService(),
         round_manager_service=build_round_manager_service_from_config(
             config,
             artifact_repository=artifact_repository,

@@ -14,6 +14,9 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
 )
+from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
+    TrainingUsageLedgerRepository,
+)
 from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
@@ -27,6 +30,9 @@ from agent.src.services.federation.rounds.runtime_service import (
 from agent.src.services.training.execution.agent_training_task_runner_service import (
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
+)
+from agent.src.services.training.execution.query_ssl_training_task_service import (
+    AgentQuerySslTrainingTaskService,
 )
 from shared.src.contracts.training_contracts import TrainingTaskPayload
 
@@ -144,6 +150,19 @@ def get_federation_runtime_service_factory(
     return factory
 
 
+def get_training_usage_ledger_repository(
+    request: Request,
+) -> TrainingUsageLedgerRepository:
+    """app.state에서 TrainingUsageLedgerRepository를 읽는다."""
+    repository = getattr(request.app.state, "training_usage_ledger_repository", None)
+    if repository is None:
+        raise RuntimeError(
+            "TrainingUsageLedgerRepository가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.training_usage_ledger_repository를 설정하세요."
+        )
+    return repository
+
+
 AnalysisEventRepoDep = Annotated[
     AnalysisEventRepository,
     Depends(get_analysis_event_repository),
@@ -161,6 +180,10 @@ FederationRuntimeFactoryDep = Annotated[
     FederationRuntimeServiceFactory,
     Depends(get_federation_runtime_service_factory),
 ]
+TrainingUsageLedgerRepoDep = Annotated[
+    TrainingUsageLedgerRepository,
+    Depends(get_training_usage_ledger_repository),
+]
 
 
 def get_training_task_runner_service(
@@ -170,6 +193,7 @@ def get_training_task_runner_service(
     shared_adapter_sync_service: SharedAdapterSyncServiceDep,
     round_client_factory: RoundClientFactoryDep,
     runtime_factory: FederationRuntimeFactoryDep,
+    training_usage_ledger_repository: TrainingUsageLedgerRepoDep,
 ) -> AgentTrainingTaskRunnerService:
     """run-current-task application service를 조립한다."""
 
@@ -180,6 +204,9 @@ def get_training_task_runner_service(
         round_client_factory=round_client_factory,
         federation_runtime_service_factory=runtime_factory,
         captured_text_repository=_get_optional_captured_text_repository(request),
+        query_ssl_task_service=AgentQuerySslTrainingTaskService(
+            usage_ledger_repository=training_usage_ledger_repository
+        ),
     )
 
 

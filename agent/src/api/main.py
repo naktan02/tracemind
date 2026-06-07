@@ -33,6 +33,9 @@ from agent.src.infrastructure.repositories.family_access_repository import (
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRepository,
 )
+from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
+    TrainingUsageLedgerRepository,
+)
 from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
     WellbeingSettingsRepository,
 )
@@ -121,6 +124,7 @@ def create_app(
     analysis_event_repository: AnalysisEventRepository | None = None,
     query_buffer_repository: QueryBufferRepository | None = None,
     captured_text_repository: CapturedTextRepository | None = None,
+    training_usage_ledger_repository: TrainingUsageLedgerRepository | None = None,
     captured_text_view_generation_service: (
         CapturedTextViewGenerationService | None
     ) = None,
@@ -161,6 +165,9 @@ def create_app(
     )
     app.state.captured_text_repository = (
         captured_text_repository or CapturedTextRepository()
+    )
+    app.state.training_usage_ledger_repository = (
+        training_usage_ledger_repository or TrainingUsageLedgerRepository()
     )
     app.state.captured_text_lifecycle_service = (
         captured_text_lifecycle_service

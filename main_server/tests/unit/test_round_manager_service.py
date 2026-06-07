@@ -29,9 +29,8 @@ from methods.adaptation.peft_text_encoder.config import PEFT_ENCODER_DELTA_FORMA
 from methods.federated_ssl.runtime_fallbacks import (
     FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
     FIXMATCH_QUERY_SSL_METHOD_NAME,
-    FIXMATCH_QUERY_SSL_P_CUTOFF,
     FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
-    FIXMATCH_QUERY_SSL_TEMPERATURE,
+    QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS,
     RUNTIME_FALLBACK_TRAINING_PROFILE,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
@@ -170,6 +169,9 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
     service = RoundManagerService(
         payload_adapter=_build_peft_classifier_round_payload_adapter()
     )
+    fixmatch_defaults = QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS[
+        FIXMATCH_QUERY_SSL_METHOD_NAME
+    ]
 
     task = service.create_training_task(
         RoundOpenRequest(
@@ -217,8 +219,8 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
         "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
         "query_ssl.strong_view_policy": FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
         "query_ssl.unlabeled_batch_size": 8,
-        "query_ssl.temperature": FIXMATCH_QUERY_SSL_TEMPERATURE,
-        "query_ssl.p_cutoff": FIXMATCH_QUERY_SSL_P_CUTOFF,
+        "query_ssl.temperature": fixmatch_defaults["temperature"],
+        "query_ssl.p_cutoff": fixmatch_defaults["p_cutoff"],
         "query_ssl.hard_label": True,
         "query_ssl.lambda_u": 1.0,
         "query_ssl.supervised_loss_weight": 1.0,

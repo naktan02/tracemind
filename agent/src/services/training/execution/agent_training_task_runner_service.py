@@ -20,6 +20,7 @@ from agent.src.services.assets.shared_adapters.runtime_service import (
 from agent.src.services.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
 )
+from agent.src.services.federation.rounds.artifact_client import RoundArtifactClient
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.federation.rounds.runtime_service import (
     FederationRunResult,
@@ -35,6 +36,7 @@ from agent.src.services.training.execution.runtime_compatibility import (
 from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
 
 RoundClientFactory = Callable[[str], RoundClient]
+RoundArtifactClientFactory = Callable[[str], RoundArtifactClient]
 FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
 
 
@@ -72,6 +74,7 @@ class AgentTrainingTaskRunnerService:
     shared_adapter_sync_service: SharedAdapterSyncService
     round_client_factory: RoundClientFactory
     federation_runtime_service_factory: FederationRuntimeServiceFactory
+    round_artifact_client_factory: RoundArtifactClientFactory = RoundArtifactClient
     captured_text_repository: CapturedTextRepository | None = None
     query_ssl_task_service: AgentQuerySslTrainingTaskService = field(
         default_factory=AgentQuerySslTrainingTaskService
@@ -142,6 +145,9 @@ class AgentTrainingTaskRunnerService:
                         model_manifest=active_manifest,
                         active_state=active_state,
                         round_client=round_client,
+                        artifact_loader=self.round_artifact_client_factory(
+                            request.server_base_url
+                        ),
                         analysis_event_repository=self.analysis_event_repository,
                         captured_text_repository=self.captured_text_repository,
                         analysis_event_days=request.analysis_event_days,
