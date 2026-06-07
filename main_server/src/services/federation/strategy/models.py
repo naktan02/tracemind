@@ -20,12 +20,14 @@ class ActiveStrategyConfig:
     ssl_method: str
     aggregation_backend: str
     activated_at: datetime
+    fssl_method: str | None = None
     notes: str | None = None
 
     def to_json(self) -> str:
         data = {
             "schema_version": self.schema_version,
             "ssl_method": self.ssl_method,
+            "fssl_method": self.fssl_method,
             "aggregation_backend": self.aggregation_backend,
             "activated_at": self.activated_at.isoformat(),
             "notes": self.notes,
@@ -40,6 +42,7 @@ class ActiveStrategyConfig:
             ssl_method=data["ssl_method"],
             aggregation_backend=data["aggregation_backend"],
             activated_at=datetime.fromisoformat(data["activated_at"]),
+            fssl_method=data.get("fssl_method"),
             notes=data.get("notes"),
         )
 

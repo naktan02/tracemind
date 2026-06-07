@@ -288,6 +288,70 @@ def test_fl_round_open_uses_active_strategy_ssl_method(tmp_path: Path) -> None:
     )
 
 
+def test_fl_round_open_embeds_fssl_peer_context_from_previous_round(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    strategy_service = _build_active_strategy_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    strategy_service.switch(
+        ssl_method="fixmatch_usb_v1",
+        fssl_method="fedmatch",
+    )
+    service, _active_manifest = _build_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+        active_strategy_service=strategy_service,
+    )
+    first_round = fl_rounds_api.open_round(
+        RoundOpenRequestPayload(round_id="round_0001"),
+        service=service,
+    )
+    assert first_round.training_task.fssl_method == "fedmatch"
+    assert first_round.training_task.fssl_context is not None
+    first_peer_context = first_round.training_task.fssl_context["peer_context"]
+    assert isinstance(first_peer_context, dict)
+    assert first_peer_context["warmup"] is True
+
+    update = _build_update(
+        tmp_path=tmp_path,
+        round_id="round_0001",
+        task_id=first_round.training_task.task_id,
+    )
+    fl_rounds_api.accept_update("round_0001", update, service=service)
+    fl_rounds_api.finalize_round(
+        "round_0001",
+        RoundFinalizeRequestPayload(next_model_revision="rev_001"),
+        service=service,
+    )
+
+    second_round = fl_rounds_api.open_round(
+        RoundOpenRequestPayload(round_id="round_0002"),
+        service=service,
+    )
+
+    context = second_round.training_task.fssl_context
+    assert context is not None
+    assert context["method_name"] == "fedmatch"
+    peer_context = context["peer_context"]
+    assert isinstance(peer_context, dict)
+    assert peer_context["source_round_id"] == "round_0001"
+    assert peer_context["warmup"] is False
+    assert peer_context["summary_metrics"]["fedmatch.update_count"] == 1.0
+    assert peer_context["summary_metrics"]["fedmatch.example_count"] == 1.0
+    assert peer_context["client_contexts"] == [
+        {
+            "client_id": "update_001",
+            "update_id": "update_001",
+            "example_count": 1,
+            "metrics": {},
+            "helper_client_ids": [],
+        }
+    ]
+
+
 def test_fl_rounds_api_rejects_duplicate_update_id(
     tmp_path: Path,
 ) -> None:

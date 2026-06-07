@@ -102,6 +102,7 @@ class RoundTaskConfig:
     selection_policy: (
         TrainingSelectionPolicy | Mapping[str, TrainingConfigScalar] | None
     ) = None
+    fssl_context: Mapping[str, object] | None = None
     secure_aggregation: (
         SecureAggregationConfig | Mapping[str, TrainingConfigScalar] | bool | None
     ) = None
@@ -135,6 +136,7 @@ class RoundTaskConfig:
             strategy=self.strategy,
             objective_config=self.objective_config,
             selection_policy=self.selection_policy,
+            fssl_context=self.fssl_context,
             secure_aggregation=self.secure_aggregation,
             min_required_examples=self.min_required_examples,
             gradient_clip_norm=self.gradient_clip_norm,

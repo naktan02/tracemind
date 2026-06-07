@@ -61,6 +61,41 @@ def test_active_strategy_api_switches_current_strategy(tmp_path: Path) -> None:
     assert current_response.json()["ssl_method"] == "flexmatch_usb_v1"
 
 
+def test_active_strategy_api_switches_live_server_fssl_method(tmp_path: Path) -> None:
+    service = _build_service(tmp_path)
+    app = create_app(active_strategy_service=service)
+
+    with TestClient(app, base_url="http://testserver") as client:
+        response = client.post(
+            "/api/v1/admin/strategy",
+            json={
+                "ssl_method": "fixmatch_usb_v1",
+                "fssl_method": "fedmatch",
+                "aggregation_backend": "fedavg",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["fssl_method"] == "fedmatch"
+    assert service.get_active_strategy().fssl_method == "fedmatch"
+
+
+def test_active_strategy_api_clears_fssl_method(tmp_path: Path) -> None:
+    service = _build_service(tmp_path)
+    service.switch(fssl_method="fedmatch")
+    app = create_app(active_strategy_service=service)
+
+    with TestClient(app, base_url="http://testserver") as client:
+        response = client.post(
+            "/api/v1/admin/strategy",
+            json={"fssl_method": ""},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["fssl_method"] is None
+    assert service.get_active_strategy().fssl_method is None
+
+
 def test_active_strategy_api_rejects_unknown_ssl_method(tmp_path: Path) -> None:
     service = _build_service(tmp_path)
     app = create_app(active_strategy_service=service)

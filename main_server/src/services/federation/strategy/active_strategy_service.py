@@ -45,6 +45,7 @@ class ActiveStrategyService:
         self,
         *,
         ssl_method: str | None = None,
+        fssl_method: str | None = None,
         aggregation_backend: str | None = None,
         notes: str | None = None,
     ) -> ActiveStrategyConfig:
@@ -55,9 +56,16 @@ class ActiveStrategyService:
         current = self.repository.load_active()
 
         effective_ssl_method = ssl_method or current.ssl_method
+        effective_fssl_method = (
+            fssl_method if fssl_method is not None else current.fssl_method
+        )
+        if fssl_method == "":
+            effective_fssl_method = None
         effective_backend = aggregation_backend or current.aggregation_backend
 
         self._validate_ssl_method(effective_ssl_method)
+        if effective_fssl_method is not None:
+            self._validate_fssl_method(effective_fssl_method)
         self._validate_aggregation_backend(effective_backend)
 
         new_config = ActiveStrategyConfig(
@@ -65,6 +73,7 @@ class ActiveStrategyService:
             ssl_method=effective_ssl_method,
             aggregation_backend=effective_backend,
             activated_at=self.clock.now(),
+            fssl_method=effective_fssl_method,
             notes=notes,
         )
         self.repository.save_active(new_config)
@@ -85,6 +94,24 @@ class ActiveStrategyService:
             raise StrategyValidationError(
                 f"지원되지 않는 ssl_method입니다: {ssl_method!r}. "
                 f"지원 목록: {supported}"
+            )
+
+    def _validate_fssl_method(self, fssl_method: str) -> None:
+        """fssl_method descriptor가 live server를 지원하는지 확인한다."""
+        from methods.federated_ssl.registry import (
+            resolve_federated_ssl_method_descriptor,
+        )
+
+        try:
+            descriptor = resolve_federated_ssl_method_descriptor(fssl_method)
+        except NotImplementedError as error:
+            raise StrategyValidationError(
+                f"알 수 없는 fssl_method입니다: {fssl_method!r}. "
+                "등록된 method 목록은 GET /api/v1/admin/methods 에서 확인하세요."
+            ) from error
+        if not descriptor.runtime_capabilities.live_server_supported:
+            raise StrategyValidationError(
+                f"fssl_method={fssl_method!r}는 아직 live server를 지원하지 않습니다."
             )
 
     def _validate_aggregation_backend(self, aggregation_backend: str) -> None:

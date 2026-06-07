@@ -149,6 +149,9 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 - `TrainingTaskPayload`
   - 서버가 agent에 내려주는 학습 task
   - 로컬 학습 하이퍼파라미터와 selection policy 포함
+  - `fssl_method`/`fssl_context`는 full FL SSL method-owned 실행을 위한 서버 제공
+    identity/context다. Phase 2에서는 server가 context를 싣고, agent의 method-owned
+    local runtime 분기는 Phase 3에서 열린다
   - cutoff/threshold류 값은 공통 task 기본값이 아니라 method-owned objective extras
     또는 method descriptor/profile에서 해석한다
   - 구버전 `secure_aggregation_required` 입력/property는

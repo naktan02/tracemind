@@ -103,6 +103,10 @@ class RoundManagerService:
             secure_aggregation=self._resolve_secure_aggregation(
                 request.secure_aggregation
             ),
+            fssl_method=getattr(request.strategy, "fssl_method", None),
+            fssl_context=(
+                dict(request.fssl_context) if request.fssl_context is not None else None
+            ),
             deadline_at=request.deadline_at,
             gradient_clip_norm=request.gradient_clip_norm,
             min_required_examples=request.min_required_examples,

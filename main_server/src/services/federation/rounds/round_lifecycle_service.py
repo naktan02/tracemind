@@ -45,6 +45,7 @@ from main_server.src.services.federation.rounds.round_state_exchange.executor im
     DefaultRoundStateExchangeExecutor,
     RoundStateExchangeExecutor,
     RoundStateExchangeResult,
+    build_peer_context_task_payload,
 )
 from main_server.src.services.federation.rounds.server_policy.executor import (
     DefaultServerPolicyExecutor,
@@ -81,7 +82,8 @@ if TYPE_CHECKING:
     from main_server.src.infrastructure.repositories.round_repository import (
         RoundRepository,
     )
-    from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
@@ -186,7 +188,9 @@ class RoundLifecycleService:
             self.round_repository.clear_active(expected_round_id=active_round.round_id)
 
         # strategy가 없거나 ssl_method가 없으면 active_strategy에서 자동 적용한다.
-        effective_request = self._apply_active_strategy(request)
+        effective_request = self._apply_fssl_context(
+            self._apply_active_strategy(request)
+        )
 
         active_manifest = self.active_manifest_service.get_active_manifest()
         round_id = effective_request.round_id or f"round_{uuid4().hex[:8]}"
@@ -471,7 +475,9 @@ class RoundLifecycleService:
         # strategy 자체가 없으면 active strategy로 새로 만든다
         if current_strategy is None:
             new_strategy = RoundStrategyConfig(
+                mode=("method_owned" if active.fssl_method is not None else "composed"),
                 ssl_method=active.ssl_method,
+                fssl_method=active.fssl_method,
                 aggregation_backend=active.aggregation_backend,
             )
             return replace(request, strategy=new_strategy)
@@ -493,6 +499,29 @@ class RoundLifecycleService:
             return replace(request, strategy=new_strategy)
 
         return request
+
+    def _apply_fssl_context(
+        self,
+        request: RoundOpenDraftRequest,
+    ) -> RoundOpenDraftRequest:
+        if request.objective_config is not None:
+            return request
+        if request.fssl_context is not None:
+            return request
+        strategy = request.strategy
+        if strategy is None or strategy.fssl_method is None:
+            return request
+        descriptor = resolve_federated_ssl_method_descriptor(strategy.fssl_method)
+        context = {
+            "schema_version": "fssl_context.v1",
+            "method_name": descriptor.name,
+            "context_kind": "peer_context",
+            "peer_context": build_peer_context_task_payload(
+                method_descriptor=descriptor,
+                source_round=self.round_repository.load_latest_finalized_round(),
+            ),
+        }
+        return replace(request, fssl_context=context)
 
 
 def _server_visible_update_payload(

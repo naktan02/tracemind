@@ -82,6 +82,12 @@ capability다. 원본 FedMatch snapshot은
   missing snapshot 수, lazy materialized helper model 수를 report에 남겨 peer context
   drift를 관측한다.
 
+Live main_server는 Phase 2에서 `fssl_method=fedmatch` method identity와
+`peer_context` warmup/previous-round summary를 `TrainingTaskPayload`에 싣는
+server surface까지만 연다. `live_agent_supported`는 아직 false이며, agent가
+FedMatch local runtime으로 분기하고 partitioned delta를 업로드하는 경로는 Phase 3에서
+연다.
+
 아직 원본 FedMatch의 full server/runtime 동작은 열지 않는다. helper weak-view
 probability provider, `labels-at-server` client-local `psi` upload slice,
 `server_step_policy=supervised_seed_step` simulation path, sparse S2C/C2S projection,

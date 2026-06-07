@@ -32,6 +32,14 @@ class SwitchStrategyRequest(BaseModel):
         description="로컬 SSL objective 이름. 없으면 현재 값 유지.",
         examples=["fixmatch_usb_v1", "flexmatch_usb_v1"],
     )
+    fssl_method: str | None = Field(
+        default=None,
+        description=(
+            "Full FL SSL method 이름. 없으면 현재 값 유지. "
+            "빈 문자열('')이면 composed 모드로 초기화."
+        ),
+        examples=["fedmatch", None],
+    )
     aggregation_backend: str | None = Field(
         default=None,
         description="서버 집계 backend 이름. 없으면 현재 값 유지.",
@@ -50,6 +58,7 @@ class StrategyResponse(BaseModel):
 
     schema_version: str
     ssl_method: str
+    fssl_method: str | None
     aggregation_backend: str
     activated_at: str
     notes: str | None
@@ -96,6 +105,7 @@ def _config_to_response(config: ActiveStrategyConfig) -> StrategyResponse:
     return StrategyResponse(
         schema_version=config.schema_version,
         ssl_method=config.ssl_method,
+        fssl_method=config.fssl_method,
         aggregation_backend=config.aggregation_backend,
         activated_at=config.activated_at.isoformat(),
         notes=config.notes,
@@ -124,6 +134,7 @@ def switch_strategy(
     try:
         config = service.switch(
             ssl_method=body.ssl_method,
+            fssl_method=body.fssl_method,
             aggregation_backend=body.aggregation_backend,
             notes=body.notes,
         )

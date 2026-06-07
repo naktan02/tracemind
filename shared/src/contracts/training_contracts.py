@@ -142,6 +142,22 @@ class TrainingTaskPayload(BaseModel):
         default_factory=SecureAggregationConfigPayload,
         description="중앙 업로드 시 요구되는 secure aggregation/encryption 설정.",
     )
+    fssl_method: str | None = Field(
+        default=None,
+        description=(
+            "Full FL SSL method 이름. None이면 ssl_method 기반 composed 모드. "
+            "Phase 2에서는 서버가 method identity와 context를 전달하고, agent의 "
+            "method-owned 실행 분기는 Phase 3에서 열린다."
+        ),
+    )
+    fssl_context: dict[str, object] | None = Field(
+        default=None,
+        description=(
+            "fssl_method 실행에 필요한 서버 제공 context. 예: FedMatch "
+            "peer_context warmup/previous-round summary. None이면 context 없는 "
+            "일반 composed task다."
+        ),
+    )
     notes: str | None = Field(
         default=None,
         description="운영 메모 또는 디버깅용 설명.",
