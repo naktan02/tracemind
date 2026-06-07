@@ -15,7 +15,7 @@ from agent.src.services.training.selection.query_buffer_projection import (
     build_query_buffer_evidences,
 )
 from shared.src.contracts.training_contracts import TrainingTask
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
 @dataclass(slots=True)
@@ -30,12 +30,12 @@ class QueryBufferSelectionService:
         self,
         *,
         records: tuple[QueryBufferRecord, ...] | list[QueryBufferRecord],
-        scored_events: tuple[ScoredEvent, ...] | list[ScoredEvent],
+        analysis_events: tuple[AnalysisEvent, ...] | list[AnalysisEvent],
         training_task: TrainingTask,
     ) -> PseudoLabelSelectionResult:
         evidences = build_query_buffer_evidences(
             records=records,
-            scored_events=scored_events,
+            analysis_events=analysis_events,
         )
         return self.selector.select_evidences(
             evidences=evidences,

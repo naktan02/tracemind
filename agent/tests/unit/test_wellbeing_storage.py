@@ -126,6 +126,21 @@ def test_wellbeing_services_prefer_repository_data(tmp_path: Path) -> None:
     assert timeseries.points[0].signal_score == 58.0
 
 
+def test_wellbeing_services_return_low_data_when_repository_is_empty(
+    tmp_path: Path,
+) -> None:
+    repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+
+    summary = WellbeingSummaryService(repository=repository).get_current_summary()
+    timeseries = WellbeingTimeseriesService(repository=repository).get_timeseries(
+        requested_range=WellbeingSignalRange.LAST_7_DAYS
+    )
+
+    assert summary.low_data is True
+    assert summary.signal_score == 0.0
+    assert timeseries.points == ()
+
+
 def test_family_access_service_persists_failed_attempts_in_repository(
     tmp_path: Path,
 ) -> None:

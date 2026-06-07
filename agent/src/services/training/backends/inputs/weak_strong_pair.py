@@ -77,7 +77,7 @@ class WeakStrongPairTrainingExampleBackend:
     ) -> tuple[EmbeddedTrainingExample, ...]:
         del request
         raise ValueError(
-            "weak_strong_pair backend is not supported for stored scored events yet. "
+            "weak_strong_pair backend is not supported for stored analysis events yet. "
             "Stored event reconstruction currently lacks weak/strong view data."
         )
 
@@ -101,13 +101,13 @@ def _to_embedded_example(
     if source_row.translated_text is not None:
         metadata["translated_text"] = source_row.translated_text
     return EmbeddedTrainingExample(
-        scored_event=input_item.weak_scored_event,
+        analysis_event=input_item.weak_analysis_event,
         embedding=list(input_item.strong_embedding),
         base_embedding=list(input_item.weak_base_embedding),
         view_kind=WEAK_STRONG_PAIR_BACKEND_NAME,
-        weak_scored_event=input_item.weak_scored_event,
+        weak_analysis_event=input_item.weak_analysis_event,
         weak_embedding=list(input_item.weak_embedding),
-        strong_scored_event=input_item.strong_scored_event,
+        strong_analysis_event=input_item.strong_analysis_event,
         strong_embedding=list(input_item.strong_embedding),
         strong_base_embedding=list(input_item.strong_base_embedding),
         metadata=metadata,

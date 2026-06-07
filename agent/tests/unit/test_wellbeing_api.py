@@ -66,7 +66,7 @@ def test_wellbeing_timeseries_api_returns_requested_range() -> None:
     )
 
     assert response.range == WellbeingSignalRange.LAST_14_DAYS
-    assert len(response.points) == 14
+    assert response.points == ()
 
 
 def test_parent_unlock_api_grants_valid_pin() -> None:

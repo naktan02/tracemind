@@ -14,7 +14,7 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
     TrainingTask,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelSelectionStage,
 )
@@ -53,8 +53,8 @@ def test_selection_service_keeps_top1_margin_threshold_as_default() -> None:
     service = PseudoLabelSelectionService()
 
     result = service.select(
-        scored_events=(
-            ScoredEvent(
+        analysis_events=(
+            AnalysisEvent(
                 query_id="q1",
                 occurred_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 translated_text=None,
@@ -69,16 +69,16 @@ def test_selection_service_keeps_top1_margin_threshold_as_default() -> None:
     candidate = result.candidates[0]
     evidence = result.evidences[0]
 
-    assert evidence.confidence_kind == "prototype_similarity"
+    assert evidence.confidence_kind == "analysis_score_top1"
     assert evidence.top1_label == "anxiety"
     assert candidate.accepted is False
     assert candidate.evidence_ref == "evidence:q1"
-    assert candidate.confidence_kind == "prototype_similarity"
+    assert candidate.confidence_kind == "analysis_score_top1"
     assert candidate.sample_weight == pytest.approx(0.62)
     assert candidate.margin == pytest.approx(0.01)
     assert candidate.selection_context is not None
     assert candidate.selection_context.evidence_backend_name == (
-        "prototype_similarity_evidence"
+        "analysis_score_evidence"
     )
     assert candidate.selection_context.pseudo_label_algorithm_name == (
         "top1_margin_threshold"
@@ -92,8 +92,8 @@ def test_selection_service_can_switch_policy_from_training_task() -> None:
     service = PseudoLabelSelectionService()
 
     result = service.select(
-        scored_events=(
-            ScoredEvent(
+        analysis_events=(
+            AnalysisEvent(
                 query_id="q1",
                 occurred_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 translated_text=None,

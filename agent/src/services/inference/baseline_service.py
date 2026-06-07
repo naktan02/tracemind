@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.inference.state import BaselineProfile
 
 
@@ -24,26 +24,26 @@ class BaselineConfig:
 
 @dataclass(slots=True)
 class BaselineService:
-    """과거 scored event로부터 개인 baseline profile을 계산한다."""
+    """과거 analysis event로부터 개인 baseline profile을 계산한다."""
 
     config: BaselineConfig = field(default_factory=BaselineConfig)
 
     def build_profile(
         self,
-        scored_events: Sequence[ScoredEvent],
+        analysis_events: Sequence[AnalysisEvent],
         *,
         as_of: datetime | None = None,
         profile_version: str = "baseline_profile.v1",
     ) -> BaselineProfile:
-        if not scored_events:
+        if not analysis_events:
             return BaselineProfile(
                 profile_version=profile_version,
                 warmup_complete=False,
                 computed_at=as_of,
             )
 
-        effective_as_of = as_of or max(event.occurred_at for event in scored_events)
-        filtered_events = self._filter_events(scored_events, as_of=effective_as_of)
+        effective_as_of = as_of or max(event.occurred_at for event in analysis_events)
+        filtered_events = self._filter_events(analysis_events, as_of=effective_as_of)
         if not filtered_events:
             return BaselineProfile(
                 profile_version=profile_version,
@@ -100,13 +100,13 @@ class BaselineService:
 
     def _filter_events(
         self,
-        scored_events: Sequence[ScoredEvent],
+        analysis_events: Sequence[AnalysisEvent],
         *,
         as_of: datetime,
-    ) -> list[ScoredEvent]:
+    ) -> list[AnalysisEvent]:
         lower_bound = as_of - timedelta(days=self.config.lookback_days)
         return [
             event
-            for event in scored_events
+            for event in analysis_events
             if lower_bound <= event.occurred_at <= as_of
         ]

@@ -116,11 +116,11 @@ class LocalTrainingService:
             acceptance_policy=default_acceptance_policy,
             privacy_guard=privacy_guard,
         )
-        scored_events = [
-            example.evidence_scored_event for example in request.training_examples
+        analysis_events = [
+            example.evidence_analysis_event for example in request.training_examples
         ]
         selection_result = self.selector.select(
-            scored_events=scored_events,
+            analysis_events=analysis_events,
             training_task=request.training_task,
         )
         accepted_by_event = {

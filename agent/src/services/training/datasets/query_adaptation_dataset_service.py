@@ -15,7 +15,7 @@ from agent.src.services.training.backends.inputs.models import (
 from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS,
     PseudoLabelCandidate,
@@ -125,7 +125,7 @@ class QueryAdaptationDatasetService:
         *,
         selection_result: PseudoLabelSelectionResult,
         records: tuple[QueryBufferRecord, ...] | list[QueryBufferRecord],
-        scored_events: tuple[ScoredEvent, ...] | list[ScoredEvent] | None = None,
+        analysis_events: tuple[AnalysisEvent, ...] | list[AnalysisEvent] | None = None,
         manual_label_by_query_id: Mapping[str, str] | None = None,
     ) -> QueryAdaptationDataset:
         if (
@@ -141,10 +141,10 @@ class QueryAdaptationDatasetService:
             key_fn=lambda record: record.query_id,
             item_name="QueryBufferRecord",
         )
-        scored_event_by_query_id = _index_unique(
-            items=() if scored_events is None else scored_events,
-            key_fn=lambda scored_event: scored_event.query_id,
-            item_name="ScoredEvent",
+        analysis_event_by_query_id = _index_unique(
+            items=() if analysis_events is None else analysis_events,
+            key_fn=lambda analysis_event: analysis_event.query_id,
+            item_name="AnalysisEvent",
         )
 
         dataset_examples: list[QueryAdaptationDatasetExample] = []
@@ -155,7 +155,7 @@ class QueryAdaptationDatasetService:
                     "Missing QueryBufferRecord for accepted candidate: "
                     f"{candidate.source_event_ref}."
                 )
-            scored_event = scored_event_by_query_id.get(candidate.source_event_ref)
+            analysis_event = analysis_event_by_query_id.get(candidate.source_event_ref)
             label, label_source = self._resolve_label(
                 candidate=candidate,
                 manual_label_by_query_id=manual_label_by_query_id,
@@ -168,15 +168,15 @@ class QueryAdaptationDatasetService:
                         occurred_at=record.occurred_at,
                         translated_text=(
                             None
-                            if scored_event is None
-                            else scored_event.translated_text
+                            if analysis_event is None
+                            else analysis_event.translated_text
                         ),
                     ),
                     label=label,
                     provenance=_build_dataset_provenance(
                         record=record,
                         candidate=candidate,
-                        scored_event=scored_event,
+                        analysis_event=analysis_event,
                     ),
                     label_source=label_source,
                     confidence=candidate.confidence,
@@ -206,7 +206,7 @@ def _build_dataset_provenance(
     *,
     record: QueryBufferRecord,
     candidate: PseudoLabelCandidate,
-    scored_event: ScoredEvent | None,
+    analysis_event: AnalysisEvent | None,
 ) -> QueryAdaptationDatasetProvenance:
     return QueryAdaptationDatasetProvenance(
         locale=record.locale,
@@ -218,7 +218,9 @@ def _build_dataset_provenance(
             else str(candidate.confidence_kind)
         ),
         translated_text_present=(
-            False if scored_event is None else scored_event.translated_text is not None
+            False
+            if analysis_event is None
+            else analysis_event.translated_text is not None
         ),
         candidate_id=str(candidate.candidate_id),
         evidence_ref=(

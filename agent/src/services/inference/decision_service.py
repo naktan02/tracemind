@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from uuid import uuid4
 
 from agent.src.services.inference.time_series_service import TimeSeriesAccumulator
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.inference.result import AssessmentResult
 from shared.src.domain.entities.inference.state import (
     BaselineProfile,
@@ -35,20 +35,20 @@ class DecisionService:
     def evaluate(
         self,
         *,
-        scored_event: ScoredEvent,
+        analysis_event: AnalysisEvent,
         baseline_profile: BaselineProfile,
         personalization_state: PersonalizationState,
         previous_state: TimeSeriesState | None = None,
         assessment_id: str | None = None,
     ) -> DecisionEvaluation:
         time_series_state = self.accumulator.update(
-            scored_event=scored_event,
+            analysis_event=analysis_event,
             baseline_profile=baseline_profile,
             personalization_state=personalization_state,
             previous_state=previous_state,
         )
         result = self.policy.evaluate(
-            scored_event=scored_event,
+            analysis_event=analysis_event,
             baseline_profile=baseline_profile,
             personalization_state=personalization_state,
             time_series_state=time_series_state,

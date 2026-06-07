@@ -13,7 +13,7 @@ from agent.src.services.inference.time_series_service import (
     TimeSeriesAccumulator,
     TimeSeriesConfig,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.inference.state import (
     BaselineProfile,
     PersonalizationState,
@@ -21,14 +21,14 @@ from shared.src.domain.entities.inference.state import (
 from shared.src.domain.policies.decision_policy import RuleBasedDecisionPolicy
 
 
-def _scored_event(
+def _analysis_event(
     *,
     query_id: str,
     occurred_at: datetime,
     depression: float,
     normal: float = 0.2,
-) -> ScoredEvent:
-    return ScoredEvent(
+) -> AnalysisEvent:
+    return AnalysisEvent(
         query_id=query_id,
         occurred_at=occurred_at,
         translated_text=None,
@@ -44,7 +44,7 @@ def _scored_event(
 def test_baseline_service_builds_profile_from_recent_history() -> None:
     base_time = datetime(2026, 3, 29, 9, 0, 0)
     history = [
-        _scored_event(
+        _analysis_event(
             query_id=f"q{i}",
             occurred_at=base_time - timedelta(days=3 - i),
             depression=value,
@@ -88,7 +88,7 @@ def test_time_series_accumulator_tracks_elevated_streaks() -> None:
     )
 
     first_state = accumulator.update(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q1",
             occurred_at=base_time,
             depression=0.5,
@@ -97,7 +97,7 @@ def test_time_series_accumulator_tracks_elevated_streaks() -> None:
         personalization_state=personalization_state,
     )
     second_state = accumulator.update(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q2",
             occurred_at=base_time + timedelta(hours=1),
             depression=0.55,
@@ -143,7 +143,7 @@ def test_decision_service_distinguishes_spike_from_persistent_change() -> None:
     )
 
     first = service.evaluate(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q1",
             occurred_at=base_time,
             depression=0.55,
@@ -152,7 +152,7 @@ def test_decision_service_distinguishes_spike_from_persistent_change() -> None:
         personalization_state=personalization_state,
     )
     second = service.evaluate(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q2",
             occurred_at=base_time + timedelta(hours=1),
             depression=0.62,
@@ -162,7 +162,7 @@ def test_decision_service_distinguishes_spike_from_persistent_change() -> None:
         previous_state=first.time_series_state,
     )
     third = service.evaluate(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q3",
             occurred_at=base_time + timedelta(hours=2),
             depression=0.68,

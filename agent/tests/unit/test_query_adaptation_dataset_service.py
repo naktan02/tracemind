@@ -21,7 +21,7 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
     TrainingTask,
 )
-from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
 
 def _build_task() -> TrainingTask:
@@ -53,7 +53,7 @@ def _build_pair(
     text: str,
     translated_text: str | None,
     category_scores: dict[str, float],
-) -> tuple[QueryEvent, ScoredEvent]:
+) -> tuple[QueryEvent, AnalysisEvent]:
     occurred_at = datetime(2026, 4, 12, 12, 0, tzinfo=timezone.utc)
     query_event = QueryEvent(
         query_id=query_id,
@@ -62,7 +62,7 @@ def _build_pair(
         locale="ko-KR",
         source_type="user_message",
     )
-    scored_event = ScoredEvent(
+    analysis_event = AnalysisEvent(
         query_id=query_id,
         occurred_at=occurred_at,
         translated_text=translated_text,
@@ -70,17 +70,17 @@ def _build_pair(
         translation_model_id=None if translated_text is None else "nllb",
         category_scores=category_scores,
     )
-    return query_event, scored_event
+    return query_event, analysis_event
 
 
 def test_query_adaptation_dataset_service_builds_raw_text_examples() -> None:
-    query_event_1, scored_event_1 = _build_pair(
+    query_event_1, analysis_event_1 = _build_pair(
         query_id="q1",
         text="불안이 심해요",
         translated_text="I feel anxious",
         category_scores={"anxiety": 0.85, "depression": 0.2, "normal": 0.1},
     )
-    query_event_2, scored_event_2 = _build_pair(
+    query_event_2, analysis_event_2 = _build_pair(
         query_id="q2",
         text="요즘 너무 가라앉아요",
         translated_text=None,
@@ -88,28 +88,28 @@ def test_query_adaptation_dataset_service_builds_raw_text_examples() -> None:
     )
     record_1 = build_query_buffer_record(
         event=query_event_1,
-        scored_event=scored_event_1,
+        analysis_event=analysis_event_1,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
         metadata={"was_translated": True},
     )
     record_2 = build_query_buffer_record(
         event=query_event_2,
-        scored_event=scored_event_2,
+        analysis_event=analysis_event_2,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
         metadata={"was_translated": False},
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record_1, record_2),
-        scored_events=(scored_event_1, scored_event_2),
+        analysis_events=(analysis_event_1, analysis_event_2),
         training_task=_build_task(),
     )
 
     dataset = QueryAdaptationDatasetService().build_dataset(
         selection_result=selection_result,
         records=(record_1, record_2),
-        scored_events=(scored_event_1, scored_event_2),
+        analysis_events=(analysis_event_1, analysis_event_2),
     )
 
     assert dataset.count == 2
@@ -138,7 +138,7 @@ def test_query_adaptation_dataset_service_builds_raw_text_examples() -> None:
 
 
 def test_query_adaptation_dataset_service_requires_query_buffer_record() -> None:
-    query_event, scored_event = _build_pair(
+    query_event, analysis_event = _build_pair(
         query_id="q1",
         text="계속 예민해요",
         translated_text=None,
@@ -146,13 +146,13 @@ def test_query_adaptation_dataset_service_requires_query_buffer_record() -> None
     )
     record = build_query_buffer_record(
         event=query_event,
-        scored_event=scored_event,
+        analysis_event=analysis_event,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record,),
-        scored_events=(scored_event,),
+        analysis_events=(analysis_event,),
         training_task=_build_task(),
     )
 
@@ -160,12 +160,12 @@ def test_query_adaptation_dataset_service_requires_query_buffer_record() -> None
         QueryAdaptationDatasetService().build_dataset(
             selection_result=selection_result,
             records=(),
-            scored_events=(scored_event,),
+            analysis_events=(analysis_event,),
         )
 
 
 def test_query_adaptation_dataset_service_rejects_duplicate_record_key() -> None:
-    query_event, scored_event = _build_pair(
+    query_event, analysis_event = _build_pair(
         query_id="q1",
         text="숨이 차요",
         translated_text=None,
@@ -173,13 +173,13 @@ def test_query_adaptation_dataset_service_rejects_duplicate_record_key() -> None
     )
     record = build_query_buffer_record(
         event=query_event,
-        scored_event=scored_event,
+        analysis_event=analysis_event,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record,),
-        scored_events=(scored_event,),
+        analysis_events=(analysis_event,),
         training_task=_build_task(),
     )
 
@@ -187,14 +187,14 @@ def test_query_adaptation_dataset_service_rejects_duplicate_record_key() -> None
         QueryAdaptationDatasetService().build_dataset(
             selection_result=selection_result,
             records=(record, record),
-            scored_events=(scored_event,),
+            analysis_events=(analysis_event,),
         )
 
 
 def test_query_adaptation_dataset_service_rejects_manual_labels_in_pseudo_mode() -> (
     None
 ):
-    query_event, scored_event = _build_pair(
+    query_event, analysis_event = _build_pair(
         query_id="q1",
         text="숨이 차요",
         translated_text=None,
@@ -202,13 +202,13 @@ def test_query_adaptation_dataset_service_rejects_manual_labels_in_pseudo_mode()
     )
     record = build_query_buffer_record(
         event=query_event,
-        scored_event=scored_event,
+        analysis_event=analysis_event,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record,),
-        scored_events=(scored_event,),
+        analysis_events=(analysis_event,),
         training_task=_build_task(),
     )
 
@@ -216,13 +216,13 @@ def test_query_adaptation_dataset_service_rejects_manual_labels_in_pseudo_mode()
         QueryAdaptationDatasetService().build_dataset(
             selection_result=selection_result,
             records=(record,),
-            scored_events=(scored_event,),
+            analysis_events=(analysis_event,),
             manual_label_by_query_id={"q1": "depression"},
         )
 
 
 def test_query_adaptation_dataset_service_can_prefer_manual_labels_later() -> None:
-    query_event, scored_event = _build_pair(
+    query_event, analysis_event = _build_pair(
         query_id="q1",
         text="계속 우울해요",
         translated_text=None,
@@ -230,13 +230,13 @@ def test_query_adaptation_dataset_service_can_prefer_manual_labels_later() -> No
     )
     record = build_query_buffer_record(
         event=query_event,
-        scored_event=scored_event,
+        analysis_event=analysis_event,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
     )
     selection_result = QueryBufferSelectionService().select(
         records=(record,),
-        scored_events=(scored_event,),
+        analysis_events=(analysis_event,),
         training_task=_build_task(),
     )
 
@@ -245,7 +245,7 @@ def test_query_adaptation_dataset_service_can_prefer_manual_labels_later() -> No
     ).build_dataset(
         selection_result=selection_result,
         records=(record,),
-        scored_events=(scored_event,),
+        analysis_events=(analysis_event,),
         manual_label_by_query_id={"q1": "depression"},
     )
 

@@ -22,7 +22,7 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
     TrainingTask,
 )
-from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
 
 def _build_task() -> TrainingTask:
@@ -53,7 +53,7 @@ def _build_pair(
     query_id: str,
     text: str,
     category_scores: dict[str, float],
-) -> tuple[QueryEvent, ScoredEvent]:
+) -> tuple[QueryEvent, AnalysisEvent]:
     occurred_at = datetime(2026, 4, 12, 12, 0, tzinfo=timezone.utc)
     query_event = QueryEvent(
         query_id=query_id,
@@ -62,7 +62,7 @@ def _build_pair(
         locale="ko-KR",
         source_type="user_message",
     )
-    scored_event = ScoredEvent(
+    analysis_event = AnalysisEvent(
         query_id=query_id,
         occurred_at=occurred_at,
         translated_text=None,
@@ -70,7 +70,7 @@ def _build_pair(
         translation_model_id=None,
         category_scores=category_scores,
     )
-    return query_event, scored_event
+    return query_event, analysis_event
 
 
 def test_write_query_buffer_selection_diagnostics_writes_summary_and_trace(
@@ -89,17 +89,17 @@ def test_write_query_buffer_selection_diagnostics_writes_summary_and_trace(
     records = tuple(
         build_query_buffer_record(
             event=query_event,
-            scored_event=scored_event,
+            analysis_event=analysis_event,
             model_revision="rev_001",
             confidence_kind="prototype_similarity_top1",
             metadata={"was_translated": False},
         )
-        for query_event, scored_event in (pair_1, pair_2)
+        for query_event, analysis_event in (pair_1, pair_2)
     )
-    scored_events = tuple(scored_event for _, scored_event in (pair_1, pair_2))
+    analysis_events = tuple(analysis_event for _, analysis_event in (pair_1, pair_2))
     selection_result = QueryBufferSelectionService().select(
         records=records,
-        scored_events=scored_events,
+        analysis_events=analysis_events,
         training_task=_build_task(),
     )
     diagnostics = QueryBufferSelectionDiagnosticsService().build(

@@ -1,8 +1,4 @@
-"""로컬 analysis event SQLite 저장소.
-
-기존 서비스 호환을 위해 ScoredEventRepository 이름을 유지하지만,
-실제 저장 schema는 scorer-family 독립적인 analysis_events 구조를 사용한다.
-"""
+"""로컬 analysis event SQLite 저장소."""
 
 from __future__ import annotations
 
@@ -12,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 # 기본 DB 경로: agent 로컬 data 디렉토리
 _DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "analysis_events.db"
@@ -84,8 +80,9 @@ VALUES (?, ?, ?);
 """
 
 _SELECT_RECENT_SQL = """
-SELECT analysis_id, occurred_at, translated_text,
-       embedding_model_id, translation_model_id, base_embedding
+SELECT analysis_id, source_event_id, occurred_at, translated_text,
+       scorer_family, scorer_name, model_revision, confidence_kind,
+       embedding_model_id, translation_model_id, base_embedding, metadata
 FROM analysis_events
 WHERE occurred_at >= ?
 ORDER BY occurred_at DESC;
@@ -102,16 +99,16 @@ _COUNT_SQL = "SELECT COUNT(*) FROM analysis_events;"
 
 
 @dataclass(slots=True)
-class StoredScoredEvent:
-    """SQLite에서 읽어온 ScoredEvent + base_embedding 묶음."""
+class StoredAnalysisEvent:
+    """SQLite에서 읽어온 AnalysisEvent + base_embedding 묶음."""
 
-    scored_event: ScoredEvent
+    analysis_event: AnalysisEvent
     base_embedding: list[float] | None
 
 
 @dataclass(slots=True)
-class ScoredEventRepository:
-    """analysis event 저장소의 기존 ScoredEvent 호환 facade."""
+class AnalysisEventRepository:
+    """AnalysisEvent와 base_embedding을 SQLite에 저장하고 조회한다."""
 
     db_path: Path = _DEFAULT_DB_PATH
 
@@ -130,43 +127,60 @@ class ScoredEventRepository:
 
     def save(
         self,
-        event: ScoredEvent,
+        event: AnalysisEvent,
         *,
         base_embedding: list[float] | None = None,
         source_event_id: str | None = None,
-        scorer_family: str = "legacy_scored_event",
+        scorer_family: str = "unknown",
         scorer_name: str = "unknown",
         model_revision: str = "unknown",
         confidence_kind: str = "unknown",
         metadata: dict[str, str | int | float | bool | None] | None = None,
     ) -> None:
-        """분석 결과를 저장한다. 기존 호출부는 ScoredEvent만 넘겨도 된다."""
+        """AnalysisEvent를 저장한다. base_embedding이 있으면 함께 저장한다."""
         top_category, top_score = _get_top_category_score(event.category_scores)
+        analysis_id = event.analysis_id or event.query_id
+        effective_source_event_id = (
+            source_event_id or event.source_event_id or event.query_id
+        )
+        effective_scorer_family = (
+            scorer_family if scorer_family != "unknown" else event.scorer_family
+        )
+        effective_scorer_name = (
+            scorer_name if scorer_name != "unknown" else event.scorer_name
+        )
+        effective_model_revision = (
+            model_revision if model_revision != "unknown" else event.model_revision
+        )
+        effective_confidence_kind = (
+            confidence_kind if confidence_kind != "unknown" else event.confidence_kind
+        )
+        effective_metadata = {**event.metadata, **(metadata or {})}
         with self._connect() as conn:
-            conn.execute(_DELETE_CATEGORY_SCORES_SQL, (event.query_id,))
+            conn.execute(_DELETE_CATEGORY_SCORES_SQL, (analysis_id,))
             conn.execute(
                 _INSERT_ANALYSIS_EVENT_SQL,
                 (
-                    event.query_id,
-                    source_event_id or event.query_id,
+                    analysis_id,
+                    effective_source_event_id,
                     event.occurred_at.isoformat(),
                     event.translated_text,
-                    scorer_family,
-                    scorer_name,
-                    model_revision,
+                    effective_scorer_family,
+                    effective_scorer_name,
+                    effective_model_revision,
                     top_category,
                     top_score,
-                    confidence_kind,
+                    effective_confidence_kind,
                     event.embedding_model_id,
                     event.translation_model_id,
                     json.dumps(base_embedding) if base_embedding is not None else None,
-                    json.dumps(metadata or {}, sort_keys=True),
+                    json.dumps(effective_metadata, sort_keys=True),
                 ),
             )
             conn.executemany(
                 _INSERT_CATEGORY_SCORE_SQL,
                 (
-                    (event.query_id, category, float(score))
+                    (analysis_id, category, float(score))
                     for category, score in event.category_scores.items()
                 ),
             )
@@ -175,12 +189,12 @@ class ScoredEventRepository:
     # 읽기                                                                 #
     # ------------------------------------------------------------------ #
 
-    def get_recent(self, *, days: int = 7) -> list[ScoredEvent]:
-        """최근 N일 이내의 ScoredEvent 목록을 반환한다."""
-        return [s.scored_event for s in self.get_recent_stored(days=days)]
+    def get_recent(self, *, days: int = 7) -> list[AnalysisEvent]:
+        """최근 N일 이내의 AnalysisEvent 목록을 반환한다."""
+        return [s.analysis_event for s in self.get_recent_stored(days=days)]
 
-    def get_recent_stored(self, *, days: int = 7) -> list[StoredScoredEvent]:
-        """최근 N일 이내의 ScoredEvent와 base_embedding을 함께 반환한다."""
+    def get_recent_stored(self, *, days: int = 7) -> list[StoredAnalysisEvent]:
+        """최근 N일 이내의 AnalysisEvent와 base_embedding을 함께 반환한다."""
         cutoff = (datetime.now(tz=timezone.utc) - timedelta(days=days)).isoformat()
         with self._connect() as conn:
             rows = conn.execute(_SELECT_RECENT_SQL, (cutoff,)).fetchall()
@@ -213,28 +227,44 @@ def _get_top_category_score(
     return top_category, float(category_scores[top_category])
 
 
-def _row_to_stored(conn: sqlite3.Connection, row: tuple) -> StoredScoredEvent:
+def _row_to_stored(conn: sqlite3.Connection, row: tuple) -> StoredAnalysisEvent:
     (
-        query_id,
+        analysis_id,
+        source_event_id,
         occurred_at_str,
         translated_text,
+        scorer_family,
+        scorer_name,
+        model_revision,
+        confidence_kind,
         embedding_model_id,
         translation_model_id,
         base_embedding_json,
+        metadata_json,
     ) = row
     category_scores = {
         category: float(score)
-        for category, score in conn.execute(_SELECT_CATEGORY_SCORES_SQL, (query_id,))
+        for category, score in conn.execute(_SELECT_CATEGORY_SCORES_SQL, (analysis_id,))
     }
-    scored_event = ScoredEvent(
-        query_id=query_id,
+    analysis_event = AnalysisEvent(
+        query_id=source_event_id,
         occurred_at=datetime.fromisoformat(occurred_at_str),
         translated_text=translated_text,
         embedding_model_id=embedding_model_id or "unknown",
         translation_model_id=translation_model_id,
         category_scores=category_scores,
+        analysis_id=analysis_id,
+        source_event_id=source_event_id,
+        scorer_family=scorer_family,
+        scorer_name=scorer_name,
+        model_revision=model_revision,
+        confidence_kind=confidence_kind,
+        metadata=json.loads(metadata_json),
     )
     base_embedding = (
         json.loads(base_embedding_json) if base_embedding_json is not None else None
     )
-    return StoredScoredEvent(scored_event=scored_event, base_embedding=base_embedding)
+    return StoredAnalysisEvent(
+        analysis_event=analysis_event,
+        base_embedding=base_embedding,
+    )

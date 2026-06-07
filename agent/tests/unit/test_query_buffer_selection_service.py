@@ -23,7 +23,7 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
     TrainingTask,
 )
-from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
 
 def _build_task(
@@ -59,7 +59,7 @@ def _build_pair(
     query_id: str,
     text: str,
     category_scores: dict[str, float],
-) -> tuple[QueryEvent, ScoredEvent]:
+) -> tuple[QueryEvent, AnalysisEvent]:
     occurred_at = datetime(2026, 4, 12, 12, 0, tzinfo=timezone.utc)
     query_event = QueryEvent(
         query_id=query_id,
@@ -68,7 +68,7 @@ def _build_pair(
         locale="ko-KR",
         source_type="user_message",
     )
-    scored_event = ScoredEvent(
+    analysis_event = AnalysisEvent(
         query_id=query_id,
         occurred_at=occurred_at,
         translated_text=None,
@@ -76,18 +76,18 @@ def _build_pair(
         translation_model_id=None,
         category_scores=category_scores,
     )
-    return query_event, scored_event
+    return query_event, analysis_event
 
 
 def test_build_query_buffer_evidence_preserves_snapshot_metadata() -> None:
-    query_event, scored_event = _build_pair(
+    query_event, analysis_event = _build_pair(
         query_id="q1",
         text="숨이 차고 불안해요",
         category_scores={"anxiety": 0.9, "depression": 0.4, "normal": 0.1},
     )
     record = build_query_buffer_record(
         event=query_event,
-        scored_event=scored_event,
+        analysis_event=analysis_event,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
         metadata={
@@ -98,7 +98,7 @@ def test_build_query_buffer_evidence_preserves_snapshot_metadata() -> None:
 
     evidence = build_query_buffer_evidence(
         record=record,
-        scored_event=scored_event,
+        analysis_event=analysis_event,
     )
 
     assert evidence.evidence_id == "evidence:q1"
@@ -107,7 +107,7 @@ def test_build_query_buffer_evidence_preserves_snapshot_metadata() -> None:
     assert evidence.top2_label == "depression"
     assert evidence.margin == pytest.approx(0.5)
     assert evidence.confidence_kind == "prototype_similarity_top1"
-    assert evidence.raw_scores == scored_event.category_scores
+    assert evidence.raw_scores == analysis_event.category_scores
     assert (
         evidence.metadata["evidence_backend_name"]
         == QUERY_BUFFER_PROJECTION_BACKEND_NAME
@@ -121,32 +121,32 @@ def test_build_query_buffer_evidence_preserves_snapshot_metadata() -> None:
     assert evidence.metadata["translation_used"] is False
 
 
-def test_build_query_buffer_evidences_requires_matching_scored_event() -> None:
-    query_event, scored_event = _build_pair(
+def test_build_query_buffer_evidences_requires_matching_analysis_event() -> None:
+    query_event, analysis_event = _build_pair(
         query_id="q1",
         text="잠이 안 와요",
         category_scores={"anxiety": 0.7, "normal": 0.1},
     )
     record = build_query_buffer_record(
         event=query_event,
-        scored_event=scored_event,
+        analysis_event=analysis_event,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
     )
 
-    with pytest.raises(ValueError, match="Missing ScoredEvent"):
-        build_query_buffer_evidences(records=(record,), scored_events=())
+    with pytest.raises(ValueError, match="Missing AnalysisEvent"):
+        build_query_buffer_evidences(records=(record,), analysis_events=())
 
 
 def test_build_query_buffer_evidence_rejects_snapshot_mismatch() -> None:
-    query_event, scored_event = _build_pair(
+    query_event, analysis_event = _build_pair(
         query_id="q1",
         text="계속 긴장돼요",
         category_scores={"anxiety": 0.8, "depression": 0.2},
     )
     record = build_query_buffer_record(
         event=query_event,
-        scored_event=scored_event,
+        analysis_event=analysis_event,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
     )
@@ -155,30 +155,30 @@ def test_build_query_buffer_evidence_rejects_snapshot_mismatch() -> None:
     with pytest.raises(ValueError, match="confidence"):
         build_query_buffer_evidence(
             record=mismatched_record,
-            scored_event=scored_event,
+            analysis_event=analysis_event,
         )
 
 
 def test_query_buffer_selection_service_filters_candidates_with_policy() -> None:
-    query_event_1, scored_event_1 = _build_pair(
+    query_event_1, analysis_event_1 = _build_pair(
         query_id="q1",
         text="불안이 심해요",
         category_scores={"anxiety": 0.85, "depression": 0.2, "normal": 0.1},
     )
-    query_event_2, scored_event_2 = _build_pair(
+    query_event_2, analysis_event_2 = _build_pair(
         query_id="q2",
         text="그냥 조금 예민해요",
         category_scores={"anxiety": 0.62, "depression": 0.6, "normal": 0.1},
     )
     record_1 = build_query_buffer_record(
         event=query_event_1,
-        scored_event=scored_event_1,
+        analysis_event=analysis_event_1,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
     )
     record_2 = build_query_buffer_record(
         event=query_event_2,
-        scored_event=scored_event_2,
+        analysis_event=analysis_event_2,
         model_revision="rev_001",
         confidence_kind="prototype_similarity_top1",
     )
@@ -186,7 +186,7 @@ def test_query_buffer_selection_service_filters_candidates_with_policy() -> None
     service = QueryBufferSelectionService()
     result = service.select(
         records=(record_1, record_2),
-        scored_events=(scored_event_1, scored_event_2),
+        analysis_events=(analysis_event_1, analysis_event_2),
         training_task=_build_task(),
     )
 

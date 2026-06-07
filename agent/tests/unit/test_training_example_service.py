@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    StoredScoredEvent,
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    StoredAnalysisEvent,
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.backends.inputs import (
@@ -35,7 +35,7 @@ from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PR
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
 class _StaticEmbeddingAdapter:
@@ -122,7 +122,7 @@ def _registry_catalog_entry(
 
 
 def test_training_example_service_builds_scored_examples_from_source_rows() -> None:
-    service = TrainingExampleService()
+    service = TrainingExampleService(backend=PrototypeRescoringTrainingExampleBackend())
     adapter = _StaticEmbeddingAdapter(
         {
             "panic panic": [1.0, 0.0],
@@ -154,18 +154,18 @@ def test_training_example_service_builds_scored_examples_from_source_rows() -> N
     )
 
     assert len(examples) == 2
-    assert examples[0].scored_event.query_id == "q1"
+    assert examples[0].analysis_event.query_id == "q1"
     assert examples[0].base_embedding == [1.0, 0.0]
     assert examples[0].embedding == [1.0, 0.0]
-    assert examples[0].scored_event.category_scores["anxiety"] == 1.0
+    assert examples[0].analysis_event.category_scores["anxiety"] == 1.0
     assert examples[0].metadata["raw_text"] == "panic panic"
     assert examples[0].metadata["training_text"] == "panic panic"
-    assert examples[1].scored_event.query_id == "q2"
-    assert examples[1].scored_event.category_scores["normal"] == 1.0
+    assert examples[1].analysis_event.query_id == "q2"
+    assert examples[1].analysis_event.category_scores["normal"] == 1.0
 
 
 def test_training_example_service_returns_empty_tuple_for_empty_rows() -> None:
-    service = TrainingExampleService()
+    service = TrainingExampleService(backend=PrototypeRescoringTrainingExampleBackend())
     adapter_state = _IdentitySharedAdapterState()
 
     examples = service.build_examples(
@@ -183,12 +183,12 @@ def test_training_example_service_returns_empty_tuple_for_empty_rows() -> None:
 
 
 def test_training_example_service_rebuilds_examples_from_stored_events() -> None:
-    service = TrainingExampleService()
+    service = TrainingExampleService(backend=PrototypeRescoringTrainingExampleBackend())
     examples = service.build_examples_from_stored_events(
         StoredEventTrainingExampleBuildRequest(
             stored_events=(
-                StoredScoredEvent(
-                    scored_event=ScoredEvent(
+                StoredAnalysisEvent(
+                    analysis_event=AnalysisEvent(
                         query_id="q1",
                         occurred_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
                         translated_text="panic panic",
@@ -207,11 +207,11 @@ def test_training_example_service_rebuilds_examples_from_stored_events() -> None
     assert len(examples) == 1
     assert examples[0].base_embedding == [1.0, 0.0]
     assert examples[0].embedding == [1.0, 0.0]
-    assert examples[0].scored_event.category_scores["anxiety"] == 1.0
+    assert examples[0].analysis_event.category_scores["anxiety"] == 1.0
 
 
 def test_training_example_service_accepts_custom_shared_adapter_state() -> None:
-    service = TrainingExampleService()
+    service = TrainingExampleService(backend=PrototypeRescoringTrainingExampleBackend())
     adapter = _StaticEmbeddingAdapter({"panic panic": [0.2, 1.0]})
 
     examples = service.build_examples(
@@ -234,7 +234,7 @@ def test_training_example_service_accepts_custom_shared_adapter_state() -> None:
     assert len(examples) == 1
     assert examples[0].base_embedding == [0.2, 1.0]
     assert examples[0].embedding == [0.2, 0.0]
-    assert examples[0].scored_event.category_scores["anxiety"] == 1.0
+    assert examples[0].analysis_event.category_scores["anxiety"] == 1.0
 
 
 def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
@@ -269,8 +269,8 @@ def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
     assert len(examples) == 1
     example = examples[0]
     assert example.view_kind == "weak_strong_pair"
-    assert example.evidence_scored_event.query_id == "q_fix"
-    assert example.update_scored_event.query_id == "q_fix"
+    assert example.evidence_analysis_event.query_id == "q_fix"
+    assert example.update_analysis_event.query_id == "q_fix"
     assert example.weak_embedding == [1.0, 0.0]
     assert example.strong_embedding == [0.8, 0.2]
     assert example.update_embedding == [0.8, 0.2]
@@ -281,12 +281,28 @@ def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
     assert example.metadata["strong_text"] == "panic strong"
 
 
+def test_training_example_service_requires_explicit_backend() -> None:
+    service = TrainingExampleService()
+
+    with pytest.raises(ValueError, match="requires an explicit backend"):
+        service.build_examples(
+            TrainingExampleBuildRequest(
+                source_rows=(),
+                adapter=_StaticEmbeddingAdapter({}),
+                adapter_state=_IdentitySharedAdapterState(),
+                prototype_pack=_pack_payload(),
+                model_id="hash_debug",
+                scoring_service=ScoringService(),
+            )
+        )
+
+
 def test_weak_strong_pair_backend_rejects_stored_event_rebuild() -> None:
     service = TrainingExampleService(backend=WeakStrongPairTrainingExampleBackend())
 
     with pytest.raises(
         ValueError,
-        match="not supported for stored scored events yet",
+        match="not supported for stored analysis events yet",
     ):
         service.build_examples_from_stored_events(
             StoredEventTrainingExampleBuildRequest(

@@ -18,6 +18,9 @@ from agent.src.api.training import router as training_router
 from agent.src.api.typing_segments import router as typing_segments_router
 from agent.src.api.wellbeing import router as wellbeing_router
 from agent.src.config.env_file import load_agent_env_files
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
 )
@@ -29,9 +32,6 @@ from agent.src.infrastructure.repositories.family_access_repository import (
 )
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRepository,
-)
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    ScoredEventRepository,
 )
 from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
     WellbeingSettingsRepository,
@@ -117,7 +117,7 @@ def _default_federation_runtime_service_factory(
 def create_app(
     *,
     pipeline_service: InferencePipelineService | None = None,
-    scored_event_repository: ScoredEventRepository | None = None,
+    analysis_event_repository: AnalysisEventRepository | None = None,
     query_buffer_repository: QueryBufferRepository | None = None,
     captured_text_repository: CapturedTextRepository | None = None,
     captured_text_view_generation_service: (
@@ -151,8 +151,8 @@ def create_app(
         allow_headers=["*"],
     )
 
-    app.state.scored_event_repository = (
-        scored_event_repository or ScoredEventRepository()
+    app.state.analysis_event_repository = (
+        analysis_event_repository or AnalysisEventRepository()
     )
     app.state.query_buffer_repository = (
         query_buffer_repository or QueryBufferRepository()
@@ -189,7 +189,7 @@ def create_app(
         shared_adapter_sync_service or SharedAdapterSyncService()
     )
     app.state.wellbeing_projection_service = WellbeingSignalProjectionService(
-        scored_event_repository=app.state.scored_event_repository,
+        analysis_event_repository=app.state.analysis_event_repository,
         snapshot_repository=app.state.wellbeing_snapshot_repository,
     )
     app.state.wellbeing_summary_service = WellbeingSummaryService(

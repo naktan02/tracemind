@@ -30,7 +30,7 @@ from shared.src.contracts.captured_text_contracts import (
     CapturedTextSourceType,
     CapturedTextSurfaceType,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
 @dataclass(slots=True)
@@ -54,7 +54,7 @@ class StubPipelineService:
         self.processed_source_types.append(event.source_type)
         self.event_repository.count_value += 1
         return InferencePipelineResult(
-            scored_event=ScoredEvent(
+            analysis_event=AnalysisEvent(
                 query_id=event.query_id,
                 occurred_at=event.occurred_at,
                 translated_text=None,

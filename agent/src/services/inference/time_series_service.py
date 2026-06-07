@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.inference.state import (
     BaselineProfile,
     PersonalizationState,
@@ -29,13 +29,13 @@ class TimeSeriesAccumulator:
     def update(
         self,
         *,
-        scored_event: ScoredEvent,
+        analysis_event: AnalysisEvent,
         baseline_profile: BaselineProfile,
         personalization_state: PersonalizationState,
         previous_state: TimeSeriesState | None = None,
         state_version: str = "time_series_state.v1",
     ) -> TimeSeriesState:
-        categories = set(scored_event.category_scores)
+        categories = set(analysis_event.category_scores)
         if previous_state is not None:
             categories.update(previous_state.latest_scores)
         categories.update(baseline_profile.category_means)
@@ -50,7 +50,7 @@ class TimeSeriesAccumulator:
 
         alpha = self.config.ewma_alpha
         for category in sorted(categories):
-            current_score = scored_event.category_scores.get(
+            current_score = analysis_event.category_scores.get(
                 category,
                 previous_state.latest_scores.get(category, 0.0)
                 if previous_state
@@ -92,12 +92,12 @@ class TimeSeriesAccumulator:
                 previous_streak + 1 if delta >= threshold else 0
             )
             event_counts[category] = previous_count + (
-                1 if category in scored_event.category_scores else 0
+                1 if category in analysis_event.category_scores else 0
             )
 
         return TimeSeriesState(
             state_version=state_version,
-            last_updated_at=scored_event.occurred_at,
+            last_updated_at=analysis_event.occurred_at,
             latest_scores=latest_scores,
             latest_deltas=latest_deltas,
             ewma_scores=ewma_scores,

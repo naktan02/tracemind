@@ -121,7 +121,7 @@ def _build_service(
     if query_ssl_task_service is not None:
         kwargs["query_ssl_task_service"] = query_ssl_task_service
     return AgentTrainingTaskRunnerService(
-        scored_event_repository=repo,
+        analysis_event_repository=repo,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,

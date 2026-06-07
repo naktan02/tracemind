@@ -53,7 +53,7 @@ from shared.src.contracts.training_contracts import (
     TrainingTask,
     make_training_update_envelope,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
 )
@@ -217,7 +217,7 @@ def _example(
         metadata["raw_text"] = raw_text
         metadata["training_text"] = raw_text
     return EmbeddedTrainingExample(
-        scored_event=ScoredEvent(
+        analysis_event=AnalysisEvent(
             query_id=query_id,
             occurred_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
             translated_text=translated_text,

@@ -42,7 +42,7 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
     TrainingTask,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
@@ -223,7 +223,7 @@ def _make_example(
     embedding: list[float],
 ) -> EmbeddedTrainingExample:
     return EmbeddedTrainingExample(
-        scored_event=ScoredEvent(
+        analysis_event=AnalysisEvent(
             query_id=query_id,
             occurred_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
             translated_text=None,

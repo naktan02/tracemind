@@ -5,10 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from agent.src.services.training.backends.evidence.base import (
+    ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME,
     PseudoLabelEvidenceBackend,
-)
-from agent.src.services.training.backends.evidence.prototype_similarity import (
-    PrototypeSimilarityEvidenceBackend,
 )
 from agent.src.services.training.backends.evidence.registry import (
     build_pseudo_label_evidence_backend,
@@ -18,7 +16,7 @@ from methods.federated_ssl.runtime_fallbacks import (
     RuntimeFallbackTrainingProfile,
 )
 from shared.src.contracts.training_contracts import TrainingTask
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
@@ -26,17 +24,14 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
 
 @dataclass(slots=True)
 class PseudoLabelEvidenceService:
-    """TrainingTask와 ScoredEvent를 evidence 계층으로 연결한다."""
+    """TrainingTask와 AnalysisEvent를 evidence 계층으로 연결한다."""
 
     default_profile: RuntimeFallbackTrainingProfile = field(
         default=RUNTIME_FALLBACK_TRAINING_PROFILE
     )
-    default_backend: PseudoLabelEvidenceBackend = field(
-        default_factory=PrototypeSimilarityEvidenceBackend
-    )
 
     def __post_init__(self) -> None:
-        if self.default_evidence_backend_name != self.default_backend.backend_name:
+        if self.default_evidence_backend_name != ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME:
             raise ValueError(
                 "Default pseudo-label evidence backend does not match the "
                 "configured default objective profile."
@@ -49,13 +44,13 @@ class PseudoLabelEvidenceService:
     def build_evidences(
         self,
         *,
-        scored_events: tuple[ScoredEvent, ...] | list[ScoredEvent],
+        analysis_events: tuple[AnalysisEvent, ...] | list[AnalysisEvent],
         training_task: TrainingTask,
     ) -> tuple[PseudoLabelEvidence, ...]:
         backend = self._resolve_backend(training_task=training_task)
         return tuple(
-            backend.build_evidence(scored_event=scored_event)
-            for scored_event in scored_events
+            backend.build_evidence(analysis_event=analysis_event)
+            for analysis_event in analysis_events
         )
 
     def _resolve_backend(
@@ -67,8 +62,6 @@ class PseudoLabelEvidenceService:
             training_task.objective_config.evidence_backend_name
             or self.default_evidence_backend_name
         )
-        if backend_name == self.default_backend.backend_name:
-            return self.default_backend
         return build_pseudo_label_evidence_backend(
             backend_name,
             objective_config=training_task.objective_config,

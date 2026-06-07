@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.inference.result import AssessmentResult
 from shared.src.domain.entities.inference.state import (
     BaselineProfile,
@@ -42,7 +42,7 @@ class RuleBasedDecisionPolicy:
     def evaluate(
         self,
         *,
-        scored_event: ScoredEvent,
+        analysis_event: AnalysisEvent,
         baseline_profile: BaselineProfile,
         personalization_state: PersonalizationState,
         time_series_state: TimeSeriesState,
@@ -54,14 +54,14 @@ class RuleBasedDecisionPolicy:
         best_delta = 0.0
         best_persistence = 0.0
 
-        categories = sorted(scored_event.category_scores)
+        categories = sorted(analysis_event.category_scores)
         for category in categories:
             if category in self.ignored_categories:
                 continue
 
             score = time_series_state.latest_scores.get(
                 category,
-                scored_event.category_scores.get(category, 0.0),
+                analysis_event.category_scores.get(category, 0.0),
             )
             delta = time_series_state.latest_deltas.get(
                 category,

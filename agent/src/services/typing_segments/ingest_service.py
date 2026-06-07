@@ -32,7 +32,7 @@ class TypingSegmentIngestService:
         top_category, top_score = _top_score(result)
         return TypingSegmentIngestResponsePayload(
             segment_id=segment.segment_id,
-            query_id=result.scored_event.query_id,
+            query_id=result.analysis_event.query_id,
             top_category=top_category,
             top_score=top_score,
             message="typing segment가 처리되어 저장되었습니다.",
@@ -65,7 +65,7 @@ def _segment_to_query_event(segment: TypingSegmentPayload) -> QueryEvent:
 def _top_score(
     result: InferencePipelineResult,
 ) -> tuple[str | None, float | None]:
-    scores = result.scored_event.category_scores
+    scores = result.analysis_event.category_scores
     if not scores:
         return None, None
     top_category = max(scores, key=scores.__getitem__)

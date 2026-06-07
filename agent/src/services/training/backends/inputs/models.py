@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    StoredScoredEvent,
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    StoredAnalysisEvent,
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
@@ -42,9 +42,9 @@ class TrainingExampleBuildRequest:
 
 @dataclass(slots=True)
 class StoredEventTrainingExampleBuildRequest:
-    """저장된 scored event를 학습 예시로 재구성하는 요청."""
+    """저장된 analysis event를 학습 예시로 재구성하는 요청."""
 
-    stored_events: tuple[StoredScoredEvent, ...] | list[StoredScoredEvent]
+    stored_events: tuple[StoredAnalysisEvent, ...] | list[StoredAnalysisEvent]
     prototype_pack: PrototypePackPayload
     scoring_service: ScoringService
     adapter_state: SharedAdapterState | None = None

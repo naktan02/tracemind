@@ -26,7 +26,7 @@ def test_run_current_task_delegates_to_runner_service() -> None:
     response = training_api.run_current_task(
         training_api.RunCurrentTaskRequest(
             server_base_url="http://server.test",
-            scored_event_days=14,
+            analysis_event_days=14,
             agent_id="agent_a",
         ),
         runner_service=runner_service,
@@ -35,7 +35,7 @@ def test_run_current_task_delegates_to_runner_service() -> None:
     runner_service.run_current_task.assert_called_once_with(
         AgentTrainingTaskRunRequest(
             server_base_url="http://server.test",
-            scored_event_days=14,
+            analysis_event_days=14,
             agent_id="agent_a",
         )
     )

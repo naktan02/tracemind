@@ -22,7 +22,7 @@ from shared.src.contracts.training_contracts import (
     DecisionFeedbackSignal,
     TrainingTask,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
 )
@@ -137,11 +137,11 @@ class PseudoLabelSelectionService:
     def select(
         self,
         *,
-        scored_events: tuple[ScoredEvent, ...] | list[ScoredEvent],
+        analysis_events: tuple[AnalysisEvent, ...] | list[AnalysisEvent],
         training_task: TrainingTask,
     ) -> PseudoLabelSelectionResult:
         evidences = self.evidence_service.build_evidences(
-            scored_events=scored_events,
+            analysis_events=analysis_events,
             training_task=training_task,
         )
         return self.select_evidences(

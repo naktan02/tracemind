@@ -2,12 +2,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any
 
 from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
 )
+from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
+    QuerySslPeftEncoderClientTrainingResult,
+)
+from methods.adaptation.peft_text_encoder.update.materialization import (
+    PeftEncoderMaterializedState,
+)
+from methods.common.runtime_resources import RuntimeResourceCache
+from methods.common.timing import TimingRecorder
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.training_contracts import TrainingTask
 
 
 @dataclass(slots=True)
@@ -141,7 +154,7 @@ def release_transient_model_cache(runtime_resource_cache: object | None) -> int:
     """client 경계에서 FedMatch helper model materialization cache를 폐기한다."""
 
     import gc
-    import sys
+
     from methods.adaptation.peft_text_encoder.resource_cache import (
         clear_peft_encoder_helper_model_cache,
     )
@@ -201,19 +214,25 @@ def run_method_owned_peft_encoder_local_training_core(
     created_at: datetime | None = None,
     base_parameters: PeftEncoderMaterializedState,
     base_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
-    previous_client_partition_parameters: Mapping[str, PeftEncoderMaterializedState] | None = None,
+    previous_client_partition_parameters: (
+        Mapping[str, PeftEncoderMaterializedState] | None
+    ) = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
     timing_recorder: TimingRecorder | None = None,
     delta_materializer: Any,
 ) -> QuerySslPeftEncoderClientTrainingResult:
-    """PEFT text encoder local training을 methods 레이어 내에서 실행한다 (scripts 의존 없음)."""
+    """PEFT text encoder local training을 methods 레이어 안에서 실행한다."""
 
-    from datetime import datetime, timezone
-    from shared.src.contracts.adapter_contract_families.peft_classifier import PeftClassifierState
+    from methods.adaptation.peft_text_encoder.federated_ssl import (
+        helper_provider,
+        method_owned_training,
+    )
     from methods.adaptation.peft_text_encoder.update_family_runtime import (
         build_training_backend_config_for_peft_encoder_state,
     )
-    from methods.adaptation.peft_text_encoder.federated_ssl import helper_provider, method_owned_training
+    from shared.src.contracts.adapter_contract_families.peft_classifier import (
+        PeftClassifierState,
+    )
 
     if not isinstance(active_adapter_state, PeftClassifierState):
         raise ValueError(
@@ -267,6 +286,4 @@ def run_method_owned_peft_encoder_local_training_core(
         timing_recorder=timing_recorder,
         initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
     )
-
-
 

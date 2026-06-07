@@ -8,11 +8,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
-)
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    ScoredEventRepository,
 )
 from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
@@ -37,11 +37,11 @@ class RunCurrentTaskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     server_base_url: str
-    scored_event_days: int = Field(
+    analysis_event_days: int = Field(
         default=7,
         ge=1,
         le=90,
-        description="학습에 사용할 scored event 보관 기간 (일). 기본 7일.",
+        description="학습에 사용할 analysis event 보관 기간 (일). 기본 7일.",
     )
     agent_id: str | None = Field(
         default=None,
@@ -84,13 +84,13 @@ FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
 # ------------------------------------------------------------------ #
 
 
-def get_scored_event_repository(request: Request) -> ScoredEventRepository:
-    """app.state에서 ScoredEventRepository를 읽는다."""
-    repo = getattr(request.app.state, "scored_event_repository", None)
+def get_analysis_event_repository(request: Request) -> AnalysisEventRepository:
+    """app.state에서 AnalysisEventRepository를 읽는다."""
+    repo = getattr(request.app.state, "analysis_event_repository", None)
     if repo is None:
         raise RuntimeError(
-            "ScoredEventRepository가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.scored_event_repository를 설정하세요."
+            "AnalysisEventRepository가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.analysis_event_repository를 설정하세요."
         )
     return repo
 
@@ -141,9 +141,9 @@ def get_federation_runtime_service_factory(
     return factory
 
 
-ScoredEventRepoDep = Annotated[
-    ScoredEventRepository,
-    Depends(get_scored_event_repository),
+AnalysisEventRepoDep = Annotated[
+    AnalysisEventRepository,
+    Depends(get_analysis_event_repository),
 ]
 SharedAdapterRuntimeServiceDep = Annotated[
     SharedAdapterRuntimeService,
@@ -162,7 +162,7 @@ FederationRuntimeFactoryDep = Annotated[
 
 def get_training_task_runner_service(
     request: Request,
-    repo: ScoredEventRepoDep,
+    repo: AnalysisEventRepoDep,
     shared_adapter_runtime_service: SharedAdapterRuntimeServiceDep,
     shared_adapter_sync_service: SharedAdapterSyncServiceDep,
     round_client_factory: RoundClientFactoryDep,
@@ -171,7 +171,7 @@ def get_training_task_runner_service(
     """run-current-task application service를 조립한다."""
 
     return AgentTrainingTaskRunnerService(
-        scored_event_repository=repo,
+        analysis_event_repository=repo,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
@@ -210,7 +210,7 @@ def run_current_task(
         result = runner_service.run_current_task(
             AgentTrainingTaskRunRequest(
                 server_base_url=request.server_base_url,
-                scored_event_days=request.scored_event_days,
+                analysis_event_days=request.analysis_event_days,
                 agent_id=request.agent_id,
             )
         )

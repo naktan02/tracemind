@@ -253,7 +253,7 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
         "confidence_threshold": 0.6,
         "margin_threshold": 0.02,
         "example_generation_backend_name": WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
-        "evidence_backend_name": "prototype_similarity_evidence",
+        "evidence_backend_name": "analysis_score_evidence",
         "scorer_backend_name": "prototype_similarity",
         "score_policy_name": "max_cosine",
         "acceptance_policy_name": "top1_margin_threshold",

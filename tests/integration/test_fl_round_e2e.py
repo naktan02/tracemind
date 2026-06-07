@@ -25,14 +25,14 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
     CapturedTextRepository,
-)
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    ScoredEventRepository,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.federation.rounds.runtime_service import (
@@ -103,7 +103,7 @@ from shared.src.contracts.training_contracts import (
     make_training_update_envelope,
     make_training_update_submission,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 # ------------------------------------------------------------------ #
 # 픽스처                                                               #
@@ -536,7 +536,7 @@ def test_peft_round_default_query_ssl_task_routes_to_agent_query_ssl_service(
             )
             runtime_factory = MagicMock()
             runner = AgentTrainingTaskRunnerService(
-                scored_event_repository=MagicMock(),
+                analysis_event_repository=MagicMock(),
                 shared_adapter_runtime_service=shared_runtime,
                 shared_adapter_sync_service=shared_sync,
                 round_client_factory=MagicMock(return_value=round_client),
@@ -591,9 +591,9 @@ def test_agent_query_ssl_service_uploads_update_to_main_server(
             assert training_task is not None
 
             occurred_at = datetime(2026, 6, 7, 1, 0, tzinfo=timezone.utc)
-            scored_repo = ScoredEventRepository(db_path=tmp_path / "scored.db")
+            scored_repo = AnalysisEventRepository(db_path=tmp_path / "scored.db")
             scored_repo.save(
-                ScoredEvent(
+                AnalysisEvent(
                     query_id="labeled_1",
                     occurred_at=occurred_at,
                     translated_text="I feel anxious",
@@ -664,9 +664,9 @@ def test_agent_query_ssl_service_uploads_update_to_main_server(
                     model_manifest=active_manifest,
                     active_state=active_state,
                     round_client=round_client,
-                    scored_event_repository=scored_repo,
+                    analysis_event_repository=scored_repo,
                     captured_text_repository=captured_repo,
-                    scored_event_days=7,
+                    analysis_event_days=7,
                     agent_id="agent_01",
                 )
             )

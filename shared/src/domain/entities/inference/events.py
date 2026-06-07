@@ -26,27 +26,22 @@ class AnalysisEvent:
     classifier, prototype, hybrid scorer 모두 같은 analysis event로 저장한다.
     """
 
-    analysis_id: str
-    source_event_id: str
-    occurred_at: datetime
-    translated_text: str | None
-    scorer_family: str
-    scorer_name: str
-    model_revision: str
-    confidence_kind: str
-    embedding_model_id: str | None
-    translation_model_id: str | None
-    category_scores: dict[str, float] = field(default_factory=dict)
-    metadata: dict[str, JsonScalar] = field(default_factory=dict)
-
-
-@dataclass(slots=True)
-class ScoredEvent:
-    """기존 호출부 호환용 scored event projection."""
-
     query_id: str
     occurred_at: datetime
     translated_text: str | None
     embedding_model_id: str
     translation_model_id: str | None
     category_scores: dict[str, float] = field(default_factory=dict)
+    analysis_id: str | None = None
+    source_event_id: str | None = None
+    scorer_family: str = "unknown"
+    scorer_name: str = "unknown"
+    model_revision: str = "unknown"
+    confidence_kind: str = "unknown"
+    metadata: dict[str, JsonScalar] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.analysis_id is None:
+            self.analysis_id = self.query_id
+        if self.source_event_id is None:
+            self.source_event_id = self.query_id

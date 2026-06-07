@@ -18,7 +18,7 @@ from shared.src.contracts.typing_segment_contracts import (
     TypingSegmentPayload,
     TypingSurfaceType,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
 @dataclass(slots=True)
@@ -32,7 +32,7 @@ class StubPipelineService:
         self.processed_texts.append(event.text)
         self.processed_source_types.append(event.source_type)
         return InferencePipelineResult(
-            scored_event=ScoredEvent(
+            analysis_event=AnalysisEvent(
                 query_id=event.query_id,
                 occurred_at=event.occurred_at,
                 translated_text=None,

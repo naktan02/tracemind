@@ -12,11 +12,11 @@ from methods.prototype.evidence.helpers import (
     rank_category_scores,
     softmax_distribution,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
-def _scored_event() -> ScoredEvent:
-    return ScoredEvent(
+def _analysis_event() -> AnalysisEvent:
+    return AnalysisEvent(
         query_id="q1",
         occurred_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
         translated_text=None,
@@ -47,10 +47,10 @@ def test_rank_category_scores_orders_by_score_then_label() -> None:
 
 
 def test_build_ranked_evidence_uses_top1_top2_margin_and_metadata() -> None:
-    scored_event = _scored_event()
+    analysis_event = _analysis_event()
     evidence = build_ranked_evidence(
-        scored_event=scored_event,
-        ranked_scores=rank_category_scores(scored_event.category_scores),
+        analysis_event=analysis_event,
+        ranked_scores=rank_category_scores(analysis_event.category_scores),
         confidence_kind="prototype_similarity",
         view_kind="single_view",
         backend_name="prototype_similarity_evidence",

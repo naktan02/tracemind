@@ -88,7 +88,7 @@ class PrototypeRescoringTrainingExampleBackend:
             return ()
 
         adapter_state = request.adapter_state or IdentitySharedAdapterState(
-            model_id=usable_events[0].scored_event.embedding_model_id,
+            model_id=usable_events[0].analysis_event.embedding_model_id,
             model_revision="local_cached_identity",
             training_scope=TrainingScope.ADAPTER_ONLY,
             embedding_dim=len(usable_events[0].base_embedding),
@@ -120,7 +120,7 @@ def _to_embedded_example(
         if source_row.translated_text is not None:
             metadata["translated_text"] = source_row.translated_text
     return EmbeddedTrainingExample(
-        scored_event=input_item.scored_event,
+        analysis_event=input_item.analysis_event,
         embedding=list(input_item.embedding),
         base_embedding=list(input_item.base_embedding),
         metadata=metadata,

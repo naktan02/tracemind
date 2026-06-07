@@ -1,4 +1,4 @@
-"""Prototype similarity evidence backend."""
+"""Method-agnostic analysis score evidence backend."""
 
 from __future__ import annotations
 
@@ -15,28 +15,26 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
-from .base import ANY_ADAPTER_KIND, PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME
+from .base import ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME, ANY_ADAPTER_KIND
 from .registry import register_pseudo_label_evidence_backend
 
-PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-    display_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-    implementation_module=(
-        "agent.src.services.training.backends.evidence.prototype_similarity"
-    ),
-    core_method_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
+ANALYSIS_SCORE_EVIDENCE_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name=ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME,
+    display_name=ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME,
+    implementation_module="agent.src.services.training.backends.evidence.analysis_score",
+    core_method_name=ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME,
     family_name="pseudo_label_evidence",
     supported_adapter_kinds=(ANY_ADAPTER_KIND,),
 )
 
 
 @dataclass(slots=True)
-class PrototypeSimilarityEvidenceBackend:
-    """현재 prototype similarity score를 공통 evidence로 정규화한다."""
+class AnalysisScoreEvidenceBackend:
+    """AnalysisEvent의 category score를 공통 evidence로 정규화한다."""
 
-    backend_name: str = PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME
+    backend_name: str = ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME
     supported_adapter_kinds: tuple[str, ...] = (ANY_ADAPTER_KIND,)
-    confidence_kind: str = "prototype_similarity"
+    confidence_kind: str = "analysis_score_top1"
     view_kind: str = "single_view"
 
     def build_evidence(
@@ -55,13 +53,13 @@ class PrototypeSimilarityEvidenceBackend:
 
 
 @register_pseudo_label_evidence_backend(
-    PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-    catalog_entry=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_CATALOG_ENTRY,
+    ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME,
+    catalog_entry=ANALYSIS_SCORE_EVIDENCE_BACKEND_CATALOG_ENTRY,
 )
-def build_prototype_similarity_evidence_backend(
+def build_analysis_score_evidence_backend(
     objective_config: TrainingObjectiveConfig,
-) -> PrototypeSimilarityEvidenceBackend:
-    """registry용 prototype-similarity evidence backend factory."""
+) -> AnalysisScoreEvidenceBackend:
+    """registry용 method-agnostic score evidence backend factory."""
 
     del objective_config
-    return PrototypeSimilarityEvidenceBackend()
+    return AnalysisScoreEvidenceBackend()

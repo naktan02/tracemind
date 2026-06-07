@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
-)
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    ScoredEventRepository,
 )
 from agent.src.services.assets.adapters.composition_service import (
     AdapterCompositionService,
@@ -43,7 +43,7 @@ class AgentTrainingTaskRunRequest:
     """Agent current task 실행 입력."""
 
     server_base_url: str
-    scored_event_days: int = 7
+    analysis_event_days: int = 7
     agent_id: str | None = None
 
 
@@ -67,7 +67,7 @@ class AgentTrainingTaskRunnerService:
     fetch/sync/example build/runtime upload를 route 대신 실행한다.
     """
 
-    scored_event_repository: ScoredEventRepository
+    analysis_event_repository: AnalysisEventRepository
     shared_adapter_runtime_service: SharedAdapterRuntimeService
     shared_adapter_sync_service: SharedAdapterSyncService
     round_client_factory: RoundClientFactory
@@ -142,9 +142,9 @@ class AgentTrainingTaskRunnerService:
                         model_manifest=active_manifest,
                         active_state=active_state,
                         round_client=round_client,
-                        scored_event_repository=self.scored_event_repository,
+                        analysis_event_repository=self.analysis_event_repository,
                         captured_text_repository=self.captured_text_repository,
-                        scored_event_days=request.scored_event_days,
+                        analysis_event_days=request.analysis_event_days,
                         agent_id=request.agent_id,
                     )
                 )

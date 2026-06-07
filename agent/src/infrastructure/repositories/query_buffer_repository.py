@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
 QUERY_BUFFER_RECORD_V1 = "query_buffer_record.v1"
 
@@ -121,17 +121,17 @@ class QueryBufferRecord:
 def build_query_buffer_record(
     *,
     event: QueryEvent,
-    scored_event: ScoredEvent,
+    analysis_event: AnalysisEvent,
     model_revision: str,
     confidence_kind: str,
     metadata: dict[str, Any] | None = None,
 ) -> QueryBufferRecord:
-    """QueryEvent/ScoredEvent 쌍에서 query buffer snapshot을 만든다."""
+    """QueryEvent/AnalysisEvent 쌍에서 query buffer snapshot을 만든다."""
 
     ranked_scores = sorted(
         (
             (str(label), float(score))
-            for label, score in scored_event.category_scores.items()
+            for label, score in analysis_event.category_scores.items()
         ),
         key=lambda item: (-item[1], item[0]),
     )

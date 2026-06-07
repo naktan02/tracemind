@@ -15,7 +15,7 @@ from methods.prototype.training_inputs.examples import (
     require_weak_strong_texts,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
 @dataclass(slots=True)
@@ -32,7 +32,7 @@ class _SourceRow:
 
 @dataclass(slots=True)
 class _StoredEvent:
-    scored_event: ScoredEvent
+    analysis_event: AnalysisEvent
     base_embedding: Sequence[float] | None
 
 
@@ -102,10 +102,10 @@ def test_build_prototype_rescore_inputs_applies_adapter_and_scores() -> None:
     assert len(inputs) == 1
     assert inputs[0].base_embedding == [0.5, 0.25]
     assert inputs[0].embedding == [1.0, 0.5]
-    assert inputs[0].scored_event.query_id == "q1"
-    assert inputs[0].scored_event.translated_text == "panic translated"
-    assert inputs[0].scored_event.translation_model_id == "nllb"
-    assert inputs[0].scored_event.category_scores == {
+    assert inputs[0].analysis_event.query_id == "q1"
+    assert inputs[0].analysis_event.translated_text == "panic translated"
+    assert inputs[0].analysis_event.translation_model_id == "nllb"
+    assert inputs[0].analysis_event.category_scores == {
         "anxiety": 1.0,
         "normal": 0.5,
     }
@@ -115,7 +115,7 @@ def test_rescore_inputs_from_stored_events_skips_missing_embedding() -> None:
     inputs = build_prototype_rescore_inputs_from_stored_events(
         stored_events=(
             _StoredEvent(
-                scored_event=ScoredEvent(
+                analysis_event=AnalysisEvent(
                     query_id="q1",
                     occurred_at=datetime(2026, 5, 4, tzinfo=timezone.utc),
                     translated_text=None,
@@ -126,7 +126,7 @@ def test_rescore_inputs_from_stored_events_skips_missing_embedding() -> None:
                 base_embedding=[0.5, 0.25],
             ),
             _StoredEvent(
-                scored_event=ScoredEvent(
+                analysis_event=AnalysisEvent(
                     query_id="q2",
                     occurred_at=datetime(2026, 5, 4, tzinfo=timezone.utc),
                     translated_text=None,
@@ -143,8 +143,8 @@ def test_rescore_inputs_from_stored_events_skips_missing_embedding() -> None:
     )
 
     assert len(inputs) == 1
-    assert inputs[0].scored_event.query_id == "q1"
-    assert inputs[0].scored_event.category_scores == {
+    assert inputs[0].analysis_event.query_id == "q1"
+    assert inputs[0].analysis_event.category_scores == {
         "anxiety": 1.0,
         "normal": 0.5,
     }
@@ -193,10 +193,10 @@ def test_build_prototype_weak_strong_inputs_keeps_selection_and_update_views() -
     assert len(inputs) == 1
     assert inputs[0].weak_embedding == [1.0, 0.5]
     assert inputs[0].strong_embedding == [0.2, 1.8]
-    assert inputs[0].weak_scored_event.translated_text == "weak translated"
-    assert inputs[0].strong_scored_event.translated_text == "strong translated"
-    assert inputs[0].weak_scored_event.category_scores["anxiety"] == 1.0
-    assert inputs[0].strong_scored_event.category_scores["normal"] == 1.8
+    assert inputs[0].weak_analysis_event.translated_text == "weak translated"
+    assert inputs[0].strong_analysis_event.translated_text == "strong translated"
+    assert inputs[0].weak_analysis_event.category_scores["anxiety"] == 1.0
+    assert inputs[0].strong_analysis_event.category_scores["normal"] == 1.8
     assert inputs[0].metadata == {
         "training_input_backend_name": "weak_strong_pair",
         "selection_view": "weak",

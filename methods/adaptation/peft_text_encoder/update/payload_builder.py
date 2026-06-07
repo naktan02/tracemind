@@ -79,7 +79,7 @@ def _build_candidate_label_space(
             {
                 str(label).strip()
                 for example in accepted_examples
-                for label in example.update_scored_event.category_scores
+                for label in example.update_analysis_event.category_scores
                 if str(label).strip()
             }
         )
@@ -138,7 +138,7 @@ def extract_peft_encoder_training_text(
             if isinstance(value, str) and value.strip():
                 return value.strip()
 
-    translated_text = getattr(example.update_scored_event, "translated_text", None)
+    translated_text = getattr(example.update_analysis_event, "translated_text", None)
     if isinstance(translated_text, str) and translated_text.strip():
         return translated_text.strip()
 

@@ -11,7 +11,7 @@ from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     extract_category_prototypes,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 PrototypeMapping = Mapping[str, Sequence[float] | Sequence[Sequence[float]]]
 
@@ -28,10 +28,10 @@ class PrototypeTrainingInputSource(Protocol):
     strong_translated_text: str | None
 
 
-class StoredPrototypeScoredEvent(Protocol):
-    """Stored scored event 재점수화에 필요한 최소 shape."""
+class StoredPrototypeAnalysisEvent(Protocol):
+    """Stored analysis event 재점수화에 필요한 최소 shape."""
 
-    scored_event: ScoredEvent
+    analysis_event: AnalysisEvent
     base_embedding: Sequence[float] | None
 
 
@@ -57,7 +57,7 @@ class PrototypeScoreBackend(Protocol):
 class PrototypeSingleViewTrainingInput:
     """단일 view prototype 재점수화 결과."""
 
-    scored_event: ScoredEvent
+    analysis_event: AnalysisEvent
     embedding: list[float]
     base_embedding: list[float]
 
@@ -66,8 +66,8 @@ class PrototypeSingleViewTrainingInput:
 class PrototypeWeakStrongTrainingInput:
     """weak selection view와 strong update view를 가진 prototype input."""
 
-    weak_scored_event: ScoredEvent
-    strong_scored_event: ScoredEvent
+    weak_analysis_event: AnalysisEvent
+    strong_analysis_event: AnalysisEvent
     weak_embedding: list[float]
     strong_embedding: list[float]
     weak_base_embedding: list[float]
@@ -93,7 +93,7 @@ def build_prototype_rescore_inputs(
     inputs: list[PrototypeSingleViewTrainingInput] = []
     for row, base_embedding in zip(source_rows, base_embeddings, strict=True):
         adapted_embedding = list(adapter_state.apply(base_embedding))
-        scored_event = ScoredEvent(
+        analysis_event = AnalysisEvent(
             query_id=row.query_id,
             occurred_at=row.occurred_at,
             translated_text=row.translated_text,
@@ -103,7 +103,7 @@ def build_prototype_rescore_inputs(
         )
         inputs.append(
             PrototypeSingleViewTrainingInput(
-                scored_event=scored_event,
+                analysis_event=analysis_event,
                 embedding=adapted_embedding,
                 base_embedding=list(base_embedding),
             )
@@ -113,12 +113,12 @@ def build_prototype_rescore_inputs(
 
 def build_prototype_rescore_inputs_from_stored_events(
     *,
-    stored_events: Sequence[StoredPrototypeScoredEvent],
+    stored_events: Sequence[StoredPrototypeAnalysisEvent],
     adapter_state: PrototypeEmbeddingTransform,
     prototype_pack: PrototypePackPayload,
     scorer: PrototypeScoreBackend,
 ) -> tuple[PrototypeSingleViewTrainingInput, ...]:
-    """저장된 scored event를 현재 prototype/adapter 기준으로 재점수화한다."""
+    """저장된 analysis event를 현재 prototype/adapter 기준으로 재점수화한다."""
 
     prototypes = extract_category_prototypes(prototype_pack)
     inputs: list[PrototypeSingleViewTrainingInput] = []
@@ -127,13 +127,13 @@ def build_prototype_rescore_inputs_from_stored_events(
         if base_embedding is None or len(base_embedding) == 0:
             continue
         adapted_embedding = list(adapter_state.apply(base_embedding))
-        scored_event = replace(
-            stored_event.scored_event,
+        analysis_event = replace(
+            stored_event.analysis_event,
             category_scores=scorer.score(adapted_embedding, prototypes),
         )
         inputs.append(
             PrototypeSingleViewTrainingInput(
-                scored_event=scored_event,
+                analysis_event=analysis_event,
                 embedding=adapted_embedding,
                 base_embedding=list(base_embedding),
             )
@@ -185,7 +185,7 @@ def build_prototype_weak_strong_inputs(
     ):
         weak_embedding = list(adapter_state.apply(weak_base_embedding))
         strong_embedding = list(adapter_state.apply(strong_base_embedding))
-        weak_scored_event = ScoredEvent(
+        weak_analysis_event = AnalysisEvent(
             query_id=row.query_id,
             occurred_at=row.occurred_at,
             translated_text=row.weak_translated_text or row.translated_text,
@@ -193,7 +193,7 @@ def build_prototype_weak_strong_inputs(
             translation_model_id=prototype_pack.translation_model_id,
             category_scores=scorer.score(weak_embedding, prototypes),
         )
-        strong_scored_event = ScoredEvent(
+        strong_analysis_event = AnalysisEvent(
             query_id=row.query_id,
             occurred_at=row.occurred_at,
             translated_text=row.strong_translated_text or row.translated_text,
@@ -203,8 +203,8 @@ def build_prototype_weak_strong_inputs(
         )
         inputs.append(
             PrototypeWeakStrongTrainingInput(
-                weak_scored_event=weak_scored_event,
-                strong_scored_event=strong_scored_event,
+                weak_analysis_event=weak_analysis_event,
+                strong_analysis_event=strong_analysis_event,
                 weak_embedding=weak_embedding,
                 strong_embedding=strong_embedding,
                 weak_base_embedding=list(weak_base_embedding),

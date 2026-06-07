@@ -28,8 +28,8 @@ _RANGE_TO_DAYS: dict[WellbeingSignalRange, int] = {
 class WellbeingTimeseriesService:
     """전체 wellbeing signal 추이를 제공한다.
 
-    현재 단계에서는 snapshot repository를 우선 source of truth로 사용하고,
-    저장된 구간이 없을 때만 deterministic mock을 fallback으로 반환한다.
+    snapshot repository를 source of truth로 사용한다. 저장된 구간이 없으면
+    빈 point 묶음으로 아직 관측된 추이가 없음을 표현한다.
     """
 
     repository: WellbeingSnapshotRepository | None = None
@@ -67,26 +67,9 @@ class WellbeingTimeseriesService:
                     ),
                 )
 
-        days = _RANGE_TO_DAYS[requested_range]
         now = datetime.now(tz=timezone.utc)
-        start_score = 34.0
-        end_score = 61.0
-        step = 0.0 if days <= 1 else (end_score - start_score) / float(days - 1)
-
-        points = tuple(
-            WellbeingSignalTimeseriesPointPayload(
-                ts=(now - timedelta(days=days - index - 1)).replace(
-                    hour=0,
-                    minute=0,
-                    second=0,
-                    microsecond=0,
-                ),
-                signal_score=round(start_score + step * index, 2),
-            )
-            for index in range(days)
-        )
         return WellbeingSignalTimeseriesPayload(
             computed_at=now,
             range=requested_range,
-            points=points,
+            points=(),
         )

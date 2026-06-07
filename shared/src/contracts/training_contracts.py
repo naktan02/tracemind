@@ -83,7 +83,7 @@ class ClientMetricKeys:
     MEAN_CONFIDENCE = "mean_confidence"
     # top1 접수와 top2 접수 차이의 평균
     MEAN_MARGIN = "mean_margin"
-    # 주어진 scored events 중 선택된 비율
+    # 주어진 analysis events 중 선택된 비율
     ACCEPTED_RATIO = "accepted_ratio"
     # privacy guard 적용 후 delta 벡터의 L2 norm
     DELTA_L2_NORM = "delta_l2_norm"

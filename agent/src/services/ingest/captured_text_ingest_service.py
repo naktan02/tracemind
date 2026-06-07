@@ -43,7 +43,7 @@ class CapturedTextIngestService:
         top_category, top_score = _top_score(result)
         return CapturedTextIngestResponsePayload(
             event_id=event.event_id,
-            query_id=result.scored_event.query_id,
+            query_id=result.analysis_event.query_id,
             top_category=top_category,
             top_score=top_score,
             message="captured text event가 처리되어 저장되었습니다.",
@@ -84,7 +84,7 @@ def _query_source_type(event: CapturedTextEventPayload) -> str:
 def _top_score(
     result: InferencePipelineResult,
 ) -> tuple[str | None, float | None]:
-    scores = result.scored_event.category_scores
+    scores = result.analysis_event.category_scores
     if not scores:
         return None, None
     top_category = max(scores, key=scores.__getitem__)

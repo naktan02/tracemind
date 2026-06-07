@@ -5,14 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
     CapturedTextRepository,
-)
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    ScoredEventRepository,
 )
 from agent.src.services.training.execution.query_ssl_training_task_service import (
     AgentQuerySslTrainingTaskRunRequest,
@@ -40,7 +40,7 @@ from shared.src.contracts.training_contracts import (
     TrainingTaskPayload,
     make_training_update_envelope,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 QuerySslPeftEncoderClientTrainingResult = (
     qssl_training.QuerySslPeftEncoderClientTrainingResult
@@ -95,9 +95,9 @@ class _QuerySslPeftBackend:
 
 def test_query_ssl_training_task_service_uploads_query_ssl_update(tmp_path) -> None:
     occurred_at = datetime(2026, 6, 7, 1, 0, tzinfo=timezone.utc)
-    scored_repo = ScoredEventRepository(db_path=tmp_path / "scored.db")
+    scored_repo = AnalysisEventRepository(db_path=tmp_path / "scored.db")
     scored_repo.save(
-        ScoredEvent(
+        AnalysisEvent(
             query_id="labeled_1",
             occurred_at=occurred_at,
             translated_text="I feel anxious",
@@ -178,9 +178,9 @@ def test_query_ssl_training_task_service_uploads_query_ssl_update(tmp_path) -> N
             ),
             active_state=active_state,
             round_client=round_client,
-            scored_event_repository=scored_repo,
+            analysis_event_repository=scored_repo,
             captured_text_repository=captured_repo,
-            scored_event_days=7,
+            analysis_event_days=7,
             agent_id="agent_01",
         )
     )

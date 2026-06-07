@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PSEUDO_LABEL_EVIDENCE_V1,
     PseudoLabelEvidence,
@@ -21,13 +21,13 @@ def rank_category_scores(
         key=lambda item: (-item[1], item[0]),
     )
     if not ranked_scores:
-        raise ValueError("ScoredEvent must contain at least one category score.")
+        raise ValueError("AnalysisEvent must contain at least one category score.")
     return ranked_scores
 
 
 def build_ranked_evidence(
     *,
-    scored_event: ScoredEvent,
+    analysis_event: AnalysisEvent,
     ranked_scores: list[tuple[str, float]],
     confidence_kind: str,
     view_kind: str,
@@ -45,9 +45,9 @@ def build_ranked_evidence(
     margin = top1_score - top2_score
     return PseudoLabelEvidence(
         schema_version=PSEUDO_LABEL_EVIDENCE_V1,
-        evidence_id=f"evidence:{scored_event.query_id}",
-        source_event_ref=scored_event.query_id,
-        occurred_at=scored_event.occurred_at,
+        evidence_id=f"evidence:{analysis_event.query_id}",
+        source_event_ref=analysis_event.query_id,
+        occurred_at=analysis_event.occurred_at,
         label=top1_label,
         confidence=top1_score,
         confidence_kind=confidence_kind,
@@ -58,12 +58,12 @@ def build_ranked_evidence(
         top2_score=top2_score,
         sample_weight=sample_weight if sample_weight is not None else top1_score,
         view_kind=view_kind,
-        raw_scores=dict(scored_event.category_scores),
+        raw_scores=dict(analysis_event.category_scores),
         label_distribution=label_distribution,
         metadata={
             "evidence_backend_name": backend_name,
-            "embedding_model_id": scored_event.embedding_model_id,
-            "translation_used": scored_event.translation_model_id is not None,
+            "embedding_model_id": analysis_event.embedding_model_id,
+            "translation_used": analysis_event.translation_model_id is not None,
             **({} if metadata is None else metadata),
         },
     )
@@ -81,7 +81,7 @@ def softmax_distribution(
         (label, float(score) / temperature) for label, score in category_scores.items()
     ]
     if not scaled_pairs:
-        raise ValueError("ScoredEvent must contain at least one category score.")
+        raise ValueError("AnalysisEvent must contain at least one category score.")
     max_score = max(score for _, score in scaled_pairs)
     exp_pairs = [(label, math.exp(score - max_score)) for label, score in scaled_pairs]
     normalizer = math.fsum(value for _, value in exp_pairs)

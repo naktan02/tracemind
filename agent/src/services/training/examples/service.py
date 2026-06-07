@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from agent.src.services.training.backends.inputs.base import (
     TrainingExampleBackend,
@@ -10,9 +10,6 @@ from agent.src.services.training.backends.inputs.base import (
 from agent.src.services.training.backends.inputs.models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
-)
-from agent.src.services.training.backends.inputs.prototype_rescore import (
-    PrototypeRescoringTrainingExampleBackend,
 )
 from agent.src.services.training.backends.inputs.resolver import (
     resolve_training_example_backend,
@@ -27,9 +24,7 @@ from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 class TrainingExampleService:
     """로컬 source row를 EmbeddedTrainingExample으로 변환한다."""
 
-    backend: TrainingExampleBackend = field(
-        default_factory=PrototypeRescoringTrainingExampleBackend
-    )
+    backend: TrainingExampleBackend | None = None
 
     @classmethod
     def from_objective_config(
@@ -44,10 +39,18 @@ class TrainingExampleService:
         self,
         request: TrainingExampleBuildRequest,
     ) -> tuple[EmbeddedTrainingExample, ...]:
-        return self.backend.build_examples(request)
+        return self._require_backend().build_examples(request)
 
     def build_examples_from_stored_events(
         self,
         request: StoredEventTrainingExampleBuildRequest,
     ) -> tuple[EmbeddedTrainingExample, ...]:
-        return self.backend.build_examples_from_stored_events(request)
+        return self._require_backend().build_examples_from_stored_events(request)
+
+    def _require_backend(self) -> TrainingExampleBackend:
+        if self.backend is None:
+            raise ValueError(
+                "TrainingExampleService requires an explicit backend. "
+                "Use from_objective_config() for runtime config selection."
+            )
+        return self.backend

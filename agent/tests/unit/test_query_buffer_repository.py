@@ -12,7 +12,7 @@ from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRepository,
     build_query_buffer_record,
 )
-from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
 
 @pytest.fixture
@@ -135,7 +135,7 @@ def test_build_query_buffer_record_uses_query_text_and_score_snapshot() -> None:
         locale="en",
         source_type="manual",
     )
-    scored_event = ScoredEvent(
+    analysis_event = AnalysisEvent(
         query_id="q_build",
         occurred_at=occurred_at,
         translated_text=None,
@@ -146,7 +146,7 @@ def test_build_query_buffer_record_uses_query_text_and_score_snapshot() -> None:
 
     record = build_query_buffer_record(
         event=event,
-        scored_event=scored_event,
+        analysis_event=analysis_event,
         model_revision="seed_rev_001",
         confidence_kind="prototype_similarity_top1",
         metadata={"was_translated": False},

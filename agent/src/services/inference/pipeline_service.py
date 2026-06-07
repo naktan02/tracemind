@@ -12,13 +12,13 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Protocol, Sequence
 
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRecord,
     QueryBufferRepository,
     build_query_buffer_record,
-)
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    ScoredEventRepository,
 )
 from agent.src.services.assets.adapters.composition_service import (
     AdapterCompositionService,
@@ -30,7 +30,7 @@ from agent.src.services.inference.embedding_service import EmbeddingService
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.language.preprocess_service import PreprocessService
 from agent.src.services.language.translation_service import TranslationService
-from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
 
 class ScoringAssetProvider(Protocol):
@@ -47,7 +47,7 @@ class ScoringAssetProvider(Protocol):
 class InferencePipelineResult:
     """단일 이벤트 파이프라인 실행 결과."""
 
-    scored_event: ScoredEvent
+    analysis_event: AnalysisEvent
     base_embedding: list[float]
     was_translated: bool
     query_buffer_record: QueryBufferRecord | None = None
@@ -55,7 +55,7 @@ class InferencePipelineResult:
 
 @dataclass(slots=True)
 class InferencePipelineService:
-    """QueryEvent → ScoredEvent 전체 파이프라인을 조합한다.
+    """QueryEvent → AnalysisEvent 전체 파이프라인을 조합한다.
 
     각 단계는 독립적으로 교체 가능하다.
     번역은 locale이 translation_locales에 포함될 때만 실행한다.
@@ -63,7 +63,7 @@ class InferencePipelineService:
 
     embedding_service: EmbeddingService
     scoring_service: ScoringService
-    event_repository: ScoredEventRepository
+    event_repository: AnalysisEventRepository
     scoring_asset_provider: ScoringAssetProvider | None = None
     adapter_composition_service: AdapterCompositionService | None = None
     shared_adapter_provider: SharedAdapterRuntimeProvider | None = None
@@ -109,7 +109,7 @@ class InferencePipelineService:
         confidence_kind = self.scoring_service.confidence_kind
         model_revision = adapter_context.model_revision_for_record(self.model_revision)
 
-        scored_event = ScoredEvent(
+        analysis_event = AnalysisEvent(
             query_id=event.query_id,
             occurred_at=event.occurred_at,
             translated_text=translated_text,
@@ -127,7 +127,7 @@ class InferencePipelineService:
         }
         metadata.update(adapter_context.query_buffer_metadata())
         self.event_repository.save(
-            scored_event,
+            analysis_event,
             base_embedding=list(base_embedding),
             source_event_id=event.query_id,
             scorer_family=_resolve_scorer_family(scorer_name),
@@ -140,14 +140,14 @@ class InferencePipelineService:
         if self.query_buffer_repository is not None:
             query_buffer_record = build_query_buffer_record(
                 event=event,
-                scored_event=scored_event,
+                analysis_event=analysis_event,
                 model_revision=model_revision,
                 confidence_kind=confidence_kind,
                 metadata=metadata,
             )
             self.query_buffer_repository.save(query_buffer_record)
         return InferencePipelineResult(
-            scored_event=scored_event,
+            analysis_event=analysis_event,
             base_embedding=list(base_embedding),
             was_translated=needs_translation,
             query_buffer_record=query_buffer_record,

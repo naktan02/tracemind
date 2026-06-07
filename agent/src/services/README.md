@@ -22,8 +22,6 @@
 - `federation/`
   - agent와 서버 사이 round orchestration rail
   - current round fetch/upload 담당
-- `assets/prototypes/`
-  - prototype scorer 후보를 위한 로컬 asset provider
 - `assets/shared_adapters/`
   - 서버 current shared adapter state 동기화/로컬 runtime helper
 - `assets/adapters/`
@@ -97,8 +95,7 @@
 - `infrastructure/repositories/query_buffer_repository.py`
   - raw text + prediction snapshot을 로컬에 저장하는 query buffer 저장소
 - `training/selection/query_buffer_projection.py`
-  - query buffer snapshot + scored event를 `methods/prototype/evidence/` core로
-    `PseudoLabelEvidence`에 투영
+  - query buffer snapshot + analysis event를 `PseudoLabelEvidence`에 투영
 - `training/selection/query_buffer_selection_service.py`
   - query buffer 기반 selection runner
 - `training/selection/query_buffer_selection_diagnostics.py`
@@ -141,15 +138,15 @@
 - `training/execution/agent_training_task_runner_service.py`
   - active task 조회, shared adapter sync, Query SSL task 실행, update upload까지의
     agent application flow 소유
-  - prototype pack 기반 stored-event rebuild는 기본 runtime 경로에서 제외한다
+  - stored-event rebuild는 기본 runtime 경로에서 제외한다
 - `training/examples/service.py`
   - raw row 또는 stored event를 `EmbeddedTrainingExample`으로 변환
 - `training/backends/inputs/`
   - single-view, weak/strong pair 같은 training input backend 구현
 - `methods/prototype/training_inputs/`
-  - prototype score 기반 single/multiview input view 계산 core
+  - prototype 방식이 명시 선택될 때 쓰는 input view 계산 core
 - `training/backends/evidence/`
-  - pseudo-label evidence 정규화 backend 구현
+  - analysis score를 pseudo-label evidence로 정규화하는 backend 구현
 - local update backend registry는 `methods/adaptation/local_update_registry.py`가 소유한다
   - `training/backends/training/` old path는 재도입하지 않는다
   - 새 local update backend는 `methods/adaptation/<family>/training_backend.py`에 둔다
@@ -164,8 +161,8 @@
     runtime capability adapter만 둔다.
   - fixed embedding을 쓰는 family와 raw text/tokenized batch를 쓰는 family를 같은
     adapter 내부에서 섞지 않는다.
-- example-generation backend 추가: `methods/prototype/training_inputs/`,
-  `training/backends/inputs/`, `training/examples/service.py`
+- example-generation backend 추가: 해당 method core와 `training/backends/inputs/`,
+  `training/examples/service.py`
 - scorer backend 추가: `methods/prototype/scoring/` 또는 다른 methods core를 먼저
   추가하고, `inference/scoring_backends/`에는 agent runtime adapter만 둔다
 - prototype score policy 추가: `methods/prototype/scoring/`

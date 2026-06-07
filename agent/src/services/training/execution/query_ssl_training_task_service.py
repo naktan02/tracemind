@@ -6,12 +6,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from hashlib import sha256
 
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+    StoredAnalysisEvent,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
-)
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    ScoredEventRepository,
-    StoredScoredEvent,
 )
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
@@ -63,9 +63,9 @@ class AgentQuerySslTrainingTaskRunRequest:
     model_manifest: ModelManifest
     active_state: PeftClassifierState
     round_client: RoundClient
-    scored_event_repository: ScoredEventRepository
+    analysis_event_repository: AnalysisEventRepository
     captured_text_repository: CapturedTextRepository | None
-    scored_event_days: int
+    analysis_event_days: int
     agent_id: str | None = None
 
 
@@ -114,15 +114,15 @@ class AgentQuerySslTrainingTaskService:
 
         labels = tuple(str(label) for label in request.active_state.label_schema)
         labeled_rows = _build_labeled_rows_from_stored_events(
-            stored_events=request.scored_event_repository.get_recent_stored(
-                days=request.scored_event_days
+            stored_events=request.analysis_event_repository.get_recent_stored(
+                days=request.analysis_event_days
             ),
             labels=labels,
         )
         unlabeled_rows = CapturedTextTrainingSourceService(
             repository=request.captured_text_repository
         ).get_recent_query_ssl_unlabeled_rows(
-            days=request.scored_event_days,
+            days=request.analysis_event_days,
             limit=request.training_task.selection_policy.max_examples or 100,
         )
         if not labeled_rows or not unlabeled_rows:
@@ -192,13 +192,13 @@ class AgentQuerySslTrainingTaskService:
 
 def _build_labeled_rows_from_stored_events(
     *,
-    stored_events: Sequence[StoredScoredEvent],
+    stored_events: Sequence[StoredAnalysisEvent],
     labels: Sequence[str],
 ) -> tuple[LabeledQueryRow, ...]:
     label_set = {str(label) for label in labels}
     rows: list[LabeledQueryRow] = []
     for stored_event in stored_events:
-        event = stored_event.scored_event
+        event = stored_event.analysis_event
         if event.translated_text is None or not event.category_scores:
             continue
         label = _top_label(event.category_scores)
@@ -212,7 +212,7 @@ def _build_labeled_rows_from_stored_events(
                 "raw_label": label,
                 "mapped_label_4": label,
                 "locale": "en",
-                "annotation_source": "agent_local_scored_event",
+                "annotation_source": "agent_local_analysis_event",
                 "approved_by": None,
                 "created_at": event.occurred_at.isoformat(),
             }
