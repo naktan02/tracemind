@@ -144,6 +144,44 @@ class QuerySslPeftEncoderClientTrainingResult:
     timing_breakdown: Mapping[str, float] = field(default_factory=dict)
 
 
+@dataclass(frozen=True, slots=True)
+class QuerySslPeftEncoderLocalSslResult:
+    """중앙/FL이 공유할 수 있는 PEFT Query SSL local 학습 결과."""
+
+    model: PeftTextEncoderWithLinearHead
+    tokenizer: Any
+    algorithm: Any
+    effective_labeled_rows: tuple[LabeledQueryRow, ...]
+    effective_unlabeled_rows: tuple[LabeledQueryRow, ...]
+    effective_labels: tuple[str, ...]
+    selection_rows: tuple[LabeledQueryRow, ...]
+    local_step_plan: QuerySslLocalStepPlan
+    history: tuple[dict[str, Any], ...]
+    pseudo_label_quality: PseudoLabelQualitySummary
+    diagnostic_client_metrics: Mapping[str, float]
+    tokenization_cache: TextTokenizationCache | None
+    tokenization_cache_namespace: str
+
+
+@dataclass(frozen=True, slots=True)
+class _QuerySslPeftEncoderLocalRuntime:
+    """PEFT Query SSL local 학습 loop에 필요한 준비된 runtime."""
+
+    model: PeftTextEncoderWithLinearHead
+    tokenizer: Any
+    algorithm: Any
+    effective_labeled_rows: tuple[LabeledQueryRow, ...]
+    effective_unlabeled_rows: tuple[LabeledQueryRow, ...]
+    effective_labels: tuple[str, ...]
+    selection_rows: tuple[LabeledQueryRow, ...]
+    train_loader: Any
+    selection_loader: Any
+    unlabeled_loader: Any
+    step_plan: QuerySslLocalStepPlan
+    tokenization_cache: TextTokenizationCache | None
+    tokenization_cache_namespace: str
+
+
 def run_query_ssl_peft_encoder_training_core(
     *,
     client_id: str,
@@ -166,8 +204,235 @@ def run_query_ssl_peft_encoder_training_core(
 ) -> QuerySslPeftEncoderClientTrainingResult:
     """client-local raw text/views로 Query SSL PEFT encoder update를 생성한다."""
 
-    effective_labeled_rows = list(labeled_rows)
-    effective_unlabeled_rows = list(unlabeled_rows)
+    local_ssl_result = run_query_ssl_peft_encoder_local_ssl(
+        seed=seed,
+        labeled_rows=labeled_rows,
+        unlabeled_rows=unlabeled_rows,
+        diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
+        labels=labels,
+        base_parameters=base_parameters,
+        training_task=training_task,
+        query_ssl_config=query_ssl_config,
+        peft_config=peft_config,
+        trainer_runtime_config=trainer_runtime_config,
+        runtime_resource_cache=runtime_resource_cache,
+        timing_recorder=timing_recorder,
+        initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+    )
+    return build_query_ssl_peft_encoder_client_update(
+        client_id=client_id,
+        training_task=training_task,
+        model_manifest=model_manifest,
+        peft_config=peft_config,
+        created_at=created_at,
+        base_parameters=base_parameters,
+        delta_materializer=delta_materializer,
+        local_ssl_result=local_ssl_result,
+        timing_recorder=timing_recorder,
+    )
+
+
+def run_query_ssl_peft_encoder_local_ssl(
+    *,
+    seed: int,
+    labeled_rows: Sequence[LabeledQueryRow],
+    unlabeled_rows: Sequence[LabeledQueryRow],
+    diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None,
+    labels: Sequence[str],
+    base_parameters: PeftEncoderMaterializedState,
+    training_task: TrainingTask,
+    query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
+    timing_recorder: TimingRecorder | None = None,
+    initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
+) -> QuerySslPeftEncoderLocalSslResult:
+    """PEFT text encoder Query SSL local 학습을 실행한다."""
+
+    runtime = _prepare_query_ssl_local_runtime(
+        seed=seed,
+        labeled_rows=labeled_rows,
+        unlabeled_rows=unlabeled_rows,
+        labels=labels,
+        base_parameters=base_parameters,
+        training_task=training_task,
+        query_ssl_config=query_ssl_config,
+        peft_config=peft_config,
+        trainer_runtime_config=trainer_runtime_config,
+        runtime_resource_cache=runtime_resource_cache,
+        timing_recorder=timing_recorder,
+    )
+
+    with _measure(timing_recorder, "core_training_loop_seconds"):
+        model, history, _best_selection_report = train_query_ssl_classifier(
+            model=runtime.model,
+            train_loader=runtime.train_loader,
+            unlabeled_loader=runtime.unlabeled_loader,
+            selection_loader=runtime.selection_loader,
+            categories=list(runtime.effective_labels),
+            device=trainer_runtime_config.device,
+            epochs=int(training_task.local_epochs),
+            max_train_steps=runtime.step_plan.total_steps,
+            learning_rate=float(training_task.learning_rate),
+            classifier_learning_rate=float(training_task.learning_rate),
+            weight_decay=0.0,
+            proximal_mu=float(peft_config.proximal_mu),
+            max_grad_norm=_training_gradient_clip_norm(training_task),
+            log_every_steps=0,
+            algorithm=runtime.algorithm,
+            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+        )
+
+    diagnostic_threshold = resolve_fixed_pseudo_label_diagnostic_threshold(
+        query_ssl_config.parameters
+    )
+    with _measure(timing_recorder, "core_pseudo_label_diagnostics_seconds"):
+        pseudo_label_quality = build_final_snapshot_pseudo_label_quality(
+            model=model,
+            tokenizer=runtime.tokenizer,
+            rows=(
+                list(runtime.effective_unlabeled_rows)
+                if diagnostic_unlabeled_rows is None
+                else list(diagnostic_unlabeled_rows)
+            ),
+            labels=runtime.effective_labels,
+            peft_config=peft_config,
+            acceptance_threshold=diagnostic_threshold.threshold,
+            trainer_runtime_config=trainer_runtime_config,
+            unlabeled_batch_size=query_ssl_config.unlabeled_batch_size or 1,
+            tokenization_cache=runtime.tokenization_cache,
+            tokenization_cache_namespace=runtime.tokenization_cache_namespace,
+        )
+
+    return QuerySslPeftEncoderLocalSslResult(
+        model=model,
+        tokenizer=runtime.tokenizer,
+        algorithm=runtime.algorithm,
+        effective_labeled_rows=runtime.effective_labeled_rows,
+        effective_unlabeled_rows=runtime.effective_unlabeled_rows,
+        effective_labels=runtime.effective_labels,
+        selection_rows=runtime.selection_rows,
+        local_step_plan=runtime.step_plan,
+        history=tuple(history),
+        pseudo_label_quality=pseudo_label_quality,
+        diagnostic_client_metrics=diagnostic_threshold.to_client_metrics(),
+        tokenization_cache=runtime.tokenization_cache,
+        tokenization_cache_namespace=runtime.tokenization_cache_namespace,
+    )
+
+
+def build_query_ssl_peft_encoder_client_update(
+    *,
+    client_id: str,
+    training_task: TrainingTask,
+    model_manifest: ModelManifest,
+    peft_config: PeftEncoderTrainingBackendConfig,
+    created_at: datetime,
+    base_parameters: PeftEncoderMaterializedState,
+    delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
+    local_ssl_result: QuerySslPeftEncoderLocalSslResult,
+    timing_recorder: TimingRecorder | None = None,
+) -> QuerySslPeftEncoderClientTrainingResult:
+    """학습된 local SSL 결과를 FL client update payload로 투영한다."""
+
+    with _measure(timing_recorder, "core_delta_extract_seconds"):
+        peft_parameter_deltas, head_weight_deltas, head_bias_deltas = (
+            extract_peft_encoder_parameter_deltas(
+                model=local_ssl_result.model,
+                base_parameters=base_parameters,
+                labels=local_ssl_result.effective_labels,
+            )
+        )
+    update_id = f"update_{training_task.round_id}_{client_id}_{uuid4().hex[:12]}"
+    with _measure(timing_recorder, "core_delta_materialization_seconds"):
+        delta_materialization = delta_materializer.prepare(
+            update_id=update_id,
+            training_task=training_task,
+            client_id=client_id,
+            delta_format=peft_config.delta_format,
+            artifact_ref_prefix=peft_config.artifact_ref_prefix,
+            peft_parameter_deltas=peft_parameter_deltas,
+            classifier_head_weight_deltas=head_weight_deltas,
+            classifier_head_bias_deltas=head_bias_deltas,
+        )
+    with _measure(timing_recorder, "core_update_payload_build_seconds"):
+        update_build_result = build_query_ssl_peft_encoder_update_payload(
+            training_task=training_task,
+            model_manifest=model_manifest,
+            peft_config=peft_config,
+            labels=local_ssl_result.effective_labels,
+            labeled_rows=local_ssl_result.effective_labeled_rows,
+            unlabeled_rows=local_ssl_result.effective_unlabeled_rows,
+            step_plan=local_ssl_result.local_step_plan,
+            history_record=(
+                local_ssl_result.history[-1] if local_ssl_result.history else {}
+            ),
+            peft_parameter_deltas=peft_parameter_deltas,
+            classifier_head_weight_deltas=head_weight_deltas,
+            classifier_head_bias_deltas=head_bias_deltas,
+            created_at=created_at,
+            delta_format=delta_materialization.delta_format,
+            peft_adapter_delta_artifact_ref=delta_materialization.peft_adapter_delta_artifact_ref,
+            classifier_head_delta_artifact_ref=(
+                delta_materialization.classifier_head_delta_artifact_ref
+            ),
+            include_inline_deltas=delta_materialization.include_inline_deltas,
+        )
+    update_payload = update_build_result.update_payload
+    client_metrics = {
+        **dict(update_build_result.client_metrics),
+        "query_ssl_selection_labeled_count": float(
+            len(local_ssl_result.selection_rows)
+        ),
+        **dict(local_ssl_result.diagnostic_client_metrics),
+    }
+    update_envelope = make_training_update_envelope(
+        update_id=update_id,
+        round_id=training_task.round_id,
+        task_id=training_task.task_id,
+        model_id=model_manifest.model_id,
+        base_model_revision=model_manifest.model_revision,
+        training_scope=training_task.training_scope,
+        payload_ref=f"client-submission::{update_id}",
+        payload_format=_payload_format_for_update(update_payload),
+        example_count=update_payload.example_count,
+        client_metrics=dict(client_metrics),
+        created_at=created_at,
+    )
+    return QuerySslPeftEncoderClientTrainingResult(
+        update_envelope=update_envelope,
+        update_payload=update_payload,
+        candidate_count=len(local_ssl_result.effective_unlabeled_rows),
+        accepted_count=update_build_result.accepted_unlabeled_count,
+        local_step_plan=local_ssl_result.local_step_plan,
+        client_metrics=client_metrics,
+        pseudo_label_quality=local_ssl_result.pseudo_label_quality,
+        query_ssl_algorithm_state=dict(
+            export_query_ssl_algorithm_state(local_ssl_result.algorithm)
+        ),
+        timing_breakdown=timing_mapping(timing_recorder),
+    )
+
+
+def _prepare_query_ssl_local_runtime(
+    *,
+    seed: int,
+    labeled_rows: Sequence[LabeledQueryRow],
+    unlabeled_rows: Sequence[LabeledQueryRow],
+    labels: Sequence[str],
+    base_parameters: PeftEncoderMaterializedState,
+    training_task: TrainingTask,
+    query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig,
+    peft_config: PeftEncoderTrainingBackendConfig,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
+    runtime_resource_cache: RuntimeResourceCache | None,
+    timing_recorder: TimingRecorder | None,
+) -> _QuerySslPeftEncoderLocalRuntime:
+    """row/model/dataloader를 Query SSL local 학습 loop 입력으로 정규화한다."""
+
+    effective_labeled_rows = tuple(labeled_rows)
+    effective_unlabeled_rows = tuple(unlabeled_rows)
     if not effective_labeled_rows:
         raise ValueError("Query SSL PEFT encoder local training requires labeled_rows.")
     if not effective_unlabeled_rows:
@@ -212,10 +477,12 @@ def run_query_ssl_peft_encoder_training_core(
 
     with _measure(timing_recorder, "core_dataloader_prepare_seconds"):
         label_to_index = {label: index for index, label in enumerate(effective_labels)}
-        selection_rows = _build_bounded_label_balanced_selection_rows(
-            rows=effective_labeled_rows,
-            max_examples=training_task.selection_policy.max_examples,
-            seed=int(seed),
+        selection_rows = tuple(
+            _build_bounded_label_balanced_selection_rows(
+                rows=effective_labeled_rows,
+                max_examples=training_task.selection_policy.max_examples,
+                seed=int(seed),
+            )
         )
         train_loader = build_dataloader(
             rows=effective_labeled_rows,
@@ -259,120 +526,20 @@ def run_query_ssl_peft_encoder_training_core(
             max_steps=int(training_task.max_steps),
         )
 
-    with _measure(timing_recorder, "core_training_loop_seconds"):
-        model, history, _best_selection_report = train_query_ssl_classifier(
-            model=model,
-            train_loader=train_loader,
-            unlabeled_loader=unlabeled_loader,
-            selection_loader=selection_loader,
-            categories=list(effective_labels),
-            device=trainer_runtime_config.device,
-            epochs=int(training_task.local_epochs),
-            max_train_steps=step_plan.total_steps,
-            learning_rate=float(training_task.learning_rate),
-            classifier_learning_rate=float(training_task.learning_rate),
-            weight_decay=0.0,
-            proximal_mu=float(peft_config.proximal_mu),
-            max_grad_norm=(
-                0.0
-                if training_task.gradient_clip_norm is None
-                else float(training_task.gradient_clip_norm)
-            ),
-            log_every_steps=0,
-            algorithm=algorithm,
-            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
-        )
-    diagnostic_threshold = resolve_fixed_pseudo_label_diagnostic_threshold(
-        query_ssl_config.parameters
-    )
-    with _measure(timing_recorder, "core_pseudo_label_diagnostics_seconds"):
-        pseudo_label_quality = build_final_snapshot_pseudo_label_quality(
-            model=model,
-            tokenizer=tokenizer,
-            rows=(
-                effective_unlabeled_rows
-                if diagnostic_unlabeled_rows is None
-                else list(diagnostic_unlabeled_rows)
-            ),
-            labels=effective_labels,
-            peft_config=peft_config,
-            acceptance_threshold=diagnostic_threshold.threshold,
-            trainer_runtime_config=trainer_runtime_config,
-            unlabeled_batch_size=query_ssl_config.unlabeled_batch_size or 1,
-            tokenization_cache=tokenization_cache,
-            tokenization_cache_namespace=tokenization_cache_namespace_value,
-        )
-
-    with _measure(timing_recorder, "core_delta_extract_seconds"):
-        peft_parameter_deltas, head_weight_deltas, head_bias_deltas = (
-            extract_peft_encoder_parameter_deltas(
-                model=model,
-                base_parameters=base_parameters,
-                labels=effective_labels,
-            )
-        )
-    update_id = f"update_{training_task.round_id}_{client_id}_{uuid4().hex[:12]}"
-    with _measure(timing_recorder, "core_delta_materialization_seconds"):
-        delta_materialization = delta_materializer.prepare(
-            update_id=update_id,
-            training_task=training_task,
-            client_id=client_id,
-            delta_format=peft_config.delta_format,
-            artifact_ref_prefix=peft_config.artifact_ref_prefix,
-            peft_parameter_deltas=peft_parameter_deltas,
-            classifier_head_weight_deltas=head_weight_deltas,
-            classifier_head_bias_deltas=head_bias_deltas,
-        )
-    with _measure(timing_recorder, "core_update_payload_build_seconds"):
-        update_build_result = build_query_ssl_peft_encoder_update_payload(
-            training_task=training_task,
-            model_manifest=model_manifest,
-            peft_config=peft_config,
-            labels=effective_labels,
-            labeled_rows=effective_labeled_rows,
-            unlabeled_rows=effective_unlabeled_rows,
-            step_plan=step_plan,
-            history_record=history[-1] if history else {},
-            peft_parameter_deltas=peft_parameter_deltas,
-            classifier_head_weight_deltas=head_weight_deltas,
-            classifier_head_bias_deltas=head_bias_deltas,
-            created_at=created_at,
-            delta_format=delta_materialization.delta_format,
-            peft_adapter_delta_artifact_ref=delta_materialization.peft_adapter_delta_artifact_ref,
-            classifier_head_delta_artifact_ref=(
-                delta_materialization.classifier_head_delta_artifact_ref
-            ),
-            include_inline_deltas=delta_materialization.include_inline_deltas,
-        )
-    update_payload = update_build_result.update_payload
-    client_metrics = {
-        **dict(update_build_result.client_metrics),
-        "query_ssl_selection_labeled_count": float(len(selection_rows)),
-        **diagnostic_threshold.to_client_metrics(),
-    }
-    update_envelope = make_training_update_envelope(
-        update_id=update_id,
-        round_id=training_task.round_id,
-        task_id=training_task.task_id,
-        model_id=model_manifest.model_id,
-        base_model_revision=model_manifest.model_revision,
-        training_scope=training_task.training_scope,
-        payload_ref=f"client-submission::{update_id}",
-        payload_format=_payload_format_for_update(update_payload),
-        example_count=update_payload.example_count,
-        client_metrics=dict(client_metrics),
-        created_at=created_at,
-    )
-    return QuerySslPeftEncoderClientTrainingResult(
-        update_envelope=update_envelope,
-        update_payload=update_payload,
-        candidate_count=len(effective_unlabeled_rows),
-        accepted_count=update_build_result.accepted_unlabeled_count,
-        local_step_plan=step_plan,
-        client_metrics=client_metrics,
-        pseudo_label_quality=pseudo_label_quality,
-        query_ssl_algorithm_state=dict(export_query_ssl_algorithm_state(algorithm)),
-        timing_breakdown=timing_mapping(timing_recorder),
+    return _QuerySslPeftEncoderLocalRuntime(
+        model=model,
+        tokenizer=tokenizer,
+        algorithm=algorithm,
+        effective_labeled_rows=effective_labeled_rows,
+        effective_unlabeled_rows=effective_unlabeled_rows,
+        effective_labels=effective_labels,
+        selection_rows=selection_rows,
+        train_loader=train_loader,
+        selection_loader=selection_loader,
+        unlabeled_loader=unlabeled_loader,
+        step_plan=step_plan,
+        tokenization_cache=tokenization_cache,
+        tokenization_cache_namespace=tokenization_cache_namespace_value,
     )
 
 
@@ -435,6 +602,12 @@ def _build_bounded_label_balanced_selection_rows(
 
 def _payload_format_for_update(update_payload: PeftClassifierDelta) -> str:
     return PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+
+
+def _training_gradient_clip_norm(training_task: TrainingTask) -> float:
+    if training_task.gradient_clip_norm is None:
+        return 0.0
+    return float(training_task.gradient_clip_norm)
 
 
 def _build_unlabeled_loader(
