@@ -25,8 +25,6 @@ class LocalUpdateProfile:
     algorithm_profile_name: str
     training_scope: str
     training_backend_name: str
-    confidence_threshold: float
-    margin_threshold: float
     example_generation_backend_name: str
     evidence_backend_name: str
     scorer_backend_name: str
@@ -39,6 +37,7 @@ class LocalUpdateProfile:
     acceptance_policy_name: str
     privacy_guard_name: str
     evidence_backend_temperature: float
+    selection_parameters: dict[str, TrainingConfigScalar]
 
     def __post_init__(self) -> None:
         for field_name in (
@@ -69,10 +68,6 @@ class LocalUpdateProfile:
                     field_name="validation_score_policy_name",
                 ),
             )
-        if not 0.0 <= self.confidence_threshold <= 1.0:
-            raise ValueError("local_update_profile.confidence_threshold invalid.")
-        if self.margin_threshold < 0.0:
-            raise ValueError("local_update_profile.margin_threshold invalid.")
         if self.score_top_k is not None and self.score_top_k <= 0:
             raise ValueError("local_update_profile.score_top_k must be positive.")
         if self.validation_score_top_k is not None and self.validation_score_top_k <= 0:
@@ -110,16 +105,6 @@ class LocalUpdateProfile:
             training_backend_name=read_str(
                 source,
                 "training_backend_name",
-                field_prefix="local_update_profile",
-            ),
-            confidence_threshold=read_float(
-                source,
-                "confidence_threshold",
-                field_prefix="local_update_profile",
-            ),
-            margin_threshold=read_float(
-                source,
-                "margin_threshold",
                 field_prefix="local_update_profile",
             ),
             example_generation_backend_name=read_str(
@@ -182,6 +167,7 @@ class LocalUpdateProfile:
                 "evidence_backend_temperature",
                 field_prefix="local_update_profile",
             ),
+            selection_parameters=_read_selection_parameters(source),
         )
 
     def to_training_objective_mapping(self) -> dict[str, TrainingConfigScalar]:
@@ -190,8 +176,6 @@ class LocalUpdateProfile:
         result: dict[str, TrainingConfigScalar] = {
             "algorithm_profile_name": self.algorithm_profile_name,
             "training_backend_name": self.training_backend_name,
-            "confidence_threshold": self.confidence_threshold,
-            "margin_threshold": self.margin_threshold,
             "example_generation_backend_name": self.example_generation_backend_name,
             "evidence_backend_name": self.evidence_backend_name,
             "scorer_backend_name": self.scorer_backend_name,
@@ -201,6 +185,12 @@ class LocalUpdateProfile:
             "privacy_guard_name": self.privacy_guard_name,
             "evidence_backend.temperature": self.evidence_backend_temperature,
         }
+        result.update(
+            {
+                f"selection.{key}": value
+                for key, value in self.selection_parameters.items()
+            }
+        )
         if self.score_top_k is not None:
             result["score_top_k"] = self.score_top_k
         return result
@@ -233,8 +223,6 @@ _LOCAL_UPDATE_PROFILE_KEYS = frozenset(
         "algorithm_profile_name",
         "training_scope",
         "training_backend_name",
-        "confidence_threshold",
-        "margin_threshold",
         "example_generation_backend_name",
         "evidence_backend_name",
         "scorer_backend_name",
@@ -247,8 +235,32 @@ _LOCAL_UPDATE_PROFILE_KEYS = frozenset(
         "acceptance_policy_name",
         "privacy_guard_name",
         "evidence_backend_temperature",
+        "selection_parameters",
     }
 )
+
+
+def _read_selection_parameters(
+    source: Mapping[str, object],
+) -> dict[str, TrainingConfigScalar]:
+    value = source.get("selection_parameters")
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise ValueError("local_update_profile.selection_parameters must be a mapping.")
+    result: dict[str, TrainingConfigScalar] = {}
+    for raw_key, raw_value in value.items():
+        key = str(raw_key).strip()
+        if not key:
+            raise ValueError(
+                "local_update_profile.selection_parameters keys must not be empty."
+            )
+        if not isinstance(raw_value, str | int | float | bool):
+            raise ValueError(
+                "local_update_profile.selection_parameters values must be scalar."
+            )
+        result[key] = raw_value
+    return result
 
 
 def _read_optional_str(

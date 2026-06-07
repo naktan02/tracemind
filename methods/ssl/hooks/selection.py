@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from shared.src.domain.entities.training.pseudo_label_evidence import (
@@ -14,10 +15,17 @@ from .registry import register_pseudo_label_selection_hook
 
 @dataclass(frozen=True, slots=True)
 class PseudoLabelSelectionConfig:
-    """Selection hook이 해석할 threshold 입력."""
+    """Selection hook이 해석할 method-owned parameter 입력."""
 
-    confidence_threshold: float
-    margin_threshold: float = 0.0
+    parameters: Mapping[str, float] = field(default_factory=dict)
+
+    def require_float(self, key: str) -> float:
+        """hook이 필요한 숫자 parameter를 명시적으로 요구한다."""
+
+        value = self.parameters.get(key)
+        if value is None:
+            raise ValueError(f"Selection hook parameter is required: {key}")
+        return float(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,9 +88,10 @@ class FixedConfidencePseudoLabelSelectionHook:
         evidence: PseudoLabelEvidence,
         config: PseudoLabelSelectionConfig,
     ) -> PseudoLabelSelectionDecision:
+        confidence_threshold = config.require_float("confidence_threshold")
         return build_pseudo_label_selection_decision(
             evidence=evidence,
-            accepted=evidence.top1_score >= config.confidence_threshold,
+            accepted=evidence.top1_score >= confidence_threshold,
         )
 
 
@@ -99,10 +108,32 @@ class MarginThresholdPseudoLabelSelectionHook:
         evidence: PseudoLabelEvidence,
         config: PseudoLabelSelectionConfig,
     ) -> PseudoLabelSelectionDecision:
+        confidence_threshold = config.require_float("confidence_threshold")
+        margin_threshold = config.require_float("margin_threshold")
         return build_pseudo_label_selection_decision(
             evidence=evidence,
             accepted=(
-                evidence.top1_score >= config.confidence_threshold
-                and evidence.margin >= config.margin_threshold
+                evidence.top1_score >= confidence_threshold
+                and evidence.margin >= margin_threshold
             ),
+        )
+
+
+@register_pseudo_label_selection_hook("top1_ranked")
+@dataclass(slots=True)
+class Top1RankedPseudoLabelSelectionHook:
+    """Top1 evidence를 모두 후보로 열고 cap/ranking 정책에 선택을 맡긴다."""
+
+    hook_name: str = "top1_ranked"
+
+    def evaluate(
+        self,
+        *,
+        evidence: PseudoLabelEvidence,
+        config: PseudoLabelSelectionConfig,
+    ) -> PseudoLabelSelectionDecision:
+        _ = config
+        return build_pseudo_label_selection_decision(
+            evidence=evidence,
+            accepted=True,
         )

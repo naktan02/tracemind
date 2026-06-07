@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import concurrent.futures
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -341,6 +343,50 @@ def test_captured_text_debug_job_run_analyzes_existing_ready_views(
     assert payload["analysis_selected_count"] == 1
     assert payload["analysis_processed_count"] == 1
     assert pipeline.processed_texts == ["오늘 너무 불안해"]
+
+
+def test_captured_text_debug_job_rejects_concurrent_manual_runs(
+    tmp_path: Path,
+) -> None:
+    repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
+    started = threading.Event()
+    release = threading.Event()
+
+    class BlockingViewGenerationService(CapturedTextViewGenerationService):
+        def generate_pending_views(self, *, limit: int = 100):
+            started.set()
+            assert release.wait(timeout=5)
+            return super().generate_pending_views(limit=limit)
+
+    client = TestClient(
+        create_app(
+            captured_text_repository=repository,
+            captured_text_view_generation_service=BlockingViewGenerationService(
+                repository=repository
+            ),
+            auto_configure_pipeline=False,
+        )
+    )
+    payload = CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(mode="json")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        first_response_future = executor.submit(
+            client.post,
+            "/api/v1/captured-text/debug-job/run-view-generation",
+            json=payload,
+        )
+        assert started.wait(timeout=5)
+
+        second_response = client.post(
+            "/api/v1/captured-text/debug-job/run-view-generation",
+            json=payload,
+        )
+        release.set()
+        first_response = first_response_future.result(timeout=5)
+
+    assert second_response.status_code == 409
+    assert "이미 실행 중" in second_response.json()["detail"]
+    assert first_response.status_code == 200
 
 
 def test_captured_text_debug_job_config_toggles_state(

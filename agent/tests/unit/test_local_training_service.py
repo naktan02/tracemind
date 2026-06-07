@@ -116,6 +116,32 @@ register_shared_adapter_training_backend(
 
 
 @dataclass(slots=True)
+class TestShiftScoringBackend:
+    backend_name: str = "test_shift_scorer"
+    confidence_kind: str = "test_shift_top1"
+    supported_adapter_kinds: tuple[str, ...] = ("test_shift",)
+    requires_shared_state: bool = False
+
+    def score(self, embedding, scoring_assets, shared_state=None) -> dict[str, float]:
+        del embedding, scoring_assets, shared_state
+        return {}
+
+
+register_scoring_backend(
+    "test_shift_scorer",
+    factory=lambda _objective_config, _similarity_name: TestShiftScoringBackend(),
+    catalog_entry=RegistryCatalogEntry(
+        item_name="test_shift_scorer",
+        display_name="test_shift_scorer",
+        implementation_module=__name__,
+        core_method_name="test_shift_scorer",
+        family_name="scoring_backend",
+        supported_adapter_kinds=("test_shift",),
+    ),
+)
+
+
+@dataclass(slots=True)
 class PeftOnlyTestPrivacyGuard:
     guard_name: str = "peft_only_test_guard"
     supported_adapter_kinds: tuple[str, ...] = ("peft_classifier",)
@@ -181,10 +207,10 @@ def _build_task(
     *,
     min_required_examples: int = 1,
     gradient_clip_norm: float | None = 0.05,
-    acceptance_policy_name: str | None = None,
-    pseudo_label_algorithm_name: str | None = None,
+    acceptance_policy_name: str | None = "top1_confidence_only",
+    pseudo_label_algorithm_name: str | None = "top1_confidence_only",
     privacy_guard_name: str | None = "noop",
-    scorer_backend_name: str | None = None,
+    scorer_backend_name: str | None = "test_shift_scorer",
     loss: str = "test_shift_default_backend",
     extras: dict[str, str | int | float | bool] | None = None,
 ) -> TrainingTask:
@@ -202,13 +228,15 @@ def _build_task(
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
             loss=loss,
-            confidence_threshold=0.6,
-            margin_threshold=0.02,
             scorer_backend_name=scorer_backend_name,
             acceptance_policy_name=acceptance_policy_name,
             pseudo_label_algorithm_name=pseudo_label_algorithm_name,
             privacy_guard_name=privacy_guard_name,
-            extras={} if extras is None else extras,
+            extras={
+                "selection.confidence_threshold": 0.6,
+                "selection.margin_threshold": 0.02,
+                **({} if extras is None else extras),
+            },
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=1),
         min_required_examples=min_required_examples,
@@ -297,10 +325,10 @@ def test_local_training_service_creates_update_from_top_candidates(
     assert candidates["q2"].selection_context.selection_stage.value == "dropped_by_cap"
     assert candidates["q3"].selection_context.selection_stage.value == "dropped_by_cap"
     assert (
-        candidates["q4"].selection_context.selection_stage.value == "threshold_rejected"
+        candidates["q4"].selection_context.selection_stage.value == "policy_rejected"
     )
-    assert candidates["q2"].selection_context.threshold_accepted is True
-    assert candidates["q4"].selection_context.threshold_accepted is False
+    assert candidates["q2"].selection_context.policy_accepted is True
+    assert candidates["q4"].selection_context.policy_accepted is False
 
 
 def test_local_training_service_applies_training_backend_extra_overrides(
@@ -917,10 +945,12 @@ def test_local_training_service_rejects_incompatible_training_example_backend(
                     max_steps=10,
                     objective_config=TrainingObjectiveConfig(
                         loss="test_shift_backend_incompatible_examples",
-                        confidence_threshold=0.6,
-                        margin_threshold=0.02,
                         example_generation_backend_name=("peft_only_training_examples"),
                         privacy_guard_name="noop",
+                        extras={
+                            "selection.confidence_threshold": 0.6,
+                            "selection.margin_threshold": 0.02,
+                        },
                     ),
                     selection_policy=TrainingSelectionPolicy(max_examples=1),
                     min_required_examples=1,

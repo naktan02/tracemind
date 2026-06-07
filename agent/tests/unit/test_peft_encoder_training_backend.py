@@ -172,13 +172,15 @@ def _build_task(
         max_steps=1,
         objective_config=TrainingObjectiveConfig(
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=0.6,
-            margin_threshold=0.02,
             scorer_backend_name="prototype_similarity",
             acceptance_policy_name="top1_margin_threshold",
             pseudo_label_algorithm_name="top1_margin_threshold",
             privacy_guard_name="noop",
-            extras={} if extras is None else extras,
+            extras={
+                "selection.confidence_threshold": 0.6,
+                "selection.margin_threshold": 0.02,
+                **({} if extras is None else extras),
+            },
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=2),
         min_required_examples=1,

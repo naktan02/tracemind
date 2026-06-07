@@ -312,6 +312,7 @@ const statusPre = getElement("collector-status", HTMLPreElement);
 const jobStatusPre = getElement("job-status", HTMLPreElement);
 const segmentPre = getElement("last-segment", HTMLPreElement);
 const historyPre = getElement("segment-history", HTMLPreElement);
+let runViewGenerationRequestActive = false;
 
 toggleButton.addEventListener("click", () => {
   void toggleDebug();
@@ -433,6 +434,11 @@ async function togglePipelineJob(): Promise<void> {
 }
 
 async function runViewGenerationNow(): Promise<void> {
+  if (runViewGenerationRequestActive || runViewGenerationButton.disabled) {
+    return;
+  }
+  runViewGenerationRequestActive = true;
+  updateRunViewGenerationButton(true);
   const payload: CapturedTextDebugJobRunRequestPayload = {
     limit: readNumberInput(jobBatchSizeInput, 100),
   };
@@ -449,6 +455,9 @@ async function runViewGenerationNow(): Promise<void> {
     await refreshJobStatus();
   } catch (error) {
     jobStatusPre.textContent = JSON.stringify(formatAgentError(error), null, 2);
+  } finally {
+    runViewGenerationRequestActive = false;
+    updateRunViewGenerationButton(false);
   }
 }
 
@@ -469,7 +478,7 @@ async function runTrainingNow(): Promise<void> {
         method: "POST",
         body: JSON.stringify({
           server_base_url: serverBaseUrl,
-          scored_event_days: 7,
+          analysis_event_days: 7,
         }),
       },
     );
@@ -487,6 +496,15 @@ function applyJobStatus(status: CapturedTextDebugJobStatusPayload): void {
   toggleJobButton.className = status.view_generation_enabled ? "secondary" : "";
   jobIntervalInput.value = String(status.view_generation_interval_seconds);
   jobBatchSizeInput.value = String(status.view_generation_batch_size);
+  updateRunViewGenerationButton(status.view_generation_running);
+}
+
+function updateRunViewGenerationButton(isServerJobRunning: boolean): void {
+  const isRunning = runViewGenerationRequestActive || isServerJobRunning;
+  runViewGenerationButton.disabled = isRunning;
+  runViewGenerationButton.textContent = isRunning
+    ? "번역/view 실행 중"
+    : "번역/view 즉시 실행";
 }
 
 function readNumberInput(input: HTMLInputElement, fallback: number): number {

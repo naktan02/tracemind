@@ -44,8 +44,10 @@ def test_candidate_builder_preserves_hook_decision_and_context_seed() -> None:
         evidence=evidence,
         training_task=_build_task(),
         selection_config=PseudoLabelSelectionConfig(
-            confidence_threshold=0.6,
-            margin_threshold=0.05,
+            parameters={
+                "confidence_threshold": 0.6,
+                "margin_threshold": 0.05,
+            },
         ),
         selection_hook=MarginThresholdPseudoLabelSelectionHook(),
     )
@@ -111,8 +113,10 @@ def test_selector_finalizes_context_metadata_and_feedback_after_cap() -> None:
         built_candidates=built_candidates,
         training_task=_build_task(),
         selection_config=PseudoLabelSelectionConfig(
-            confidence_threshold=0.6,
-            margin_threshold=0.05,
+            parameters={
+                "confidence_threshold": 0.6,
+                "margin_threshold": 0.05,
+            },
         ),
         max_examples=1,
     )
@@ -136,7 +140,7 @@ def test_selector_finalizes_context_metadata_and_feedback_after_cap() -> None:
     assert by_id["round:q_drop"].metadata["selected_by_cap"] is False
     assert by_id["round:q_threshold"].selection_context is not None
     assert by_id["round:q_threshold"].selection_context.selection_stage == (
-        PseudoLabelSelectionStage.THRESHOLD_REJECTED
+        PseudoLabelSelectionStage.POLICY_REJECTED
     )
     assert "pre_cap_rank" not in by_id["round:q_threshold"].metadata
 
@@ -156,8 +160,10 @@ def _build_task() -> TrainingTask:
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=0.6,
-            margin_threshold=0.05,
+            extras={
+                "selection.confidence_threshold": 0.6,
+                "selection.margin_threshold": 0.05,
+            },
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=1),
     )

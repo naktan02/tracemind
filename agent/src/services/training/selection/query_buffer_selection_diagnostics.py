@@ -69,8 +69,7 @@ class QueryBufferSelectionDiagnosticsService:
         evidence_backend_name_counts: Counter[str] = Counter()
         evidence_view_kind_counts: Counter[str] = Counter()
         pseudo_label_algorithm_name_counts: Counter[str] = Counter()
-        confidence_threshold_counts: Counter[str] = Counter()
-        margin_threshold_counts: Counter[str] = Counter()
+        selection_parameter_counts: Counter[str] = Counter()
         max_examples_counts: Counter[str] = Counter()
         task_id_counts: Counter[str] = Counter()
         round_id_counts: Counter[str] = Counter()
@@ -89,8 +88,6 @@ class QueryBufferSelectionDiagnosticsService:
             selection_context = _require_selection_context(candidate)
             stage = selection_context.selection_stage.value
             final_accepted = selection_context.final_accepted
-            confidence_threshold = selection_context.confidence_threshold
-            margin_threshold = selection_context.margin_threshold
             max_examples = selection_context.max_examples
             pseudo_label_algorithm_name = selection_context.pseudo_label_algorithm_name
             evidence_backend_name = selection_context.evidence_backend_name
@@ -129,8 +126,8 @@ class QueryBufferSelectionDiagnosticsService:
                 if pseudo_label_algorithm_name is None
                 else pseudo_label_algorithm_name
             ] += 1
-            confidence_threshold_counts[_stringify_count_key(confidence_threshold)] += 1
-            margin_threshold_counts[_stringify_count_key(margin_threshold)] += 1
+            for key, value in selection_context.selection_parameters.items():
+                selection_parameter_counts[f"{key}={_stringify_count_key(value)}"] += 1
             max_examples_counts[_stringify_count_key(max_examples)] += 1
             task_id_counts[_stringify_count_key(candidate.task_id)] += 1
             round_id_counts[_stringify_count_key(candidate.round_id)] += 1
@@ -159,10 +156,9 @@ class QueryBufferSelectionDiagnosticsService:
                 "pseudo_label_algorithm_name_counts": _counter_to_mapping(
                     pseudo_label_algorithm_name_counts
                 ),
-                "confidence_threshold_counts": _counter_to_mapping(
-                    confidence_threshold_counts
+                "selection_parameter_counts": _counter_to_mapping(
+                    selection_parameter_counts
                 ),
-                "margin_threshold_counts": _counter_to_mapping(margin_threshold_counts),
                 "max_examples_counts": _counter_to_mapping(max_examples_counts),
                 "task_id_counts": _counter_to_mapping(task_id_counts),
                 "round_id_counts": _counter_to_mapping(round_id_counts),
@@ -209,13 +205,12 @@ def _build_trace_row(
             else str(candidate.confidence_kind)
         ),
         "sample_weight": candidate.sample_weight,
-        "threshold_accepted": selection_context.threshold_accepted,
+        "policy_accepted": selection_context.policy_accepted,
         "selected_by_cap": selection_context.selected_by_cap,
         "final_accepted": selection_context.final_accepted,
         "selection_stage": selection_context.selection_stage.value,
         "pre_cap_rank": selection_context.pre_cap_rank,
-        "confidence_threshold": selection_context.confidence_threshold,
-        "margin_threshold": selection_context.margin_threshold,
+        "selection_parameters": dict(selection_context.selection_parameters),
         "max_examples": normalized_max_examples,
         "task_id": None if candidate.task_id is None else str(candidate.task_id),
         "round_id": None if candidate.round_id is None else str(candidate.round_id),

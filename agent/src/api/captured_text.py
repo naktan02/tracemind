@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -48,6 +48,7 @@ class CapturedTextDebugJobState:
     batch_size: int = 100
     last_run_at: datetime | None = None
     last_run_result: CapturedTextDebugJobRunResultPayload | None = None
+    run_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
 def get_captured_text_ingest_service(
@@ -323,18 +324,25 @@ async def run_captured_text_view_generation_once(
 ) -> CapturedTextDebugJobRunResultPayload:
     """pending captured text view generation과 미분석 ready event를 즉시 실행한다."""
 
-    result = await asyncio.to_thread(
-        _debug_job_service(
-            request=request,
-            repository=service.repository,
-            view_generation_service=service,
-            lifecycle_service=lifecycle_service,
-        ).run_once,
-        limit=run_request.limit,
-    )
-    job_state.last_run_at = datetime.now(tz=timezone.utc)
-    job_state.last_run_result = result
-    return job_state.last_run_result
+    if job_state.run_lock.locked():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="captured text debug job이 이미 실행 중입니다.",
+        )
+
+    async with job_state.run_lock:
+        result = await asyncio.to_thread(
+            _debug_job_service(
+                request=request,
+                repository=service.repository,
+                view_generation_service=service,
+                lifecycle_service=lifecycle_service,
+            ).run_once,
+            limit=run_request.limit,
+        )
+        job_state.last_run_at = datetime.now(tz=timezone.utc)
+        job_state.last_run_result = result
+        return job_state.last_run_result
 
 
 async def _captured_text_debug_job_loop(
@@ -343,9 +351,13 @@ async def _captured_text_debug_job_loop(
     service: CapturedTextDebugJobService,
 ) -> None:
     while job_state.enabled:
-        result = await asyncio.to_thread(service.run_once, limit=job_state.batch_size)
-        job_state.last_run_at = datetime.now(tz=timezone.utc)
-        job_state.last_run_result = result
+        async with job_state.run_lock:
+            result = await asyncio.to_thread(
+                service.run_once,
+                limit=job_state.batch_size,
+            )
+            job_state.last_run_at = datetime.now(tz=timezone.utc)
+            job_state.last_run_result = result
         await asyncio.sleep(job_state.interval_seconds)
 
 
@@ -357,9 +369,12 @@ def _build_debug_job_status(
     job_state: CapturedTextDebugJobState,
 ) -> CapturedTextDebugJobStatusPayload:
     task = getattr(request.app.state, "captured_text_debug_job_task", None)
+    is_running = (
+        bool(task is not None and not task.done()) or job_state.run_lock.locked()
+    )
     return CapturedTextDebugJobStatusPayload(
         view_generation_enabled=job_state.enabled,
-        view_generation_running=bool(task is not None and not task.done()),
+        view_generation_running=is_running,
         view_generation_interval_seconds=job_state.interval_seconds,
         view_generation_batch_size=job_state.batch_size,
         weak_text_provider_name=service.weak_text_provider_name,

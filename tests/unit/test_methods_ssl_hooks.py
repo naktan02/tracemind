@@ -163,8 +163,10 @@ def test_margin_threshold_selection_hook_requires_margin_cutoff() -> None:
     decision = selection_hook.evaluate(
         evidence=_build_evidence(),
         config=PseudoLabelSelectionConfig(
-            confidence_threshold=0.6,
-            margin_threshold=0.02,
+            parameters={
+                "confidence_threshold": 0.6,
+                "margin_threshold": 0.02,
+            },
         ),
     )
 
@@ -180,8 +182,10 @@ def test_fixed_confidence_selection_hook_ignores_margin_cutoff() -> None:
     decision = selection_hook.evaluate(
         evidence=_build_evidence(),
         config=PseudoLabelSelectionConfig(
-            confidence_threshold=0.6,
-            margin_threshold=0.99,
+            parameters={
+                "confidence_threshold": 0.6,
+                "margin_threshold": 0.99,
+            },
         ),
     )
 
@@ -191,15 +195,18 @@ def test_fixed_confidence_selection_hook_ignores_margin_cutoff() -> None:
 
 
 def test_pseudo_label_acceptance_policy_specs_are_methods_owned() -> None:
-    policy = build_pseudo_label_acceptance_policy("top1_margin_threshold")
+    policy = build_pseudo_label_acceptance_policy("top1_ranked")
     catalog_entries = {
         entry.item_name: entry
         for entry in list_pseudo_label_acceptance_policy_catalog_entries()
     }
 
-    assert policy.policy_name == "top1_margin_threshold"
-    assert policy.selection_hook_name == "top1_margin_threshold"
+    assert policy.policy_name == "top1_ranked"
+    assert policy.selection_hook_name == "top1_ranked"
     assert policy.supported_adapter_kinds == ("*",)
+    assert catalog_entries["top1_ranked"].implementation_module == (
+        "methods.ssl.hooks.acceptance"
+    )
     assert catalog_entries["top1_margin_threshold"].implementation_module == (
         "methods.ssl.hooks.acceptance"
     )

@@ -14,8 +14,6 @@ _OBJECTIVE_CONFIG_KEYS = {
     "algorithm_profile_name",
     "loss",
     "loss_name",
-    "confidence_threshold",
-    "margin_threshold",
     "example_generation_backend_name",
     "evidence_backend_name",
     "scorer_backend_name",
@@ -50,16 +48,6 @@ class TrainingObjectiveConfigPayload(BaseModel):
         description=(
             "학습 objective의 loss 함수 식별자. backend 선택과는 독립적인 의미 축이다."
         ),
-    )
-    confidence_threshold: float | None = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-        description="Pseudo-label를 채택하기 위한 최소 confidence.",
-    )
-    margin_threshold: float | None = Field(
-        default=None,
-        description="Top1과 top2 score 차이의 최소값.",
     )
     example_generation_backend_name: str | None = Field(
         default=None,
@@ -128,10 +116,6 @@ class TrainingObjectiveConfigPayload(BaseModel):
                 source.get("algorithm_profile_name")
             ),
             loss_name=optional_config_str(source.get("loss_name")),
-            confidence_threshold=optional_config_float(
-                source.get("confidence_threshold")
-            ),
-            margin_threshold=optional_config_float(source.get("margin_threshold")),
             example_generation_backend_name=optional_config_str(
                 source.get("example_generation_backend_name")
             ),
@@ -162,10 +146,6 @@ class TrainingObjectiveConfigPayload(BaseModel):
             result["algorithm_profile_name"] = self.algorithm_profile_name
         if self.loss_name is not None:
             result["loss_name"] = self.loss_name
-        if self.confidence_threshold is not None:
-            result["confidence_threshold"] = self.confidence_threshold
-        if self.margin_threshold is not None:
-            result["margin_threshold"] = self.margin_threshold
         if self.example_generation_backend_name is not None:
             result["example_generation_backend_name"] = (
                 self.example_generation_backend_name

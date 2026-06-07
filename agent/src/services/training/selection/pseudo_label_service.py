@@ -14,12 +14,13 @@ from methods.ssl.hooks.registry import (
     build_pseudo_label_selection_hook,
 )
 from methods.ssl.hooks.selection import (
-    MarginThresholdPseudoLabelSelectionHook,
     PseudoLabelSelectionConfig,
     PseudoLabelSelectionHook,
+    Top1RankedPseudoLabelSelectionHook,
 )
 from shared.src.contracts.training_contracts import (
     DecisionFeedbackSignal,
+    TrainingConfigScalar,
     TrainingTask,
 )
 from shared.src.domain.entities.inference.events import AnalysisEvent
@@ -36,6 +37,8 @@ from .evidence_service import (
 )
 from .selector import PseudoLabelSelector
 
+_SELECTION_PARAMETER_SCOPE = "selection"
+
 
 def _build_default_acceptance_policy() -> PseudoLabelAcceptancePolicySpec:
     """runtime fallback의 acceptance policy를 methods-owned spec으로 해석한다."""
@@ -43,6 +46,25 @@ def _build_default_acceptance_policy() -> PseudoLabelAcceptancePolicySpec:
     return build_pseudo_label_acceptance_policy(
         RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
     )
+
+
+def _selection_parameters(training_task: TrainingTask) -> dict[str, float]:
+    """method-owned selection parameter extras를 숫자 mapping으로 정규화한다."""
+
+    raw_parameters = training_task.objective_config.get_component_extras(
+        _SELECTION_PARAMETER_SCOPE,
+        legacy_keys=("confidence_threshold", "margin_threshold"),
+    )
+    return {
+        key: _coerce_float_parameter(key, value)
+        for key, value in raw_parameters.items()
+    }
+
+
+def _coerce_float_parameter(key: str, value: TrainingConfigScalar) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"Selection parameter must not be bool: {key}")
+    return float(value)
 
 
 @dataclass(slots=True)
@@ -71,7 +93,7 @@ class PseudoLabelSelectionResult:
 
 @dataclass(slots=True)
 class PseudoLabelSelectionService:
-    """score threshold와 margin 기준으로 pseudo-label을 선별한다."""
+    """method-owned selection hook으로 pseudo-label을 선별한다."""
 
     default_profile: RuntimeFallbackTrainingProfile = field(
         default=RUNTIME_FALLBACK_TRAINING_PROFILE
@@ -83,7 +105,7 @@ class PseudoLabelSelectionService:
         default_factory=_build_default_acceptance_policy
     )
     default_selection_hook: PseudoLabelSelectionHook = field(
-        default_factory=MarginThresholdPseudoLabelSelectionHook
+        default_factory=Top1RankedPseudoLabelSelectionHook
     )
     selector: PseudoLabelSelector = field(default_factory=PseudoLabelSelector)
 
@@ -119,14 +141,6 @@ class PseudoLabelSelectionService:
             )
 
     @property
-    def default_confidence_threshold(self) -> float:
-        return self.default_profile.confidence_threshold
-
-    @property
-    def default_margin_threshold(self) -> float:
-        return self.default_profile.margin_threshold
-
-    @property
     def default_acceptance_policy_name(self) -> str:
         return self.default_profile.acceptance_policy_name
 
@@ -155,22 +169,11 @@ class PseudoLabelSelectionService:
         evidences: tuple[PseudoLabelEvidence, ...] | list[PseudoLabelEvidence],
         training_task: TrainingTask,
     ) -> PseudoLabelSelectionResult:
-        confidence_threshold = (
-            training_task.objective_config.confidence_threshold
-            if training_task.objective_config.confidence_threshold is not None
-            else self.default_confidence_threshold
-        )
-        margin_threshold = (
-            training_task.objective_config.margin_threshold
-            if training_task.objective_config.margin_threshold is not None
-            else self.default_margin_threshold
-        )
         selection_hook = self._resolve_selection_hook(training_task=training_task)
         max_examples = training_task.selection_policy.max_examples
         evidence_list = tuple(evidences)
         selection_config = PseudoLabelSelectionConfig(
-            confidence_threshold=confidence_threshold,
-            margin_threshold=margin_threshold,
+            parameters=_selection_parameters(training_task),
         )
         candidate_builder = PseudoLabelCandidateBuilder(
             default_evidence_backend_name=self.default_profile.evidence_backend_name

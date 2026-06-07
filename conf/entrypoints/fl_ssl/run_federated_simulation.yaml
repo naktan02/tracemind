@@ -77,8 +77,6 @@ training_task:
   objective:
     algorithm_profile_name: ${local_update_profile.algorithm_profile_name}
     training_backend_name: ${local_update_profile.training_backend_name}
-    confidence_threshold: ${local_update_profile.confidence_threshold}
-    margin_threshold: ${local_update_profile.margin_threshold}
     example_generation_backend_name: ${local_update_profile.example_generation_backend_name}
     evidence_backend_name: ${local_update_profile.evidence_backend_name}
     scorer_backend_name: ${local_update_profile.scorer_backend_name}
@@ -89,6 +87,7 @@ training_task:
     privacy_guard_name: ${local_update_profile.privacy_guard_name}
     # Contract 경계에서는 dotted flat key로 정규화된다. YAML은 사람이 읽기 쉽도록
     # owner scope별로 묶는다.
+    selection: ${local_update_profile.selection_parameters}
     evidence_backend:
       temperature: ${local_update_profile.evidence_backend_temperature}
     query_ssl:
@@ -104,8 +103,6 @@ validation:
   scorer_backend_name: ${local_update_profile.validation_scorer_backend_name}
   score_policy_name: ${local_update_profile.validation_score_policy_name}
   score_top_k: ${local_update_profile.validation_score_top_k}
-  confidence_threshold: ${training_task.objective.confidence_threshold}
-  margin_threshold: ${training_task.objective.margin_threshold}
 
 report:
   schema_version: federated_simulation_report.v1

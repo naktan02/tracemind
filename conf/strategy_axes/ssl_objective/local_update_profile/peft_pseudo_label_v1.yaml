@@ -8,8 +8,7 @@
 algorithm_profile_name: peft_pseudo_label_v1
 training_scope: adapter_only
 training_backend_name: peft_classifier_trainer
-confidence_threshold: 0.6
-margin_threshold: 0.02
+selection_parameters: {}
 # selection 경로도 canonical PEFT text encoder update-family 이름을 기록한다.
 # LoRA 전용 local update profile leaf는 제거했고, old-run reader compatibility는
 # artifact/report loader 계층에서만 다룬다.
@@ -21,7 +20,7 @@ score_top_k: null
 validation_scorer_backend_name: peft_classifier_eval
 validation_score_policy_name: null
 validation_score_top_k: null
-pseudo_label_algorithm_name: top1_margin_threshold
-acceptance_policy_name: top1_margin_threshold
+pseudo_label_algorithm_name: top1_ranked
+acceptance_policy_name: top1_ranked
 privacy_guard_name: noop
 evidence_backend_temperature: 1.0

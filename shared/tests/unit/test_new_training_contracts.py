@@ -157,8 +157,6 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
         training_backend_name="contrastive",
         algorithm_profile_name="prototype_pseudo_label_v1",
         loss_name="cross_entropy",
-        confidence_threshold=0.7,
-        margin_threshold=0.05,
         example_generation_backend_name="prototype_rescore",
         evidence_backend_name="prototype_similarity_evidence",
         scorer_backend_name="prototype_similarity",
@@ -188,8 +186,8 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
             "training_backend_name": "peft_classifier_trainer",
             "algorithm_profile_name": "prototype_pseudo_label_v1",
             "loss_name": "cross_entropy",
-            "confidence_threshold": 0.65,
-            "margin_threshold": 0.03,
+            "selection.confidence_threshold": 0.65,
+            "selection.margin_threshold": 0.03,
             "example_generation_backend_name": "prototype_rescore",
             "evidence_backend_name": "prototype_similarity_evidence",
             "scorer_backend_name": "prototype_similarity",
@@ -213,13 +211,17 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     assert config.pseudo_label_algorithm_name == "top1_confidence_only"
     assert config.acceptance_policy_name == "top1_confidence_only"
     assert config.privacy_guard_name == "noop"
-    assert config.extras == {"temperature": 0.8}
+    assert config.extras == {
+        "selection.confidence_threshold": 0.65,
+        "selection.margin_threshold": 0.03,
+        "temperature": 0.8,
+    }
     assert config.to_mapping() == {
         "training_backend_name": "peft_classifier_trainer",
         "algorithm_profile_name": "prototype_pseudo_label_v1",
         "loss_name": "cross_entropy",
-        "confidence_threshold": 0.65,
-        "margin_threshold": 0.03,
+        "selection.confidence_threshold": 0.65,
+        "selection.margin_threshold": 0.03,
         "example_generation_backend_name": "prototype_rescore",
         "evidence_backend_name": "prototype_similarity_evidence",
         "scorer_backend_name": "prototype_similarity",
@@ -281,7 +283,7 @@ def test_training_objective_config_preserves_algorithm_profile_without_expansion
     assert config.evidence_backend_name is None
     assert config.pseudo_label_algorithm_name is None
     assert config.acceptance_policy_name is None
-    assert config.margin_threshold is None
+    assert config.extras == {}
 
 
 def test_training_objective_config_does_not_expand_unknown_algorithm_profile() -> None:

@@ -65,31 +65,30 @@ class PseudoLabelSelector:
         accepted_candidates: list[PseudoLabelCandidate] = []
         feedback_signals: list[DecisionFeedbackSignal] = []
         for candidate in initial_candidates:
-            threshold_accepted = candidate.accepted
+            policy_accepted = candidate.accepted
             is_selected = candidate.candidate_id in (
                 cap_decision.selected_candidate_ids
             )
-            final_accepted = threshold_accepted and is_selected
+            final_accepted = policy_accepted and is_selected
             if final_accepted:
                 selection_stage = PseudoLabelSelectionStage.ACCEPTED
-            elif threshold_accepted:
+            elif policy_accepted:
                 selection_stage = PseudoLabelSelectionStage.DROPPED_BY_CAP
             else:
-                selection_stage = PseudoLabelSelectionStage.THRESHOLD_REJECTED
+                selection_stage = PseudoLabelSelectionStage.POLICY_REJECTED
 
             selection_context = self.context_builder.build(
-                threshold_accepted=threshold_accepted,
+                policy_accepted=policy_accepted,
                 selected_by_cap=is_selected,
                 final_accepted=final_accepted,
                 selection_stage=selection_stage,
                 context_seed=context_seed_by_candidate_id[candidate.candidate_id],
                 pre_cap_rank=(
                     None
-                    if not threshold_accepted
+                    if not policy_accepted
                     else cap_decision.pre_cap_ranks[candidate.candidate_id]
                 ),
-                confidence_threshold=selection_config.confidence_threshold,
-                margin_threshold=selection_config.margin_threshold,
+                selection_parameters=dict(selection_config.parameters),
                 max_examples=max_examples,
             )
 

@@ -154,7 +154,9 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 
 - `TrainingTaskPayload`
   - 서버가 agent에 내려주는 학습 task
-  - 로컬 학습 하이퍼파라미터, threshold, selection policy 포함
+  - 로컬 학습 하이퍼파라미터와 selection policy 포함
+  - cutoff/threshold류 값은 공통 task 기본값이 아니라 method-owned objective extras
+    또는 method descriptor/profile에서 해석한다
   - 구버전 `secure_aggregation_required` 입력/property는
     `secure_aggregation.required`로 수렴시키는 compatibility 표면이다. 유지 이유와
     제거 조건은 `docs/contracts/legacy_contract_ledger.md`를 따른다

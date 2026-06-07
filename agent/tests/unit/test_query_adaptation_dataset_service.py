@@ -39,9 +39,8 @@ def _build_task() -> TrainingTask:
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=0.8,
-            margin_threshold=0.02,
             pseudo_label_algorithm_name="top1_confidence_only",
+            extras={"selection.confidence_threshold": 0.8},
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=8),
     )

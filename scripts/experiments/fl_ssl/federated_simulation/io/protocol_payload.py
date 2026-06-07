@@ -131,8 +131,6 @@ def build_protocol_payload(
             "scorer_backend_name": validation_config.scorer_backend_name,
             "score_policy_name": validation_config.score_policy_name,
             "score_top_k": validation_config.score_top_k,
-            "confidence_threshold": validation_config.confidence_threshold,
-            "margin_threshold": validation_config.margin_threshold,
         },
     }
     if execution_plan is not None:

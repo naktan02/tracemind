@@ -46,9 +46,11 @@ def _build_task(
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=confidence_threshold,
-            margin_threshold=margin_threshold,
             pseudo_label_algorithm_name=pseudo_label_algorithm_name,
+            extras={
+                "selection.confidence_threshold": confidence_threshold,
+                "selection.margin_threshold": margin_threshold,
+            },
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=8),
     )

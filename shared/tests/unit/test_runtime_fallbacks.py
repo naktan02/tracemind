@@ -40,11 +40,6 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
         == RUNTIME_FALLBACK_TRAINING_PROFILE.algorithm_profile_name
     )
     assert (
-        config.confidence_threshold
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.confidence_threshold
-    )
-    assert config.margin_threshold == RUNTIME_FALLBACK_TRAINING_PROFILE.margin_threshold
-    assert (
         config.example_generation_backend_name
         == RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     )
@@ -73,7 +68,7 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
         "query_ssl.method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
         "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
         "query_ssl.strong_view_policy": FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
-        "query_ssl.unlabeled_batch_size": 12,
+        "query_ssl.unlabeled_batch_size": 8,
         "query_ssl.temperature": FIXMATCH_QUERY_SSL_TEMPERATURE,
         "query_ssl.p_cutoff": FIXMATCH_QUERY_SSL_P_CUTOFF,
         "query_ssl.hard_label": True,
@@ -87,14 +82,14 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
 def test_runtime_fallback_objective_builder_accepts_overrides() -> None:
     config = build_runtime_fallback_training_objective_config(
         overrides={
-            "confidence_threshold": 0.75,
+            "selection.confidence_threshold": 0.75,
             "score_top_k": 3,
             "training_backend.max_abs_delta": 0.02,
         }
     )
 
-    assert config.confidence_threshold == 0.75
     assert config.score_top_k == 3
+    assert config.extras["selection.confidence_threshold"] == 0.75
     assert config.extras["training_backend.max_abs_delta"] == 0.02
 
 
@@ -112,7 +107,7 @@ def test_runtime_fallback_secure_aggregation_builder_starts_disabled() -> None:
 
 def test_runtime_fallback_profile_exposes_round_task_runtime_defaults() -> None:
     assert RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs == 1
-    assert RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size == 12
+    assert RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size == 8
     assert RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate == 1e-4
     assert RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps == 50
     assert (

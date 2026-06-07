@@ -39,14 +39,14 @@ def _build_query_ssl_task_payload() -> TrainingTaskPayload:
         objective_config=TrainingObjectiveConfigPayload(
             algorithm_profile_name="peft_pseudo_label_v1",
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=0.6,
-            margin_threshold=0.02,
             example_generation_backend_name="weak_strong_pair",
             evidence_backend_name="prototype_similarity_evidence",
             scorer_backend_name="classifier_head_logits",
             acceptance_policy_name="top1_margin_threshold",
             privacy_guard_name="noop",
             extras={
+                "selection.confidence_threshold": 0.6,
+                "selection.margin_threshold": 0.02,
                 "query_ssl.method_name": "fixmatch_usb_v1",
                 "query_ssl.algorithm_name": "fixmatch",
                 "query_ssl.strong_view_policy": "first_aug",
@@ -183,7 +183,7 @@ def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
     runtime_factory.assert_not_called()
 
 
-def test_runner_uses_empty_examples_for_legacy_non_query_ssl_task() -> None:
+def test_runner_rejects_legacy_non_query_ssl_task_without_runtime_contract() -> None:
     repo = MagicMock()
     shared_adapter_sync_service = MagicMock()
     active_manifest = make_embedding_manifest(
@@ -217,9 +217,7 @@ def test_runner_uses_empty_examples_for_legacy_non_query_ssl_task() -> None:
         AgentTrainingTaskRunRequest(server_base_url="http://server.test")
     )
 
-    assert response.status == str(FederationRunStatus.INSUFFICIENT_EXAMPLES)
-    shared_adapter_sync_service.pull_current.assert_called_once_with(
-        server_base_url="http://server.test"
-    )
-    call_kwargs = federation_runtime.run_current_task.call_args.kwargs
-    assert call_kwargs["training_examples"] == ()
+    assert response.status == "unsupported_runtime"
+    shared_adapter_sync_service.pull_current.assert_not_called()
+    runtime_factory.assert_not_called()
+    federation_runtime.run_current_task.assert_not_called()

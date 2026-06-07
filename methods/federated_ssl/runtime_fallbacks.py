@@ -115,14 +115,6 @@ class RuntimeFallbackTrainingProfile:
         return self._objective_str("score_policy_name")
 
     @property
-    def confidence_threshold(self) -> float:
-        return self._objective_float("confidence_threshold")
-
-    @property
-    def margin_threshold(self) -> float:
-        return self._objective_float("margin_threshold")
-
-    @property
     def privacy_guard_name(self) -> str:
         return self._objective_str("privacy_guard_name")
 
@@ -253,19 +245,17 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
     {
         "algorithm_profile_name": PEFT_PSEUDO_LABEL_LOCAL_UPDATE_PROFILE_NAME,
         "training_backend_name": PEFT_ENCODER_TRAINING_BACKEND_NAME,
-        "confidence_threshold": 0.6,
-        "margin_threshold": 0.02,
         "example_generation_backend_name": WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
         "evidence_backend_name": "analysis_score_evidence",
         "scorer_backend_name": CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
         "score_policy_name": "max_cosine",
-        "acceptance_policy_name": "top1_margin_threshold",
-        "pseudo_label_algorithm_name": "top1_margin_threshold",
+        "acceptance_policy_name": "top1_ranked",
+        "pseudo_label_algorithm_name": "top1_ranked",
         "privacy_guard_name": NOOP_PRIVACY_GUARD_NAME,
         "query_ssl.method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
         "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
         "query_ssl.strong_view_policy": FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
-        "query_ssl.unlabeled_batch_size": 12,
+        "query_ssl.unlabeled_batch_size": 8,
         "query_ssl.temperature": FIXMATCH_QUERY_SSL_TEMPERATURE,
         "query_ssl.p_cutoff": FIXMATCH_QUERY_SSL_P_CUTOFF,
         "query_ssl.hard_label": True,
@@ -281,7 +271,7 @@ RUNTIME_FALLBACK_SECURE_AGGREGATION_MAPPING = freeze_mapping({"required": False}
 
 RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS = RuntimeTrainingTaskDefaults(
     local_epochs=1,
-    batch_size=12,
+    batch_size=8,
     learning_rate=1e-4,
     max_steps=50,
     min_required_examples=None,

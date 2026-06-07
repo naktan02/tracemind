@@ -1205,8 +1205,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.validation.scorer_backend_name == "peft_classifier_eval"
     assert cfg.validation.score_policy_name is None
     assert cfg.validation.score_top_k is None
-    assert cfg.validation.confidence_threshold == 0.6
-    assert cfg.validation.margin_threshold == 0.02
+    assert dict(cfg.local_update_profile.selection_parameters) == {}
+    assert dict(cfg.training_task.objective.selection) == {}
+    assert cfg.training_task.objective.pseudo_label_algorithm_name == "top1_ranked"
+    assert cfg.training_task.objective.acceptance_policy_name == "top1_ranked"
     assert cfg.federated_run_budget.output_dir == "runs/_smoke/fl_ssl"
     assert cfg.federated_run_budget.client_count == 4
     assert cfg.federated_run_budget.rounds == 3
@@ -2024,8 +2026,7 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
             overrides=[
                 "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.6",
-                "training_task.objective.confidence_threshold=0.7",
-                "training_task.objective.margin_threshold=0.1",
+                "+local_update_profile.selection_parameters.test_parameter=0.7",
                 "diagnostics.dump_dir_name=custom_dumps",
             ],
         )
@@ -2035,8 +2036,8 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
     assert cfg.training_task.objective.algorithm_profile_name == (
         "peft_pseudo_label_v1"
     )
-    assert cfg.training_task.objective.confidence_threshold == 0.7
-    assert cfg.training_task.objective.margin_threshold == 0.1
+    assert cfg.local_update_profile.selection_parameters.test_parameter == 0.7
+    assert cfg.training_task.objective.selection.test_parameter == 0.7
     assert cfg.validation.scorer_backend_name == "peft_classifier_eval"
     assert cfg.diagnostics.dump_dir_name == "custom_dumps"
 

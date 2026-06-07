@@ -40,16 +40,18 @@ def _build_task(
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=confidence_threshold,
-            margin_threshold=0.02,
             evidence_backend_name=evidence_backend_name,
             pseudo_label_algorithm_name=pseudo_label_algorithm_name,
+            extras={
+                "selection.confidence_threshold": confidence_threshold,
+                "selection.margin_threshold": 0.02,
+            },
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=8),
     )
 
 
-def test_selection_service_keeps_top1_margin_threshold_as_default() -> None:
+def test_selection_service_uses_top1_ranked_as_default() -> None:
     service = PseudoLabelSelectionService()
 
     result = service.select(
@@ -71,7 +73,7 @@ def test_selection_service_keeps_top1_margin_threshold_as_default() -> None:
 
     assert evidence.confidence_kind == "analysis_score_top1"
     assert evidence.top1_label == "anxiety"
-    assert candidate.accepted is False
+    assert candidate.accepted is True
     assert candidate.evidence_ref == "evidence:q1"
     assert candidate.confidence_kind == "analysis_score_top1"
     assert candidate.sample_weight == pytest.approx(0.62)
@@ -81,10 +83,10 @@ def test_selection_service_keeps_top1_margin_threshold_as_default() -> None:
         "analysis_score_evidence"
     )
     assert candidate.selection_context.pseudo_label_algorithm_name == (
-        "top1_margin_threshold"
+        "top1_ranked"
     )
     assert candidate.selection_context.selection_stage == (
-        PseudoLabelSelectionStage.THRESHOLD_REJECTED
+        PseudoLabelSelectionStage.ACCEPTED
     )
 
 

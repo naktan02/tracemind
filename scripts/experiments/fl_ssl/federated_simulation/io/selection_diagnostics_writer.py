@@ -92,7 +92,7 @@ class SelectionDiagnosticsWriter:
                         "margin": candidate.margin,
                         "runner_up_label": candidate.runner_up_label,
                         "runner_up_score": candidate.runner_up_score,
-                        "threshold_accepted": (selection_context.threshold_accepted),
+                        "policy_accepted": selection_context.policy_accepted,
                         "selected_by_cap": selection_context.selected_by_cap,
                         "final_accepted": candidate.accepted,
                         "selection_stage": selection_stage,

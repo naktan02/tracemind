@@ -44,9 +44,8 @@ def _build_task(
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=confidence_threshold,
-            margin_threshold=0.02,
             pseudo_label_algorithm_name="top1_confidence_only",
+            extras={"selection.confidence_threshold": confidence_threshold},
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=max_examples),
     )
@@ -127,13 +126,13 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
     assert summary["stage_counts"] == {
         "accepted": 1,
         "dropped_by_cap": 1,
-        "threshold_rejected": 1,
+        "policy_rejected": 1,
     }
     assert summary["accepted_label_counts"] == {"anxiety": 1}
     assert summary["pseudo_label_counts"] == {"anxiety": 2, "depression": 1}
     assert summary["locale_counts"] == {"ko-KR": 3}
     assert summary["model_revision_counts"] == {"rev_001": 3}
-    assert summary["confidence_threshold_counts"] == {"0.7": 3}
+    assert summary["selection_parameter_counts"] == {"confidence_threshold=0.7": 3}
     assert summary["max_examples_counts"] == {"1": 3}
     assert summary["evidence_backend_name_counts"] == {"query_buffer_projection": 3}
     assert summary["pseudo_label_algorithm_name_counts"] == {"top1_confidence_only": 3}
@@ -152,7 +151,7 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
     )
     assert trace_by_query_id["q1"]["selection_stage"] == "accepted"
     assert trace_by_query_id["q1"]["selected_by_cap"] is True
-    assert trace_by_query_id["q1"]["threshold_accepted"] is True
+    assert trace_by_query_id["q1"]["policy_accepted"] is True
     assert trace_by_query_id["q1"]["evidence_backend_name"] == (
         "query_buffer_projection"
     )
@@ -182,8 +181,8 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
     assert trace_by_query_id["q2"]["selection_stage"] == "dropped_by_cap"
     assert trace_by_query_id["q2"]["selected_by_cap"] is False
     assert trace_by_query_id["q2"]["pre_cap_rank"] == 2
-    assert trace_by_query_id["q3"]["selection_stage"] == "threshold_rejected"
-    assert trace_by_query_id["q3"]["threshold_accepted"] is False
+    assert trace_by_query_id["q3"]["selection_stage"] == "policy_rejected"
+    assert trace_by_query_id["q3"]["policy_accepted"] is False
 
 
 def test_query_buffer_selection_diagnostics_service_requires_matching_record() -> None:

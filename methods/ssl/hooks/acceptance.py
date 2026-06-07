@@ -40,6 +40,14 @@ TOP1_CONFIDENCE_ONLY_ACCEPTANCE_POLICY_CATALOG_ENTRY = RegistryCatalogEntry(
     family_name="pseudo_label_acceptance",
     supported_adapter_kinds=(ANY_ADAPTER_KIND,),
 )
+TOP1_RANKED_ACCEPTANCE_POLICY_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name="top1_ranked",
+    display_name="top1_ranked",
+    implementation_module="methods.ssl.hooks.acceptance",
+    core_method_name="top1_ranked",
+    family_name="pseudo_label_acceptance",
+    supported_adapter_kinds=(ANY_ADAPTER_KIND,),
+)
 
 
 @register_pseudo_label_acceptance_policy(
@@ -65,4 +73,17 @@ def build_top1_confidence_only_acceptance_policy() -> PseudoLabelAcceptancePolic
     return PseudoLabelAcceptancePolicySpec(
         policy_name="top1_confidence_only",
         selection_hook_name="top1_confidence_only",
+    )
+
+
+@register_pseudo_label_acceptance_policy(
+    "top1_ranked",
+    catalog_entry=TOP1_RANKED_ACCEPTANCE_POLICY_CATALOG_ENTRY,
+)
+def build_top1_ranked_acceptance_policy() -> PseudoLabelAcceptancePolicySpec:
+    """Cutoff 없이 top1 evidence를 ranking/cap 대상으로 여는 acceptance spec."""
+
+    return PseudoLabelAcceptancePolicySpec(
+        policy_name="top1_ranked",
+        selection_hook_name="top1_ranked",
     )

@@ -14,18 +14,16 @@ class PseudoLabelSelectionStage(StrEnum):
 
     ACCEPTED = "accepted"
     DROPPED_BY_CAP = "dropped_by_cap"
-    THRESHOLD_REJECTED = "threshold_rejected"
+    POLICY_REJECTED = "policy_rejected"
 
 
 SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS = frozenset(
     {
-        "threshold_accepted",
+        "policy_accepted",
         "selected_by_cap",
         "final_accepted",
         "selection_stage",
         "pre_cap_rank",
-        "confidence_threshold",
-        "margin_threshold",
         "max_examples",
         "pseudo_label_algorithm_name",
         "evidence_backend_name",
@@ -39,12 +37,11 @@ SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS = frozenset(
 class PseudoLabelSelectionContext:
     """Pseudo-label candidate의 typed selection semantics."""
 
-    threshold_accepted: bool
+    policy_accepted: bool
     selected_by_cap: bool
     final_accepted: bool
     selection_stage: PseudoLabelSelectionStage
-    confidence_threshold: float | None = None
-    margin_threshold: float | None = None
+    selection_parameters: dict[str, float] = field(default_factory=dict)
     max_examples: int | None = None
     pre_cap_rank: int | None = None
     pseudo_label_algorithm_name: str | None = None
@@ -67,17 +64,15 @@ class PseudoLabelSelectionContext:
         """기존 candidate.metadata shape와 맞추는 compatibility mapping."""
 
         metadata: dict[str, PseudoLabelCandidateMetadataScalar] = {
-            "threshold_accepted": self.threshold_accepted,
+            "policy_accepted": self.policy_accepted,
             "selected_by_cap": self.selected_by_cap,
             "final_accepted": self.final_accepted,
             "selection_stage": self.selection_stage.value,
         }
         if self.pre_cap_rank is not None:
             metadata["pre_cap_rank"] = self.pre_cap_rank
-        if self.confidence_threshold is not None:
-            metadata["confidence_threshold"] = self.confidence_threshold
-        if self.margin_threshold is not None:
-            metadata["margin_threshold"] = self.margin_threshold
+        for key, value in self.selection_parameters.items():
+            metadata[f"selection_parameter.{key}"] = value
         if self.max_examples is not None:
             metadata["max_examples"] = self.max_examples
         if self.pseudo_label_algorithm_name is not None:

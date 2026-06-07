@@ -96,8 +96,10 @@ def _build_task_payload(
         max_steps=10,
         objective_config=TrainingObjectiveConfigPayload(
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=0.6,
-            margin_threshold=0.02,
+            extras={
+                "selection.confidence_threshold": 0.6,
+                "selection.margin_threshold": 0.02,
+            },
         ),
         selection_policy=TrainingSelectionPolicyPayload(),
     )
