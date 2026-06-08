@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TraceMind Experiment Dashboard</title>
-    <link rel="stylesheet" href="./src/styles.css" />
+    <link rel="stylesheet" href="./src/styles/index.css" />
   </head>
   <body>
     <div class="shell">
@@ -60,6 +60,46 @@
             <button type="button" data-tab="projection">UMAP / Projection</button>
           </nav>
 
+          <section class="fl-filter-shell central-filter-shell">
+            <button
+              id="central-filter-toggle"
+              class="fl-filter-toggle"
+              type="button"
+              aria-expanded="true"
+            >
+              Filters
+            </button>
+            <article id="central-filter-card" class="card fl-filter-card open">
+              <div class="card-header">
+                <div>
+                  <p class="eyebrow">Run Filters</p>
+                  <h3>중앙 run 필터</h3>
+                </div>
+                <button id="central-filter-reset" class="text-button" type="button">
+                  Reset
+                </button>
+              </div>
+              <p class="filter-hint dark">
+                값이 2개 이상인 축만 자동으로 표시한다. 선택한 값은 Overview,
+                Graph Compare, Per-Class, Projection의 run 후보에 같이 적용된다.
+              </p>
+              <div class="fl-filter-layout central-filter-layout">
+                <section>
+                  <h4>Filter Axes</h4>
+                  <div
+                    id="central-filter-axis-picker"
+                    class="filter-axis-picker"
+                  ></div>
+                </section>
+                <section>
+                  <h4>Active Filters</h4>
+                  <div id="central-active-filters" class="active-filter-grid"></div>
+                </section>
+              </div>
+              <p id="central-filter-summary" class="detail-summary"></p>
+            </article>
+          </section>
+
           <section class="tab-panel active" data-panel="overview">
             <section class="grid single">
               <article class="card">
@@ -72,10 +112,6 @@
                     <label>
                       Eval Set
                       <select id="overview-eval-filter"></select>
-                    </label>
-                    <label>
-                      Method
-                      <select id="overview-method-filter"></select>
                     </label>
                   </div>
                 </div>
@@ -124,9 +160,9 @@
                 <label>
                   Chart Type
                   <select id="comparison-chart-type">
+                    <option value="line">Line</option>
                     <option value="grouped_bar">Grouped Horizontal Bar</option>
                     <option value="vertical_bar">Vertical Bar</option>
-                    <option value="line">Line</option>
                   </select>
                 </label>
                 <label class="checkbox-field">
@@ -146,15 +182,11 @@
                 <section>
                   <h4>Run Selection</h4>
                   <div class="selection-controls">
-                    <label>
-                      Method
-                      <select id="comparison-method-filter"></select>
-                    </label>
                     <div>
-                      <p class="control-label">Detail Runs</p>
+                      <p class="control-label">Filtered Runs</p>
                       <div
                         id="comparison-run-checkboxes"
-                        class="run-checkbox-list"
+                        class="run-checkbox-list table-run-picker"
                       ></div>
                     </div>
                   </div>
@@ -178,7 +210,7 @@
                     <select id="class-eval-filter"></select>
                   </label>
                   <label>
-                    Detail Method
+                    Algorithm
                     <select id="detail-method-filter"></select>
                   </label>
                   <label>
@@ -247,7 +279,7 @@
                   <select id="projection-eval-filter"></select>
                 </section>
                 <section>
-                  <h4>Method</h4>
+                  <h4>Algorithm</h4>
                   <select id="projection-method-filter"></select>
                 </section>
                 <section>
@@ -542,7 +574,7 @@
               </div>
               <p class="fl-tab-note">
                 선택한 FL run의 최종 global LoRA representation projection artifact를
-                보여준다. 왼쪽 FL run filter로 method/data/round 조건을 좁힌 뒤 eval
+                보여준다. 왼쪽 FL run filter로 algorithm/data/round 조건을 좁힌 뒤 eval
                 set과 run을 선택한다.
               </p>
               <div class="projection-controls fl-projection-controls">
@@ -565,6 +597,6 @@
       </main>
     </div>
 
-    <script src="./src/app.js?v=20260526-method-alias-table" type="module"></script>
+    <script src="./src/main.js?v=20260609-modular-dashboard" type="module"></script>
   </body>
 </html>

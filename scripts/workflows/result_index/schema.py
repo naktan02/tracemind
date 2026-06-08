@@ -228,6 +228,4 @@ EXPERIMENT_RUN_COLUMN_MIGRATIONS = (
     ("created_at", "text"),
 )
 
-EPOCH_METRIC_COLUMN_MIGRATIONS = (
-    ("step", "integer"),
-)
+EPOCH_METRIC_COLUMN_MIGRATIONS = (("step", "integer"),)

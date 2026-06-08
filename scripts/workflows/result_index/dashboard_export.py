@@ -156,7 +156,7 @@ def _build_filters(
     return {
         "tracks": _unique(row.get("track") for row in runs),
         "method_families": _unique(row.get("method_family") for row in runs),
-        "methods": _unique(row.get("method_name") for row in runs),
+        "methods": _unique(row.get("algorithm_name") for row in runs),
         "algorithms": _unique(row.get("algorithm_name") for row in runs),
         "selection_slugs": _unique(row.get("selection_slug") for row in runs),
         "labeled_datasets": _unique(row.get("labeled_dataset_name") for row in runs),

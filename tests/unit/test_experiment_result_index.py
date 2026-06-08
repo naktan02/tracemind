@@ -11,6 +11,7 @@ import pytest
 from scripts.workflows.result_index.dashboard_export import write_dashboard_bundle
 from scripts.workflows.result_index.ingest import ingest_reports
 from scripts.workflows.result_index.report_loader import (
+    discover_candidate_report_paths,
     discover_report_paths,
     load_result_index_records,
 )
@@ -38,7 +39,7 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.run.run_id == "peft_fixmatch_2026_05_13_143419"
     assert records.run.track == "central_peft_ssl"
     assert records.run.method_family == "peft_classifier"
-    assert records.run.method_name == "fixmatch_usb_v1"
+    assert records.run.method_name == "fixmatch"
     assert records.run.algorithm_name == "fixmatch"
     assert records.run.labeled_dataset_name == "ourafla_reddit"
     assert records.run.unlabeled_dataset_name == "szegeelim_general4"
@@ -78,7 +79,7 @@ def test_load_result_index_records_keeps_peft_track(
 
     assert records.run.track == "central_peft_ssl"
     assert records.run.method_family == "peft_classifier"
-    assert records.run.method_name == "fixmatch_usb_v1"
+    assert records.run.method_name == "fixmatch"
 
 
 def test_load_result_index_records_keeps_legacy_peft_entrypoint_track(
@@ -125,7 +126,7 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
     bundle = write_dashboard_bundle(db_path=db_path, output_path=dashboard_path)
 
     assert dashboard_path.exists()
-    assert bundle["filters"]["methods"] == ["fixmatch_usb_v1"]
+    assert bundle["filters"]["methods"] == ["fixmatch"]
     assert bundle["filters"]["run_control_budget_names"] == ["main"]
     assert bundle["filters"]["run_control_output_dirs"] == ["runs"]
     assert bundle["runs"][0]["selection_slug"] == (
@@ -198,7 +199,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     )
     assert records.run.track == "fl_ssl_main_comparison"
     assert records.run.method_family == "manual_baselines"
-    assert records.run.method_name == "fixmatch_usb_v1"
+    assert records.run.method_name == "fixmatch"
     assert records.run.algorithm_name == "fixmatch"
     assert records.run.selection_slug == (
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
@@ -319,6 +320,11 @@ def test_result_index_excludes_smoke_reports_from_default_runs_ingest(
         tmp_path / "runs" / "_smoke" / "run_peft_ssl_control"
     ) == [smoke_report]
     assert metadata_smoke_report not in discover_report_paths(tmp_path / "runs")
+    assert set(discover_candidate_report_paths(tmp_path / "runs")) == {
+        central_report,
+        smoke_report,
+        metadata_smoke_report,
+    }
 
 
 def test_result_index_default_ingest_keeps_smoke_out_of_dashboard(
@@ -404,7 +410,7 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     bundle = write_dashboard_bundle(db_path=db_path, output_path=dashboard_path)
 
     assert bundle["filters"]["tracks"] == ["fl_ssl_main_comparison"]
-    assert bundle["filters"]["methods"] == ["fixmatch_usb_v1"]
+    assert bundle["filters"]["methods"] == ["fixmatch"]
     assert bundle["filters"]["algorithms"] == ["fixmatch"]
     assert bundle["filters"]["method_families"] == ["manual_baselines"]
     assert bundle["filters"]["fl_composition_modes"] == ["manual"]
@@ -681,7 +687,15 @@ def _write_smoke_report(tmp_path: Path) -> Path:
         / "report.json"
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text("{}\n", encoding="utf-8")
+    payload = _sample_report(report_path.parent.parent)
+    payload["trainer_version"] = "peft_fixmatch_smoke"
+    payload["manifest"]["trainer_version"] = "peft_fixmatch_smoke"
+    payload["manifest"]["run_control"] = {
+        "track": "central_ssl",
+        "budget_name": "smoke",
+        "output_root": "runs/_smoke",
+    }
+    report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return report_path
 
 

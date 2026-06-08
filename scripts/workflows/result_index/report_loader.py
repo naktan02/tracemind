@@ -10,6 +10,10 @@ from scripts.workflows.result_index.fl_ssl_report_loader import (
     is_fl_ssl_report,
     load_fl_ssl_result_index_records,
 )
+from scripts.workflows.result_index.method_identity import (
+    is_ssl_method_preset,
+    normalize_ssl_method_name,
+)
 from scripts.workflows.result_index.models import (
     ConfusionMatrixCellRecord,
     EpochMetricRecord,
@@ -55,23 +59,35 @@ def discover_report_paths(runs_root: Path) -> list[Path]:
 
     if runs_root.is_file():
         return [runs_root]
+    exclude_smoke = runs_root.name == "runs"
+    report_paths = sorted(
+        path
+        for path in discover_candidate_report_paths(runs_root)
+        if not _is_default_excluded_smoke_path(
+            runs_root=runs_root,
+            path=path,
+            exclude_smoke=exclude_smoke,
+        )
+    )
+    return _deduplicate_hardlinked_report_paths(report_paths)
+
+
+def discover_candidate_report_paths(runs_root: Path) -> list[Path]:
+    """기본 smoke 제외 정책을 적용하기 전의 canonical report 후보를 찾는다."""
+
+    if runs_root.is_file():
+        return [runs_root]
     report_names = {
         "report.json",
         "fl_ssl_main_comparison.report.json",
         "initial_eval.report.json",
     }
-    exclude_smoke = runs_root.name == "runs"
     report_paths = sorted(
         path
         for path in runs_root.rglob("*.json")
         if path.is_file()
         and path.name in report_names
         and (path.parent.name == "reports" or path.name == "initial_eval.report.json")
-        and not _is_default_excluded_smoke_path(
-            runs_root=runs_root,
-            path=path,
-            exclude_smoke=exclude_smoke,
-        )
     )
     return _deduplicate_hardlinked_report_paths(report_paths)
 
@@ -414,15 +430,20 @@ def _infer_method_name(
     report_path: Path,
     query_ssl_method: dict[str, Any],
 ) -> str:
+    algorithm_name = normalize_ssl_method_name(
+        optional_str(query_ssl_method.get("algorithm_name"))
+    )
+    if algorithm_name:
+        return algorithm_name
     preset_name = optional_str(
         query_ssl_method.get("preset_name") or query_ssl_method.get("name")
     )
     if preset_name:
-        return preset_name
+        return normalize_ssl_method_name(preset_name) or preset_name
     if report_path.name == "initial_eval.report.json":
         return "initial_eval"
     run_dir = report_path.parent.parent
     parent_name = run_dir.parent.name
-    if parent_name and not parent_name.startswith("labeled-"):
-        return parent_name
+    if is_ssl_method_preset(parent_name):
+        return normalize_ssl_method_name(parent_name) or parent_name
     return "supervised"

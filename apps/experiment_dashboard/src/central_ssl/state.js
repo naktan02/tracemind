@@ -1,0 +1,29 @@
+import { loadStoredRunAliases, loadStoredSeriesColors } from "../state/preferences.js";
+import { DEFAULT_CENTRAL_OVERVIEW_METRICS } from "./logic/constants.js";
+
+export function createCentralSslState() {
+  return {
+    filterPanelOpen: true,
+    filterAxisIds: [],
+    filterValues: {},
+    overviewEvalSet: "validation",
+    overviewMetricIds: [...DEFAULT_CENTRAL_OVERVIEW_METRICS],
+    overviewRunIds: [],
+    overviewRunAliases: loadStoredRunAliases("central_overview"),
+    compareEvalSet: "validation",
+    compareMetric: "selection_macro_f1",
+    compareChartType: "line",
+    compareIncludeInitial: true,
+    compareRunIds: [],
+    compareRunAliases: loadStoredRunAliases("central_compare"),
+    compareRunColors: loadStoredSeriesColors("central_compare"),
+    compareAxisLabel: "",
+    classEvalSet: "validation",
+    classMetric: "f1",
+    detailAlgorithm: null,
+    detailRunId: null,
+    projectionEvalSet: "validation",
+    projectionAlgorithm: null,
+    projectionRunIds: [],
+  };
+}

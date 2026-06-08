@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from scripts.workflows.result_index.method_identity import normalize_ssl_method_name
 from scripts.workflows.result_index.models import (
     ArtifactRecord,
     ExperimentRunRecord,
@@ -70,6 +71,11 @@ def load_fl_ssl_result_index_records(
         objective=objective,
         ssl_method=ssl_method,
     )
+    algorithm_name = normalize_ssl_method_name(
+        optional_str(objective.get("query_ssl.algorithm_name"))
+    )
+    if algorithm_name is None and method_name != "unknown":
+        algorithm_name = method_name
     local_regularizer_name, local_regularizer_mu = infer_local_regularizer(objective)
     run = ExperimentRunRecord(
         run_id=run_id,
@@ -80,7 +86,7 @@ def load_fl_ssl_result_index_records(
             update_family=update_family,
         ),
         method_name=method_name,
-        algorithm_name=optional_str(objective.get("query_ssl.algorithm_name")),
+        algorithm_name=algorithm_name,
         selection_slug=optional_str(fl_data_source.get("split_id")),
         labeled_dataset_name=optional_str(source_selection.get("labeled")),
         unlabeled_dataset_name=optional_str(source_selection.get("unlabeled")),
@@ -301,14 +307,24 @@ def infer_fl_method_name(
 ) -> str:
     if str(composition_mode or "").strip().lower() == "manual":
         return (
-            optional_str(objective.get("query_ssl.method_name"))
-            or optional_str(ssl_method.get("name"))
+            normalize_ssl_method_name(
+                optional_str(objective.get("query_ssl.algorithm_name"))
+            )
+            or normalize_ssl_method_name(
+                optional_str(objective.get("query_ssl.method_name"))
+            )
+            or normalize_ssl_method_name(optional_str(ssl_method.get("name")))
             or "unknown"
         )
     return (
         descriptor_name
-        or optional_str(ssl_method.get("name"))
-        or optional_str(objective.get("query_ssl.method_name"))
+        or normalize_ssl_method_name(optional_str(ssl_method.get("name")))
+        or normalize_ssl_method_name(
+            optional_str(objective.get("query_ssl.algorithm_name"))
+        )
+        or normalize_ssl_method_name(
+            optional_str(objective.get("query_ssl.method_name"))
+        )
         or "unknown"
     )
 

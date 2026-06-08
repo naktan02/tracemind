@@ -136,6 +136,16 @@ verifier는 `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`를
 사용한다. 대시보드 cache 생성과 `--reset` 의미는
 `apps/experiment_dashboard/README.md`가 소유한다.
 
+## Final Projection Artifacts
+
+FL SSL는 run 종료 시 final projection이 `projections/`에 자동 생성된다.
+
+- `runs/<...>/projections/validation.projection.jsonl`
+- `runs/<...>/projections/validation.projection.png`
+- `runs/<...>/projections/projection_manifest.json`
+
+시험/논문 실행에서 같은 위치의 figure를 그대로 사용할 수 있다.
+
 ## 주의
 
 - scripts runner에 새 method core를 추가하지 않는다.
