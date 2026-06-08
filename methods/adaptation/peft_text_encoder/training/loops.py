@@ -431,6 +431,7 @@ def train_query_ssl_classifier(
         log_epoch_summary=lambda message: print(message, flush=True),
         initial_history=initial_history,
         initial_best_checkpoint_state=initial_best_checkpoint_state,
+        include_selection_report=True,
         after_epoch=save_resume_checkpoint_after_epoch,
     )
     return model, history, best_selection_report

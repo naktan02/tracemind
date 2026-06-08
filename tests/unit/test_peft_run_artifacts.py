@@ -90,6 +90,7 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
         },
         history=[{"epoch": 1, "loss": 0.5}],
         best_selection_report={"macro_f1": 0.75},
+        final_selection_report={"macro_f1": 0.74},
         results={"test": {"accuracy": 0.8}},
         extra_manifest={"ssl_algorithm": "fixmatch"},
     )
@@ -129,7 +130,9 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
     assert manifest["ssl_algorithm"] == "fixmatch"
     assert report["schema_version"] == "central_peft_classifier_eval.v1"
     assert report["manifest"] == manifest
-    assert report["results"] == {"test": {"accuracy": 0.8}}
+    assert report["results"]["test"] == {"accuracy": 0.8}
+    assert report["results"]["best"] == {"accuracy": 0.8}
+    assert report["results"]["final"] == {"macro_f1": 0.74}
 
 
 def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None:
@@ -174,6 +177,7 @@ def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None
         backbone_summary={"name": "dummy-backbone"},
         history=[],
         best_selection_report={"macro_f1": 1.0},
+        final_selection_report=None,
         results={"validation": {"accuracy_top_1": 1.0}},
         eval_loaders={"validation": eval_loader},
     )
@@ -237,6 +241,7 @@ def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
         },
         history=[{"epoch": 1, "loss": 0.5}],
         best_selection_report={"macro_f1": 0.75},
+        final_selection_report=None,
         results={"test": {"accuracy": 0.8}},
         extra_manifest={"experiment_family": "full_supervised"},
     )
@@ -267,7 +272,8 @@ def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
     assert manifest["experiment_family"] == "full_supervised"
     assert report["schema_version"] == "central_full_text_encoder_eval.v1"
     assert report["manifest"] == manifest
-    assert report["results"] == {"test": {"accuracy": 0.8}}
+    assert report["results"]["test"] == {"accuracy": 0.8}
+    assert report["results"]["best"] == {"accuracy": 0.8}
 
 
 def test_write_full_text_encoder_run_artifacts_writes_projection_artifacts(
@@ -320,6 +326,7 @@ def test_write_full_text_encoder_run_artifacts_writes_projection_artifacts(
         },
         history=[],
         best_selection_report={"macro_f1": 1.0},
+        final_selection_report={"macro_f1": 1.0},
         results={"test": {"accuracy_top_1": 1.0}},
         eval_loaders={"test": eval_loader},
     )

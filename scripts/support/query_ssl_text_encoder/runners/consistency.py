@@ -54,6 +54,10 @@ from scripts.support.query_ssl_text_encoder.query_ssl.view_preparation import (
     build_query_ssl_augmenter_manifest,
     prepare_query_ssl_unlabeled_rows,
 )
+from scripts.support.query_ssl_text_encoder.result_utils import (
+    extract_final_selection_report,
+    merge_results_with_best_and_final,
+)
 from scripts.support.query_ssl_text_encoder.runtime_metrics import (
     run_with_training_runtime_metrics,
 )
@@ -146,6 +150,13 @@ def run_consistency_query_ssl_peft_baseline(
         categories=context.categories,
         device=context.training_device,
     )
+    history = list(local_ssl_result.history)
+    final_selection_report = extract_final_selection_report(history=history)
+    final_results = merge_results_with_best_and_final(
+        results=results,
+        selection_set=context.effective_selection_set,
+        final_selection_report=final_selection_report,
+    )
     effective_extra_manifest = _build_query_ssl_extra_manifest(
         cfg=cfg,
         context=context,
@@ -164,9 +175,12 @@ def run_consistency_query_ssl_peft_baseline(
         eval_set_map=context.eval_set_map,
         training_device=context.training_device,
         backbone_summary=context.backbone_summary,
-        history=list(local_ssl_result.history),
+        history=history,
         best_selection_report=dict(local_ssl_result.best_selection_report),
-        results=results,
+        final_selection_report=(
+            dict(final_selection_report) if final_selection_report is not None else None
+        ),
+        results=final_results,
         extra_manifest=effective_extra_manifest,
         eval_loaders=context.eval_loaders,
     )

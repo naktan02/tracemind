@@ -23,6 +23,7 @@ def build_selection_epoch_record(
     train_loss_denominator: int,
     selection_report: Mapping[str, Any],
     extra_train_metrics: Mapping[str, float] | None = None,
+    include_selection_report: bool = False,
 ) -> dict[str, Any]:
     """selection set 평가를 포함한 epoch history record를 만든다."""
 
@@ -48,6 +49,8 @@ def build_selection_epoch_record(
             record[target_key] = selection_report[source_key]
     if "per_category" in selection_report:
         record["selection_per_category"] = selection_report["per_category"]
+    if include_selection_report:
+        record["selection_report"] = dict(selection_report)
     return record
 
 

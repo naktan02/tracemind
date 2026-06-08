@@ -20,6 +20,7 @@ def build_query_peft_run_manifest(
     backbone_summary: dict[str, Any],
     history: list[dict[str, Any]],
     best_selection_report: dict[str, Any],
+    final_selection_report: dict[str, Any] | None = None,
     categories: list[str],
     paths: QueryPeftRunArtifactPaths,
     extra_manifest: Mapping[str, Any] | None = None,
@@ -32,6 +33,7 @@ def build_query_peft_run_manifest(
         backbone_summary=backbone_summary,
         history=history,
         best_selection_report=best_selection_report,
+        final_selection_report=final_selection_report,
         categories=categories,
         model_artifact_fields={
             "adapter_dir": str(paths.adapter_output_dir),
@@ -50,6 +52,7 @@ def build_query_text_encoder_run_manifest(
     backbone_summary: dict[str, Any],
     history: list[dict[str, Any]],
     best_selection_report: dict[str, Any],
+    final_selection_report: dict[str, Any] | None,
     categories: list[str],
     model_artifact_fields: Mapping[str, object],
     extra_manifest: Mapping[str, Any] | None = None,
@@ -81,6 +84,7 @@ def build_query_text_encoder_run_manifest(
         "categories": categories,
         "backbone": backbone_summary,
         "best_selection_report": best_selection_report,
+        "final_selection_report": final_selection_report,
         "history": history,
     }
     manifest.update(dict(model_artifact_fields))

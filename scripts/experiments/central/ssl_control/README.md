@@ -117,6 +117,21 @@ Hydra group이 아니다. 기본 중앙 supervised/SSL 실행은 `selection_set=
 `artifacts/model/`과 `artifacts/classifier_head.pt`를 저장한다. run id와
 `trainer_version` timestamp는 한국시간(`Asia/Seoul`) 기준이다.
 
+`report.json`에는 기존 `results[test]`를 `best`로 그대로 유지하면서, 실제 마지막
+epoch 기준 값은 `manifest.final_selection_report`로 남기고 `results.final`에도
+동시 기록한다. 즉, 기존 downstream 호환은 `best`로 유지되고 `final`은
+추가 채널로 비교 가능한 상태가 된다.
+
+이미 완료된 과거 report는 아래 스크립트로 일괄 보강할 수 있다.
+
+```bash
+uv run python -m scripts.experiments.central.ssl_control.enrich_final_reports \
+  --run-dir runs/central/ssl/peft_classifier/labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit
+```
+
+변경만 적용됐을 때는 파일이 쓰이지 않고 요약만 출력한다.
+`--dry-run` 옵션을 붙이면 적용 여부를 미리 확인할 수 있다.
+
 ## 경계
 
 이 폴더는 dataset, method, adapter family 기본값을 새로 정의하지 않는다.

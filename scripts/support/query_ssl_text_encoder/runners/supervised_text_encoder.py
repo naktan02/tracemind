@@ -13,6 +13,10 @@ from scripts.support.query_ssl_text_encoder.io.artifact_paths import (
 from scripts.support.query_ssl_text_encoder.io.supervised_epoch_checkpoints import (
     write_peft_supervised_epoch_checkpoint,
 )
+from scripts.support.query_ssl_text_encoder.result_utils import (
+    extract_final_selection_report,
+    merge_results_with_best_and_final,
+)
 from scripts.support.query_ssl_text_encoder.runtime_metrics import (
     run_with_training_runtime_metrics,
 )
@@ -99,6 +103,12 @@ def run_supervised_text_encoder_baseline(
         categories=context.categories,
         device=context.training_device,
     )
+    final_selection_report = extract_final_selection_report(history)
+    final_results = merge_results_with_best_and_final(
+        results=results,
+        selection_set=context.effective_selection_set,
+        final_selection_report=final_selection_report,
+    )
 
     effective_extra_manifest = dict(context.initial_checkpoint_manifest)
     effective_extra_manifest["runtime_metrics"] = runtime_metrics
@@ -125,7 +135,10 @@ def run_supervised_text_encoder_baseline(
         backbone_summary=context.backbone_summary,
         history=history,
         best_selection_report=best_selection_report,
-        results=results,
+        final_selection_report=(
+            dict(final_selection_report) if final_selection_report is not None else None
+        ),
+        results=final_results,
         extra_manifest=effective_extra_manifest,
         eval_loaders=context.eval_loaders,
     )

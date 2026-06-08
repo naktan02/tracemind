@@ -23,6 +23,9 @@ from scripts.support.query_ssl_text_encoder.io.manifest_builder import (
 from scripts.support.query_ssl_text_encoder.io.model_artifact_exporter import (
     QueryPeftModelArtifactExporter,
 )
+from scripts.support.query_ssl_text_encoder.result_utils import (
+    merge_results_with_best_and_final,
+)
 
 
 def write_run_artifacts(
@@ -38,6 +41,7 @@ def write_run_artifacts(
     backbone_summary: dict[str, Any],
     history: list[dict[str, Any]],
     best_selection_report: dict[str, Any],
+    final_selection_report: dict[str, Any] | None,
     results: dict[str, Any],
     extra_manifest: Mapping[str, Any] | None = None,
     eval_loaders: Mapping[str, Any] | None = None,
@@ -62,6 +66,15 @@ def write_run_artifacts(
         paths=paths,
         seed=int(cfg.seed),
     )
+    final_results = merge_results_with_best_and_final(
+        results=results,
+        selection_set=str(cfg.selection_set),
+        final_selection_report=(
+            dict(final_selection_report)
+            if isinstance(final_selection_report, dict)
+            else None
+        ),
+    )
     effective_extra_manifest = dict(extra_manifest or {})
     if projection_artifacts is not None:
         effective_extra_manifest["projection_artifacts"] = projection_artifacts
@@ -73,6 +86,7 @@ def write_run_artifacts(
         backbone_summary=backbone_summary,
         history=history,
         best_selection_report=best_selection_report,
+        final_selection_report=final_selection_report,
         categories=categories,
         paths=paths,
         extra_manifest=effective_extra_manifest,
@@ -80,7 +94,7 @@ def write_run_artifacts(
     report = build_query_peft_eval_report(
         trainer_version=trainer_version,
         manifest=manifest,
-        results=results,
+        results=final_results,
     )
     QueryTextEncoderRunArtifactWriter().write(
         paths=paths, manifest=manifest, report=report

@@ -254,6 +254,7 @@ def train_classifier(
         evaluate_selection=evaluate_selection,
         best_checkpoint_error_message=best_checkpoint_error_message,
         log_epoch_summary=lambda message: print(message, flush=True),
+        include_selection_report=True,
         after_epoch=run_after_epoch if after_epoch is not None else None,
     )
     return model, history, best_selection_report
