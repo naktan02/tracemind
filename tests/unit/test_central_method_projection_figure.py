@@ -11,6 +11,8 @@ from PIL import Image
 from methods.adaptation.text_encoder_classifier.projection import reduce_features_2d
 from scripts.experiments.central.ssl_control.build_method_projection_figure import (
     MethodFeatureSet,
+    _collect_run_specs_from_dir,
+    collect_run_specs,
     draw_method_figure,
     parse_run_specs,
     resolve_projection_output_dir,
@@ -30,6 +32,69 @@ def test_parse_run_specs_requires_label_and_existing_report(tmp_path: Path) -> N
 
     with pytest.raises(ValueError, match="label=path"):
         parse_run_specs([str(report_path)])
+
+
+def test_collect_run_specs_from_dir_discovers_report_paths_in_order(
+    tmp_path: Path,
+) -> None:
+    method_a_report = (
+        tmp_path / "method_a" / "run_20260101_000000" / "reports" / "report.json"
+    )
+    method_b_report = (
+        tmp_path / "method_b" / "run_20260101_000000" / "reports" / "report.json"
+    )
+    method_a_report.parent.mkdir(parents=True)
+    method_b_report.parent.mkdir(parents=True)
+    method_a_report.write_text("{}\n", encoding="utf-8")
+    method_b_report.write_text("{}\n", encoding="utf-8")
+
+    specs = _collect_run_specs_from_dir(tmp_path)
+
+    assert [spec.label for spec in specs] == ["method_a", "method_b"]
+    assert [spec.report_path for spec in specs] == [method_a_report, method_b_report]
+
+
+def test_collect_run_specs_from_dir_requires_reports(tmp_path: Path) -> None:
+    missing_dir = tmp_path / "missing_reports"
+    missing_dir.mkdir()
+    with pytest.raises(FileNotFoundError, match="No reports found"):
+        _collect_run_specs_from_dir(tmp_path / "missing_reports")
+
+
+def test_collect_run_specs_merges_dir_and_explicit_runs(tmp_path: Path) -> None:
+    method_a_report = (
+        tmp_path / "method_a" / "run_20260101_000000" / "reports" / "report.json"
+    )
+    explicit_report = tmp_path / "explicit_report.json"
+    method_a_report.parent.mkdir(parents=True)
+    method_a_report.write_text("{}\n", encoding="utf-8")
+    explicit_report.write_text("{}\n", encoding="utf-8")
+
+    specs = collect_run_specs(
+        explicit_runs=("supervised=" + str(explicit_report),),
+        run_dirs=(str(tmp_path),),
+    )
+
+    assert [spec.label for spec in specs] == ["method_a", "supervised"]
+
+
+def test_collect_run_specs_rejects_duplicate_labels(tmp_path: Path) -> None:
+    method_a_report = (
+        tmp_path / "method_a" / "run_20260101_000000" / "reports" / "report.json"
+    )
+    explicit_report = (
+        tmp_path / "method_a" / "run_20260101_000001" / "reports" / "report.json"
+    )
+    method_a_report.parent.mkdir(parents=True, exist_ok=True)
+    explicit_report.parent.mkdir(parents=True, exist_ok=True)
+    method_a_report.write_text("{}\n", encoding="utf-8")
+    explicit_report.write_text("{}\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Duplicate method labels"):
+        collect_run_specs(
+            explicit_runs=(f"method_a={explicit_report}",),
+            run_dirs=(str(tmp_path),),
+        )
 
 
 def test_select_row_indices_is_reproducible_and_keeps_order() -> None:

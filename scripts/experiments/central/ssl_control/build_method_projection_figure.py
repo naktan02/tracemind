@@ -80,7 +80,10 @@ class MethodFeatureSet:
 
 def main() -> None:
     args = _parse_args()
-    run_specs = [_parse_run_spec(value) for value in args.run]
+    run_specs = collect_run_specs(
+        explicit_runs=tuple(args.run or []),
+        run_dirs=tuple(args.run_dir or []),
+    )
     splits = tuple(args.split or ["test"])
     output_dir = resolve_projection_output_dir(
         output_dir=Path(args.output_dir) if args.output_dir else None,
@@ -296,8 +299,17 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--run",
         action="append",
-        required=True,
+        default=[],
         help="Method label and report path in label=path/to/report.json format.",
+    )
+    parser.add_argument(
+        "--run-dir",
+        action="append",
+        default=[],
+        help=(
+            "Directory to scan recursively and include every */reports/report.json "
+            "under it."
+        ),
     )
     parser.add_argument(
         "--split",
@@ -363,7 +375,10 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Overlay incorrect predictions with black hollow markers.",
     )
-    return parser.parse_args()
+    parsed = parser.parse_args()
+    if not parsed.run and not parsed.run_dir:
+        parser.error("At least one of --run or --run-dir must be provided.")
+    return parsed
 
 
 def _parse_run_spec(value: str) -> RunSpec:
@@ -379,6 +394,52 @@ def _parse_run_spec(value: str) -> RunSpec:
     if not report_path.exists():
         raise FileNotFoundError(f"run report does not exist: {report_path}")
     return RunSpec(label=normalized_label, report_path=report_path)
+
+
+def collect_run_specs(
+    *,
+    explicit_runs: tuple[str, ...],
+    run_dirs: tuple[str, ...],
+) -> list[RunSpec]:
+    """CLI 입력(run, run-dir)을 중복 체크 후 공통 RunSpec 목록으로 결합한다."""
+
+    specs: list[RunSpec] = []
+    for run_dir in run_dirs:
+        specs.extend(_collect_run_specs_from_dir(Path(run_dir)))
+    specs.extend(_parse_run_spec(value) for value in explicit_runs)
+
+    labels = [spec.label for spec in specs]
+    duplicates = {label for label in set(labels) if labels.count(label) > 1}
+    if duplicates:
+        raise ValueError(f"Duplicate method labels detected: {sorted(duplicates)}")
+    return specs
+
+
+def _collect_run_specs_from_dir(run_dir: Path) -> list[RunSpec]:
+    """run-dir 하위에서 reports/report.json을 찾아 method label과 함께 반환한다."""
+
+    base = run_dir.expanduser().resolve()
+    if not base.exists():
+        raise FileNotFoundError(f"run directory does not exist: {base}")
+    if not base.is_dir():
+        raise NotADirectoryError(f"run directory must be a folder: {base}")
+
+    report_paths = sorted(
+        (path for path in base.rglob("reports/report.json") if path.is_file()),
+        key=lambda path: str(path),
+    )
+    if not report_paths:
+        raise FileNotFoundError(
+            "No reports found under run directory (looking for "
+            f"reports/report.json): {base}"
+        )
+    return [
+        RunSpec(
+            label=path.parent.parent.parent.name,
+            report_path=path,
+        )
+        for path in report_paths
+    ]
 
 
 def _load_run_manifest(spec: RunSpec) -> RunManifest:

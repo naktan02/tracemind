@@ -50,6 +50,37 @@ smoke 산출물은 main run과 섞지 않는다. method는
 entrypoint의 학습 표면은 `trainable_surface=peft_text_encoder`이고,
 full-model supervised-only control은 `trainable_surface=full_text_encoder`를 쓴다.
 
+## Method Projection Figure
+
+중앙 method 비교용 figure는 run 종료 후 아래 CLI로 직접 생성한다.
+
+```bash
+uv run python scripts/experiments/central/ssl_control/build_method_projection_figure.py \
+  --run supervised=<supervised_report_json> \
+  --run fixmatch=<fixmatch_report_json> \
+  --run consistency=<consistency_report_json> \
+  --split test \
+  --max-rows-per-run 2000 \
+  --output-root runs/figures/central_ssl/method_projection
+```
+
+여기서 `<*_report_json>`은 각 run에서 출력된 `report_json` 경로를 넣는다.
+예: `runs/central/.../reports/report.json`
+
+실행 결과는 `output_dir`가 stdout에 찍히고, 기본적으로
+`method_projection_manifest.json`, `test/*.method_projection.png`가 생성된다.
+
+폴더 단위로 지정하면 내부의 모든 `reports/report.json`을 읽어 method 라벨을
+자동으로 붙여 한 번에 실행할 수 있다.
+
+```bash
+uv run python scripts/experiments/central/ssl_control/build_method_projection_figure.py \
+  --run-dir runs/central/ssl/peft_classifier/labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit \
+  --split test \
+  --max-rows-per-run 2000 \
+  --output-root runs/figures/central_ssl/method_projection
+```
+
 ## 데이터 source 변경
 
 source 주소록은 `conf/execution_context/query_data_source/default.yaml`이 소유한다.
