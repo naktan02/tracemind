@@ -15,11 +15,6 @@ from typing import Protocol, Sequence
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.infrastructure.repositories.query_buffer_repository import (
-    QueryBufferRecord,
-    QueryBufferRepository,
-    build_query_buffer_record,
-)
 from agent.src.services.assets.adapters.composition_service import (
     AdapterCompositionService,
     AdapterRuntimeContext,
@@ -50,7 +45,6 @@ class InferencePipelineResult:
     analysis_event: AnalysisEvent
     base_embedding: list[float]
     was_translated: bool
-    query_buffer_record: QueryBufferRecord | None = None
 
 
 @dataclass(slots=True)
@@ -68,7 +62,6 @@ class InferencePipelineService:
     adapter_composition_service: AdapterCompositionService | None = None
     shared_adapter_provider: SharedAdapterRuntimeProvider | None = None
     local_adapter_provider: LocalAdapterRuntimeProvider | None = None
-    query_buffer_repository: QueryBufferRepository | None = None
     preprocess_service: PreprocessService = field(default_factory=PreprocessService)
     translation_service: TranslationService | None = None
     # 번역 대상 locale. 이 목록에 없으면 원문을 그대로 임베딩한다.
@@ -76,12 +69,7 @@ class InferencePipelineService:
     embedding_model_id: str = "unknown"
     model_revision: str = "unknown"
 
-    def process(
-        self,
-        event: QueryEvent,
-        *,
-        save_query_buffer: bool = True,
-    ) -> InferencePipelineResult:
+    def process(self, event: QueryEvent) -> InferencePipelineResult:
         """단일 QueryEvent를 처리하고 결과를 저장한다."""
         normalized = self.preprocess_service.normalize(event.text)
 
@@ -130,7 +118,7 @@ class InferencePipelineService:
             "source_locale": event.locale,
             "source_type": event.source_type,
         }
-        metadata.update(adapter_context.query_buffer_metadata())
+        metadata.update(adapter_context.analysis_metadata())
         self.event_repository.save(
             analysis_event,
             base_embedding=list(base_embedding),
@@ -141,21 +129,10 @@ class InferencePipelineService:
             confidence_kind=confidence_kind,
             metadata=metadata,
         )
-        query_buffer_record = None
-        if save_query_buffer and self.query_buffer_repository is not None:
-            query_buffer_record = build_query_buffer_record(
-                event=event,
-                analysis_event=analysis_event,
-                model_revision=model_revision,
-                confidence_kind=confidence_kind,
-                metadata=metadata,
-            )
-            self.query_buffer_repository.save(query_buffer_record)
         return InferencePipelineResult(
             analysis_event=analysis_event,
             base_embedding=list(base_embedding),
             was_translated=needs_translation,
-            query_buffer_record=query_buffer_record,
         )
 
     def process_batch(

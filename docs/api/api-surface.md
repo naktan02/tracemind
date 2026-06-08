@@ -10,7 +10,7 @@
 
 | 앱 | import path | 기본 역할 |
 |---|---|---|
-| Agent API | `agent.src.api.main:app` | 로컬 수집, inference, query/local state, training participation, family/wellbeing output |
+| Agent API | `agent.src.api.main:app` | 로컬 수집, inference, captured/local state, training participation, family/wellbeing output |
 | Main Server API | `main_server.src.api.main:app` | FL round orchestration, aggregation/publication |
 
 로컬 실행 예시:
@@ -24,7 +24,7 @@ uv run uvicorn agent.src.api.main:app --reload --port 8001
 
 | 규칙 | 의미 |
 |---|---|
-| raw text는 agent local boundary에 남긴다 | 서버 API는 query buffer 원문을 읽지 않는다 |
+| raw text는 agent local boundary에 남긴다 | 서버 API는 captured text 원문과 generated view를 직접 읽지 않는다 |
 | shared contract는 코드가 source of truth다 | API 문서가 payload 필드를 복제해 정본이 되지 않는다 |
 | route는 orchestration edge다 | domain rule과 training/inference mechanism은 services/domain 계층에 둔다 |
 | CORS/auth는 local app 노출 경계에서 별도 확인한다 | production auth/security hardening 문서는 아직 별도 canonical 문서가 없다 |
@@ -81,7 +81,7 @@ captured text ingest는 raw 저장만 수행하며, main_server current shared a
 agent FL active cache를 직접 읽지 않는다. debug job은 view generation 이후 generated
 weak text를 agent-local inference pipeline에 넣어 `analysis_events`,
 `analysis_category_scores`에 분류 결과를 저장한다. captured text 학습 입력은
-`query_buffer_records`가 아니라 generated weak/strong view source에서 시작한다.
+generated weak/strong view source에서 시작한다.
 학습 사용 여부와 사용 시각은 `training_usage_rows`의 source_kind/source_id/recorded_at
 기록으로 추적한다.
 Agent-local runtime DB는 기본적으로 하나의 SQLite 파일(`agent_local.db`)을 사용한다.

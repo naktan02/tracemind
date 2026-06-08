@@ -13,7 +13,7 @@ def resolve_scoring_backend_name(backend: ScoringBackend) -> str:
 
 
 def resolve_scoring_confidence_kind(backend: ScoringBackend) -> str:
-    """backend instance에서 query buffer confidence kind를 읽는다."""
+    """backend instance에서 score confidence kind를 읽는다."""
 
     confidence_kind = getattr(backend, "confidence_kind", None)
     if isinstance(confidence_kind, str) and confidence_kind.strip():

@@ -82,7 +82,7 @@ def test_adapter_composition_applies_shared_then_local_state() -> None:
     assert result == [6.0, 12.0]
     assert shared_state.seen_inputs == [[1.0, 2.0]]
     assert local_state.seen_inputs == [[2.0, 4.0]]
-    assert context.query_buffer_metadata() == {
+    assert context.analysis_metadata() == {
         "adapter_kind": "global_fake",
         "shared_adapter_kind": "global_fake",
         "shared_model_revision": "shared_rev",
@@ -96,7 +96,7 @@ def test_adapter_composition_keeps_local_state_optional() -> None:
     context = AdapterCompositionService().get_context()
 
     assert context.apply_for_inference([1.0, 2.0]) == [1.0, 2.0]
-    assert context.query_buffer_metadata() == {}
+    assert context.analysis_metadata() == {}
     assert context.model_revision_for_record("fallback") == "fallback"
 
 

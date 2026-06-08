@@ -76,6 +76,6 @@ class ScoringService:
 
     @property
     def confidence_kind(self) -> str:
-        """query buffer에 남길 confidence kind."""
+        """analysis event에 남길 confidence kind."""
 
         return resolve_scoring_confidence_kind(self.backend)

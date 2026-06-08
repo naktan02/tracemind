@@ -26,7 +26,7 @@ TraceMind의 주요 위험은 아래에 있다.
 따라서 테스트는 다음 순서로 두껍게 둔다.
 
 1. `shared` contract와 canonical helper
-2. `agent` local inference/training/query buffer/wellbeing service
+2. `agent` local inference/training/captured text/wellbeing service
 3. `main_server` round orchestration
 4. script entrypoint, Hydra config, artifact IO
 5. cross-boundary integration과 architecture guard
@@ -36,7 +36,7 @@ TraceMind의 주요 위험은 아래에 있다.
 | 위치 | 책임 |
 |---|---|
 | `shared/tests/unit` | shared contract, training defaults, generated UI contract |
-| `agent/tests/unit` | local inference, query buffer, query adaptation, training, wellbeing API/service |
+| `agent/tests/unit` | local inference, captured text, query adaptation, training, wellbeing API/service |
 | `main_server/tests/unit` | FL round lifecycle, aggregation, publication |
 | `tests/unit` | scripts, Hydra config, generated app types |
 | `tests/integration` | cross-boundary integration |
@@ -97,8 +97,8 @@ Contract 변경은 producer, consumer, serialization/compatibility test, 관련 
 |---|---|
 | `agent/tests/unit/test_inference_pipeline.py` | local inference pipeline |
 | `agent/tests/unit/test_scoring_service.py` | scoring backend/policy |
-| `agent/tests/unit/test_query_buffer_repository.py` | query buffer local persistence |
-| `agent/tests/unit/test_query_buffer_selection_service.py` | query buffer selection |
+| `agent/tests/unit/test_captured_text_repository.py` | captured text raw/view/analysis persistence |
+| `agent/tests/unit/test_training_usage_ledger_repository.py` | local training source usage ledger |
 | `tests/unit/test_methods_fixmatch.py` | reusable FixMatch method objective |
 | `tests/unit/test_methods_freematch.py` | reusable FreeMatch method objective |
 | `tests/unit/test_methods_federated_ssl.py` | reusable FL SSL method descriptor |

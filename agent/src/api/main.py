@@ -30,9 +30,6 @@ from agent.src.infrastructure.repositories.child_support_repository import (
 from agent.src.infrastructure.repositories.family_access_repository import (
     FamilyAccessRepository,
 )
-from agent.src.infrastructure.repositories.query_buffer_repository import (
-    QueryBufferRepository,
-)
 from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
     TrainingUsageLedgerRepository,
 )
@@ -122,7 +119,6 @@ def create_app(
     *,
     pipeline_service: InferencePipelineService | None = None,
     analysis_event_repository: AnalysisEventRepository | None = None,
-    query_buffer_repository: QueryBufferRepository | None = None,
     captured_text_repository: CapturedTextRepository | None = None,
     training_usage_ledger_repository: TrainingUsageLedgerRepository | None = None,
     captured_text_view_generation_service: (
@@ -160,7 +156,6 @@ def create_app(
     app.state.analysis_event_repository = (
         analysis_event_repository or AnalysisEventRepository()
     )
-    app.state.query_buffer_repository = query_buffer_repository
     app.state.captured_text_repository = (
         captured_text_repository or CapturedTextRepository()
     )
@@ -220,7 +215,6 @@ def create_app(
             conversation_repository=(app.state.child_support_conversation_repository),
             context_provider=ChildSupportContextProvider(
                 summary_service=app.state.wellbeing_summary_service,
-                query_buffer_repository=app.state.query_buffer_repository,
                 conversation_repository=(
                     app.state.child_support_conversation_repository
                 ),
@@ -243,7 +237,6 @@ def create_app(
     elif auto_configure_pipeline:
         app.state.pipeline_service = build_default_pipeline_service(
             analysis_event_repository=app.state.analysis_event_repository,
-            query_buffer_repository=app.state.query_buffer_repository,
             shared_adapter_runtime_service=app.state.shared_adapter_runtime_service,
             translation_service=(
                 app.state.captured_text_view_generation_service.translation_provider

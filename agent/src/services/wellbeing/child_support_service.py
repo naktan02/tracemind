@@ -246,20 +246,6 @@ def _build_llm_prompt(
             f"- action_tip: {summary.action_tip}"
         )
 
-    query_lines = [
-        (
-            f"- {item.occurred_at.isoformat()} | "
-            f"query='{item.raw_text_excerpt}' | "
-            f"label={item.predicted_label} | confidence={item.confidence}"
-        )
-        for item in context.recent_queries
-    ]
-    query_block = (
-        "최근 로컬 query buffer 요약:\n" + "\n".join(query_lines)
-        if query_lines
-        else "최근 로컬 query buffer 요약: 없음"
-    )
-
     message_lines = [
         f"- {record.role}: {record.text}" for record in context.recent_messages[-6:]
     ]
@@ -311,7 +297,6 @@ def _build_llm_prompt(
         "의미를 지켜 자연스럽게 답한다.\n"
         f"fallback_reference:\n{plan.fallback_text}\n\n"
         f"{summary_block}\n\n"
-        f"{query_block}\n\n"
         f"{history_block}\n\n"
         f"아이의 새 메시지: {message}\n\n"
         "아이에게 바로 보여줄 답변만 작성해라."

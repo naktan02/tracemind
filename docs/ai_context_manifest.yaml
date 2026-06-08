@@ -52,7 +52,6 @@ active_entrypoints:
   - docs/project_execution_plan.md
   - docs/architecture/system-overview.md
   - docs/architecture/target-method-runtime-structure.md
-  - docs/contracts/query_buffer_v1.md
   - docs/contracts/legacy_contract_ledger.md
   - docs/contracts/central_peft_text_encoder_trainer_contract.md
   - docs/operations/local-runbook.md
@@ -88,7 +87,6 @@ task_routes:
       - docs/project_execution_plan.md
       - docs/architecture/target-method-runtime-structure.md
       - docs/contracts/central_peft_text_encoder_trainer_contract.md
-      - docs/contracts/query_buffer_v1.md
       - scripts/AGENTS.md
       - relevant conf config group
       - relevant scripts/experiments entrypoint

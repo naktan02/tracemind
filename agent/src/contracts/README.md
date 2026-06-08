@@ -26,12 +26,14 @@
 scheduler나 main_server orchestration 계약이 아니며, raw text와 generated weak/strong
 view는 agent local boundary에 남긴다.
 
-Captured text, analysis event, query buffer의 기본 저장소는 같은 agent-local SQLite
-파일(`agent_local.db`)을 사용한다. `captured_text_events`는 원문 snapshot만 소유하고,
-weak/strong view 생성 상태는 `captured_text_view_generation_jobs`, generated weak/strong
-view는 `captured_text_generated_views`, 후속 분류/분석 상태는
+Captured text, analysis event, training usage ledger의 기본 저장소는 같은 agent-local
+SQLite 파일(`agent_local.db`)을 사용한다. `captured_text_events`는 원문 snapshot만
+소유하고, weak/strong view 생성 상태는 `captured_text_view_generation_jobs`,
+generated weak/strong view는 `captured_text_generated_views`, 후속 분류/분석 상태는
 `captured_text_analysis_jobs`가 소유한다. completed analysis job은
-`analysis_events.analysis_id`를 참조한다.
+`analysis_events.analysis_id`를 참조한다. 학습 실행 이력은
+`training_usage_runs`와 `training_usage_rows`가 round/task/update와 사용된 source row를
+연결한다.
 
 Captured text ingest 응답의 `query_id`는 shape compatibility를 위해 `event_id`와 같은
 값을 반환한다. ingest 경로는 분석 score를 생성하지 않으며, `top_category`와

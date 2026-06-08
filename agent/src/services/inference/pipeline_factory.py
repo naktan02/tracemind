@@ -11,9 +11,6 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.infrastructure.repositories.query_buffer_repository import (
-    QueryBufferRepository,
-)
 from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
@@ -36,7 +33,6 @@ AGENT_EMBEDDING_HASH_DIM_ENV = "TRACEMIND_AGENT_EMBEDDING_HASH_DIM"
 def build_default_pipeline_service(
     *,
     analysis_event_repository: AnalysisEventRepository,
-    query_buffer_repository: QueryBufferRepository | None,
     shared_adapter_runtime_service: SharedAdapterRuntimeService,
     translation_service: TranslationService | None,
 ) -> InferencePipelineService:
@@ -50,7 +46,6 @@ def build_default_pipeline_service(
         scoring_service=ScoringService(),
         event_repository=analysis_event_repository,
         shared_adapter_provider=shared_adapter_runtime_service,
-        query_buffer_repository=query_buffer_repository,
         translation_service=translation_service,
         embedding_model_id=embedding_spec.model_id,
         model_revision="agent_local_runtime",

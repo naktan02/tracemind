@@ -27,9 +27,6 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
     captured_text_record_from_payload,
 )
-from agent.src.infrastructure.repositories.query_buffer_repository import (
-    QueryBufferRepository,
-)
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.ingest.captured_text_ingest_service import (
     CapturedTextIngestService,
@@ -143,10 +140,10 @@ def test_captured_text_router_is_registered_on_agent_app() -> None:
     assert "/api/v1/captured-text/debug-job/run-view-generation" in route_paths
 
 
-def test_agent_app_does_not_create_query_buffer_by_default() -> None:
+def test_agent_app_uses_captured_text_state_without_legacy_buffer() -> None:
     client = TestClient(create_app(auto_configure_pipeline=False))
 
-    assert client.app.state.query_buffer_repository is None
+    assert hasattr(client.app.state, "captured_text_repository")
 
 
 def test_captured_text_endpoint_stores_without_pipeline(tmp_path: Path) -> None:
@@ -268,7 +265,6 @@ def test_captured_text_debug_job_generates_view_and_classifies_weak_text(
     db_path = tmp_path / "agent_local.db"
     captured_repository = CapturedTextRepository(db_path=db_path)
     analysis_repository = AnalysisEventRepository(db_path=db_path)
-    query_buffer_repository = QueryBufferRepository(db_path=db_path)
 
     class TranslationProvider:
         model_id = "unit-translation"
@@ -289,7 +285,6 @@ def test_captured_text_debug_job_generates_view_and_classifies_weak_text(
         embedding_service=embedding_service,
         scoring_service=scoring_service,
         event_repository=analysis_repository,
-        query_buffer_repository=query_buffer_repository,
         preprocess_service=PreprocessService(),
         embedding_model_id="unit-embed",
         model_revision="unit-revision",
@@ -301,7 +296,6 @@ def test_captured_text_debug_job_generates_view_and_classifies_weak_text(
     client = TestClient(
         create_app(
             analysis_event_repository=analysis_repository,
-            query_buffer_repository=query_buffer_repository,
             captured_text_repository=captured_repository,
             captured_text_view_generation_service=view_service,
             pipeline_service=pipeline_service,
@@ -335,7 +329,6 @@ def test_captured_text_debug_job_generates_view_and_classifies_weak_text(
     assert len(analysis_events) == 1
     assert analysis_events[0].query_id == "event_1"
     assert analysis_events[0].category_scores["anxiety"] == 0.91
-    assert query_buffer_repository.get("event_1") is None
     scoring_service.score.assert_called_once()
 
 

@@ -251,7 +251,7 @@ def _usb_unlabeled_row(query_id: str, label: str, text: str) -> LabeledQueryRow:
     return LabeledQueryRow(
         query_id=query_id,
         text=text,
-        raw_label_scheme="query_buffer",
+        raw_label_scheme="agent_local_unlabeled",
         raw_label=label,
         mapped_label_4=label,
         locale="ko-KR",

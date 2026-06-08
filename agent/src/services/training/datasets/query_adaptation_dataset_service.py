@@ -1,4 +1,4 @@
-"""Accepted pseudo-label을 raw-text adaptation dataset으로 조립한다."""
+"""Accepted pseudo-label을 source-row adaptation dataset으로 조립한다."""
 
 from __future__ import annotations
 
@@ -6,9 +6,6 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import TypeVar
 
-from agent.src.infrastructure.repositories.query_buffer_repository import (
-    QueryBufferRecord,
-)
 from agent.src.services.training.backends.inputs.models import (
     TrainingExampleSource,
 )
@@ -54,7 +51,7 @@ class QueryAdaptationDatasetProvenance:
     evidence_ref: str | None = None
     selection_context: PseudoLabelSelectionContext | None = None
     candidate_metadata: dict[str, _MetadataScalar] = field(default_factory=dict)
-    query_buffer_metadata: dict[str, _MetadataScalar] = field(default_factory=dict)
+    source_metadata: dict[str, _MetadataScalar] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.locale.strip():
@@ -114,7 +111,7 @@ class QueryAdaptationDataset:
 
 @dataclass(slots=True)
 class QueryAdaptationDatasetService:
-    """selection 결과를 query-domain adaptation 입력셋으로 조립한다."""
+    """selection 결과를 source-row adaptation 입력셋으로 조립한다."""
 
     config: QueryAdaptationDatasetConfig = field(
         default_factory=QueryAdaptationDatasetConfig
@@ -124,7 +121,7 @@ class QueryAdaptationDatasetService:
         self,
         *,
         selection_result: PseudoLabelSelectionResult,
-        records: tuple[QueryBufferRecord, ...] | list[QueryBufferRecord],
+        source_rows: tuple[TrainingExampleSource, ...] | list[TrainingExampleSource],
         analysis_events: tuple[AnalysisEvent, ...] | list[AnalysisEvent] | None = None,
         manual_label_by_query_id: Mapping[str, str] | None = None,
     ) -> QueryAdaptationDataset:
@@ -136,10 +133,10 @@ class QueryAdaptationDatasetService:
                 "manual_label_by_query_id requires "
                 "label_policy_name='prefer_manual_label'."
             )
-        record_by_query_id = _index_unique(
-            items=records,
-            key_fn=lambda record: record.query_id,
-            item_name="QueryBufferRecord",
+        source_row_by_query_id = _index_unique(
+            items=source_rows,
+            key_fn=lambda row: row.query_id,
+            item_name="TrainingExampleSource",
         )
         analysis_event_by_query_id = _index_unique(
             items=() if analysis_events is None else analysis_events,
@@ -149,10 +146,10 @@ class QueryAdaptationDatasetService:
 
         dataset_examples: list[QueryAdaptationDatasetExample] = []
         for candidate in selection_result.accepted_candidates:
-            record = record_by_query_id.get(candidate.source_event_ref)
-            if record is None:
+            source_row = source_row_by_query_id.get(candidate.source_event_ref)
+            if source_row is None:
                 raise ValueError(
-                    "Missing QueryBufferRecord for accepted candidate: "
+                    "Missing TrainingExampleSource for accepted candidate: "
                     f"{candidate.source_event_ref}."
                 )
             analysis_event = analysis_event_by_query_id.get(candidate.source_event_ref)
@@ -162,19 +159,13 @@ class QueryAdaptationDatasetService:
             )
             dataset_examples.append(
                 QueryAdaptationDatasetExample(
-                    source_row=TrainingExampleSource(
-                        query_id=record.query_id,
-                        text=record.raw_text,
-                        occurred_at=record.occurred_at,
-                        translated_text=(
-                            None
-                            if analysis_event is None
-                            else analysis_event.translated_text
-                        ),
+                    source_row=_merge_analysis_translation(
+                        source_row=source_row,
+                        analysis_event=analysis_event,
                     ),
                     label=label,
                     provenance=_build_dataset_provenance(
-                        record=record,
+                        source_row=source_row,
                         candidate=candidate,
                         analysis_event=analysis_event,
                     ),
@@ -204,14 +195,14 @@ class QueryAdaptationDatasetService:
 
 def _build_dataset_provenance(
     *,
-    record: QueryBufferRecord,
+    source_row: TrainingExampleSource,
     candidate: PseudoLabelCandidate,
     analysis_event: AnalysisEvent | None,
 ) -> QueryAdaptationDatasetProvenance:
     return QueryAdaptationDatasetProvenance(
-        locale=record.locale,
-        source_type=record.source_type,
-        model_revision=record.model_revision,
+        locale=str(candidate.metadata.get("locale", "unknown")),
+        source_type=str(candidate.metadata.get("source_type", "unknown")),
+        model_revision=str(candidate.metadata.get("model_revision", "unknown")),
         selection_confidence_kind=(
             "unknown"
             if candidate.confidence_kind is None
@@ -232,10 +223,30 @@ def _build_dataset_provenance(
             for key, value in candidate.metadata.items()
             if str(key) not in SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS
         },
-        query_buffer_metadata={
-            str(key): _coerce_metadata_scalar(value)
-            for key, value in record.metadata.items()
+        source_metadata={
+            "source_query_id": source_row.query_id,
+            "source_has_weak_view": source_row.weak_text is not None,
+            "source_has_strong_view": source_row.strong_text is not None,
         },
+    )
+
+
+def _merge_analysis_translation(
+    *,
+    source_row: TrainingExampleSource,
+    analysis_event: AnalysisEvent | None,
+) -> TrainingExampleSource:
+    if source_row.translated_text is not None or analysis_event is None:
+        return source_row
+    return TrainingExampleSource(
+        query_id=source_row.query_id,
+        text=source_row.text,
+        occurred_at=source_row.occurred_at,
+        translated_text=analysis_event.translated_text,
+        weak_text=source_row.weak_text,
+        strong_text=source_row.strong_text,
+        weak_translated_text=source_row.weak_translated_text,
+        strong_translated_text=source_row.strong_translated_text,
     )
 
 

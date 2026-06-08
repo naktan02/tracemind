@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,9 +12,6 @@ import pytest
 
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.query_buffer_repository import (
-    QueryBufferRepository,
 )
 from agent.src.services.inference.pipeline_service import (
     InferencePipelineService,
@@ -60,6 +58,27 @@ def _make_query_event(
         locale=locale,
         source_type="test",
     )
+
+
+def _get_analysis_metadata_row(
+    pipeline: InferencePipelineService,
+    analysis_id: str,
+) -> dict[str, object]:
+    with sqlite3.connect(pipeline.event_repository.db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT model_revision, confidence_kind, metadata
+            FROM analysis_events
+            WHERE analysis_id = ?
+            """,
+            (analysis_id,),
+        ).fetchone()
+    assert row is not None
+    return {
+        "model_revision": str(row[0]),
+        "confidence_kind": str(row[1]),
+        "metadata": json.loads(str(row[2])),
+    }
 
 
 # ---------------------------------------------------------- #
@@ -177,8 +196,6 @@ def _make_pipeline(
         }
 
     repo = AnalysisEventRepository(db_path=tmp_path / "events.db")
-    query_buffer_repo = QueryBufferRepository(db_path=tmp_path / "query_buffer.db")
-
     translation_service = None
     if with_translation:
         translation_service = MagicMock()
@@ -191,7 +208,6 @@ def _make_pipeline(
         scoring_asset_provider=scoring_asset_provider,
         shared_adapter_provider=shared_adapter_provider,
         local_adapter_provider=local_adapter_provider,
-        query_buffer_repository=query_buffer_repo,
         preprocess_service=PreprocessService(),
         translation_service=translation_service,
         translation_locales=frozenset({"ko", "ja"}),
@@ -269,29 +285,20 @@ def test_pipeline_returns_correct_category_scores(tmp_path: Path) -> None:
     }
 
 
-def test_pipeline_stores_query_buffer_record_with_same_query_id(tmp_path: Path) -> None:
-    """AnalysisEvent 저장 뒤 같은 query_id의 query buffer snapshot을 남긴다."""
+def test_pipeline_stores_analysis_event_metadata(tmp_path: Path) -> None:
+    """AnalysisEvent 저장 뒤 inference metadata를 남긴다."""
     pipeline = _make_pipeline(tmp_path)
     event = _make_query_event(text="I feel anxious", locale="en")
 
     result = pipeline.process(event)
 
-    assert result.query_buffer_record is not None
-    assert result.query_buffer_record.query_id == event.query_id
-    assert result.query_buffer_record.model_revision == "seed_rev_001"
-    assert result.query_buffer_record.predicted_label == "anxiety"
-    assert result.query_buffer_record.runner_up_label == "depression"
-    assert result.query_buffer_record.confidence == pytest.approx(0.85)
-    assert result.query_buffer_record.margin == pytest.approx(0.6)
-
-    assert pipeline.query_buffer_repository is not None
-    stored_record = pipeline.query_buffer_repository.get(event.query_id)
-    assert stored_record is not None
-    assert stored_record.query_id == result.analysis_event.query_id
-    assert stored_record.raw_text == "I feel anxious"
-    assert stored_record.confidence_kind == "classifier_head_logit_top1"
-    assert stored_record.metadata["embedding_model_id"] == "test-embed"
-    assert stored_record.metadata["was_translated"] is False
+    stored = pipeline.event_repository.get_recent_stored(days=1)
+    assert stored[0].analysis_event.query_id == result.analysis_event.query_id
+    row = _get_analysis_metadata_row(pipeline, event.query_id)
+    assert row["model_revision"] == "seed_rev_001"
+    assert row["confidence_kind"] == "classifier_head_logit_top1"
+    assert row["metadata"]["embedding_model_id"] == "test-embed"
+    assert row["metadata"]["was_translated"] is False
 
 
 def test_pipeline_uses_active_shared_adapter_state_for_scoring(
@@ -316,17 +323,15 @@ def test_pipeline_uses_active_shared_adapter_state_for_scoring(
     )
     event = _make_query_event(text="I feel anxious", locale="en")
 
-    result = pipeline.process(event)
+    pipeline.process(event)
 
     pipeline.scoring_service.score.assert_called_once()
     _, kwargs = pipeline.scoring_service.score.call_args
     assert kwargs["shared_state"].model_revision == "global_rev_001"
-    assert result.query_buffer_record is not None
-    assert result.query_buffer_record.model_revision == "global_rev_001"
-    assert (
-        result.query_buffer_record.metadata["shared_model_revision"] == "global_rev_001"
-    )
-    assert result.query_buffer_record.metadata["adapter_kind"] == "peft_classifier"
+    row = _get_analysis_metadata_row(pipeline, event.query_id)
+    assert row["model_revision"] == "global_rev_001"
+    assert row["metadata"]["shared_model_revision"] == "global_rev_001"
+    assert row["metadata"]["adapter_kind"] == "peft_classifier"
 
 
 def test_pipeline_can_apply_future_local_adapter_after_shared_state(
@@ -358,17 +363,15 @@ def test_pipeline_can_apply_future_local_adapter_after_shared_state(
     )
     event = _make_query_event(text="I feel anxious", locale="en")
 
-    result = pipeline.process(event)
+    pipeline.process(event)
 
     local_state.apply.assert_called_once()
     score_embedding = pipeline.scoring_service.score.call_args.args[0]
     assert score_embedding == [0.9, 0.8, 0.7]
-    assert result.query_buffer_record is not None
-    assert result.query_buffer_record.model_revision == "global_rev_001"
-    assert (
-        result.query_buffer_record.metadata["local_adapter_revision"] == "local_rev_001"
-    )
-    assert result.query_buffer_record.metadata["local_adapter_kind"] == "local_fake"
+    row = _get_analysis_metadata_row(pipeline, event.query_id)
+    assert row["model_revision"] == "global_rev_001"
+    assert row["metadata"]["local_adapter_revision"] == "local_rev_001"
+    assert row["metadata"]["local_adapter_kind"] == "local_fake"
 
 
 def test_pipeline_batch_processes_multiple_events(tmp_path: Path) -> None:
@@ -387,8 +390,6 @@ def test_pipeline_batch_processes_multiple_events(tmp_path: Path) -> None:
     results = pipeline.process_batch(events)
     assert len(results) == 3
     assert pipeline.event_repository.count() == 3
-    assert pipeline.query_buffer_repository is not None
-    assert pipeline.query_buffer_repository.count() == 3
 
 
 # ---------------------------------------------------------- #

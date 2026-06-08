@@ -74,7 +74,7 @@ class AdapterRuntimeContext:
     def model_revision_for_record(self, fallback_revision: str) -> str:
         return self.shared_model_revision or fallback_revision
 
-    def query_buffer_metadata(self) -> dict[str, str]:
+    def analysis_metadata(self) -> dict[str, str]:
         metadata: dict[str, str] = {}
         if self.shared_state is not None:
             metadata.update(

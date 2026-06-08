@@ -31,7 +31,6 @@ central fixed embedding + classifier seed
 
 | 문서 | 역할 |
 |---|---|
-| `docs/contracts/query_buffer_v1.md` | query retention과 selection boundary |
 | `docs/contracts/central_peft_text_encoder_trainer_contract.md` | 중앙 SSL control scaffold |
 | `docs/contracts/legacy_contract_ledger.md` | legacy/compatibility 표면의 소유자와 제거 조건 |
 | `docs/api/api-surface.md` | FastAPI endpoint 표면과 owner |

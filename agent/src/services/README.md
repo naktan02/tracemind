@@ -88,17 +88,6 @@
   - backend 구현 옆 catalog entry와 decorator 등록을 둔다
 - `training/selection/pseudo_label_service.py`
   - score를 pseudo-label candidate/accepted set으로 해석
-- `docs/contracts/query_buffer_v1.md`
-  - legacy 일반 inference 기반 local query retention과 selection 입력 경계
-- `infrastructure/repositories/query_buffer_repository.py`
-  - raw text + prediction snapshot을 로컬에 저장하는 legacy query buffer 저장소
-  - 기본 app runtime에서는 자동 생성하지 않는다
-- `training/selection/query_buffer_projection.py`
-  - query buffer snapshot + analysis event를 `PseudoLabelEvidence`에 투영
-- `training/selection/query_buffer_selection_service.py`
-  - query buffer 기반 selection runner
-- `training/selection/query_buffer_selection_diagnostics.py`
-  - selection 결과를 family-agnostic summary/trace 진단 shape로 정리
 - `training/selection/pseudo_label_service.py`
   - `methods/ssl/hooks/`의 selection hook을 agent-local
     candidate/context/diagnostics로 감싼다
@@ -112,8 +101,8 @@
   - captured text DB 상태는 raw event row에 섞지 않고 view generation job,
     generated view, analysis job 상태 테이블로 분리한다
   - debug job은 generated weak text를 inference pipeline에 넣어 analysis event까지
-    저장한다. captured text 학습 입력은 query buffer snapshot이 아니라 generated
-    weak/strong view source에서 시작한다
+    저장한다. captured text 학습 입력은 generated weak/strong view source에서
+    시작한다
 - `training/datasets/query_adaptation_dataset_service.py`
   - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립
   - `query_id`는 `source_row.query_id`를 single source of truth로 두고,
@@ -129,8 +118,6 @@
 - `infrastructure/repositories/training_usage_ledger_repository.py`
   - generated view나 analysis event가 어떤 round/task/update의 학습 입력으로
     사용됐는지 source id와 recorded_at 기준으로 기록한다
-- `training/selection/query_buffer_lifecycle_service.py`
-  - legacy query buffer raw text retention / purge 정책과 lifecycle 실행
 - `training/examples/models.py`
   - local training과 federation이 공유하는 example DTO
 - `training/execution/runtime_compatibility.py`

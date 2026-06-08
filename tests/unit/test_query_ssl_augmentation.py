@@ -33,7 +33,7 @@ def _row(query_id: str, text: str) -> LabeledQueryRow:
     return LabeledQueryRow(
         query_id=query_id,
         text=text,
-        raw_label_scheme="query_buffer",
+        raw_label_scheme="agent_local_unlabeled",
         raw_label="unknown",
         mapped_label_4="anxiety",
         locale="en-US",
