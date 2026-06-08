@@ -8,9 +8,6 @@ import { flRunMetricKeys, formatFlRunMetric } from "../logic/metrics.js";
 export function normalizeFlRunSelection(rows, state) {
   const metrics = flRunMetricKeys(rows);
   state.runMetricIds = state.runMetricIds.filter((metric) => metrics.includes(metric));
-  if (state.runMetricIds.length === 0 && metrics.length > 0) {
-    state.runMetricIds = metrics.slice(0, 5);
-  }
   const visibleRunIds = new Set(rows.map(runId));
   state.runIds = state.runIds.filter((selectedRunId) =>
     visibleRunIds.has(selectedRunId),

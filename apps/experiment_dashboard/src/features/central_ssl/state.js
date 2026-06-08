@@ -1,5 +1,4 @@
 import { loadStoredRunAliases, loadStoredSeriesColors } from "../../state/preferences.js";
-import { DEFAULT_CENTRAL_OVERVIEW_METRICS } from "./logic/constants.js";
 
 export function createCentralSslState() {
   return {
@@ -7,7 +6,7 @@ export function createCentralSslState() {
     filterAxisIds: [],
     filterValues: {},
     overviewEvalSet: "validation",
-    overviewMetricIds: [...DEFAULT_CENTRAL_OVERVIEW_METRICS],
+    overviewMetricIds: [],
     overviewRunIds: [],
     overviewRunAliases: loadStoredRunAliases("central_overview"),
     compareEvalSet: "validation",

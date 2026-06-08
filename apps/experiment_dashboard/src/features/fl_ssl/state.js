@@ -1,12 +1,11 @@
 import { loadStoredRunAliases, loadStoredSeriesColors } from "../../state/preferences.js";
-import { DEFAULT_FL_RUN_METRICS } from "./logic/constants.js";
 
 export function createFlSslState() {
   return {
     filterPanelOpen: false,
     filterAxisIds: [],
     filterValues: {},
-    runMetricIds: [...DEFAULT_FL_RUN_METRICS],
+    runMetricIds: [],
     runIds: [],
     runAliases: loadStoredRunAliases("fl_runs"),
     roundRunIds: [],

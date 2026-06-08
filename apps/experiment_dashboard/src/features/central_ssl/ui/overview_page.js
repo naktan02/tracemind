@@ -17,9 +17,6 @@ export function normalizeOverviewSelection(rows, state) {
   state.overviewMetricIds = state.overviewMetricIds.filter((metric) =>
     availableMetrics.includes(metric),
   );
-  if (state.overviewMetricIds.length === 0 && availableMetrics.length > 0) {
-    state.overviewMetricIds = availableMetrics.slice(0, 4);
-  }
   const visibleRunIds = new Set(rows.map((row) => row.run_id));
   state.overviewRunIds = state.overviewRunIds.filter((runId) =>
     visibleRunIds.has(runId),
