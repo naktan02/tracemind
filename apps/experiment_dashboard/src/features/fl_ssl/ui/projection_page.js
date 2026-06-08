@@ -1,5 +1,5 @@
-import { escapeHtml } from "../../shared/formatting/html.js";
-import { fillSelect } from "../../ui/controls/form_controls.js";
+import { escapeHtml } from "../../../shared/formatting/html.js";
+import { fillSelect } from "../../../ui/controls/form_controls.js";
 import { algorithmName, dataSourceLabel, labelBudgetLabel, runDescriptor, runId } from "../logic/labels.js";
 import { flProjectionEvalSets, flRowsWithProjection } from "../logic/selectors.js";
 

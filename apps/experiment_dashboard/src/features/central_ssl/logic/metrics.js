@@ -2,8 +2,8 @@ import {
   CENTRAL_EPOCH_METRICS,
   CENTRAL_OVERVIEW_METRICS,
 } from "./constants.js";
-import { numberOrNull } from "../../shared/formatting/numbers.js";
-import { uniqueValues } from "../../shared/formatting/text.js";
+import { numberOrNull } from "../../../shared/formatting/numbers.js";
+import { uniqueValues } from "../../../shared/formatting/text.js";
 
 const NON_DISPLAY_METRICS = new Set([
   "seed",

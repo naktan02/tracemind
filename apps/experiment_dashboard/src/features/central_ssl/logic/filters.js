@@ -1,5 +1,5 @@
-import { formatMetric } from "../../shared/formatting/numbers.js";
-import { applyFacetedFilters, optionsForAxis } from "../../shared/filters/faceted_filters.js";
+import { formatMetric } from "../../../shared/formatting/numbers.js";
+import { applyFacetedFilters, optionsForAxis } from "../../../shared/filters/faceted_filters.js";
 import { algorithmName, centralDataLabel, peftAdapterLabel } from "./labels.js";
 
 export const CENTRAL_FILTER_AXES = [

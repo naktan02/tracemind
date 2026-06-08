@@ -7,20 +7,20 @@ import {
   centralEvalSets,
   centralMetricRows,
   pruneCentralFilters,
-} from "./central_ssl/index.js";
-import { applyFlFilters, flFilterAxes, flSslRows, pruneFlFilters, sortedFlRows } from "./fl_ssl/index.js";
+} from "./features/central_ssl/index.js";
+import { applyFlFilters, flFilterAxes, flSslRows, pruneFlFilters, sortedFlRows } from "./features/fl_ssl/index.js";
 import { renderFilterPanel } from "./ui/controls/filter_panel.js";
 import { fillSelect, checkedValues } from "./ui/controls/form_controls.js";
 import { storeRunAliases, storeSeriesColors } from "./state/preferences.js";
-import { normalizeOverviewSelection, renderOverviewPage } from "./central_ssl/ui/overview_page.js";
-import { normalizeCompareSelection, renderComparePage } from "./central_ssl/ui/compare_page.js";
-import { normalizeDetailSelection, renderDetailPage } from "./central_ssl/ui/detail_page.js";
-import { normalizeProjectionSelection, renderProjectionPage } from "./central_ssl/ui/projection_page.js";
-import { normalizeFlRunSelection, renderFlRunsPage } from "./fl_ssl/ui/runs_page.js";
-import { normalizeRoundSelection, renderRoundsPage } from "./fl_ssl/ui/rounds_page.js";
-import { normalizeClientSelections, renderClientsPage } from "./fl_ssl/ui/clients_page.js";
-import { normalizeSplitSelection, renderSplitsPage } from "./fl_ssl/ui/splits_page.js";
-import { normalizeFlProjectionSelection, renderFlProjectionPage } from "./fl_ssl/ui/projection_page.js";
+import { normalizeOverviewSelection, renderOverviewPage } from "./features/central_ssl/ui/overview_page.js";
+import { normalizeCompareSelection, renderComparePage } from "./features/central_ssl/ui/compare_page.js";
+import { normalizeDetailSelection, renderDetailPage } from "./features/central_ssl/ui/detail_page.js";
+import { normalizeProjectionSelection, renderProjectionPage } from "./features/central_ssl/ui/projection_page.js";
+import { normalizeFlRunSelection, renderFlRunsPage } from "./features/fl_ssl/ui/runs_page.js";
+import { normalizeRoundSelection, renderRoundsPage } from "./features/fl_ssl/ui/rounds_page.js";
+import { normalizeClientSelections, renderClientsPage } from "./features/fl_ssl/ui/clients_page.js";
+import { normalizeSplitSelection, renderSplitsPage } from "./features/fl_ssl/ui/splits_page.js";
+import { normalizeFlProjectionSelection, renderFlProjectionPage } from "./features/fl_ssl/ui/projection_page.js";
 
 const DATA_URL = "./data/experiment_dashboard.json";
 const elements = getDashboardElements();

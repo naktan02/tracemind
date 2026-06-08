@@ -1,8 +1,8 @@
-import { escapeHtml } from "../../shared/formatting/html.js";
-import { metricLabel } from "../../shared/formatting/metrics.js";
-import { formatMetric, numberOrNull } from "../../shared/formatting/numbers.js";
-import { drawLineChart } from "../../ui/charts/line_chart.js";
-import { renderCheckboxList } from "../../ui/controls/form_controls.js";
+import { escapeHtml } from "../../../shared/formatting/html.js";
+import { metricLabel } from "../../../shared/formatting/metrics.js";
+import { formatMetric, numberOrNull } from "../../../shared/formatting/numbers.js";
+import { drawLineChart } from "../../../ui/charts/line_chart.js";
+import { renderCheckboxList } from "../../../ui/controls/form_controls.js";
 import { algorithmName, compareDisplayLabel, runDescriptor } from "../logic/labels.js";
 import {
   centralEpochMetricKeys,

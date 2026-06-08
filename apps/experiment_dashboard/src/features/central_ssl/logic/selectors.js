@@ -3,7 +3,7 @@ import {
   CENTRAL_SSL_TRACK,
 } from "./constants.js";
 import { algorithmName } from "./labels.js";
-import { compareMetricValues } from "../../shared/formatting/metrics.js";
+import { compareMetricValues } from "../../../shared/formatting/metrics.js";
 
 export function isCentralResultTrack(track) {
   return track === CENTRAL_SSL_TRACK || track === "central_peft_full_encoder_ssl";

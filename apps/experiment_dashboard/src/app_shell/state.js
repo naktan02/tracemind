@@ -1,5 +1,5 @@
-import { createCentralSslState } from "../central_ssl/state.js";
-import { createFlSslState } from "../fl_ssl/state.js";
+import { createCentralSslState } from "../features/central_ssl/state.js";
+import { createFlSslState } from "../features/fl_ssl/state.js";
 
 export function createDashboardState() {
   return {

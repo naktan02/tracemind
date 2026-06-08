@@ -1,7 +1,7 @@
-import { escapeHtml } from "../../shared/formatting/html.js";
-import { formatMetric } from "../../shared/formatting/numbers.js";
-import { fillSelect } from "../../ui/controls/form_controls.js";
-import { emptyTableRow } from "../../ui/tables/table.js";
+import { escapeHtml } from "../../../shared/formatting/html.js";
+import { formatMetric } from "../../../shared/formatting/numbers.js";
+import { fillSelect } from "../../../ui/controls/form_controls.js";
+import { emptyTableRow } from "../../../ui/tables/table.js";
 import { algorithmName, runDetail } from "../logic/labels.js";
 import { centralAlgorithms, rowsForAlgorithms } from "../logic/selectors.js";
 

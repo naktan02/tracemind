@@ -1,5 +1,5 @@
-import { escapeHtml } from "../../shared/formatting/html.js";
-import { fillSelect } from "../../ui/controls/form_controls.js";
+import { escapeHtml } from "../../../shared/formatting/html.js";
+import { fillSelect } from "../../../ui/controls/form_controls.js";
 import { algorithmName, runDescriptor } from "../logic/labels.js";
 import { centralAlgorithms, rowsForAlgorithms, rowsWithProjection } from "../logic/selectors.js";
 

@@ -1,7 +1,7 @@
-import { escapeHtml } from "../../shared/formatting/html.js";
-import { compareMetricValues, metricLabel } from "../../shared/formatting/metrics.js";
-import { renderCheckboxList } from "../../ui/controls/form_controls.js";
-import { emptyTableRow } from "../../ui/tables/table.js";
+import { escapeHtml } from "../../../shared/formatting/html.js";
+import { compareMetricValues, metricLabel } from "../../../shared/formatting/metrics.js";
+import { renderCheckboxList } from "../../../ui/controls/form_controls.js";
+import { emptyTableRow } from "../../../ui/tables/table.js";
 import { algorithmName, compactRunSubLabel, runDescriptor, runDisplayLabel, runId } from "../logic/labels.js";
 import { flRunMetricKeys, flRunMetricValue, formatFlRunMetric } from "../logic/metrics.js";
 

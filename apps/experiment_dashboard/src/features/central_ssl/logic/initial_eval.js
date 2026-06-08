@@ -1,6 +1,6 @@
 import { CENTRAL_INITIAL_METRIC_MAP } from "./constants.js";
 import { initialEvalRuns } from "./selectors.js";
-import { numberOrNull } from "../../shared/formatting/numbers.js";
+import { numberOrNull } from "../../../shared/formatting/numbers.js";
 
 export function centralInitialPoint(bundle, row, metric, evalSet) {
   const value = centralInitialMetricValue(bundle, row, metric, evalSet);

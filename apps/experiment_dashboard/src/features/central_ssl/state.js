@@ -1,4 +1,4 @@
-import { loadStoredRunAliases, loadStoredSeriesColors } from "../state/preferences.js";
+import { loadStoredRunAliases, loadStoredSeriesColors } from "../../state/preferences.js";
 import { DEFAULT_CENTRAL_OVERVIEW_METRICS } from "./logic/constants.js";
 
 export function createCentralSslState() {

@@ -1,8 +1,8 @@
-import { escapeHtml } from "../../shared/formatting/html.js";
-import { metricLabel } from "../../shared/formatting/metrics.js";
-import { formatBytes, formatMetric, formatSeconds, numberOrNull } from "../../shared/formatting/numbers.js";
-import { drawLineChart } from "../../ui/charts/line_chart.js";
-import { emptyTableRow } from "../../ui/tables/table.js";
+import { escapeHtml } from "../../../shared/formatting/html.js";
+import { metricLabel } from "../../../shared/formatting/metrics.js";
+import { formatBytes, formatMetric, formatSeconds, numberOrNull } from "../../../shared/formatting/numbers.js";
+import { drawLineChart } from "../../../ui/charts/line_chart.js";
+import { emptyTableRow } from "../../../ui/tables/table.js";
 import { FL_ROUND_METRICS } from "../logic/constants.js";
 import { algorithmName, roundLegendLabel, runDescriptor, runId } from "../logic/labels.js";
 import { roundPointValue } from "../logic/metrics.js";

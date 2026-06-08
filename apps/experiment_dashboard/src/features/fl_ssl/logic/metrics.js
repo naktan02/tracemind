@@ -1,4 +1,4 @@
-import { numberOrNull, formatBytes, formatCount, formatMetric } from "../../shared/formatting/numbers.js";
+import { numberOrNull, formatBytes, formatCount, formatMetric } from "../../../shared/formatting/numbers.js";
 import { FL_RUN_METRICS } from "./constants.js";
 
 export function flRunMetricKeys(rows) {

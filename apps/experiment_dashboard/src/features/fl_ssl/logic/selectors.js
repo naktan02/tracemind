@@ -1,5 +1,5 @@
-import { numberOrNull } from "../../shared/formatting/numbers.js";
-import { compareMetricValues } from "../../shared/formatting/metrics.js";
+import { numberOrNull } from "../../../shared/formatting/numbers.js";
+import { compareMetricValues } from "../../../shared/formatting/metrics.js";
 import { runId } from "./labels.js";
 
 export function isFlSslTrack(track) {

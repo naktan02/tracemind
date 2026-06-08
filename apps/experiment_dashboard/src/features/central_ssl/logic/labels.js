@@ -1,5 +1,5 @@
-import { formatMetric } from "../../shared/formatting/numbers.js";
-import { shortRun, shortSplit } from "../../shared/formatting/text.js";
+import { formatMetric } from "../../../shared/formatting/numbers.js";
+import { shortRun, shortSplit } from "../../../shared/formatting/text.js";
 
 export function algorithmName(row) {
   return row.algorithm_name ?? row.method_name ?? "-";

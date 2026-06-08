@@ -1,8 +1,8 @@
-import { escapeHtml } from "../../shared/formatting/html.js";
-import { compareMetricValues, metricLabel } from "../../shared/formatting/metrics.js";
-import { formatMetric } from "../../shared/formatting/numbers.js";
-import { renderCheckboxList } from "../../ui/controls/form_controls.js";
-import { emptyTableRow } from "../../ui/tables/table.js";
+import { escapeHtml } from "../../../shared/formatting/html.js";
+import { compareMetricValues, metricLabel } from "../../../shared/formatting/metrics.js";
+import { formatMetric } from "../../../shared/formatting/numbers.js";
+import { renderCheckboxList } from "../../../ui/controls/form_controls.js";
+import { emptyTableRow } from "../../../ui/tables/table.js";
 import { centralOverviewMetricKeys } from "../logic/metrics.js";
 import {
   algorithmName,

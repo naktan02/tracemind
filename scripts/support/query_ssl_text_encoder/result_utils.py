@@ -61,6 +61,27 @@ def extract_final_selection_report(
     return extract_selection_report_from_history_record(history[-1])
 
 
+def _build_final_report(
+    final_selection_report: Mapping[str, Any] | None,
+    selection_set_report: Mapping[str, Any] | None,
+) -> Mapping[str, Any] | None:
+    if final_selection_report is None and selection_set_report is None:
+        return None
+    base_report = (
+        dict(final_selection_report) if final_selection_report is not None else {}
+    )
+    if selection_set_report is None:
+        return base_report
+    if "per_category" not in base_report and "per_category" in selection_set_report:
+        base_report["per_category"] = dict(selection_set_report["per_category"])
+    if (
+        "confusion_matrix" not in base_report
+        and "confusion_matrix" in selection_set_report
+    ):
+        base_report["confusion_matrix"] = dict(selection_set_report["confusion_matrix"])
+    return base_report
+
+
 def merge_results_with_best_and_final(
     *,
     results: Mapping[str, Any],
@@ -90,8 +111,17 @@ def merge_results_with_best_and_final(
             if candidate is not None:
                 best_report = candidate
                 break
+    selection_set_report = _as_mapping(merged.get(selection_key))
     if best_report is not None:
         merged.setdefault("best", dict(best_report))
     if final_selection_report is not None:
-        merged.setdefault("final", dict(final_selection_report))
+        final_report = _build_final_report(
+            final_selection_report=final_selection_report,
+            selection_set_report=selection_set_report,
+        )
+        if final_report is not None:
+            merged.setdefault("final", dict(final_report))
+        return merged
+    if selection_set_report is not None:
+        merged.setdefault("final", dict(selection_set_report))
     return merged

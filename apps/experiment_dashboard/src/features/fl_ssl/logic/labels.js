@@ -1,5 +1,5 @@
-import { formatMetric } from "../../shared/formatting/numbers.js";
-import { shortRun } from "../../shared/formatting/text.js";
+import { formatMetric } from "../../../shared/formatting/numbers.js";
+import { shortRun } from "../../../shared/formatting/text.js";
 
 export function runId(row) {
   return row.run_id ?? row.id ?? "-";

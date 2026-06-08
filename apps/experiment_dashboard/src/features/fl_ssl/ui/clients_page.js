@@ -1,7 +1,7 @@
-import { escapeHtml } from "../../shared/formatting/html.js";
-import { formatBytes, formatMetric, formatSeconds, numberOrNull } from "../../shared/formatting/numbers.js";
-import { fillSelect } from "../../ui/controls/form_controls.js";
-import { emptyTableRow } from "../../ui/tables/table.js";
+import { escapeHtml } from "../../../shared/formatting/html.js";
+import { formatBytes, formatMetric, formatSeconds, numberOrNull } from "../../../shared/formatting/numbers.js";
+import { fillSelect } from "../../../ui/controls/form_controls.js";
+import { emptyTableRow } from "../../../ui/tables/table.js";
 import { runDetailLabel, runId } from "../logic/labels.js";
 import {
   compareClientRoundRows,
