@@ -146,8 +146,26 @@ class TrainingTaskPayload(BaseModel):
         default=None,
         description=(
             "Full FL SSL method 이름. None이면 ssl_method 기반 composed 모드. "
-            "Phase 2에서는 서버가 method identity와 context를 전달하고, agent의 "
-            "method-owned 실행 분기는 Phase 3에서 열린다."
+            "하위 호환 identity 필드이며, 새 runtime은 가능하면 "
+            "fssl_execution.method_name을 함께 읽는다."
+        ),
+    )
+    fssl_execution: dict[str, object] | None = Field(
+        default=None,
+        description=(
+            "FL SSL 실행 계획 snapshot. composition_mode, execution_role, method_name, "
+            "descriptor_name, security_policy 같은 method/runtime 선택 결과를 담는다. "
+            "허용 vocabulary와 기본값 해석은 methods/federated_ssl가 소유한다."
+        ),
+    )
+    fssl_capability_plan: dict[str, object] | None = Field(
+        default=None,
+        description=(
+            "FL SSL runtime capability snapshot. local_ssl_policy, "
+            "server_update_policy, peer_context_policy, update_partition_policy 등 "
+            "agent/main_server가 bootstrap 전에 검증할 실행 능력 조합을 담는다. "
+            "필드 의미의 실행 해석은 methods/federated_ssl capability plan이 "
+            "소유한다."
         ),
     )
     fssl_context: dict[str, object] | None = Field(

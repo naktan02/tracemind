@@ -413,6 +413,7 @@ class FederatedSslExecutionPlan:
 
         return {
             "name": self.method_name,
+            "method_name": self.method_name,
             "descriptor_name": self.descriptor_name,
             "composition_mode": self.composition_mode,
             "execution_role": self.execution_role,

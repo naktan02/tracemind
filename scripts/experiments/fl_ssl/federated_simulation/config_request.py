@@ -45,7 +45,6 @@ from scripts.experiments.fl_ssl.federated_simulation.data_source_request import 
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedArtifactPersistenceConfig,
     FederatedClientPoolSplitConfig,
-    FederatedDiagnosticsConfig,
     FederatedDiagnosticViewConfig,
     FederatedFinalProjectionConfig,
     FederatedLocalTrainerRuntimeConfig,
@@ -204,7 +203,6 @@ def build_simulation_request_from_config(
         shard_policy=shard_policy,
         training_task_config=training_task_config,
         validation_config=FederatedValidationConfig(**to_plain_dict(cfg.validation)),
-        diagnostics_config=FederatedDiagnosticsConfig(**to_plain_dict(cfg.diagnostics)),
         artifact_persistence_config=FederatedArtifactPersistenceConfig.from_mapping(
             optional_plain_dict(cfg, "artifact_persistence")
         ),

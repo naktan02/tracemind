@@ -234,6 +234,49 @@ def test_round_manager_builds_objective_from_round_strategy() -> None:
     assert "p_cutoff" not in task.objective_config.extras
 
 
+def test_round_manager_adds_fssl_runtime_snapshots_for_method_owned_task() -> None:
+    service = RoundManagerService(
+        payload_adapter=_build_peft_classifier_round_payload_adapter()
+    )
+
+    task = service.create_training_task(
+        RoundOpenRequest(
+            active_manifest=ModelManifest(
+                schema_version="model_manifest.v1",
+                model_id="tracemind-embed",
+                model_revision="rev_000",
+                published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+                artifact_kind="shared_adapter_state",
+                artifact_ref="/tmp/rev_000.json",
+                auxiliary_artifact_versions={},
+                training_scope="adapter_only",
+                training_enabled=True,
+                compatible_task_types=("pseudo_label_self_training",),
+            ),
+            round_id="round_fedmatch",
+            strategy=RoundStrategyConfig(
+                mode="method_owned",
+                fssl_method="fedmatch",
+                scenario="labels-at-client",
+            ),
+        )
+    )
+
+    assert task.fssl_method == "fedmatch"
+    assert task.fssl_execution is not None
+    assert task.fssl_execution["execution_role"] == "method_owned"
+    assert task.fssl_execution["method_name"] == "fedmatch"
+    assert task.fssl_capability_plan is not None
+    assert (
+        task.fssl_capability_plan["server_update_policy"]["name"]
+        == "fedmatch_partitioned"
+    )
+    assert (
+        task.fssl_capability_plan["local_ssl_policy"]["name"]
+        == "fedmatch_agreement"
+    )
+
+
 def test_round_manager_accepts_secure_aggregation_config_on_training_task() -> None:
     service = RoundManagerService(
         payload_adapter=_build_peft_classifier_round_payload_adapter()

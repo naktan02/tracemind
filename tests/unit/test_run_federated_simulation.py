@@ -114,7 +114,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedClientShard,
     FederatedDatasetSplit,
-    FederatedDiagnosticsConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
@@ -588,10 +587,6 @@ def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _default_diagnostics_config() -> FederatedDiagnosticsConfig:
-    return FederatedDiagnosticsConfig(dump_dir_name="selection_dumps")
-
-
 def _default_report_config() -> FederatedReportConfig:
     return FederatedReportConfig(
         schema_version="federated_simulation_report.v1",
@@ -936,7 +931,6 @@ def _default_simulation_request(
             objective_extras=_peft_objective_extras(),
         ),
         validation_config=validation_config or _default_validation_config(),
-        diagnostics_config=_default_diagnostics_config(),
         resume_config=resume_config or FederatedResumeConfig(),
         ssl_method_config=ssl_method_config,
         client_pool_split_config=(

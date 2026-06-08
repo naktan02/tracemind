@@ -302,6 +302,18 @@ FL SSL runner는 accidental long run을 막기 위해 총 예정 communication r
 후보와 비교 조건을 명시한 뒤 `budget=main`과
 필요한 long-run ack를 함께 지정한다.
 
+Live FSSL runtime translation smoke:
+
+```bash
+uv run pytest tests/integration/test_live_fssl_runtime_translation.py
+```
+
+이 smoke는 성능 숫자나 논문 metric을 검증하지 않는다. main_server가 method-owned
+FSSL task에 `fssl_execution`/`fssl_capability_plan` snapshot을 싣고, agent
+current-task runner가 같은 shared contract를 검증한 뒤 local runtime service로
+라우팅하는지만 확인한다. live capability를 넓힐 때는 manual Query SSL -> method-owned
+no-peer -> peer context -> partitioned update 순서로 작은 smoke를 추가한다.
+
 기존 FL SSL 산출물 metadata 검증:
 
 ```bash

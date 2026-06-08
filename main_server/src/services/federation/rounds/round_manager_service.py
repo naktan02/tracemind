@@ -19,6 +19,14 @@ from main_server.src.services.federation.rounds.boundary.models import (
 from main_server.src.services.federation.rounds.payload_adapters.models import (
     SharedAdapterRoundPayloadAdapter,
 )
+from methods.federated_ssl.capabilities.plan import (
+    build_default_method_capability_plan,
+)
+from methods.federated_ssl.compatibility import (
+    validate_federated_ssl_capability_compatibility,
+)
+from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from methods.federated_ssl.runtime_fallbacks import (
     build_runtime_fallback_secure_aggregation_config,
     build_runtime_fallback_training_objective_config,
@@ -104,6 +112,10 @@ class RoundManagerService:
                 request.secure_aggregation
             ),
             fssl_method=getattr(request.strategy, "fssl_method", None),
+            fssl_execution=self._resolve_fssl_execution_payload(request.strategy),
+            fssl_capability_plan=self._resolve_fssl_capability_plan_payload(
+                request.strategy
+            ),
             fssl_context=(
                 dict(request.fssl_context) if request.fssl_context is not None else None
             ),
@@ -257,6 +269,81 @@ class RoundManagerService:
         if source is None:
             return build_runtime_fallback_secure_aggregation_config()
         return SecureAggregationConfig.from_mapping(source)
+
+    @staticmethod
+    def _resolve_fssl_execution_payload(
+        strategy: object | None,
+    ) -> dict[str, object] | None:
+        method_name = _strategy_text(strategy, "fssl_method")
+        if method_name is None:
+            return None
+        descriptor = resolve_federated_ssl_method_descriptor(method_name)
+        plan = build_federated_ssl_execution_plan(
+            fl_method={
+                "name": descriptor.name,
+                "descriptor_name": descriptor.name,
+                "composition_mode": "method_owned",
+            },
+            security_policy=None,
+            method_descriptor=descriptor,
+        )
+        return plan.to_mapping()
+
+    @staticmethod
+    def _resolve_fssl_capability_plan_payload(
+        strategy: object | None,
+    ) -> dict[str, object] | None:
+        method_name = _strategy_text(strategy, "fssl_method")
+        if method_name is None:
+            return None
+        descriptor = resolve_federated_ssl_method_descriptor(method_name)
+        if not descriptor.runtime_capabilities.live_server_supported:
+            raise ValueError(
+                f"fssl_method={method_name!r}는 live server runtime을 "
+                "지원하지 않습니다."
+            )
+        capability_plan = build_default_method_capability_plan(
+            method_descriptor=descriptor,
+            method_config=_strategy_method_config(strategy, method_name=method_name),
+            server_update_policy_name=_strategy_text(
+                strategy,
+                "server_update_policy",
+            ),
+        )
+        validate_federated_ssl_capability_compatibility(
+            method_descriptor=descriptor,
+            capability_plan=capability_plan,
+        )
+        return capability_plan.to_payload()
+
+
+def _strategy_text(strategy: object | None, field_name: str) -> str | None:
+    if strategy is None:
+        return None
+    raw_value = getattr(strategy, field_name, None)
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip()
+    return text or None
+
+
+def _strategy_method_config(
+    strategy: object | None,
+    *,
+    method_name: str,
+) -> dict[str, object]:
+    method_config: dict[str, object] = {
+        "name": method_name,
+        "use_original_parameters": True,
+        "parameter_overrides": {},
+    }
+    scenario = _strategy_text(strategy, "scenario")
+    if scenario is not None:
+        method_config["scenario"] = scenario
+    parameter_overrides = getattr(strategy, "parameter_overrides", None)
+    if isinstance(parameter_overrides, Mapping):
+        method_config["parameter_overrides"] = dict(parameter_overrides)
+    return method_config
 
 
 def _build_next_auxiliary_artifact_versions(

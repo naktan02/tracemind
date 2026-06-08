@@ -1,8 +1,5 @@
 # @package _global_
 
-diagnostics:
-  dump_dir_name: selection_dumps
-
 artifact_persistence:
   # Simulation에서는 server-owned aggregation artifact가 canonical update source다.
   # agent-local update 사본은 디버그용이므로 기본 저장하지 않는다.

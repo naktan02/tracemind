@@ -11,6 +11,7 @@ from methods.federated.client_split import (
     LABELED_EXPOSURE_SHARED_CLIENT_SEED,
 )
 from methods.federated.participation import ClientParticipationPolicy
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_NAMES,
     LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
@@ -18,6 +19,16 @@ from methods.federated_ssl.capabilities.axes import (
     SERVER_UPDATE_POLICY_NAMES,
     LocalSslPolicy,
     ServerUpdatePolicy,
+)
+from methods.federated_ssl.method_config_surface import (
+    default_method_aggregation_weight_policy_name,
+    default_method_labeled_exposure_policy_name,
+    default_method_local_ssl_policy_name,
+    default_method_local_supervision_regime_name,
+    default_method_peer_context_policy_name,
+    default_method_server_step_policy_name,
+    default_method_server_update_policy_name,
+    default_method_update_partition_policy_name,
 )
 
 LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED = "client_labeled_and_unlabeled"
@@ -203,6 +214,74 @@ class FederatedSslCapabilityPlan:
         }
 
 
+def build_default_method_capability_plan(
+    *,
+    method_descriptor: FederatedSslMethodDescriptor,
+    method_config: Mapping[str, object] | None = None,
+    server_update_policy_name: str | None = None,
+) -> FederatedSslCapabilityPlan:
+    """method descriptor가 선언한 기본 capability 조합을 runtime plan으로 만든다."""
+
+    required = method_descriptor.required_capabilities
+    participation_name = _single_or_default(
+        required.client_participation_policy_names,
+        default="all_clients",
+    )
+    query_multiview_source_name = _single_or_default(
+        required.query_multiview_source_names,
+        default=QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS,
+    )
+    return FederatedSslCapabilityPlan(
+        client_participation_policy=ClientParticipationPolicy.from_mapping(
+            {"name": participation_name}
+        ),
+        aggregation_weight_policy=AggregationWeightPolicy.from_mapping(
+            {
+                "name": (
+                    default_method_aggregation_weight_policy_name(method_descriptor)
+                    or "uniform"
+                )
+            }
+        ),
+        labeled_exposure_policy_name=(
+            default_method_labeled_exposure_policy_name(
+                method_descriptor,
+                method_config,
+            )
+            or LABELED_EXPOSURE_SHARED_CLIENT_SEED
+        ),
+        local_supervision_regime_name=(
+            default_method_local_supervision_regime_name(
+                method_descriptor,
+                method_config,
+            )
+            or LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED
+        ),
+        server_step_policy_name=(
+            default_method_server_step_policy_name(method_descriptor, method_config)
+            or SERVER_STEP_NONE
+        ),
+        server_update_policy_name=(
+            _optional_name(server_update_policy_name)
+            or default_method_server_update_policy_name(method_descriptor)
+            or SERVER_UPDATE_FEDAVG_MERGED_DELTA
+        ),
+        peer_context_policy_name=(
+            default_method_peer_context_policy_name(method_descriptor, method_config)
+            or PEER_CONTEXT_NONE
+        ),
+        update_partition_policy_name=(
+            default_method_update_partition_policy_name(method_descriptor)
+            or UPDATE_PARTITION_UNIFIED
+        ),
+        local_ssl_policy_name=(
+            default_method_local_ssl_policy_name(method_descriptor)
+            or LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL
+        ),
+        query_multiview_source_name=query_multiview_source_name,
+    )
+
+
 def _mapping_or_none(source: Mapping[str, object] | None) -> dict[str, object] | None:
     if source is None:
         return None
@@ -231,3 +310,16 @@ def _validate_name(
 ) -> None:
     if value not in allowed:
         raise ValueError(f"{field_name} must be one of {sorted(allowed)}.")
+
+
+def _optional_name(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _single_or_default(values: tuple[str, ...], *, default: str) -> str:
+    if len(values) == 1:
+        return values[0]
+    return default

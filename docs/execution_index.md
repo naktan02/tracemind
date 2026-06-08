@@ -19,6 +19,7 @@ central fixed embedding + classifier seed
 | `docs/project_execution_plan.md` | 현재 활성 판단과 다음 검증 |
 | `docs/architecture/system-overview.md` | 런타임 구성요소와 코드 경계 |
 | `docs/architecture/target-method-runtime-structure.md` | 최종 method/runtime 구조 |
+| `docs/architecture/live-fssl-runtime-translation.md` | FL SSL simulation 구조를 live runtime으로 여는 migration 지도 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
 | `methods/README.md` | 재사용 algorithm/method core 소유 경계 |
 | `conf/README.md` | Hydra config group과 실행 축 |
@@ -66,6 +67,7 @@ Agent runtime:
 3. `agent/src/services/inference/**`
 4. `agent/src/services/training_runtime/**`
 5. `agent/src/services/federation/**`
+6. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
 
 Main server FL:
 
@@ -73,6 +75,7 @@ Main server FL:
 2. `main_server/src/services/README.md`
 3. `main_server/src/services/federation/rounds/README.md`
 4. `main_server/src/services/federation/aggregation/**`
+5. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
 
 ## Start Checklist
 

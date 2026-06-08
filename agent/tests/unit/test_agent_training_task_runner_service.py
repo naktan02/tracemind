@@ -26,6 +26,8 @@ from shared.src.contracts.training_contracts import (
 def _build_query_ssl_task_payload(
     *,
     fssl_method: str | None = None,
+    fssl_execution: dict[str, object] | None = None,
+    fssl_capability_plan: dict[str, object] | None = None,
     fssl_context: dict[str, object] | None = None,
 ) -> TrainingTaskPayload:
     return TrainingTaskPayload(
@@ -58,6 +60,8 @@ def _build_query_ssl_task_payload(
         ),
         selection_policy=TrainingSelectionPolicyPayload(),
         fssl_method=fssl_method,
+        fssl_execution=fssl_execution,
+        fssl_capability_plan=fssl_capability_plan,
         fssl_context=fssl_context,
     )
 
@@ -187,6 +191,88 @@ def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
     assert query_ssl_request.active_state is active_state
 
 
+def test_runner_validates_fssl_runtime_snapshot_before_local_training() -> None:
+    repo = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    active_manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_query_ssl",
+        artifact_ref="/server/state/rev_query_ssl.json",
+    )
+    active_state = _build_peft_state(model_revision="rev_query_ssl")
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
+    shared_adapter_runtime_service.get_active_state.return_value = active_state
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        fssl_method="fedmatch",
+        fssl_execution={
+            "composition_mode": "method_owned",
+            "execution_role": "method_owned",
+            "method_name": "fedmatch",
+            "descriptor_name": "fedmatch",
+        },
+        fssl_capability_plan=_fedmatch_capability_plan_payload(),
+    )
+    round_client_factory = MagicMock(return_value=round_client)
+    query_ssl_task_service = MagicMock()
+    query_ssl_task_service.run_current_task.return_value = TrainingTaskRunResult(
+        status=TrainingTaskRunStatus.UPLOADED,
+        round_id="round_query_ssl",
+        task_id="task_query_ssl",
+        update_id="update_query_ssl",
+        example_count=3,
+        accepted_count=2,
+        message="Query SSL update 업로드 완료.",
+    )
+    service = _build_service(
+        repo=repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+        query_ssl_task_service=query_ssl_task_service,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == TrainingTaskRunStatus.UPLOADED
+    query_ssl_task_service.run_current_task.assert_called_once()
+
+
+def test_runner_rejects_drifted_fssl_runtime_snapshot() -> None:
+    repo = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    shared_adapter_runtime_service = MagicMock()
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        fssl_method="fedmatch",
+        fssl_execution={
+            "composition_mode": "method_owned",
+            "execution_role": "method_owned",
+            "method_name": "other_method",
+            "descriptor_name": "other_method",
+        },
+        fssl_capability_plan=_fedmatch_capability_plan_payload(),
+    )
+    round_client_factory = MagicMock(return_value=round_client)
+    service = _build_service(
+        repo=repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
+    assert "fssl_method와 fssl_execution.method_name" in str(response.message)
+    shared_adapter_sync_service.pull_current.assert_not_called()
+
+
 def test_runner_rejects_legacy_non_query_ssl_task_without_runtime_contract() -> None:
     repo = MagicMock()
     shared_adapter_sync_service = MagicMock()
@@ -215,3 +301,18 @@ def test_runner_rejects_legacy_non_query_ssl_task_without_runtime_contract() -> 
 
     assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
     shared_adapter_sync_service.pull_current.assert_not_called()
+
+
+def _fedmatch_capability_plan_payload() -> dict[str, object]:
+    return {
+        "client_participation_policy": {"name": "all_clients"},
+        "aggregation_weight_policy": {"name": "uniform"},
+        "labeled_exposure_policy": {"name": "shared_client_seed"},
+        "local_supervision_regime": {"name": "client_labeled_and_unlabeled"},
+        "server_step_policy": {"name": "none"},
+        "server_update_policy": {"name": "fedmatch_partitioned"},
+        "peer_context_policy": {"name": "fixed_probe_output_knn"},
+        "update_partition_policy": {"name": "partitioned"},
+        "local_ssl_policy": {"name": "fedmatch_agreement"},
+        "query_multiview_source": {"name": "materialized_rows"},
+    }

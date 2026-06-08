@@ -52,6 +52,7 @@ active_entrypoints:
   - docs/project_execution_plan.md
   - docs/architecture/system-overview.md
   - docs/architecture/target-method-runtime-structure.md
+  - docs/architecture/live-fssl-runtime-translation.md
   - docs/contracts/legacy_contract_ledger.md
   - docs/contracts/central_peft_text_encoder_trainer_contract.md
   - docs/operations/local-runbook.md
@@ -126,6 +127,7 @@ task_routes:
       - agent/AGENTS.md
       - main_server/AGENTS.md
       - docs/architecture/system-overview.md
+      - docs/architecture/live-fssl-runtime-translation.md
       - docs/operations/local-runbook.md
     verify:
       - stale processes are checked first

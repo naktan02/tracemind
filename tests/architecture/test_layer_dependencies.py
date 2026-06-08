@@ -2241,6 +2241,29 @@ def test_runtime_layers_do_not_define_method_specific_modules() -> None:
     )
 
 
+def test_live_runtime_layers_do_not_import_concrete_fssl_method_packages() -> None:
+    violations: list[tuple[Path, str]] = []
+    for root in (AGENT_SRC, MAIN_SERVER_SRC):
+        violations.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=("methods.federated_ssl.fedmatch",),
+            )
+        )
+
+    assert not violations, (
+        "live agent/main_server는 concrete FL SSL method package를 직접 import하지 "
+        "않는다. method identity는 registry/descriptor로 resolve하고, runtime "
+        "계층은 capability snapshot과 generic adapter만 해석한다.\n"
+        f"{chr(10).join(_live_runtime_import_violation(item) for item in violations)}"
+    )
+
+
+def _live_runtime_import_violation(item: tuple[Path, str]) -> str:
+    path, name = item
+    return f"- {_relative_repo_path(path)}: {name}"
+
+
 def test_fl_scripts_do_not_define_paper_method_specific_runtime_modules() -> None:
     violations: list[Path] = []
     for root in FL_SCRIPT_RUNTIME_ROOTS:

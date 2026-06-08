@@ -324,6 +324,13 @@ def test_fl_round_open_embeds_fssl_peer_context_from_previous_round(
     )
 
     assert second_round.training_task.fssl_method == "fedmatch"
+    assert second_round.training_task.fssl_execution is not None
+    assert second_round.training_task.fssl_execution["method_name"] == "fedmatch"
+    assert second_round.training_task.fssl_capability_plan is not None
+    assert (
+        second_round.training_task.fssl_capability_plan["server_update_policy"]["name"]
+        == "fedmatch_partitioned"
+    )
     assert (
         second_round.training_task.objective_config.extras["query_ssl.method_name"]
         == "fixmatch_usb_v1"

@@ -413,39 +413,34 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert payload["rounds"][0]["global_validation"]["macro_f1"] == pytest.approx(0.4)
     assert payload["rounds"][0]["round_time_seconds"] == pytest.approx(1.5)
     assert payload["rounds"][0]["total_payload_bytes"] == 100
-    assert payload["rounds"][1]["clients"][0]["fedmatch_helper_count"] == (
-        pytest.approx(1.0)
-    )
-    assert payload["rounds"][1]["clients"][0][
-        "fedmatch_peer_context_refreshed"
-    ] == pytest.approx(1.0)
-    assert payload["rounds"][1]["clients"][0][
-        "fedmatch_helper_provider_count"
-    ] == pytest.approx(1.0)
-    assert payload["rounds"][1]["clients"][0][
+    method_diagnostics = payload["rounds"][1]["clients"][0]["method_diagnostics"]
+    assert method_diagnostics["fedmatch_helper_count"] == pytest.approx(1.0)
+    assert method_diagnostics["fedmatch_peer_context_refreshed"] == pytest.approx(1.0)
+    assert method_diagnostics["fedmatch_helper_provider_count"] == pytest.approx(1.0)
+    assert method_diagnostics[
         "fedmatch_missing_helper_snapshot_count"
     ] == pytest.approx(0.0)
-    assert payload["rounds"][1]["clients"][0][
-        "fedmatch_materialized_helper_model_count"
-    ] == pytest.approx(1.0)
-    assert payload["rounds"][1]["clients"][0][
-        "fedmatch_helper_model_materialization_seconds"
-    ] == pytest.approx(0.12)
-    assert payload["rounds"][1]["clients"][0][
-        "fedmatch_helper_model_cache_miss_count"
-    ] == pytest.approx(1.0)
-    assert payload["rounds"][1]["clients"][0][
-        "fedmatch_helper_forward_call_count"
-    ] == pytest.approx(2.0)
-    assert payload["rounds"][1]["clients"][0][
-        "fedmatch_cuda_memory_reserved_mb"
-    ] == pytest.approx(128.0)
-    assert payload["rounds"][1]["clients"][0][
-        "fedmatch_c2s_sparse_upload_value_count"
-    ] == pytest.approx(5.0)
-    assert payload["rounds"][1]["clients"][0][
-        "fedmatch_s2c_sparse_download_value_count"
-    ] == pytest.approx(2.0)
+    assert method_diagnostics["fedmatch_materialized_helper_model_count"] == (
+        pytest.approx(1.0)
+    )
+    assert method_diagnostics["fedmatch_helper_model_materialization_seconds"] == (
+        pytest.approx(0.12)
+    )
+    assert method_diagnostics["fedmatch_helper_model_cache_miss_count"] == (
+        pytest.approx(1.0)
+    )
+    assert method_diagnostics["fedmatch_helper_forward_call_count"] == pytest.approx(
+        2.0
+    )
+    assert method_diagnostics["fedmatch_cuda_memory_reserved_mb"] == pytest.approx(
+        128.0
+    )
+    assert method_diagnostics["fedmatch_c2s_sparse_upload_value_count"] == (
+        pytest.approx(5.0)
+    )
+    assert method_diagnostics["fedmatch_s2c_sparse_download_value_count"] == (
+        pytest.approx(2.0)
+    )
     assert payload["rounds"][1]["aggregation_metrics"][
         "partitioned_global_state_count"
     ] == pytest.approx(2.0)

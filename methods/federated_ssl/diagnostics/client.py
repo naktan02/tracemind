@@ -36,13 +36,11 @@ def extract_client_method_diagnostics(
 def client_method_diagnostics_from_payload(
     payload: Mapping[str, object],
 ) -> dict[str, float]:
-    """generic method_diagnostics와 legacy flat key를 canonical mapping으로 복원한다."""
+    """generic method_diagnostics mapping을 canonical float mapping으로 복원한다."""
 
-    raw = dict(_mapping_payload(payload.get("method_diagnostics")))
-    for metric_name in known_client_diagnostic_metric_names():
-        if metric_name in payload:
-            raw[metric_name] = payload[metric_name]
-    return normalize_client_method_diagnostics(raw)
+    return normalize_client_method_diagnostics(
+        _mapping_payload(payload.get("method_diagnostics"))
+    )
 
 
 def normalize_client_method_diagnostics(
@@ -67,14 +65,10 @@ def normalize_client_method_diagnostics(
 def client_method_diagnostics_payload(
     diagnostics: Mapping[str, float],
 ) -> dict[str, object]:
-    """round report client payload에 넣을 generic/legacy-compatible 진단 payload."""
+    """round report client payload에 넣을 method 진단 payload."""
 
     normalized = normalize_client_method_diagnostics(diagnostics)
-    payload: dict[str, object] = {
-        "method_diagnostics": dict(sorted(normalized.items()))
-    }
-    payload.update(_legacy_flat_client_diagnostic_payload(normalized))
-    return payload
+    return {"method_diagnostics": dict(sorted(normalized.items()))}
 
 
 def client_method_diagnostics_summary_payload(
@@ -97,7 +91,7 @@ def client_method_diagnostics_summary_payload(
 
 
 def known_client_diagnostic_metric_names() -> tuple[str, ...]:
-    """현재 등록된 method들이 legacy flat payload로 노출하는 client metric key."""
+    """현재 등록된 method들이 노출하는 client diagnostic metric key."""
 
     names: set[str] = set()
     for module in _known_method_diagnostic_modules():
@@ -126,16 +120,6 @@ def _client_diagnostic_metric_names(method_name: str) -> tuple[str, ...]:
     if not callable(provider):
         return ()
     return tuple(str(name) for name in provider())
-
-
-def _legacy_flat_client_diagnostic_payload(
-    diagnostics: Mapping[str, float],
-) -> dict[str, float]:
-    return {
-        metric_name: diagnostics[metric_name]
-        for metric_name in known_client_diagnostic_metric_names()
-        if metric_name in diagnostics
-    }
 
 
 def _mapping_payload(value: object) -> Mapping[str, object]:

@@ -1924,7 +1924,6 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
             overrides=[
                 "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.6",
-                "diagnostics.dump_dir_name=custom_dumps",
             ],
         )
 
@@ -1934,7 +1933,6 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         "peft_classifier_update_v1"
     )
     assert cfg.validation.scorer_backend_name == "peft_classifier_eval"
-    assert cfg.diagnostics.dump_dir_name == "custom_dumps"
 
 
 def test_federated_simulation_supports_dirichlet_shard_policy_override() -> None:

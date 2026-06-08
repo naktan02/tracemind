@@ -77,13 +77,6 @@ class FederatedValidationConfig:
     score_top_k: int | None = None
 
 
-@dataclass(slots=True)
-class FederatedDiagnosticsConfig:
-    """selection dump 저장 설정."""
-
-    dump_dir_name: str
-
-
 @dataclass(frozen=True, slots=True)
 class FederatedArtifactPersistenceConfig:
     """simulation artifact 사본 저장 정책."""
@@ -561,7 +554,6 @@ class SimulationRunRequest:
     shard_policy: FederatedShardPolicyConfig
     training_task_config: FederatedTrainingTaskConfig
     validation_config: FederatedValidationConfig
-    diagnostics_config: FederatedDiagnosticsConfig
     test_rows: list[LabeledQueryRow] = field(default_factory=list)
     artifact_persistence_config: FederatedArtifactPersistenceConfig = field(
         default_factory=FederatedArtifactPersistenceConfig

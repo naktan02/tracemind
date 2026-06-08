@@ -103,6 +103,34 @@ def test_federated_ssl_method_local_step_is_canonical_training_task_type(
     )
 
 
+def test_training_task_payload_carries_fssl_runtime_snapshots(
+    make_training_task_payload,
+) -> None:
+    payload = make_training_task_payload(
+        fssl_method="fedmatch",
+        fssl_execution={
+            "composition_mode": "method_owned",
+            "execution_role": "method_owned",
+            "method_name": "fedmatch",
+            "descriptor_name": "fedmatch",
+        },
+        fssl_capability_plan={
+            "local_ssl_policy": {"name": "fedmatch_agreement"},
+            "server_update_policy": {"name": "fedmatch_partitioned"},
+            "peer_context_policy": {"name": "fixed_probe_output_knn"},
+        },
+    )
+
+    dumped = payload.model_dump(mode="json")
+
+    assert dumped["fssl_method"] == "fedmatch"
+    assert dumped["fssl_execution"]["method_name"] == "fedmatch"
+    assert (
+        dumped["fssl_capability_plan"]["server_update_policy"]["name"]
+        == "fedmatch_partitioned"
+    )
+
+
 def test_training_task_payload_migrates_legacy_fedmatch_task_type(
     make_training_task_payload,
 ) -> None:
@@ -198,10 +226,7 @@ def test_training_objective_config_rejects_unscoped_objective_extras() -> None:
         TrainingObjectiveConfig.from_mapping(
             {
                 "training_backend_name": "peft_classifier_trainer",
-                "loss": "legacy_backend",
-                "confidence_threshold": 0.95,
-                "margin_threshold": 0.02,
-                "scorer_backend_name": "classifier_head_logits",
+                "unscoped_objective_parameter": "not_allowed",
             }
         )
 
