@@ -11,6 +11,10 @@ from agent.src.services.training.backends.evidence.resolver import (
 from agent.src.services.training.backends.inputs.resolver import (
     resolve_training_example_backend,
 )
+from agent.src.services.training.selection.stored_event_defaults import (
+    STORED_EVENT_ACCEPTANCE_POLICY_NAME,
+    STORED_EVENT_PSEUDO_LABEL_ALGORITHM_NAME,
+)
 from methods.adaptation.local_update_backend import (
     SharedAdapterTrainingBackend,
 )
@@ -90,9 +94,7 @@ def validate_local_training_runtime(
     training_task: TrainingTask,
     *,
     similarity_name: str = "cosine",
-    default_acceptance_policy_name: str = (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
-    ),
+    default_acceptance_policy_name: str = STORED_EVENT_ACCEPTANCE_POLICY_NAME,
     default_privacy_guard_name: str = (
         RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name
     ),
@@ -130,7 +132,7 @@ def validate_local_training_runtime(
     )
     pseudo_label_algorithm_name = (
         objective.pseudo_label_algorithm_name
-        or RUNTIME_FALLBACK_TRAINING_PROFILE.pseudo_label_algorithm_name
+        or STORED_EVENT_PSEUDO_LABEL_ALGORITHM_NAME
     )
     if resolved_acceptance_policy.selection_hook_name != pseudo_label_algorithm_name:
         raise ValueError(

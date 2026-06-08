@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
+from agent.src.services.training.selection.stored_event_defaults import (
+    STORED_EVENT_EVIDENCE_BACKEND_NAME,
+)
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import PseudoLabelEvidenceBackend
@@ -16,8 +18,7 @@ def resolve_pseudo_label_evidence_backend(
     """objective config 기준으로 evidence backend를 조립한다."""
 
     backend_name = (
-        objective_config.evidence_backend_name
-        or RUNTIME_FALLBACK_TRAINING_PROFILE.evidence_backend_name
+        objective_config.evidence_backend_name or STORED_EVENT_EVIDENCE_BACKEND_NAME
     )
     return build_pseudo_label_evidence_backend(
         backend_name,

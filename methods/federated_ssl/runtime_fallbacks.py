@@ -136,10 +136,6 @@ class RuntimeFallbackTrainingProfile:
     selection_mapping: Mapping[str, TrainingConfigScalar]
     secure_aggregation_mapping: Mapping[str, TrainingConfigScalar]
     task_runtime_defaults: RuntimeTrainingTaskDefaults
-    default_acceptance_policy_name: str = "top1_ranked"
-    default_pseudo_label_algorithm_name: str = "top1_ranked"
-    default_evidence_backend_name: str = "analysis_score_evidence"
-    default_score_policy_name: str = "max_cosine"
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -159,20 +155,6 @@ class RuntimeFallbackTrainingProfile:
         )
 
     @property
-    def acceptance_policy_name(self) -> str:
-        return self._objective_str(
-            "acceptance_policy_name",
-            default=self.default_acceptance_policy_name,
-        )
-
-    @property
-    def pseudo_label_algorithm_name(self) -> str:
-        return self._objective_str(
-            "pseudo_label_algorithm_name",
-            default=self.default_pseudo_label_algorithm_name,
-        )
-
-    @property
     def training_backend_name(self) -> str:
         return self._objective_str("training_backend_name")
 
@@ -183,20 +165,6 @@ class RuntimeFallbackTrainingProfile:
     @property
     def example_generation_backend_name(self) -> str:
         return self._objective_str("example_generation_backend_name")
-
-    @property
-    def evidence_backend_name(self) -> str:
-        return self._objective_str(
-            "evidence_backend_name",
-            default=self.default_evidence_backend_name,
-        )
-
-    @property
-    def score_policy_name(self) -> str:
-        return self._objective_str(
-            "score_policy_name",
-            default=self.default_score_policy_name,
-        )
 
     @property
     def privacy_guard_name(self) -> str:

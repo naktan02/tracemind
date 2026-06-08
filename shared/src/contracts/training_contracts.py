@@ -119,7 +119,7 @@ class TrainingTaskPayload(BaseModel):
     learning_rate: float = Field(gt=0.0, description="로컬 optimizer 학습률.")
     max_steps: int = Field(ge=1, description="로컬에서 허용되는 최대 update step 수.")
     objective_config: TrainingObjectiveConfigPayload = Field(
-        description="로컬 objective와 채택 threshold 설정."
+        description="로컬 objective/backend 선택과 family별 objective extra 설정."
     )
     selection_policy: TrainingSelectionPolicyPayload = Field(
         description="로컬 예시 선택 규칙."

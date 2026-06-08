@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from agent.src.services.training.backends.evidence.base import (
     ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME,
@@ -11,9 +11,8 @@ from agent.src.services.training.backends.evidence.base import (
 from agent.src.services.training.backends.evidence.registry import (
     build_pseudo_label_evidence_backend,
 )
-from methods.federated_ssl.runtime_fallbacks import (
-    RUNTIME_FALLBACK_TRAINING_PROFILE,
-    RuntimeFallbackTrainingProfile,
+from agent.src.services.training.selection.stored_event_defaults import (
+    STORED_EVENT_EVIDENCE_BACKEND_NAME,
 )
 from shared.src.contracts.training_contracts import TrainingTask
 from shared.src.domain.entities.inference.events import AnalysisEvent
@@ -26,9 +25,7 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
 class PseudoLabelEvidenceService:
     """TrainingTask와 AnalysisEvent를 evidence 계층으로 연결한다."""
 
-    default_profile: RuntimeFallbackTrainingProfile = field(
-        default=RUNTIME_FALLBACK_TRAINING_PROFILE
-    )
+    default_evidence_backend_name: str = STORED_EVENT_EVIDENCE_BACKEND_NAME
 
     def __post_init__(self) -> None:
         if self.default_evidence_backend_name != ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME:
@@ -36,10 +33,6 @@ class PseudoLabelEvidenceService:
                 "Default pseudo-label evidence backend does not match the "
                 "configured default objective profile."
             )
-
-    @property
-    def default_evidence_backend_name(self) -> str:
-        return self.default_profile.evidence_backend_name
 
     def build_evidences(
         self,

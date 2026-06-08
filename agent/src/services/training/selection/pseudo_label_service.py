@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from methods.federated_ssl.runtime_fallbacks import (
-    RUNTIME_FALLBACK_TRAINING_PROFILE,
-    RuntimeFallbackTrainingProfile,
+from agent.src.services.training.selection.stored_event_defaults import (
+    STORED_EVENT_ACCEPTANCE_POLICY_NAME,
+    STORED_EVENT_EVIDENCE_BACKEND_NAME,
+    STORED_EVENT_PSEUDO_LABEL_ALGORITHM_NAME,
 )
 from methods.ssl.hooks.acceptance import PseudoLabelAcceptancePolicySpec
 from methods.ssl.hooks.registry import (
@@ -41,11 +42,9 @@ _SELECTION_PARAMETER_SCOPE = "selection"
 
 
 def _build_default_acceptance_policy() -> PseudoLabelAcceptancePolicySpec:
-    """runtime fallback의 acceptance policy를 methods-owned spec으로 해석한다."""
+    """stored-event acceptance policy 이름을 methods-owned spec으로 해석한다."""
 
-    return build_pseudo_label_acceptance_policy(
-        RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
-    )
+    return build_pseudo_label_acceptance_policy(STORED_EVENT_ACCEPTANCE_POLICY_NAME)
 
 
 def _selection_parameters(training_task: TrainingTask) -> dict[str, float]:
@@ -95,9 +94,9 @@ class PseudoLabelSelectionResult:
 class PseudoLabelSelectionService:
     """method-owned selection hook으로 pseudo-label을 선별한다."""
 
-    default_profile: RuntimeFallbackTrainingProfile = field(
-        default=RUNTIME_FALLBACK_TRAINING_PROFILE
-    )
+    default_acceptance_policy_name: str = STORED_EVENT_ACCEPTANCE_POLICY_NAME
+    default_pseudo_label_algorithm_name: str = STORED_EVENT_PSEUDO_LABEL_ALGORITHM_NAME
+    default_evidence_backend_name: str = STORED_EVENT_EVIDENCE_BACKEND_NAME
     evidence_service: PseudoLabelEvidenceService = field(
         default_factory=PseudoLabelEvidenceService
     )
@@ -132,21 +131,13 @@ class PseudoLabelSelectionService:
                 "default objective profile."
             )
         if (
-            self.default_profile.evidence_backend_name
+            self.default_evidence_backend_name
             != self.evidence_service.default_evidence_backend_name
         ):
             raise ValueError(
                 "Default pseudo-label evidence backend does not match the "
                 "configured default objective profile."
             )
-
-    @property
-    def default_acceptance_policy_name(self) -> str:
-        return self.default_profile.acceptance_policy_name
-
-    @property
-    def default_pseudo_label_algorithm_name(self) -> str:
-        return self.default_profile.pseudo_label_algorithm_name
 
     def select(
         self,
@@ -176,7 +167,7 @@ class PseudoLabelSelectionService:
             parameters=_selection_parameters(training_task),
         )
         candidate_builder = PseudoLabelCandidateBuilder(
-            default_evidence_backend_name=self.default_profile.evidence_backend_name
+            default_evidence_backend_name=self.default_evidence_backend_name
         )
 
         built_candidates = tuple(
