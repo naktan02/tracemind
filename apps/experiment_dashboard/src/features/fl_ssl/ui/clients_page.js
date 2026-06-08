@@ -26,6 +26,21 @@ export function renderClientsPage(elements, rows, state, bundle) {
   renderClientRounds(elements, rows, state, bundle);
 }
 
+function valueFor(row, keys, defaultValue = null) {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return defaultValue;
+}
+
+function formatClientStatus(value) {
+  if (value === null || value === undefined) return "-";
+  if (value === true) return "true";
+  if (value === false) return "false";
+  return String(value);
+}
+
 function renderClientValidation(elements, rows, state, bundle) {
   const candidateRuns = flRunsWithRows(rows, flClientValidationRows(bundle));
   fillRunSelect(elements.flClientValidationRunFilter, candidateRuns, state.clientValidationRunId);
@@ -40,15 +55,44 @@ function renderClientValidation(elements, rows, state, bundle) {
             (row) => `
               <tr>
                 <td>${escapeHtml(row.client_id)}</td>
-                <td>${formatMetric(row.labeled_count)}</td>
-                <td>${formatMetric(row.unlabeled_count)}</td>
-                <td>${formatMetric(row.macro_f1)}</td>
-                <td>${formatMetric(row.accuracy_top_1)}</td>
-                <td>${formatMetric(row.loss)}</td>
-                <td>${formatMetric(row.expected_calibration_error)}</td>
-                <td>${formatMetric(row.total_accepted_pseudo_labels)}</td>
-                <td>${formatMetric(row.update_round_count)}</td>
-                <td>${formatMetric(row.mean_update_delta_l2)}</td>
+                <td>${formatMetric(
+                  valueFor(row, ["labeled_count", "client_labeled_count"]),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(row, ["unlabeled_count", "client_unlabeled_count"]),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(row, ["macro_f1", "client_validation_macro_f1"]),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(row, ["accuracy_top_1", "client_validation_accuracy_top_1"]),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(row, ["loss", "client_validation_loss"]),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(row, [
+                    "expected_calibration_error",
+                    "ece",
+                    "client_validation_ece",
+                  ]),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(
+                    row,
+                    [
+                      "total_accepted_pseudo_labels",
+                      "accepted_pseudo_label_count",
+                      "client_accepted_count",
+                    ],
+                  ),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(row, ["update_round_count", "update_generated_round_count"]),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(row, ["mean_update_delta_l2", "mean_delta_l2_norm"]),
+                )}</td>
               </tr>
             `,
           )
@@ -74,14 +118,57 @@ function renderClientRounds(elements, rows, state, bundle) {
             (row) => `
               <tr>
                 <td>${escapeHtml(row.client_id)}</td>
-                <td>${formatMetric(row.candidate_pseudo_label_count)}</td>
-                <td>${formatMetric(row.accepted_pseudo_label_count)}</td>
-                <td>${formatMetric(row.accepted_ratio)}</td>
-                <td>${escapeHtml(row.update_status ?? "-")}</td>
-                <td>${formatMetric(row.update_delta_l2)}</td>
-                <td>${formatMetric(row.update_cosine_to_mean)}</td>
-                <td>${formatBytes(row.payload_bytes)}</td>
-                <td>${formatSeconds(row.train_seconds)}</td>
+                <td>${formatMetric(
+                  valueFor(
+                    row,
+                    [
+                      "candidate_pseudo_label_count",
+                      "candidate_count",
+                      "client_candidate_count",
+                    ],
+                  ),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(
+                    row,
+                    [
+                      "accepted_pseudo_label_count",
+                      "accepted_count",
+                      "client_accepted_count",
+                    ],
+                  ),
+                )}</td>
+                <td>${formatMetric(
+                  valueFor(
+                    row,
+                    [
+                      "accepted_ratio",
+                      "client_accepted_ratio",
+                      "accepted_pseudo_ratio",
+                    ],
+                  ),
+                )}</td>
+                <td>${escapeHtml(
+                  formatClientStatus(
+                    valueFor(
+                      row,
+                      ["update_status", "update_generated", "client_update_generated"],
+                    ),
+                  ),
+                )}</td>
+                <td>${formatMetric(valueFor(row, ["update_delta_l2", "delta_l2_norm"]))}</td>
+                <td>${formatMetric(
+                  valueFor(
+                    row,
+                    [
+                      "update_cosine_to_mean",
+                      "per_client_delta_cosine_to_mean",
+                      "cosine_to_mean",
+                    ],
+                  ),
+                )}</td>
+                <td>${formatBytes(valueFor(row, ["payload_bytes", "client_payload_bytes"]))}</td>
+                <td>${formatSeconds(valueFor(row, ["train_seconds", "client_train_time_seconds"]))}</td>
                 <td>${formatMetric(row.pseudo_label_accuracy)}</td>
               </tr>
             `,
