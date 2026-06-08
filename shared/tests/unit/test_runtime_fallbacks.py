@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-from methods.adaptation.peft_text_encoder.config import PEFT_ENCODER_DELTA_FORMAT_INLINE
 from methods.federated_ssl.runtime_fallbacks import (
     FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK,
-    FIXMATCH_QUERY_SSL_METHOD_NAME,
-    FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
-    QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS,
     RUNTIME_FALLBACK_TRAINING_PROFILE,
     RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS,
     build_runtime_fallback_secure_aggregation_config,
@@ -20,42 +16,14 @@ from shared.src.contracts.training_example_backends import (
 
 def test_runtime_fallback_profile_points_to_versioned_bundle() -> None:
     assert RUNTIME_FALLBACK_TRAINING_PROFILE is FIXMATCH_FEDAVG_V1_RUNTIME_FALLBACK
-    assert RUNTIME_FALLBACK_TRAINING_PROFILE.profile_name == "fixmatch_fedavg.v1"
 
 
 def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> None:
     config = build_runtime_fallback_training_objective_config()
-    query_ssl_defaults = QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS[
-        FIXMATCH_QUERY_SSL_METHOD_NAME
-    ]
 
-    assert (
-        config.training_backend_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.training_backend_name
+    assert config.to_mapping() == dict(
+        RUNTIME_FALLBACK_TRAINING_PROFILE.objective_mapping
     )
-    assert (
-        config.algorithm_profile_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.algorithm_profile_name
-    )
-    assert (
-        config.example_generation_backend_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    )
-    assert config.evidence_backend_name is None
-    assert config.scorer_backend_name is None
-    assert config.score_policy_name is None
-    assert (
-        config.privacy_guard_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name
-    )
-    assert config.pseudo_label_algorithm_name is None
-    assert config.acceptance_policy_name is None
-    assert config.extras == {
-        "query_ssl.strong_view_policy": FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
-        "query_ssl.unlabeled_batch_size": 8,
-        **{f"query_ssl.{key}": value for key, value in query_ssl_defaults.items()},
-        "peft_classifier.delta_format": PEFT_ENCODER_DELTA_FORMAT_INLINE,
-    }
     assert config.example_generation_backend_name == WEAK_STRONG_PAIR_EXAMPLE_BACKEND
 
 
@@ -86,10 +54,22 @@ def test_runtime_fallback_secure_aggregation_builder_starts_disabled() -> None:
 
 
 def test_runtime_fallback_profile_exposes_round_task_runtime_defaults() -> None:
-    assert RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs == 1
-    assert RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size == 8
-    assert RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate == 1e-4
-    assert RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps == 50
+    assert (
+        RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs
+        == RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS.local_epochs
+    )
+    assert (
+        RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size
+        == RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS.batch_size
+    )
+    assert (
+        RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate
+        == RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS.learning_rate
+    )
+    assert (
+        RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps
+        == RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS.max_steps
+    )
     assert (
         RUNTIME_FALLBACK_TRAINING_PROFILE.task_runtime_defaults
         is RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS

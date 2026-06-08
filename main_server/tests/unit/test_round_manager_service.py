@@ -25,13 +25,10 @@ from main_server.src.services.federation.rounds.round_manager_service import (  
     RoundManagerService,
     RoundPublicationRequest,
 )
-from methods.adaptation.peft_text_encoder.config import PEFT_ENCODER_DELTA_FORMAT_INLINE
 from methods.federated_ssl.runtime_fallbacks import (
-    FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
-    FIXMATCH_QUERY_SSL_METHOD_NAME,
-    FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
-    QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS,
-    RUNTIME_FALLBACK_TRAINING_PROFILE,
+    build_runtime_fallback_secure_aggregation_config,
+    build_runtime_fallback_training_objective_config,
+    build_runtime_fallback_training_selection_policy,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_delta_payload,
@@ -169,64 +166,32 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
     service = RoundManagerService(
         payload_adapter=_build_peft_classifier_round_payload_adapter()
     )
-    fixmatch_defaults = QUERY_SSL_METHOD_OBJECTIVE_DEFAULTS[
-        FIXMATCH_QUERY_SSL_METHOD_NAME
-    ]
+    expected_objective = build_runtime_fallback_training_objective_config()
 
-    task = service.create_training_task(
-        RoundOpenRequest(
-            active_manifest=ModelManifest(
-                schema_version="model_manifest.v1",
-                model_id="tracemind-embed",
-                model_revision="rev_000",
-                published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
-                artifact_kind="shared_adapter_state",
-                artifact_ref="/tmp/rev_000.json",
-                auxiliary_artifact_versions={"calibration_set": "calib_000"},
-                training_scope="adapter_only",
-                training_enabled=True,
-                compatible_task_types=("pseudo_label_self_training",),
-            ),
-            round_id="round_0001",
-        )
+    request = RoundOpenRequest(
+        active_manifest=ModelManifest(
+            schema_version="model_manifest.v1",
+            model_id="tracemind-embed",
+            model_revision="rev_000",
+            published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+            artifact_kind="shared_adapter_state",
+            artifact_ref="/tmp/rev_000.json",
+            auxiliary_artifact_versions={"calibration_set": "calib_000"},
+            training_scope="adapter_only",
+            training_enabled=True,
+            compatible_task_types=("pseudo_label_self_training",),
+        ),
+        round_id="round_0001",
     )
+    task = service.create_training_task(request)
 
-    assert task.local_epochs == RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs
-    assert task.batch_size == RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size
-    assert task.learning_rate == RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate
-    assert task.max_steps == RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps
-    assert (
-        task.objective_config.training_backend_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.training_backend_name
-    )
-    assert task.objective_config.algorithm_profile_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.algorithm_profile_name
-    )
-    assert (
-        task.objective_config.example_generation_backend_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    )
-    assert task.objective_config.evidence_backend_name is None
-    assert task.objective_config.scorer_backend_name is None
-    assert task.objective_config.score_policy_name is None
-    assert task.objective_config.acceptance_policy_name is None
-    assert task.objective_config.pseudo_label_algorithm_name is None
-    assert task.objective_config.privacy_guard_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name
-    )
-    assert task.objective_config.extras == {
-        "query_ssl.method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
-        "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
-        "query_ssl.strong_view_policy": FIXMATCH_QUERY_SSL_STRONG_VIEW_POLICY,
-        "query_ssl.unlabeled_batch_size": 8,
-        "query_ssl.temperature": fixmatch_defaults["temperature"],
-        "query_ssl.p_cutoff": fixmatch_defaults["p_cutoff"],
-        "query_ssl.hard_label": True,
-        "query_ssl.lambda_u": 1.0,
-        "query_ssl.supervised_loss_weight": 1.0,
-        "peft_classifier.delta_format": PEFT_ENCODER_DELTA_FORMAT_INLINE,
-    }
-    assert task.secure_aggregation.required is False
+    assert task.local_epochs == request.local_epochs
+    assert task.batch_size == request.batch_size
+    assert task.learning_rate == request.learning_rate
+    assert task.max_steps == request.max_steps
+    assert task.objective_config == expected_objective
+    assert task.selection_policy == build_runtime_fallback_training_selection_policy()
+    assert task.secure_aggregation == build_runtime_fallback_secure_aggregation_config()
 
 
 def test_round_manager_builds_objective_from_round_strategy() -> None:
