@@ -395,13 +395,19 @@
                   <h3>선택한 run의 라운드 곡선</h3>
                 </div>
               </div>
-              <section class="fl-round-run-picker">
-                <p class="control-label">Filtered Runs</p>
-                <div
-                  id="fl-round-run-checkboxes"
-                  class="run-checkbox-list compact"
-                ></div>
-              </section>
+              <div class="overview-picker-grid">
+                <section>
+                  <h4>Columns</h4>
+                  <div id="fl-round-table-metric-picker" class="filter-value-list"></div>
+                </section>
+                <section>
+                  <h4>Filtered Runs</h4>
+                  <div
+                    id="fl-round-run-checkboxes"
+                    class="run-checkbox-list table-run-picker"
+                  ></div>
+                </section>
+              </div>
               <div
                 id="fl-round-selected-run-cards"
                 class="selected-run-cards alias-run-cards"
@@ -415,11 +421,6 @@
                 <input id="fl-round-include-initial" type="checkbox" checked />
                 <span>Init 포함</span>
               </label>
-              <div
-                id="fl-round-metric-picker"
-                class="metric-tabs"
-                aria-label="FL round metric tabs"
-              ></div>
               <div id="fl-round-chart" class="line-chart"></div>
               <div class="table-wrap compact">
                 <table>

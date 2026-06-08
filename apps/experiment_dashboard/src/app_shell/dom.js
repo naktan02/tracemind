@@ -57,7 +57,7 @@ export function getDashboardElements() {
     flRoundRunCheckboxes: document.querySelector("#fl-round-run-checkboxes"),
     flRoundSelectedRunCards: document.querySelector("#fl-round-selected-run-cards"),
     flRoundIncludeInitial: document.querySelector("#fl-round-include-initial"),
-    flRoundMetricPicker: document.querySelector("#fl-round-metric-picker"),
+    flRoundTableMetricPicker: document.querySelector("#fl-round-table-metric-picker"),
     flRoundFlatNote: document.querySelector("#fl-round-flat-note"),
     flRoundChart: document.querySelector("#fl-round-chart"),
     flRoundTable: document.querySelector("#fl-round-table"),

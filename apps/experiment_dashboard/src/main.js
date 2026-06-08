@@ -328,10 +328,8 @@ function bindFlEvents() {
     state.fl.roundIncludeInitial = event.target.checked;
     render();
   });
-  elements.flRoundMetricPicker.addEventListener("click", (event) => {
-    const metric = event.target.dataset.flRoundMetric;
-    if (!metric) return;
-    state.fl.roundMetric = metric;
+  elements.flRoundTableMetricPicker.addEventListener("change", () => {
+    applyFlRoundTableColumnVisibility();
     render();
   });
   elements.flClientValidationRunFilter.addEventListener("change", (event) => {
@@ -546,6 +544,22 @@ function applyFlRunColumnVisibility() {
   state.fl.runMetricIds = checkedValues(elements.flRunMetricPicker, "flRunTableColumn").map((columnId) =>
     columnId.replace(/^metric:/, ""),
   );
+}
+
+function applyFlRoundTableColumnVisibility() {
+  const selectedMetricColumns = Array.from(new Set(
+    checkedValues(elements.flRoundTableMetricPicker, "flRoundTableColumn")
+      .filter((id) => id.startsWith("metric:")),
+  ));
+  const visibleColumns = ["axis:round", "axis:run", ...selectedMetricColumns];
+  syncTableVisibility(state.fl.roundTableColumns, visibleColumns);
+  const metricIds = selectedMetricColumns.map((columnId) => columnId.replace(/^metric:/, ""));
+  state.fl.roundMetricIds = metricIds;
+  if (metricIds.length === 0) {
+    state.fl.roundMetric = "macro_f1";
+  } else if (!metricIds.includes(state.fl.roundMetric)) {
+    state.fl.roundMetric = metricIds[0];
+  }
 }
 
 function syncOverviewColumnTabUI() {

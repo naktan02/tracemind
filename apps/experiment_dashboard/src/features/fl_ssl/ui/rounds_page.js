@@ -4,9 +4,11 @@ import { formatBytes, formatMetric, formatSeconds, numberOrNull } from "../../..
 import { drawLineChart } from "../../../ui/charts/line_chart.js";
 import {
   emptyTableRow,
+  renderColumnCheckboxes,
   moveTableColumn,
   renderSortableTableHeader,
   resolveTableColumns,
+  setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
 import { FL_ROUND_METRICS } from "../logic/constants.js";
 import { algorithmName, roundLegendLabel, runDescriptor, runId } from "../logic/labels.js";
@@ -27,26 +29,52 @@ const ROUND_TABLE_COLUMNS = [
     render: (row) => escapeHtml(row.run_id),
   },
 ];
+const ROUND_BASE_VISIBLE_COLUMNS = ["axis:round", "axis:run"];
+const ROUND_DEFAULT_METRIC = "macro_f1";
 
 export function normalizeRoundSelection(rows, state) {
   if (!FL_ROUND_METRICS.includes(state.roundMetric)) {
     state.roundMetric = "macro_f1";
+  }
+  const metricColumns = FL_ROUND_METRICS.map((metric) => `metric:${metric}`);
+  const validMetricIds = (state.roundMetricIds ?? []).map((metric) => `metric:${metric}`);
+  const requestedMetricIds = validMetricIds.filter((metricId) => metricColumns.includes(metricId));
+  const defaultMetric = metricColumns.includes(`metric:${ROUND_DEFAULT_METRIC}`)
+    ? `metric:${ROUND_DEFAULT_METRIC}`
+    : metricColumns[0];
+  const fallbackMetrics = requestedMetricIds.length > 0 ? requestedMetricIds : defaultMetric ? [defaultMetric] : [];
+  const requestedVisibleColumns = [...ROUND_BASE_VISIBLE_COLUMNS, ...fallbackMetrics];
+  setTableColumnVisibility(state.roundTableColumns, buildRoundColumns(), requestedVisibleColumns, ROUND_BASE_VISIBLE_COLUMNS);
+  state.roundMetricIds = state.roundTableColumns.visible
+    .filter((id) => id.startsWith("metric:"))
+    .filter((id, index, ids) => ids.indexOf(id) === index)
+    .map((id) => id.replace(/^metric:/, ""));
+  if (!state.roundMetricIds.includes(state.roundMetric)) {
+    state.roundMetric = state.roundMetricIds[0] || ROUND_DEFAULT_METRIC;
   }
   const visibleRunIds = new Set(rows.map(runId));
   state.roundRunIds = state.roundRunIds.filter((id) => visibleRunIds.has(id));
 }
 
 export function renderRoundsPage(elements, rows, state, bundle, rerender = () => {}) {
+  const columns = buildRoundColumns();
+  const { visibleColumns, allColumns, state: columnState } = resolveTableColumns(
+    state.roundTableColumns,
+    columns,
+    ROUND_BASE_VISIBLE_COLUMNS,
+  );
+  const metricColumns = allColumns.filter((column) => column.group === "metric");
+  const visibleIds = new Set(columnState.visible);
+  renderColumnCheckboxes(elements.flRoundTableMetricPicker, metricColumns, visibleIds, "flRoundTableColumn");
   renderRunPicker(elements, rows, state);
   renderSelectedRunCards(elements, rows, state);
-  renderMetricTabs(elements, state);
   const selectedRows = flRoundRows(bundle)
     .filter((row) => state.roundRunIds.includes(row.run_id))
     .filter((row) => state.roundIncludeInitial || numberOrNull(row.round_index) !== 0)
     .sort(compareFlRoundRows);
   renderFlatNote(elements, selectedRows, state);
   renderRoundChart(elements, selectedRows, rows, state);
-  renderRoundTable(elements, selectedRows, state, rerender);
+  renderRoundTable(elements, columns, selectedRows, visibleColumns, state, rerender);
 }
 
 function renderRunPicker(elements, rows, state) {
@@ -106,18 +134,6 @@ function renderSelectedRunCards(elements, rows, state) {
       `;
     })
     .join("");
-}
-
-function renderMetricTabs(elements, state) {
-  elements.flRoundMetricPicker.innerHTML = FL_ROUND_METRICS.map(
-    (metric) => `
-      <button
-        type="button"
-        data-fl-round-metric="${escapeHtml(metric)}"
-        class="${metric === state.roundMetric ? "active" : ""}"
-      >${escapeHtml(metricLabel(metric))}</button>
-    `,
-  ).join("");
 }
 
 function renderFlatNote(elements, rows, state) {
@@ -188,13 +204,7 @@ function buildRoundColumns() {
   ];
 }
 
-function renderRoundTable(elements, rows, state, rerender) {
-  const columns = buildRoundColumns();
-  const { visibleColumns } = resolveTableColumns(
-    state.roundTableColumns,
-    columns,
-    columns.map((column) => column.id),
-  );
+function renderRoundTable(elements, columns, rows, visibleColumns, state, rerender) {
   renderSortableTableHeader(elements.flRoundTableHead, visibleColumns, (sourceColumnId, targetColumnId) => {
     if (moveTableColumn(state.roundTableColumns, sourceColumnId, targetColumnId)) {
       rerender();

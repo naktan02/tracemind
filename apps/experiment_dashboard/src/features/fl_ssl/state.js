@@ -13,6 +13,7 @@ export function createFlSslState() {
     roundRunIds: [],
     roundRunAliases: loadStoredRunAliases("fl_round"),
     roundRunColors: loadStoredSeriesColors("fl_round"),
+    roundMetricIds: ["macro_f1"],
     roundAxisLabel: "",
     roundIncludeInitial: true,
     roundMetric: "macro_f1",
