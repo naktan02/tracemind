@@ -499,7 +499,7 @@ function renderFl() {
   normalizeSplitSelection(rows, state.fl, state.bundle);
   normalizeFlProjectionSelection(state.bundle, rows, state.fl);
   elements.flRoundIncludeInitial.checked = state.fl.roundIncludeInitial;
-  renderFlRunsPage(elements, rows, state.fl, render);
+  renderFlRunsPage(elements, rows, state.fl, state.bundle, render);
   renderRoundsPage(elements, rows, state.fl, state.bundle, render);
   renderClientsPage(elements, rows, state.fl, state.bundle, render);
   renderSplitsPage(elements, rows, state.fl, state.bundle, render);

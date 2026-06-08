@@ -16,6 +16,7 @@ import {
   runDisplayLabel,
   runId,
 } from "../logic/labels.js";
+import { flFilterAxes } from "../logic/filters.js";
 import { flRunMetricKeys, formatFlRunMetric } from "../logic/metrics.js";
 
 const DEFAULT_VISIBLE_COLUMNS = ["axis:algorithm"];
@@ -75,8 +76,8 @@ export function normalizeFlRunSelection(rows, state) {
   normalizeRunColumns(state, rows);
 }
 
-export function renderFlRunsPage(elements, rows, state, rerender = () => {}) {
-  const columns = buildRunColumns(rows);
+export function renderFlRunsPage(elements, rows, state, _bundle = null, rerender = () => {}) {
+  const columns = buildRunColumns(rows, _bundle ?? {});
   const { visibleColumns, allColumns, state: columnState } = resolveTableColumns(
     state.runTableColumns,
     columns,
@@ -176,14 +177,27 @@ function renderRunTable(elements, columns, rows, state, rerender) {
     .join("");
 }
 
-function buildRunColumns(rows) {
+function buildRunColumns(rows, bundle = null) {
   const metricColumns = flRunMetricKeys(rows).map((metric) => ({
     id: `metric:${metric}`,
     group: "metric",
     label: metricLabel(metric),
     render: (row) => formatFlRunMetric(row, metric),
   }));
-  return [...FL_RUN_AXIS_COLUMNS, ...metricColumns];
+  return [...FL_RUN_AXIS_COLUMNS, ...buildRunAxisColumns(bundle), ...metricColumns];
+}
+
+function buildRunAxisColumns(bundle = null) {
+  const axes = flFilterAxes(bundle);
+  const existingIds = new Set(FL_RUN_AXIS_COLUMNS.map((column) => column.id));
+  return axes
+    .filter((axis) => !existingIds.has(`axis:${axis.id}`))
+    .map((axis) => ({
+      id: `axis:${axis.id}`,
+      group: "axis",
+      label: axis.label,
+      render: (row) => escapeHtml(axis.labelForValue ? axis.labelForValue(row) : axis.value(row)),
+    }));
 }
 
 function normalizeRunColumns(state, rows) {

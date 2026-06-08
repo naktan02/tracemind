@@ -9,6 +9,7 @@ import {
   resolveTableColumns,
   setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
+import { CENTRAL_FILTER_AXES } from "../logic/filters.js";
 import { centralOverviewMetricKeys } from "../logic/metrics.js";
 import {
   algorithmName,
@@ -193,7 +194,21 @@ function buildOverviewColumns(rows) {
     label: metricLabel(metric),
     render: (row) => formatMetric(row[metric]),
   }));
-  return [...OVERVIEW_AXIS_COLUMNS, ...metricColumns];
+  return [...OVERVIEW_AXIS_COLUMNS, ...buildOverviewAxisColumns(), ...metricColumns];
+}
+
+function buildOverviewAxisColumns() {
+  const existingIds = new Set(OVERVIEW_AXIS_COLUMNS.map((column) => column.id));
+  const dynamicAxisColumns = CENTRAL_FILTER_AXES
+    .filter((axis) => !existingIds.has(`axis:${axis.id}`))
+    .map((axis) => ({
+      id: `axis:${axis.id}`,
+      group: "axis",
+      label: axis.label,
+      render: (row) =>
+        escapeHtml(axis.labelForValue ? axis.labelForValue(row) : axis.value(row)),
+    }));
+  return dynamicAxisColumns;
 }
 
 function normalizeOverviewColumns(state, availableColumnIds) {
