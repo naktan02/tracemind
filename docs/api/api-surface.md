@@ -54,9 +54,9 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | POST | `/api/v1/captured-text/events` | 브라우저 확장 captured text event를 agent-local raw 저장소에 저장 | `agent/src/api/captured_text.py` |
 | POST | `/api/v1/captured-text/batch` | 최대 100개 captured text event 일괄 raw 저장 | `agent/src/api/captured_text.py` |
 | GET | `/api/v1/captured-text/status` | captured text raw 저장/view generation/analysis job 상태 조회 | `agent/src/api/captured_text.py` |
-| GET | `/api/v1/captured-text/debug-job/status` | captured text view generation/debug job과 analysis 대기 상태 조회 | `agent/src/api/captured_text.py` |
+| GET | `/api/v1/captured-text/debug-job/status` | captured text view generation/debug job과 analysis 상태 조회 | `agent/src/api/captured_text.py` |
 | POST | `/api/v1/captured-text/debug-job/config` | captured text debug job 주기 실행 on/off 설정 | `agent/src/api/captured_text.py` |
-| POST | `/api/v1/captured-text/debug-job/run-view-generation` | pending captured text weak/strong view 생성을 즉시 실행 | `agent/src/api/captured_text.py` |
+| POST | `/api/v1/captured-text/debug-job/run-view-generation` | pending captured text weak/strong view 생성 후 weak text 분류를 즉시 실행 | `agent/src/api/captured_text.py` |
 
 주요 payload:
 
@@ -78,12 +78,14 @@ envelope으로 전달하지 않는다.
 page context, generated weak/strong view는 main_server나 FL update envelope으로
 전달하지 않는다.
 captured text ingest는 raw 저장만 수행하며, main_server current shared adapter나
-agent FL active cache를 직접 읽지 않는다. view generation 이후 분석 runtime은 별도
-agent-local job/profile에서 resolve한다.
+agent FL active cache를 직접 읽지 않는다. debug job은 view generation 이후 generated
+weak text를 agent-local inference pipeline에 넣어 `analysis_events`,
+`analysis_category_scores`, `query_buffer_records`에 분류 결과를 저장한다.
+Agent-local runtime DB는 기본적으로 하나의 SQLite 파일(`agent_local.db`)을 사용한다.
 Captured text DB는 테스트 단계 destructive migration을 허용한다. 현재 정규화 구조는
 `captured_text_events` raw 원문, `captured_text_view_generation_jobs` 처리 상태,
 `captured_text_generated_views` weak/strong 산출물, `captured_text_analysis_jobs`
-분석 대기/완료 상태를 분리한다.
+분석 대기/완료 상태를 분리하고, completed analysis job은 `analysis_events`를 참조한다.
 
 ### Agent Sync
 

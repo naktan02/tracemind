@@ -21,19 +21,22 @@
 - `wellbeing_signal_contracts.py`: agent wellbeing projection -> family extension summary,
   timeseries, parent unlock payload.
 
-`CapturedTextDebugJob*Payload`는 debug page가 agent-local view generation 상태를
-조회하고 개발용 on/off, 즉시 실행을 요청하기 위한 payload다. production scheduler나
-main_server orchestration 계약이 아니며, raw text와 generated weak/strong view는
-agent local boundary에 남긴다.
+`CapturedTextDebugJob*Payload`는 debug page가 agent-local view generation/analysis
+상태를 조회하고 개발용 on/off, 즉시 실행을 요청하기 위한 payload다. production
+scheduler나 main_server orchestration 계약이 아니며, raw text와 generated weak/strong
+view는 agent local boundary에 남긴다.
 
-Captured text 저장소는 raw event, view generation job/output, analysis job 상태를
-분리한다. `captured_text_events`는 원문 snapshot만 소유하고, weak/strong view 생성
-상태는 `captured_text_view_generation_jobs`, 후속 분류/분석 대기 상태는
-`captured_text_analysis_jobs`가 소유한다.
+Captured text, analysis event, query buffer의 기본 저장소는 같은 agent-local SQLite
+파일(`agent_local.db`)을 사용한다. `captured_text_events`는 원문 snapshot만 소유하고,
+weak/strong view 생성 상태는 `captured_text_view_generation_jobs`, generated weak/strong
+view는 `captured_text_generated_views`, 후속 분류/분석 상태는
+`captured_text_analysis_jobs`가 소유한다. completed analysis job은
+`analysis_events.analysis_id`를 참조한다.
 
 Captured text ingest 응답의 `query_id`는 shape compatibility를 위해 `event_id`와 같은
 값을 반환한다. ingest 경로는 분석 score를 생성하지 않으며, `top_category`와
-`top_score`는 후처리 분석 job이 별도 저장소에 남길 때까지 `null`이다.
+`top_score`는 debug/후처리 분석 job이 `analysis_events`에 score를 남길 때까지
+`null`이다.
 
 `ChildSupportConversation*` raw message와 conversation 저장도 agent-local 경계다.
 LLM provider, prompt, safety policy, response plan 실행 방식은 agent runtime이

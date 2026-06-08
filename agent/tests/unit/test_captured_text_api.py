@@ -6,6 +6,7 @@ import concurrent.futures
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 
@@ -19,10 +20,17 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextSourceType,
     CapturedTextSurfaceType,
 )
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
     captured_text_record_from_payload,
 )
+from agent.src.infrastructure.repositories.query_buffer_repository import (
+    QueryBufferRepository,
+)
+from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.ingest.captured_text_ingest_service import (
     CapturedTextIngestService,
 )
@@ -33,6 +41,7 @@ from agent.src.services.ingest.captured_text_lifecycle_service import (
 from agent.src.services.ingest.captured_text_view_generation_service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.services.language.preprocess_service import PreprocessService
 
 
 def _event(event_id: str = "event_1") -> CapturedTextEventPayload:
@@ -245,6 +254,86 @@ def test_captured_text_debug_job_run_generates_views(
     assert payload["generated_count"] == 1
     assert payload["generated_view_count"] == 1
     assert repository.get_generated_view("event_1") is not None
+
+
+def test_captured_text_debug_job_generates_view_and_classifies_weak_text(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "agent_local.db"
+    captured_repository = CapturedTextRepository(db_path=db_path)
+    analysis_repository = AnalysisEventRepository(db_path=db_path)
+    query_buffer_repository = QueryBufferRepository(db_path=db_path)
+
+    class TranslationProvider:
+        model_id = "unit-translation"
+
+        def translate_batch(self, texts: list[str]) -> list[str]:
+            return ["I feel anxious" for _text in texts]
+
+    embedding_service = MagicMock()
+    embedding_service.embed_batch.return_value = [[0.1, 0.2, 0.3]]
+    scoring_service = MagicMock()
+    scoring_service.score.return_value = {
+        "anxiety": 0.91,
+        "depression": 0.2,
+    }
+    scoring_service.backend_name = "unit_classifier"
+    scoring_service.confidence_kind = "unit_top1"
+    pipeline_service = InferencePipelineService(
+        embedding_service=embedding_service,
+        scoring_service=scoring_service,
+        event_repository=analysis_repository,
+        query_buffer_repository=query_buffer_repository,
+        preprocess_service=PreprocessService(),
+        embedding_model_id="unit-embed",
+        model_revision="unit-revision",
+    )
+    view_service = CapturedTextViewGenerationService(
+        repository=captured_repository,
+        translation_provider=TranslationProvider(),
+    )
+    client = TestClient(
+        create_app(
+            analysis_event_repository=analysis_repository,
+            query_buffer_repository=query_buffer_repository,
+            captured_text_repository=captured_repository,
+            captured_text_view_generation_service=view_service,
+            pipeline_service=pipeline_service,
+            auto_configure_pipeline=False,
+        )
+    )
+
+    ingest_response = client.post(
+        "/api/v1/captured-text/events",
+        json=_event().model_dump(mode="json"),
+    )
+    run_response = client.post(
+        "/api/v1/captured-text/debug-job/run-view-generation",
+        json=CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(mode="json"),
+    )
+
+    assert ingest_response.status_code == 201
+    assert run_response.status_code == 200
+    payload = run_response.json()
+    assert payload["generated_count"] == 1
+    assert payload["analysis_selected_count"] == 1
+    assert payload["analysis_processed_count"] == 1
+    assert payload["analysis_failed_count"] == 0
+    assert captured_repository.count_by_analysis_status() == {"completed": 1}
+
+    generated = captured_repository.get_generated_view("event_1")
+    assert generated is not None
+    assert generated.weak_text == "I feel anxious"
+
+    analysis_events = analysis_repository.get_recent(days=7)
+    assert len(analysis_events) == 1
+    assert analysis_events[0].query_id == "event_1"
+    assert analysis_events[0].category_scores["anxiety"] == 0.91
+    query_buffer_record = query_buffer_repository.get("event_1")
+    assert query_buffer_record is not None
+    assert query_buffer_record.raw_text == "I feel anxious"
+    assert query_buffer_record.predicted_label == "anxiety"
+    scoring_service.score.assert_called_once()
 
 
 def test_captured_text_debug_job_does_not_analyze_existing_ready_views(

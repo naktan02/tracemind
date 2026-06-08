@@ -13,12 +13,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from agent.src.infrastructure.repositories.local_agent_database import (
+    DEFAULT_AGENT_LOCAL_DB_PATH,
+    connect_agent_local_db,
+)
 from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
 QUERY_BUFFER_RECORD_V1 = "query_buffer_record.v1"
 
 # 기본 DB 경로: agent 로컬 data 디렉토리
-_DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "query_buffer.db"
+_DEFAULT_DB_PATH = DEFAULT_AGENT_LOCAL_DB_PATH
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS query_buffer_records (
@@ -235,7 +239,7 @@ class QueryBufferRepository:
         return max(cursor.rowcount, 0)
 
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path)
+        return connect_agent_local_db(self.db_path)
 
 
 def _row_to_record(row: tuple[Any, ...]) -> QueryBufferRecord:

@@ -110,6 +110,8 @@
     실행 시 lazy-load된다
   - captured text DB 상태는 raw event row에 섞지 않고 view generation job,
     generated view, analysis job 상태 테이블로 분리한다
+  - debug job은 generated weak text를 inference pipeline에 넣어 analysis event와
+    query buffer snapshot까지 같은 agent-local SQLite 파일에 저장한다
 - `training/datasets/query_adaptation_dataset_service.py`
   - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립
   - `query_id`는 `source_row.query_id`를 single source of truth로 두고,

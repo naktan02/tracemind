@@ -14,8 +14,15 @@ from agent.src.contracts.captured_text_contracts import (
     CAPTURED_TEXT_EVENT_V1,
     CapturedTextEventPayload,
 )
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    ensure_analysis_event_schema,
+)
+from agent.src.infrastructure.repositories.local_agent_database import (
+    DEFAULT_AGENT_LOCAL_DB_PATH,
+    connect_agent_local_db,
+)
 
-_DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "captured_text.db"
+_DEFAULT_DB_PATH = DEFAULT_AGENT_LOCAL_DB_PATH
 CAPTURED_TEXT_VIEW_STATUS_PENDING = "pending"
 CAPTURED_TEXT_VIEW_STATUS_DUPLICATE = "duplicate"
 CAPTURED_TEXT_VIEW_STATUS_READY = "ready"
@@ -102,7 +109,10 @@ CREATE TABLE IF NOT EXISTS captured_text_analysis_jobs (
     metadata      TEXT NOT NULL DEFAULT '{}',
     FOREIGN KEY (event_id)
         REFERENCES captured_text_events (event_id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    FOREIGN KEY (analysis_id)
+        REFERENCES analysis_events (analysis_id)
+        ON DELETE SET NULL
 );
 """
 
@@ -274,6 +284,33 @@ ON CONFLICT(event_id) DO UPDATE SET
     metadata = excluded.metadata;
 """
 
+_SELECT_PENDING_ANALYSIS_SOURCES_SQL = """
+SELECT e.event_id, e.occurred_at, e.text, e.locale, e.source_type, e.surface_type,
+       e.text_fingerprint, v.generated_at, v.weak_text, v.strong_text_0,
+       v.strong_text_1, v.generator_name, v.generator_version, v.metadata
+FROM captured_text_events e
+JOIN captured_text_view_generation_jobs vj ON e.event_id = vj.event_id
+JOIN captured_text_generated_views v ON e.event_id = v.event_id
+JOIN captured_text_analysis_jobs aj ON e.event_id = aj.event_id
+WHERE vj.status = ?
+  AND aj.status = ?
+  AND e.duplicate_of_event_id IS NULL
+ORDER BY e.occurred_at ASC
+LIMIT ?;
+"""
+
+_UPDATE_ANALYSIS_JOB_COMPLETED_SQL = """
+UPDATE captured_text_analysis_jobs
+SET status = ?, updated_at = ?, analysis_id = ?, error_message = NULL
+WHERE event_id = ?;
+"""
+
+_UPDATE_ANALYSIS_JOB_FAILED_SQL = """
+UPDATE captured_text_analysis_jobs
+SET status = ?, updated_at = ?, error_message = ?
+WHERE event_id = ?;
+"""
+
 _SELECT_READY_GENERATED_TRAINING_SOURCES_SQL = """
 SELECT e.event_id, e.occurred_at, e.text, e.locale, e.source_type, e.surface_type,
        e.text_fingerprint, v.generated_at, v.weak_text, v.strong_text_0,
@@ -380,6 +417,26 @@ class CapturedTextGeneratedTrainingSourceRecord:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(slots=True)
+class CapturedTextAnalysisSourceRecord:
+    """analysis job이 읽는 generated view + 원본 event snapshot."""
+
+    event_id: str
+    occurred_at: datetime
+    text: str
+    locale: str
+    source_type: str
+    surface_type: str
+    text_fingerprint: str
+    generated_at: datetime
+    weak_text: str
+    strong_text_0: str
+    strong_text_1: str
+    generator_name: str
+    generator_version: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
 def captured_text_record_from_payload(
     payload: CapturedTextEventPayload,
     *,
@@ -419,6 +476,7 @@ class CapturedTextRepository:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             _reset_legacy_schema(conn)
+            ensure_analysis_event_schema(conn)
             conn.execute(_CREATE_TABLE_SQL)
             conn.execute(_CREATE_VIEW_GENERATION_JOB_TABLE_SQL)
             conn.execute(_CREATE_GENERATED_VIEW_TABLE_SQL)
@@ -514,6 +572,58 @@ class CapturedTextRepository:
         with self._connect() as conn:
             rows = conn.execute(_COUNT_BY_ANALYSIS_STATUS_SQL).fetchall()
         return {str(status): int(count) for status, count in rows}
+
+    def get_pending_analysis_sources(
+        self,
+        *,
+        limit: int = 100,
+    ) -> list[CapturedTextAnalysisSourceRecord]:
+        """분석 대기 상태인 generated view를 오래된 순서로 반환한다."""
+
+        if limit <= 0:
+            raise ValueError("limit must be positive.")
+        with self._connect() as conn:
+            rows = conn.execute(
+                _SELECT_PENDING_ANALYSIS_SOURCES_SQL,
+                (
+                    CAPTURED_TEXT_VIEW_STATUS_READY,
+                    CAPTURED_TEXT_ANALYSIS_STATUS_PENDING,
+                    limit,
+                ),
+            ).fetchall()
+        return [_row_to_analysis_source(row) for row in rows]
+
+    def mark_analysis_completed(self, *, event_id: str, analysis_id: str) -> int:
+        """단일 captured text event의 analysis job을 completed로 표시한다."""
+
+        if not analysis_id.strip():
+            raise ValueError("analysis_id must not be empty.")
+        with self._connect() as conn:
+            cursor = conn.execute(
+                _UPDATE_ANALYSIS_JOB_COMPLETED_SQL,
+                (
+                    CAPTURED_TEXT_ANALYSIS_STATUS_COMPLETED,
+                    datetime.now(tz=timezone.utc).isoformat(),
+                    analysis_id,
+                    event_id,
+                ),
+            )
+        return max(cursor.rowcount, 0)
+
+    def mark_analysis_failed(self, *, event_id: str, error_message: str) -> int:
+        """단일 captured text event의 analysis job을 failed로 표시한다."""
+
+        with self._connect() as conn:
+            cursor = conn.execute(
+                _UPDATE_ANALYSIS_JOB_FAILED_SQL,
+                (
+                    CAPTURED_TEXT_ANALYSIS_STATUS_FAILED,
+                    datetime.now(tz=timezone.utc).isoformat(),
+                    error_message,
+                    event_id,
+                ),
+            )
+        return max(cursor.rowcount, 0)
 
     def mark_view_generation_status(self, *, event_id: str, status: str) -> int:
         """단일 event의 view generation 상태를 갱신한다."""
@@ -656,9 +766,7 @@ class CapturedTextRepository:
         return max(cursor.rowcount, 0)
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
+        return connect_agent_local_db(self.db_path)
 
 
 def _row_to_record(row: tuple[Any, ...]) -> CapturedTextRecord:
@@ -754,6 +862,44 @@ def _row_to_generated_training_source(
     if not isinstance(metadata, dict):
         metadata = {}
     return CapturedTextGeneratedTrainingSourceRecord(
+        event_id=str(event_id),
+        occurred_at=datetime.fromisoformat(str(occurred_at)),
+        text=str(text),
+        locale=str(locale),
+        source_type=str(source_type),
+        surface_type=str(surface_type),
+        text_fingerprint=str(text_fingerprint),
+        generated_at=datetime.fromisoformat(str(generated_at)),
+        weak_text=str(weak_text),
+        strong_text_0=str(strong_text_0),
+        strong_text_1=str(strong_text_1),
+        generator_name=str(generator_name),
+        generator_version=str(generator_version),
+        metadata=metadata,
+    )
+
+
+def _row_to_analysis_source(row: tuple[Any, ...]) -> CapturedTextAnalysisSourceRecord:
+    (
+        event_id,
+        occurred_at,
+        text,
+        locale,
+        source_type,
+        surface_type,
+        text_fingerprint,
+        generated_at,
+        weak_text,
+        strong_text_0,
+        strong_text_1,
+        generator_name,
+        generator_version,
+        metadata_json,
+    ) = row
+    metadata = json.loads(str(metadata_json))
+    if not isinstance(metadata, dict):
+        metadata = {}
+    return CapturedTextAnalysisSourceRecord(
         event_id=str(event_id),
         occurred_at=datetime.fromisoformat(str(occurred_at)),
         text=str(text),

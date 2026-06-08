@@ -8,10 +8,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from agent.src.infrastructure.repositories.local_agent_database import (
+    DEFAULT_AGENT_LOCAL_DB_PATH,
+    connect_agent_local_db,
+)
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
 # 기본 DB 경로: agent 로컬 data 디렉토리
-_DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "analysis_events.db"
+_DEFAULT_DB_PATH = DEFAULT_AGENT_LOCAL_DB_PATH
 
 _CREATE_ANALYSIS_EVENTS_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS analysis_events (
@@ -122,11 +126,7 @@ class AnalysisEventRepository:
     def __post_init__(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
-            conn.execute(_CREATE_ANALYSIS_EVENTS_TABLE_SQL)
-            conn.execute(_CREATE_ANALYSIS_CATEGORY_SCORES_TABLE_SQL)
-            conn.execute(_CREATE_ANALYSIS_OCCURRED_AT_INDEX_SQL)
-            conn.execute(_CREATE_ANALYSIS_SCORER_FAMILY_INDEX_SQL)
-            conn.execute(_CREATE_ANALYSIS_CATEGORY_INDEX_SQL)
+            ensure_analysis_event_schema(conn)
 
     # ------------------------------------------------------------------ #
     # 쓰기                                                                 #
@@ -224,7 +224,17 @@ class AnalysisEventRepository:
     # ------------------------------------------------------------------ #
 
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path)
+        return connect_agent_local_db(self.db_path)
+
+
+def ensure_analysis_event_schema(conn: sqlite3.Connection) -> None:
+    """analysis event 관련 table/index를 생성한다."""
+
+    conn.execute(_CREATE_ANALYSIS_EVENTS_TABLE_SQL)
+    conn.execute(_CREATE_ANALYSIS_CATEGORY_SCORES_TABLE_SQL)
+    conn.execute(_CREATE_ANALYSIS_OCCURRED_AT_INDEX_SQL)
+    conn.execute(_CREATE_ANALYSIS_SCORER_FAMILY_INDEX_SQL)
+    conn.execute(_CREATE_ANALYSIS_CATEGORY_INDEX_SQL)
 
 
 # ------------------------------------------------------------------ #

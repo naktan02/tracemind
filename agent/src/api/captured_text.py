@@ -22,6 +22,7 @@ from agent.src.contracts.captured_text_contracts import (
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
 )
+from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.ingest.captured_text_debug_job_service import (
     CapturedTextDebugJobService,
 )
@@ -152,6 +153,13 @@ def get_captured_text_debug_job_state(request: Request) -> CapturedTextDebugJobS
     return job_state
 
 
+def get_optional_pipeline_service(request: Request) -> InferencePipelineService | None:
+    """app.state에서 pipeline service를 읽되, 없으면 view-only debug를 허용한다."""
+
+    service = getattr(request.app.state, "pipeline_service", None)
+    return service if isinstance(service, InferencePipelineService) else service
+
+
 CapturedTextIngestServiceDep = Annotated[
     CapturedTextIngestService,
     Depends(get_captured_text_ingest_service),
@@ -171,6 +179,10 @@ CapturedTextLifecycleServiceDep = Annotated[
 CapturedTextDebugJobStateDep = Annotated[
     CapturedTextDebugJobState,
     Depends(get_captured_text_debug_job_state),
+]
+OptionalPipelineServiceDep = Annotated[
+    InferencePipelineService | None,
+    Depends(get_optional_pipeline_service),
 ]
 
 
@@ -264,6 +276,7 @@ async def configure_captured_text_debug_job(
     service: CapturedTextViewGenerationServiceDep,
     lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,
+    pipeline_service: OptionalPipelineServiceDep,
 ) -> CapturedTextDebugJobStatusPayload:
     """개발용 captured text view generation job을 켜거나 끈다."""
 
@@ -279,6 +292,7 @@ async def configure_captured_text_debug_job(
                     repository=repository,
                     view_generation_service=service,
                     lifecycle_service=lifecycle_service,
+                    pipeline_service=pipeline_service,
                 ),
             )
         )
@@ -304,8 +318,9 @@ async def run_captured_text_view_generation_once(
     service: CapturedTextViewGenerationServiceDep,
     lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,
+    pipeline_service: OptionalPipelineServiceDep,
 ) -> CapturedTextDebugJobRunResultPayload:
-    """pending captured text view generation을 즉시 실행한다."""
+    """pending captured text view generation과 weak text 분석을 즉시 실행한다."""
 
     if job_state.run_lock.locked():
         raise HTTPException(
@@ -319,6 +334,7 @@ async def run_captured_text_view_generation_once(
                 repository=service.repository,
                 view_generation_service=service,
                 lifecycle_service=lifecycle_service,
+                pipeline_service=pipeline_service,
             ).run_once,
             limit=run_request.limit,
         )
@@ -377,9 +393,11 @@ def _debug_job_service(
     repository: CapturedTextRepository,
     view_generation_service: CapturedTextViewGenerationService,
     lifecycle_service: CapturedTextLifecycleService,
+    pipeline_service: InferencePipelineService | None,
 ) -> CapturedTextDebugJobService:
     return CapturedTextDebugJobService(
         repository=repository,
         view_generation_service=view_generation_service,
         lifecycle_service=lifecycle_service,
+        pipeline_service=pipeline_service,
     )

@@ -155,6 +155,9 @@ class CapturedTextDebugJobRunResultPayload(BaseModel):
     selected_count: int = Field(ge=0)
     generated_count: int = Field(ge=0)
     failed_count: int = Field(ge=0)
+    analysis_selected_count: int = Field(default=0, ge=0)
+    analysis_processed_count: int = Field(default=0, ge=0)
+    analysis_failed_count: int = Field(default=0, ge=0)
     pending_remaining_count: int = Field(ge=0)
     generated_view_count: int = Field(ge=0)
     message: str = ""
