@@ -4,7 +4,6 @@ import { formatBytes, formatMetric, formatSeconds, numberOrNull } from "../../..
 import { drawLineChart } from "../../../ui/charts/line_chart.js";
 import {
   emptyTableRow,
-  renderColumnCheckboxes,
   moveTableColumn,
   renderSortableTableHeader,
   resolveTableColumns,
@@ -33,39 +32,32 @@ const ROUND_BASE_VISIBLE_COLUMNS = ["axis:round", "axis:run"];
 const ROUND_DEFAULT_METRIC = "macro_f1";
 
 export function normalizeRoundSelection(rows, state) {
-  if (!FL_ROUND_METRICS.includes(state.roundMetric)) {
-    state.roundMetric = "macro_f1";
-  }
   const metricColumns = FL_ROUND_METRICS.map((metric) => `metric:${metric}`);
-  const validMetricIds = (state.roundMetricIds ?? []).map((metric) => `metric:${metric}`);
-  const requestedMetricIds = validMetricIds.filter((metricId) => metricColumns.includes(metricId));
-  const defaultMetric = metricColumns.includes(`metric:${ROUND_DEFAULT_METRIC}`)
+  const requestedMetric = `metric:${FL_ROUND_METRICS.includes(state.roundMetric) ? state.roundMetric : ROUND_DEFAULT_METRIC}`;
+  const fallbackMetric = metricColumns.includes(`metric:${ROUND_DEFAULT_METRIC}`)
     ? `metric:${ROUND_DEFAULT_METRIC}`
     : metricColumns[0];
-  const fallbackMetrics = requestedMetricIds.length > 0 ? requestedMetricIds : defaultMetric ? [defaultMetric] : [];
-  const requestedVisibleColumns = [...ROUND_BASE_VISIBLE_COLUMNS, ...fallbackMetrics];
+  const selectedMetricId = metricColumns.includes(requestedMetric) ? requestedMetric : fallbackMetric;
+  const fallbackVisible = [selectedMetricId].filter(Boolean);
+  const requestedVisibleColumns = [...ROUND_BASE_VISIBLE_COLUMNS, ...fallbackVisible];
   setTableColumnVisibility(state.roundTableColumns, buildRoundColumns(), requestedVisibleColumns, ROUND_BASE_VISIBLE_COLUMNS);
-  state.roundMetricIds = state.roundTableColumns.visible
+  state.roundMetric = state.roundTableColumns.visible
     .filter((id) => id.startsWith("metric:"))
-    .filter((id, index, ids) => ids.indexOf(id) === index)
-    .map((id) => id.replace(/^metric:/, ""));
-  if (!state.roundMetricIds.includes(state.roundMetric)) {
-    state.roundMetric = state.roundMetricIds[0] || ROUND_DEFAULT_METRIC;
-  }
+    .map((id) => id.replace(/^metric:/, ""))[0] || ROUND_DEFAULT_METRIC;
+  state.roundMetricIds = [state.roundMetric];
   const visibleRunIds = new Set(rows.map(runId));
   state.roundRunIds = state.roundRunIds.filter((id) => visibleRunIds.has(id));
 }
 
 export function renderRoundsPage(elements, rows, state, bundle, rerender = () => {}) {
   const columns = buildRoundColumns();
-  const { visibleColumns, allColumns, state: columnState } = resolveTableColumns(
+  const { visibleColumns, allColumns } = resolveTableColumns(
     state.roundTableColumns,
     columns,
     ROUND_BASE_VISIBLE_COLUMNS,
   );
   const metricColumns = allColumns.filter((column) => column.group === "metric");
-  const visibleIds = new Set(columnState.visible);
-  renderColumnCheckboxes(elements.flRoundTableMetricPicker, metricColumns, visibleIds, "flRoundTableColumn");
+  renderRoundMetricPicker(elements.flRoundTableMetricPicker, metricColumns, state.roundMetric);
   renderRunPicker(elements, rows, state);
   renderSelectedRunCards(elements, rows, state);
   const selectedRows = flRoundRows(bundle)
@@ -148,6 +140,28 @@ function renderFlatNote(elements, rows, state) {
   elements.flRoundFlatNote.textContent = elements.flRoundFlatNote.hidden
     ? ""
     : `선택한 run에서 ${metricLabel(state.roundMetric)} 값이 전 라운드 동일합니다.`;
+}
+
+function renderRoundMetricPicker(container, metricColumns, selectedMetric) {
+  const selectedMetricId = `metric:${selectedMetric}`;
+  container.innerHTML =
+    metricColumns.length === 0
+      ? `<p class="empty">선택 가능한 metric이 없습니다.</p>`
+      : metricColumns
+          .map(
+            (column) => `
+              <label class="check-row compact">
+                <input
+                  type="radio"
+                  name="fl-round-metric"
+                  data-fl-round-table-metric="${escapeHtml(column.id)}"
+                  ${column.id === selectedMetricId ? "checked" : ""}
+                />
+                <span>${escapeHtml(column.label)}</span>
+              </label>
+            `,
+          )
+          .join("");
 }
 
 function renderRoundChart(elements, roundRows, runRows, state) {

@@ -547,10 +547,11 @@ function applyFlRunColumnVisibility() {
 }
 
 function applyFlRoundTableColumnVisibility() {
-  const selectedMetricColumns = Array.from(new Set(
-    checkedValues(elements.flRoundTableMetricPicker, "flRoundTableColumn")
-      .filter((id) => id.startsWith("metric:")),
-  ));
+  const selectedMetricElement = elements.flRoundTableMetricPicker.querySelector("input[name='fl-round-metric']:checked");
+  const selectedMetricId = selectedMetricElement?.dataset.flRoundTableMetric ?? "";
+  const fallbackMetricId = "metric:macro_f1";
+  const metricId = selectedMetricId || fallbackMetricId;
+  const selectedMetricColumns = metricId ? [metricId] : [];
   const visibleColumns = ["axis:round", "axis:run", ...selectedMetricColumns];
   syncTableVisibility(state.fl.roundTableColumns, visibleColumns);
   const metricIds = selectedMetricColumns.map((columnId) => columnId.replace(/^metric:/, ""));
