@@ -132,11 +132,18 @@ v1 원칙:
   "objective_config": {
     "training_backend_name": "peft_classifier_trainer",
     "algorithm_profile_name": "peft_classifier_update_v1",
-    "example_generation_backend_name": "weak_strong_pair",
-    "evidence_backend_name": "analysis_score_evidence",
-    "pseudo_label_algorithm_name": "top1_ranked",
-    "acceptance_policy_name": "top1_ranked",
-    "privacy_guard_name": "noop"
+    "example_generation_backend_name": "peft_classifier_raw_rows",
+    "privacy_guard_name": "noop",
+    "query_ssl.method_name": "fixmatch_usb_v1",
+    "query_ssl.algorithm_name": "fixmatch",
+    "query_ssl.strong_view_policy": "first_aug",
+    "query_ssl.unlabeled_batch_size": 8,
+    "query_ssl.temperature": 0.5,
+    "query_ssl.p_cutoff": 0.95,
+    "query_ssl.hard_label": true,
+    "query_ssl.lambda_u": 1.0,
+    "query_ssl.supervised_loss_weight": 1.0,
+    "peft_classifier.delta_format": "inline_delta"
   },
   "selection_policy": {
     "max_examples": 128,

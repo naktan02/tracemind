@@ -336,8 +336,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         training_task_config=_training_task_config(),
         validation_config=FederatedValidationConfig(
             similarity_name="cosine",
-            scorer_backend_name="classifier_head_logits",
-            score_policy_name="classifier_top1",
+            scorer_backend_name="peft_classifier_eval",
+            score_policy_name=None,
         ),
         round_runtime_config=FederatedRoundRuntimeConfig(
             payload_adapter_kind="peft_classifier",
@@ -704,8 +704,8 @@ def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
             training_task_config=_training_task_config(),
             validation_config=FederatedValidationConfig(
                 similarity_name="cosine",
-                scorer_backend_name="classifier_head_logits",
-                score_policy_name="classifier_top1",
+                scorer_backend_name="peft_classifier_eval",
+                score_policy_name=None,
             ),
             round_runtime_config=FederatedRoundRuntimeConfig(
                 payload_adapter_kind="peft_classifier",
