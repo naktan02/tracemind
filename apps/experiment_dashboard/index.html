@@ -29,12 +29,6 @@
           </button>
         </nav>
 
-        <section class="sidebar-note">
-          <p>
-            중앙 SSL과 FL SSL은 같은 ranking 표면으로 합치지 않는다. 각 track의
-            metric 의미와 비교 축은 오른쪽 패널이 따로 소유한다.
-          </p>
-        </section>
       </aside>
 
       <main class="content">
@@ -42,14 +36,6 @@
 
         <section class="track-panel active" data-track-panel="central_ssl">
           <section class="hero">
-            <div>
-              <p class="eyebrow">Central SSL</p>
-              <h2>중앙 SSL control 결과 비교</h2>
-              <p>
-                pooled/offline control track이다. FL SSL main comparison과 같은
-                ranking으로 합치지 않는다.
-              </p>
-            </div>
             <div class="metric-cards" id="metric-cards"></div>
           </section>
 
@@ -297,15 +283,6 @@
 
         <section class="track-panel" data-track-panel="fl_ssl">
           <section class="hero fl-hero">
-            <div>
-              <p class="eyebrow">FL SSL</p>
-              <h2>Federated non-IID main comparison</h2>
-              <p>
-                FL SSL은 round/client 관측값이 핵심이다. 중앙 SSL의 per-class
-                ranking 화면과 분리해서 worst-client, round curve, communication
-                cost를 본다.
-              </p>
-            </div>
             <div class="metric-cards" id="fl-metric-cards"></div>
           </section>
 
