@@ -1,9 +1,40 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
 import { formatMetric } from "../../../shared/formatting/numbers.js";
 import { fillSelect } from "../../../ui/controls/form_controls.js";
-import { emptyTableRow } from "../../../ui/tables/table.js";
+import {
+  emptyTableRow,
+  moveTableColumn,
+  renderSortableTableHeader,
+  resolveTableColumns,
+} from "../../../ui/tables/table.js";
 import { algorithmName, centralEvalSetLabel, runDetail } from "../logic/labels.js";
 import { centralAlgorithms, rowsForAlgorithms } from "../logic/selectors.js";
+
+const CLASS_TABLE_COLUMNS = [
+  { id: "category", label: "category", group: "axis", render: (row) => escapeHtml(row.category) },
+  { id: "support", label: "support", group: "metric", render: (row) => formatMetric(row.support) },
+  { id: "precision", label: "precision", group: "metric", render: (row) => formatMetric(row.precision) },
+  { id: "recall", label: "recall", group: "metric", render: (row) => formatMetric(row.recall) },
+  { id: "f1", label: "f1", group: "metric", render: (row) => formatMetric(row.f1) },
+  {
+    id: "mean_true_label_probability",
+    label: "true prob",
+    group: "metric",
+    render: (row) => formatMetric(row.mean_true_label_probability),
+  },
+  {
+    id: "mean_top_1_probability",
+    label: "top1 prob",
+    group: "metric",
+    render: (row) => formatMetric(row.mean_top_1_probability),
+  },
+  {
+    id: "mean_margin_top1_top2",
+    label: "margin",
+    group: "metric",
+    render: (row) => formatMetric(row.mean_margin_top1_top2),
+  },
+];
 
 export function normalizeDetailSelection(rows, state) {
   const algorithms = centralAlgorithms(rows);
@@ -21,7 +52,7 @@ export function normalizeDetailSelection(rows, state) {
   }
 }
 
-export function renderDetailPage(elements, rows, state, bundle) {
+export function renderDetailPage(elements, rows, state, bundle, rerender = () => {}) {
   const algorithms = centralAlgorithms(rows);
   fillSelect(elements.detailMethodFilter, algorithms, state.detailAlgorithm, "algorithm 없음");
   const detailRows = state.detailAlgorithm ? rowsForAlgorithms(rows, [state.detailAlgorithm]) : [];
@@ -43,35 +74,48 @@ export function renderDetailPage(elements, rows, state, bundle) {
         row.run_id,
       ].join(" · ")
     : "Per-class와 confusion matrix를 보려면 상세 run을 선택하세요.";
-  renderClassTable(elements, row, state, bundle);
+  renderClassTable(elements, row, state, bundle, rerender);
   renderClassChart(elements, row, state, bundle);
   renderConfusionMatrix(elements, row, state, bundle);
 }
 
-function renderClassTable(elements, row, state, bundle) {
+function renderClassTable(elements, row, state, bundle, rerender) {
+  const { visibleColumns } = resolveTableColumns(
+    state.classTableColumns,
+    CLASS_TABLE_COLUMNS,
+    CLASS_TABLE_COLUMNS.map((column) => column.id),
+  );
+  renderSortableTableHeader(elements.classTableHead, visibleColumns, (sourceColumnId, targetColumnId) => {
+    if (moveTableColumn(state.classTableColumns, sourceColumnId, targetColumnId)) {
+      rerender();
+    }
+  });
+
   if (!row) {
-    elements.classTable.innerHTML = emptyTableRow(8, "선택된 run이 없습니다.");
+    elements.classTable.innerHTML = emptyTableRow(
+      visibleColumns.length || 1,
+      "선택된 run이 없습니다.",
+    );
     return;
   }
   const rows = (bundle.per_class_metrics ?? [])
     .filter((item) => item.run_id === row.run_id && item.eval_set === state.classEvalSet)
     .sort((left, right) => String(left.category).localeCompare(String(right.category)));
   if (rows.length === 0) {
-    elements.classTable.innerHTML = emptyTableRow(8, "per-class metric이 없습니다.");
+    elements.classTable.innerHTML = emptyTableRow(
+      visibleColumns.length || 1,
+      "per-class metric이 없습니다.",
+    );
     return;
   }
+  const rowById = new Map(CLASS_TABLE_COLUMNS.map((column) => [column.id, column]));
   elements.classTable.innerHTML = rows
     .map(
       (item) => `
         <tr>
-          <td>${escapeHtml(item.category)}</td>
-          <td>${formatMetric(item.support)}</td>
-          <td>${formatMetric(item.precision)}</td>
-          <td>${formatMetric(item.recall)}</td>
-          <td>${formatMetric(item.f1)}</td>
-          <td>${formatMetric(item.mean_true_label_probability)}</td>
-          <td>${formatMetric(item.mean_top_1_probability)}</td>
-          <td>${formatMetric(item.mean_margin_top1_top2)}</td>
+          ${visibleColumns
+            .map((column) => `<td>${rowById.get(column.id)?.render(item)}</td>`)
+            .join("")}
         </tr>
       `,
     )

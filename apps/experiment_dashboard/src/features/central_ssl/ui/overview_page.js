@@ -1,8 +1,14 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
 import { metricLabel } from "../../../shared/formatting/metrics.js";
 import { formatMetric } from "../../../shared/formatting/numbers.js";
-import { renderCheckboxList } from "../../../ui/controls/form_controls.js";
-import { emptyTableRow } from "../../../ui/tables/table.js";
+import {
+  emptyTableRow,
+  moveTableColumn,
+  renderColumnCheckboxes,
+  renderSortableTableHeader,
+  resolveTableColumns,
+  setTableColumnVisibility,
+} from "../../../ui/tables/table.js";
 import { centralOverviewMetricKeys } from "../logic/metrics.js";
 import {
   algorithmName,
@@ -12,29 +18,86 @@ import {
   runDetail,
 } from "../logic/labels.js";
 
+const DEFAULT_VISIBLE_COLUMNS = ["axis:algorithm"];
+
+const OVERVIEW_AXIS_COLUMNS = [
+  {
+    id: "axis:algorithm",
+    label: "algorithm",
+    group: "axis",
+    render: (row) => escapeHtml(algorithmName(row)),
+  },
+  {
+    id: "axis:run",
+    label: "run",
+    group: "axis",
+    render: (row, state) => escapeHtml(overviewDisplayLabel(row, state.overviewRunAliases)),
+  },
+  {
+    id: "axis:pc",
+    label: "pc",
+    group: "axis",
+    render: (row) => escapeHtml(overviewRunSubLabel(row)),
+  },
+  {
+    id: "axis:seed",
+    label: "seed",
+    group: "axis",
+    render: (row) => escapeHtml(row.seed ?? "-"),
+  },
+  {
+    id: "axis:run_id",
+    label: "run id",
+    group: "axis",
+    render: (row) => escapeHtml(row.run_id),
+  },
+  {
+    id: "axis:detail",
+    label: "detail",
+    group: "axis",
+    render: (row) => escapeHtml(runDetail(row)),
+  },
+];
+
 export function normalizeOverviewSelection(rows, state) {
   const availableMetrics = centralOverviewMetricKeys(rows);
+  const availableColumnIds = buildOverviewColumns(rows).map((column) => column.id);
   state.overviewMetricIds = state.overviewMetricIds.filter((metric) =>
     availableMetrics.includes(metric),
   );
-  const visibleRunIds = new Set(rows.map((row) => row.run_id));
   state.overviewRunIds = state.overviewRunIds.filter((runId) =>
-    visibleRunIds.has(runId),
+    rows.some((row) => row.run_id === runId),
   );
+  normalizeOverviewColumns(state, availableColumnIds);
 }
 
-export function renderOverviewPage(elements, rows, state) {
-  const availableMetrics = centralOverviewMetricKeys(rows);
-  renderCheckboxList(
+export function renderOverviewPage(elements, rows, state, _bundle, rerender = () => {}) {
+  const columns = buildOverviewColumns(rows);
+  const { visibleColumns, allColumns, state: columnState } = resolveTableColumns(
+    state.overviewTableColumns,
+    columns,
+    DEFAULT_VISIBLE_COLUMNS,
+  );
+
+  const axisColumns = allColumns.filter((column) => column.group === "axis");
+  const metricColumns = allColumns.filter((column) => column.group === "metric");
+  const visibleIds = new Set(columnState.visible);
+
+  renderColumnCheckboxes(
     elements.overviewMetricPicker,
-    availableMetrics,
-    new Set(state.overviewMetricIds),
-    "overviewMetric",
-    metricLabel,
+    metricColumns,
+    visibleIds,
+    "overviewTableColumn",
+  );
+  renderColumnCheckboxes(
+    elements.overviewAxisPicker,
+    axisColumns,
+    visibleIds,
+    "overviewTableColumn",
   );
   renderRunPicker(elements, rows, state);
   renderSelectedRunCards(elements, rows, state);
-  renderOverviewTable(elements, rows, state);
+  renderOverviewTable(elements, visibleColumns, rows, state, rerender);
 }
 
 function renderRunPicker(elements, rows, state) {
@@ -97,33 +160,54 @@ function renderSelectedRunCards(elements, rows, state) {
     .join("");
 }
 
-function renderOverviewTable(elements, rows, state) {
+function renderOverviewTable(elements, columns, rows, state, rerender) {
   const rowsById = new Map(rows.map((row) => [row.run_id, row]));
   const selectedRows = state.overviewRunIds
     .map((runId) => rowsById.get(runId))
     .filter(Boolean);
-  elements.runTableHead.innerHTML = `
-    <tr>
-      <th>run</th>
-      <th>algorithm</th>
-      ${state.overviewMetricIds.map((metric) => `<th>${escapeHtml(metricLabel(metric))}</th>`).join("")}
-      <th>detail</th>
-    </tr>
-  `;
+  renderSortableTableHeader(elements.runTableHead, columns, (sourceColumnId, targetColumnId) => {
+    if (moveTableColumn(state.overviewTableColumns, sourceColumnId, targetColumnId)) {
+      rerender();
+    }
+  });
+
   if (selectedRows.length === 0) {
-    elements.runTable.innerHTML = emptyTableRow(state.overviewMetricIds.length + 3, "선택된 run이 없습니다.");
+    elements.runTable.innerHTML = emptyTableRow(columns.length || 1, "선택된 run이 없습니다.");
     return;
   }
   elements.runTable.innerHTML = selectedRows
     .map(
       (row) => `
         <tr>
-          <td>${escapeHtml(overviewDisplayLabel(row, state.overviewRunAliases))}</td>
-          <td>${escapeHtml(algorithmName(row))}</td>
-          ${state.overviewMetricIds.map((metric) => `<td>${formatMetric(row[metric])}</td>`).join("")}
-          <td>${escapeHtml(runDetail(row))}</td>
+          ${columns.map((column) => `<td>${column.render(row, state)}</td>`).join("")}
         </tr>
       `,
     )
     .join("");
+}
+
+function buildOverviewColumns(rows) {
+  const metricColumns = centralOverviewMetricKeys(rows).map((metric) => ({
+    id: `metric:${metric}`,
+    group: "metric",
+    label: metricLabel(metric),
+    render: (row) => formatMetric(row[metric]),
+  }));
+  return [...OVERVIEW_AXIS_COLUMNS, ...metricColumns];
+}
+
+function normalizeOverviewColumns(state, availableColumnIds) {
+  const availableSet = new Set(availableColumnIds);
+  const filteredVisible = (state.overviewMetricIds ?? [])
+    .map((metric) => `metric:${metric}`)
+    .filter((id) => availableSet.has(id));
+  const fallback = state.overviewTableColumns.visible.length > 0
+    ? state.overviewTableColumns.visible
+    : DEFAULT_VISIBLE_COLUMNS;
+  setTableColumnVisibility(
+    state.overviewTableColumns,
+    availableColumnIds.map((id) => ({ id })),
+    filteredVisible.length > 0 ? filteredVisible : fallback,
+    DEFAULT_VISIBLE_COLUMNS,
+  );
 }

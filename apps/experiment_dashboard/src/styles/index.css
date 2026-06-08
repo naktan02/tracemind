@@ -1083,6 +1083,16 @@ th {
   text-transform: uppercase;
 }
 
+th.draggable-column {
+  cursor: grab;
+  user-select: none;
+}
+
+th.draggable-column.dragging {
+  cursor: grabbing;
+  opacity: 0.75;
+}
+
 tbody tr.selected {
   background: rgba(0, 114, 178, 0.1);
 }

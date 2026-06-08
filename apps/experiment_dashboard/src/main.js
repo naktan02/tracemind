@@ -151,11 +151,21 @@ function bindCentralEvents() {
     state.central.overviewRunIds = [];
     render();
   });
+  elements.overviewColumnTabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const columnTab = button.dataset.overviewColumnTab;
+      if (columnTab !== "metric" && columnTab !== "axis") return;
+      state.central.overviewColumnTab = columnTab;
+      syncOverviewColumnTabUI();
+      render();
+    });
+  });
   elements.overviewMetricPicker.addEventListener("change", () => {
-    state.central.overviewMetricIds = checkedValues(
-      elements.overviewMetricPicker,
-      "overviewMetric",
-    );
+    applyCentralOverviewColumnVisibility();
+    render();
+  });
+  elements.overviewAxisPicker.addEventListener("change", () => {
+    applyCentralOverviewColumnVisibility();
     render();
   });
   elements.overviewRunCheckboxes.addEventListener("change", () => {
@@ -277,8 +287,21 @@ function bindFlEvents() {
     resetFlSelectionsAfterFilterChange();
     render();
   });
+  elements.flRunColumnTabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const columnTab = button.dataset.flRunColumnTab;
+      if (columnTab !== "metric" && columnTab !== "axis") return;
+      state.fl.runColumnTab = columnTab;
+      syncFlRunColumnTabUI();
+      render();
+    });
+  });
   elements.flRunMetricPicker.addEventListener("change", () => {
-    state.fl.runMetricIds = checkedValues(elements.flRunMetricPicker, "flRunMetric");
+    applyFlRunColumnVisibility();
+    render();
+  });
+  elements.flRunAxisPicker.addEventListener("change", () => {
+    applyFlRunColumnVisibility();
     render();
   });
   elements.flRunCheckboxes.addEventListener("change", () => {
@@ -402,6 +425,8 @@ function renderShell() {
   elements.flTabPanels.forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.flPanel === state.activeFlTab);
   });
+  syncOverviewColumnTabUI();
+  syncFlRunColumnTabUI();
   renderFilterVisibility();
 }
 
@@ -447,9 +472,9 @@ function renderCentral() {
   normalizeCompareSelection(compareRows, state.central, state.bundle);
   normalizeDetailSelection(classRows, state.central);
   normalizeProjectionSelection(state.bundle, projectionRows, state.central);
-  renderOverviewPage(elements, overviewRows, state.central);
+  renderOverviewPage(elements, overviewRows, state.central, state.bundle, render);
   renderComparePage(elements, compareRows, state.central, state.bundle);
-  renderDetailPage(elements, classRows, state.central, state.bundle);
+  renderDetailPage(elements, classRows, state.central, state.bundle, render);
   renderProjectionPage(elements, projectionRows, state.central, state.bundle);
 }
 
@@ -474,10 +499,10 @@ function renderFl() {
   normalizeSplitSelection(rows, state.fl, state.bundle);
   normalizeFlProjectionSelection(state.bundle, rows, state.fl);
   elements.flRoundIncludeInitial.checked = state.fl.roundIncludeInitial;
-  renderFlRunsPage(elements, rows, state.fl);
-  renderRoundsPage(elements, rows, state.fl, state.bundle);
-  renderClientsPage(elements, rows, state.fl, state.bundle);
-  renderSplitsPage(elements, rows, state.fl, state.bundle);
+  renderFlRunsPage(elements, rows, state.fl, render);
+  renderRoundsPage(elements, rows, state.fl, state.bundle, render);
+  renderClientsPage(elements, rows, state.fl, state.bundle, render);
+  renderSplitsPage(elements, rows, state.fl, state.bundle, render);
   renderFlProjectionPage(elements, rows, state.fl, state.bundle);
 }
 
@@ -486,6 +511,61 @@ function checkedValuesForAxis(container, axisDatasetKey, axisId, valueDatasetKey
     .filter((input) => input.dataset[axisDatasetKey] === axisId)
     .map((input) => input.dataset[valueDatasetKey])
     .filter(Boolean);
+}
+
+function syncTableVisibility(columnState, visibleColumnIds) {
+  if (!columnState) return;
+  const requested = Array.from(new Set((Array.isArray(visibleColumnIds) ? visibleColumnIds : []).filter(Boolean)));
+  const requestedSet = new Set(requested);
+  columnState.visible = requested;
+  const currentOrder = Array.isArray(columnState.order) ? columnState.order.slice() : [];
+  const normalizedOrder = currentOrder.filter((id) => requestedSet.has(id));
+  for (const id of requested) {
+    if (!normalizedOrder.includes(id)) normalizedOrder.push(id);
+  }
+  columnState.order = normalizedOrder;
+}
+
+function applyCentralOverviewColumnVisibility() {
+  const selectedColumns = [
+    ...checkedValues(elements.overviewMetricPicker, "overviewTableColumn"),
+    ...checkedValues(elements.overviewAxisPicker, "overviewTableColumn"),
+  ];
+  syncTableVisibility(state.central.overviewTableColumns, selectedColumns);
+  state.central.overviewMetricIds = checkedValues(elements.overviewMetricPicker, "overviewTableColumn").map((columnId) =>
+    columnId.replace(/^metric:/, ""),
+  );
+}
+
+function applyFlRunColumnVisibility() {
+  const selectedColumns = [
+    ...checkedValues(elements.flRunMetricPicker, "flRunTableColumn"),
+    ...checkedValues(elements.flRunAxisPicker, "flRunTableColumn"),
+  ];
+  syncTableVisibility(state.fl.runTableColumns, selectedColumns);
+  state.fl.runMetricIds = checkedValues(elements.flRunMetricPicker, "flRunTableColumn").map((columnId) =>
+    columnId.replace(/^metric:/, ""),
+  );
+}
+
+function syncOverviewColumnTabUI() {
+  elements.overviewMetricPicker.hidden = state.central.overviewColumnTab !== "metric";
+  elements.overviewAxisPicker.hidden = state.central.overviewColumnTab !== "axis";
+  elements.overviewColumnTabButtons.forEach((button) => {
+    const tab = button.dataset.overviewColumnTab;
+    button.classList.toggle("active", tab === state.central.overviewColumnTab);
+    button.setAttribute("aria-selected", tab === state.central.overviewColumnTab ? "true" : "false");
+  });
+}
+
+function syncFlRunColumnTabUI() {
+  elements.flRunMetricPicker.hidden = state.fl.runColumnTab !== "metric";
+  elements.flRunAxisPicker.hidden = state.fl.runColumnTab !== "axis";
+  elements.flRunColumnTabButtons.forEach((button) => {
+    const tab = button.dataset.flRunColumnTab;
+    button.classList.toggle("active", tab === state.fl.runColumnTab);
+    button.setAttribute("aria-selected", tab === state.fl.runColumnTab ? "true" : "false");
+  });
 }
 
 function resetCentralSelections() {

@@ -2,11 +2,31 @@ import { escapeHtml } from "../../../shared/formatting/html.js";
 import { metricLabel } from "../../../shared/formatting/metrics.js";
 import { formatBytes, formatMetric, formatSeconds, numberOrNull } from "../../../shared/formatting/numbers.js";
 import { drawLineChart } from "../../../ui/charts/line_chart.js";
-import { emptyTableRow } from "../../../ui/tables/table.js";
+import {
+  emptyTableRow,
+  moveTableColumn,
+  renderSortableTableHeader,
+  resolveTableColumns,
+} from "../../../ui/tables/table.js";
 import { FL_ROUND_METRICS } from "../logic/constants.js";
 import { algorithmName, roundLegendLabel, runDescriptor, runId } from "../logic/labels.js";
 import { roundPointValue } from "../logic/metrics.js";
 import { compareFlRoundRows, flRoundRows } from "../logic/selectors.js";
+
+const ROUND_TABLE_COLUMNS = [
+  {
+    id: "axis:round",
+    group: "axis",
+    label: "round",
+    render: (row) => escapeHtml(roundLabel(row.round_index)),
+  },
+  {
+    id: "axis:run",
+    group: "axis",
+    label: "run",
+    render: (row) => escapeHtml(row.run_id),
+  },
+];
 
 export function normalizeRoundSelection(rows, state) {
   if (!FL_ROUND_METRICS.includes(state.roundMetric)) {
@@ -16,7 +36,7 @@ export function normalizeRoundSelection(rows, state) {
   state.roundRunIds = state.roundRunIds.filter((id) => visibleRunIds.has(id));
 }
 
-export function renderRoundsPage(elements, rows, state, bundle) {
+export function renderRoundsPage(elements, rows, state, bundle, rerender = () => {}) {
   renderRunPicker(elements, rows, state);
   renderSelectedRunCards(elements, rows, state);
   renderMetricTabs(elements, state);
@@ -26,7 +46,7 @@ export function renderRoundsPage(elements, rows, state, bundle) {
     .sort(compareFlRoundRows);
   renderFlatNote(elements, selectedRows, state);
   renderRoundChart(elements, selectedRows, rows, state);
-  renderRoundTable(elements, selectedRows, state);
+  renderRoundTable(elements, selectedRows, state, rerender);
 }
 
 function renderRunPicker(elements, rows, state) {
@@ -155,37 +175,75 @@ function renderRoundChart(elements, roundRows, runRows, state) {
   });
 }
 
-function renderRoundTable(elements, rows, state) {
+function buildRoundColumns() {
+  const metricColumns = FL_ROUND_METRICS.map((metric) => ({
+    id: `metric:${metric}`,
+    group: "metric",
+    label: metricLabel(metric),
+    render: (row) => formatRoundMetric(row, metric),
+  }));
+  return [
+    ...ROUND_TABLE_COLUMNS,
+    ...metricColumns,
+  ];
+}
+
+function renderRoundTable(elements, rows, state, rerender) {
+  const columns = buildRoundColumns();
+  const { visibleColumns } = resolveTableColumns(
+    state.roundTableColumns,
+    columns,
+    columns.map((column) => column.id),
+  );
+  renderSortableTableHeader(elements.flRoundTableHead, visibleColumns, (sourceColumnId, targetColumnId) => {
+    if (moveTableColumn(state.roundTableColumns, sourceColumnId, targetColumnId)) {
+      rerender();
+    }
+  });
   if (rows.length === 0) {
-    elements.flRoundTable.innerHTML = emptyTableRow(13, "선택한 run의 round metric이 없습니다.");
+    elements.flRoundTable.innerHTML = emptyTableRow(
+      visibleColumns.length || 1,
+      "선택한 run의 round metric이 없습니다.",
+    );
     return;
   }
+  const rowById = new Map(columns.map((column) => [column.id, column]));
   elements.flRoundTable.innerHTML = rows
     .map(
       (row) => `
         <tr>
-          <td>${escapeHtml(roundTableLabel(row, state))}</td>
-          <td>${formatMetric(row.macro_f1)}</td>
-          <td>${formatMetric(row.accuracy_top_1)}</td>
-          <td>${formatMetric(row.loss)}</td>
-          <td>${formatMetric(row.expected_calibration_error)}</td>
-          <td>${formatMetric(row.accepted_ratio)}</td>
-          <td>${formatMetric(row.update_count)}</td>
-          <td>${formatBytes(row.total_payload_bytes)}</td>
-          <td>${formatSeconds(row.round_time_seconds)}</td>
-          <td>${formatMetric(row.gpu_memory_peak_mb)}</td>
-          <td>${formatMetric(row.round_update_delta_l2_mean)}</td>
-          <td>${formatMetric(row.round_update_delta_l2_max)}</td>
-          <td>${formatMetric(row.round_update_cosine_to_mean_mean)}</td>
+          ${visibleColumns
+            .map((column) => `<td>${rowById.get(column.id)?.render(row)}</td>`)
+            .join("")}
         </tr>
       `,
     )
     .join("");
 }
 
-function roundTableLabel(row, state) {
-  const base = row.round_id ?? roundLabel(row.round_index);
-  return state.roundRunIds.length <= 1 ? base : `${row.run_id} · ${base}`;
+function formatRoundMetric(row, metric) {
+  if (metric === "macro_f1") return formatMetric(row.macro_f1);
+  if (metric === "accuracy_top_1") return formatMetric(row.accuracy_top_1);
+  if (metric === "loss") return formatMetric(row.loss);
+  if (metric === "expected_calibration_error") return formatMetric(row.expected_calibration_error);
+  if (metric === "accepted_ratio") return formatMetric(row.accepted_ratio);
+  if (metric === "update_count") return formatMetric(row.update_count);
+  if (metric === "total_payload_bytes") return formatBytes(row.total_payload_bytes);
+  if (metric === "round_time_seconds") return formatSeconds(row.round_time_seconds);
+  if (metric === "gpu_memory_peak_mb") return formatMetric(row.gpu_memory_peak_mb);
+  if (metric === "macro_f1_delta_from_initial") return formatMetric(row.macro_f1_delta_from_initial);
+  if (metric === "macro_f1_delta_from_previous") return formatMetric(row.macro_f1_delta_from_previous);
+  if (metric === "loss_delta_from_initial") return formatMetric(row.loss_delta_from_initial);
+  if (metric === "loss_delta_from_previous") return formatMetric(row.loss_delta_from_previous);
+  if (metric === "ece_delta_from_initial") return formatMetric(row.ece_delta_from_initial);
+  if (metric === "accepted_ratio_delta_from_initial") return formatMetric(row.accepted_ratio_delta_from_initial);
+  if (metric === "round_update_delta_l2_mean") return formatMetric(row.round_update_delta_l2_mean);
+  if (metric === "round_update_delta_l2_max") return formatMetric(row.round_update_delta_l2_max);
+  if (metric === "round_update_delta_to_mean_l2_mean") return formatMetric(row.round_update_delta_to_mean_l2_mean);
+  if (metric === "round_update_delta_to_mean_l2_max") return formatMetric(row.round_update_delta_to_mean_l2_max);
+  if (metric === "round_update_cosine_to_mean_mean") return formatMetric(row.round_update_cosine_to_mean_mean);
+  if (metric === "round_update_cosine_to_mean_min") return formatMetric(row.round_update_cosine_to_mean_min);
+  return "-";
 }
 
 function roundLabel(roundIndex) {

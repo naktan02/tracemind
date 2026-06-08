@@ -19,10 +19,13 @@ export function createCentralSslState() {
     compareAxisLabel: "",
     classEvalSet: "validation",
     classMetric: "f1",
+    overviewColumnTab: "metric",
+    overviewTableColumns: { order: [], visible: [] },
     detailAlgorithm: null,
     detailRunId: null,
     projectionEvalSet: "validation",
     projectionAlgorithm: null,
     projectionRunIds: [],
+    classTableColumns: { order: [], visible: [] },
   };
 }

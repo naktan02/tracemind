@@ -103,8 +103,26 @@
                 </p>
                 <div class="overview-picker-grid">
                   <section>
-                    <h4>Metrics</h4>
+                    <h4>Columns</h4>
+                    <div class="table-column-tabs metric-tabs" role="tablist">
+                      <button
+                        type="button"
+                        data-overview-column-tab="metric"
+                        class="active"
+                        aria-selected="true"
+                      >
+                        Metric
+                      </button>
+                      <button
+                        type="button"
+                        data-overview-column-tab="axis"
+                        aria-selected="false"
+                      >
+                        축
+                      </button>
+                    </div>
                     <div id="overview-metric-picker" class="filter-value-list"></div>
+                    <div id="overview-axis-picker" class="filter-value-list" hidden></div>
                   </section>
                   <section>
                     <h4>Runs</h4>
@@ -218,18 +236,7 @@
               <div id="class-chart" class="bar-chart class-bars"></div>
               <div class="table-wrap compact">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>category</th>
-                      <th>support</th>
-                      <th>precision</th>
-                      <th>recall</th>
-                      <th>f1</th>
-                      <th>true prob</th>
-                      <th>top1 prob</th>
-                      <th>margin</th>
-                    </tr>
-                  </thead>
+                  <thead id="class-table-head"></thead>
                   <tbody id="class-table"></tbody>
                 </table>
               </div>
@@ -341,8 +348,26 @@
               </p>
               <div class="overview-picker-grid">
                 <section>
-                  <h4>Metrics</h4>
+                  <h4>Columns</h4>
+                  <div class="table-column-tabs metric-tabs" role="tablist">
+                    <button
+                      type="button"
+                      data-fl-run-column-tab="metric"
+                      class="active"
+                      aria-selected="true"
+                    >
+                      Metric
+                    </button>
+                    <button
+                      type="button"
+                      data-fl-run-column-tab="axis"
+                      aria-selected="false"
+                    >
+                      축
+                    </button>
+                  </div>
                   <div id="fl-run-metric-picker" class="filter-value-list"></div>
+                  <div id="fl-run-axis-picker" class="filter-value-list" hidden></div>
                 </section>
                 <section>
                   <h4>Filtered Runs</h4>
@@ -398,23 +423,7 @@
               <div id="fl-round-chart" class="line-chart"></div>
               <div class="table-wrap compact">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>round</th>
-                      <th>macro_f1</th>
-                      <th>accuracy</th>
-                      <th>loss</th>
-                      <th>ece</th>
-                      <th>accepted</th>
-                      <th>updates</th>
-                      <th>payload</th>
-                      <th>seconds</th>
-                      <th>gpu</th>
-                      <th>delta l2 mean</th>
-                      <th>delta l2 max</th>
-                      <th>cos mean</th>
-                    </tr>
-                  </thead>
+                  <thead id="fl-round-table-head"></thead>
                   <tbody id="fl-round-table"></tbody>
                 </table>
               </div>
@@ -437,20 +446,7 @@
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>client</th>
-                      <th>labeled</th>
-                      <th>unlabeled</th>
-                      <th>macro_f1</th>
-                      <th>accuracy</th>
-                      <th>loss</th>
-                      <th>ece</th>
-                      <th>accepted</th>
-                      <th>update rounds</th>
-                      <th>delta norm</th>
-                    </tr>
-                  </thead>
+                  <thead id="fl-client-validation-table-head"></thead>
                   <tbody id="fl-client-validation-table"></tbody>
                 </table>
               </div>
@@ -479,20 +475,7 @@
               </p>
               <div class="table-wrap">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>client</th>
-                      <th>candidate</th>
-                      <th>accepted</th>
-                      <th>ratio</th>
-                      <th>update</th>
-                      <th>delta norm</th>
-                      <th>cos mean</th>
-                      <th>payload</th>
-                      <th>seconds</th>
-                      <th>pseudo acc</th>
-                    </tr>
-                  </thead>
+                  <thead id="fl-client-round-table-head"></thead>
                   <tbody id="fl-client-round-table"></tbody>
                 </table>
               </div>
@@ -515,16 +498,7 @@
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>client</th>
-                      <th>labeled</th>
-                      <th>unlabeled</th>
-                      <th>labeled dist</th>
-                      <th>unlabeled dist</th>
-                      <th>combined dist</th>
-                    </tr>
-                  </thead>
+                  <thead id="fl-split-table-head"></thead>
                   <tbody id="fl-split-table"></tbody>
                 </table>
               </div>
