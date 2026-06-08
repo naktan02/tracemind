@@ -137,6 +137,7 @@ export function setTableColumnVisibility(state, columns, visibleIds, defaultVisi
 export function renderColumnCheckboxes(container, columns, selectedIds, dataKey) {
   if (!container) return;
   const selectedSet = new Set(selectedIds);
+  const dataAttribute = dataKey.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
   container.innerHTML =
     columns.length === 0
       ? `<p class="empty">선택 가능한 항목이 없습니다.</p>`
@@ -146,7 +147,7 @@ export function renderColumnCheckboxes(container, columns, selectedIds, dataKey)
               <label class="check-row compact">
                 <input
                   type="checkbox"
-                  data-table-column="${escapeHtml(dataKey)}"
+                  data-${dataAttribute}="${escapeHtml(column.id)}"
                   data-table-column-id="${escapeHtml(column.id)}"
                   ${selectedSet.has(column.id) ? "checked" : ""}
                 />
