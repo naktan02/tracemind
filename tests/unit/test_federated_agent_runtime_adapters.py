@@ -128,11 +128,11 @@ def _peft_client_round_runtime_callables() -> dict[str, str]:
             "build_training_backend_for_peft_encoder_state"
         ),
         "query_ssl_request_factory": (
-            "agent.src.services.training.execution.query_ssl_local_training_service."
+            "agent.src.services.training_runtime.query_ssl_peft.local_training_service."
             "QuerySslPeftEncoderLocalTrainingRequest"
         ),
         "query_ssl_training_runner": (
-            "agent.src.services.training.execution.query_ssl_local_training_service."
+            "agent.src.services.training_runtime.query_ssl_peft.local_training_service."
             "run_query_ssl_peft_encoder_local_training"
         ),
     }

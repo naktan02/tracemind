@@ -25,8 +25,6 @@ SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS = frozenset(
         "selection_stage",
         "pre_cap_rank",
         "max_examples",
-        "pseudo_label_algorithm_name",
-        "evidence_backend_name",
         "view_kind",
     }
 )
@@ -43,8 +41,6 @@ class PseudoLabelSelectionContext:
     selection_parameters: dict[str, float] = field(default_factory=dict)
     max_examples: int | None = None
     pre_cap_rank: int | None = None
-    pseudo_label_algorithm_name: str | None = None
-    evidence_backend_name: str | None = None
     evidence_view_kind: str | None = None
 
     def __post_init__(self) -> None:
@@ -73,10 +69,6 @@ class PseudoLabelSelectionContext:
             metadata[f"selection_parameter.{key}"] = value
         if self.max_examples is not None:
             metadata["max_examples"] = self.max_examples
-        if self.pseudo_label_algorithm_name is not None:
-            metadata["pseudo_label_algorithm_name"] = self.pseudo_label_algorithm_name
-        if self.evidence_backend_name is not None:
-            metadata["evidence_backend_name"] = self.evidence_backend_name
         if self.evidence_view_kind is not None:
             metadata["view_kind"] = self.evidence_view_kind
         return metadata

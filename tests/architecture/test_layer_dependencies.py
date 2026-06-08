@@ -1180,8 +1180,15 @@ def test_result_index_uses_payload_adapter_kind_as_canonical_field() -> None:
             ('"payload_adapter_kinds"',),
         ),
         (
-            REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "app.js",
-            ("row.payload_adapter_kind", "runtime.payload_adapter_kind"),
+            REPO_ROOT
+            / "apps"
+            / "experiment_dashboard"
+            / "src"
+            / "features"
+            / "fl_ssl"
+            / "logic"
+            / "labels.js",
+            ("row.payload_adapter_kind", "payload_adapter_kind"),
         ),
     )
     forbidden_by_path = (
@@ -1831,17 +1838,16 @@ def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
         for snippet in forbidden_snippets
         if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
-    dashboard_path = REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "app.js"
-    dashboard_source = dashboard_path.read_text(encoding="utf-8")
-    legacy_reader_start = dashboard_source.index("function normalizeDashboardBundle(")
-    legacy_reader_end = dashboard_source.index("function hydrateFilters(")
-    dashboard_active_source = (
-        dashboard_source[:legacy_reader_start] + dashboard_source[legacy_reader_end:]
+    dashboard_paths = tuple(
+        path
+        for path in (REPO_ROOT / "apps" / "experiment_dashboard" / "src").rglob("*.js")
+        if path.name != "normalize_bundle.js"
     )
     violations.extend(
-        f"{_relative_repo_path(dashboard_path)}: {snippet}"
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in dashboard_paths
         for snippet in forbidden_snippets
-        if snippet in dashboard_active_source
+        if snippet in path.read_text(encoding="utf-8")
     )
 
     assert not violations, (
@@ -2098,14 +2104,12 @@ def test_agent_runtime_compatibility_does_not_hardcode_privacy_guard_default() -
     path = (
         AGENT_SRC / "services" / "training" / "execution" / "runtime_compatibility.py"
     )
-    source = path.read_text(encoding="utf-8")
 
-    assert 'default_privacy_guard_name: str = "noop"' not in source, (
-        "agent runtime compatibility는 no-op privacy guard 이름을 직접 기본값으로 "
-        "갖지 않는다. live/API fallback profile의 privacy_guard_name을 읽어야 "
-        "privacy guard 기본값 source-of-truth가 중복되지 않는다."
+    assert not path.exists(), (
+        "agent stored-event runtime compatibility module은 제거됐다. privacy guard "
+        "기본값을 agent runtime에 다시 하드코딩하지 않는다.\n"
+        f"path={_relative_repo_path(path)}"
     )
-    assert "RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name" in source
 
 
 def test_round_manager_does_not_own_default_payload_adapter() -> None:
@@ -3357,21 +3361,14 @@ def test_fl_peer_context_policy_configs_stay_mechanism_only() -> None:
     )
 
 
-def test_local_training_service_uses_update_executor_not_concrete_backends() -> None:
-    path = (
-        AGENT_SRC / "services" / "training" / "execution" / "local_training_service.py"
-    )
-    imports = _collect_absolute_imports(path)
-    violations = sorted(
-        imported_module
-        for imported_module in imports
-        if imported_module.startswith("agent.src.services.training.backends.training.")
-    )
-    assert not violations, (
-        "LocalTrainingService는 selection orchestration만 맡고 update 생성은 "
-        "LocalUpdateExecutor port를 통해 호출한다. concrete training backend나 "
-        "training backend registry를 직접 import하지 않는다.\n"
-        f"{chr(10).join(f'- {module}' for module in violations)}"
+def test_agent_legacy_training_package_is_not_reintroduced() -> None:
+    package_root = AGENT_SRC / "services" / "training"
+
+    assert not package_root.exists(), (
+        "agent/src/services/training은 stored-event pseudo-label self-training "
+        "legacy package다. 현재 runtime은 services/training_runtime에서 current "
+        "TrainingTask와 Query SSL/FSSL local objective adapter만 소유한다.\n"
+        f"path={_relative_repo_path(package_root)}"
     )
 
 

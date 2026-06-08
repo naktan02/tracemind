@@ -134,18 +134,15 @@ def test_feedback_signal_payload_is_local_friendly(
     assert signal.label == "depression_rising"
 
 
-def test_training_objective_config_payload_accepts_policy_fields() -> None:
+def test_training_objective_config_payload_accepts_current_objective_fields() -> None:
     payload = TrainingObjectiveConfigPayload(
         training_backend_name="contrastive",
         algorithm_profile_name="peft_classifier_update_v1",
         loss_name="cross_entropy",
         example_generation_backend_name="weak_strong_pair",
-        evidence_backend_name="analysis_score_evidence",
         scorer_backend_name="classifier_head_logits",
         score_policy_name=None,
         score_top_k=None,
-        pseudo_label_algorithm_name="top1_margin_threshold",
-        acceptance_policy_name="top1_margin_threshold",
         privacy_guard_name="clip_only",
     )
 
@@ -153,28 +150,21 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
     assert payload.algorithm_profile_name == "peft_classifier_update_v1"
     assert payload.loss_name == "cross_entropy"
     assert payload.example_generation_backend_name == "weak_strong_pair"
-    assert payload.evidence_backend_name == "analysis_score_evidence"
     assert payload.scorer_backend_name == "classifier_head_logits"
     assert payload.score_policy_name is None
     assert payload.score_top_k is None
-    assert payload.pseudo_label_algorithm_name == "top1_margin_threshold"
-    assert payload.acceptance_policy_name == "top1_margin_threshold"
     assert payload.privacy_guard_name == "clip_only"
 
 
-def test_training_objective_config_round_trips_policy_fields() -> None:
+def test_training_objective_config_round_trips_current_objective_fields() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {
             "training_backend_name": "peft_classifier_trainer",
             "algorithm_profile_name": "peft_classifier_update_v1",
             "loss_name": "cross_entropy",
-            "selection.confidence_threshold": 0.65,
-            "selection.margin_threshold": 0.03,
             "example_generation_backend_name": "weak_strong_pair",
-            "evidence_backend_name": "analysis_score_evidence",
             "scorer_backend_name": "classifier_head_logits",
-            "pseudo_label_algorithm_name": "top1_confidence_only",
-            "acceptance_policy_name": "top1_confidence_only",
+            "query_ssl.acceptance_threshold": 0.65,
             "privacy_guard_name": "noop",
             "temperature": 0.8,
         }
@@ -184,32 +174,36 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     assert config.algorithm_profile_name == "peft_classifier_update_v1"
     assert config.loss_name == "cross_entropy"
     assert config.example_generation_backend_name == "weak_strong_pair"
-    assert config.evidence_backend_name == "analysis_score_evidence"
     assert config.scorer_backend_name == "classifier_head_logits"
     assert config.score_policy_name is None
     assert config.score_top_k is None
-    assert config.pseudo_label_algorithm_name == "top1_confidence_only"
-    assert config.acceptance_policy_name == "top1_confidence_only"
     assert config.privacy_guard_name == "noop"
     assert config.extras == {
-        "selection.confidence_threshold": 0.65,
-        "selection.margin_threshold": 0.03,
+        "query_ssl.acceptance_threshold": 0.65,
         "temperature": 0.8,
     }
     assert config.to_mapping() == {
         "training_backend_name": "peft_classifier_trainer",
         "algorithm_profile_name": "peft_classifier_update_v1",
         "loss_name": "cross_entropy",
-        "selection.confidence_threshold": 0.65,
-        "selection.margin_threshold": 0.03,
+        "query_ssl.acceptance_threshold": 0.65,
         "example_generation_backend_name": "weak_strong_pair",
-        "evidence_backend_name": "analysis_score_evidence",
         "scorer_backend_name": "classifier_head_logits",
-        "pseudo_label_algorithm_name": "top1_confidence_only",
-        "acceptance_policy_name": "top1_confidence_only",
         "privacy_guard_name": "noop",
         "temperature": 0.8,
     }
+
+
+def test_training_objective_config_rejects_legacy_stored_event_policy_fields() -> None:
+    with pytest.raises(ValueError, match="stored-event pseudo-label"):
+        TrainingObjectiveConfig.from_mapping(
+            {
+                "training_backend_name": "peft_classifier_trainer",
+                "evidence_backend_name": "analysis_score_evidence",
+                "pseudo_label_algorithm_name": "top1_confidence_only",
+                "acceptance_policy_name": "top1_confidence_only",
+            }
+        )
 
 
 def test_training_objective_config_normalizes_nested_component_extras() -> None:
@@ -258,9 +252,6 @@ def test_training_objective_config_preserves_algorithm_profile_without_expansion
     assert config.algorithm_profile_name == "peft_classifier_update_v1"
     assert config.training_backend_name == "peft_classifier_trainer"
     assert config.example_generation_backend_name is None
-    assert config.evidence_backend_name is None
-    assert config.pseudo_label_algorithm_name is None
-    assert config.acceptance_policy_name is None
     assert config.extras == {}
 
 
@@ -276,7 +267,6 @@ def test_training_objective_config_does_not_expand_unknown_algorithm_profile() -
     assert config.training_backend_name == "peft_classifier_trainer"
     assert config.example_generation_backend_name is None
     assert config.scorer_backend_name is None
-    assert config.pseudo_label_algorithm_name is None
     assert config.privacy_guard_name is None
 
 
@@ -285,20 +275,6 @@ def test_training_objective_config_requires_training_backend_name() -> None:
         TrainingObjectiveConfig.from_mapping(
             {"algorithm_profile_name": "peft_classifier_update_v1"}
         )
-
-
-def test_training_objective_config_from_mapping_keeps_legacy_algorithm_fallback() -> (
-    None
-):
-    config = TrainingObjectiveConfig.from_mapping(
-        {
-            "training_backend_name": "peft_classifier_trainer",
-            "acceptance_policy_name": "top1_margin_threshold",
-        }
-    )
-
-    assert config.pseudo_label_algorithm_name == "top1_margin_threshold"
-    assert config.acceptance_policy_name == "top1_margin_threshold"
 
 
 def test_training_objective_config_accepts_legacy_loss_alias() -> None:

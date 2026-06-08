@@ -145,7 +145,7 @@ Reddit Labeled Data
 | 중앙/FL 공통 text encoder SSL runtime support | `scripts/support/query_ssl_text_encoder/*` |
 | trainer core | `methods/adaptation/query_text_views/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | evaluation metric core | `methods/evaluation/*` |
-| captured generated view source | `agent/src/services/training/datasets/captured_text_training_source_service.py` |
+| captured generated view source | `agent/src/services/training_runtime/training_sources/captured_text_source.py` |
 | training source usage ledger | `agent/src/infrastructure/repositories/training_usage_ledger_repository.py` |
 
 주의:
@@ -183,7 +183,7 @@ Raw Event / Local Signal
 | FL report/evaluation payload | `methods/evaluation/*`, `scripts/experiments/fl_ssl/federated_simulation/io/*` |
 | payload adapter wiring | `main_server/src/services/federation/rounds/payload_adapters/registry.py`, `payload_adapters/models.py` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
-| agent current-task application flow | `agent/src/services/training/execution/agent_training_task_runner_service.py` |
+| agent current-task application flow | `agent/src/services/training_runtime/current_task/agent_training_task_runner_service.py` |
 
 ## 4. 코드 계층과 소유권
 

@@ -22,22 +22,19 @@ from agent.src.services.assets.shared_adapters.sync_service import (
 )
 from agent.src.services.federation.rounds.artifact_client import RoundArtifactClient
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.federation.rounds.runtime_service import (
-    FederationRunResult,
-    FederationRuntimeService,
-)
-from agent.src.services.training.execution.query_ssl_training_task_service import (
+from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
+
+from .query_ssl_training_task_service import (
     AgentQuerySslTrainingTaskRunRequest,
     AgentQuerySslTrainingTaskService,
 )
-from agent.src.services.training.execution.runtime_compatibility import (
-    validate_local_training_runtime,
+from .result import (
+    TrainingTaskRunResult,
+    TrainingTaskRunStatus,
 )
-from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
 
 RoundClientFactory = Callable[[str], RoundClient]
 RoundArtifactClientFactory = Callable[[str], RoundArtifactClient]
-FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
 
 
 @dataclass(slots=True, frozen=True)
@@ -49,17 +46,7 @@ class AgentTrainingTaskRunRequest:
     agent_id: str | None = None
 
 
-@dataclass(slots=True, frozen=True)
-class AgentTrainingTaskRunResult:
-    """Agent current task 실행 결과."""
-
-    status: str
-    round_id: str | None = None
-    task_id: str | None = None
-    update_id: str | None = None
-    example_count: int = 0
-    accepted_count: int = 0
-    message: str = ""
+AgentTrainingTaskRunResult = TrainingTaskRunResult
 
 
 @dataclass(slots=True)
@@ -73,7 +60,6 @@ class AgentTrainingTaskRunnerService:
     shared_adapter_runtime_service: SharedAdapterRuntimeService
     shared_adapter_sync_service: SharedAdapterSyncService
     round_client_factory: RoundClientFactory
-    federation_runtime_service_factory: FederationRuntimeServiceFactory
     round_artifact_client_factory: RoundArtifactClientFactory = RoundArtifactClient
     captured_text_repository: CapturedTextRepository | None = None
     query_ssl_task_service: AgentQuerySslTrainingTaskService = field(
@@ -90,7 +76,7 @@ class AgentTrainingTaskRunnerService:
         task_payload = round_client.fetch_current_task()
         if task_payload is None:
             return AgentTrainingTaskRunResult(
-                status="no_active_task",
+                status=TrainingTaskRunStatus.NO_ACTIVE_TASK,
                 message="현재 active round 또는 open task가 없습니다.",
             )
         query_ssl_config = QuerySslObjectiveRuntimeConfig.from_objective_config(
@@ -98,15 +84,15 @@ class AgentTrainingTaskRunnerService:
         )
 
         if query_ssl_config is None:
-            try:
-                validate_local_training_runtime(task_payload)
-            except ValueError as error:
-                return AgentTrainingTaskRunResult(
-                    status="unsupported_runtime",
-                    round_id=task_payload.round_id,
-                    task_id=task_payload.task_id,
-                    message=str(error),
-                )
+            return AgentTrainingTaskRunResult(
+                status=TrainingTaskRunStatus.UNSUPPORTED_RUNTIME,
+                round_id=task_payload.round_id,
+                task_id=task_payload.task_id,
+                message=(
+                    "Query SSL objective가 없는 legacy stored-event training task는 "
+                    "agent runtime에서 지원하지 않습니다."
+                ),
+            )
 
         try:
             self.shared_adapter_sync_service.pull_current(
@@ -119,7 +105,7 @@ class AgentTrainingTaskRunnerService:
             active_state = adapter_context.require_shared_state()
         except FileNotFoundError as error:
             return AgentTrainingTaskRunResult(
-                status="no_active_shared_state",
+                status=TrainingTaskRunStatus.NO_ACTIVE_SHARED_STATE,
                 round_id=task_payload.round_id,
                 task_id=task_payload.task_id,
                 message=str(error),
@@ -127,7 +113,7 @@ class AgentTrainingTaskRunnerService:
 
         if active_manifest.model_revision != task_payload.model_revision:
             return AgentTrainingTaskRunResult(
-                status="stale_shared_state",
+                status=TrainingTaskRunStatus.STALE_SHARED_STATE,
                 round_id=task_payload.round_id,
                 task_id=task_payload.task_id,
                 message=(
@@ -156,7 +142,7 @@ class AgentTrainingTaskRunnerService:
                 )
             except ValueError as error:
                 return AgentTrainingTaskRunResult(
-                    status="unsupported_runtime",
+                    status=TrainingTaskRunStatus.UNSUPPORTED_RUNTIME,
                     round_id=task_payload.round_id,
                     task_id=task_payload.task_id,
                     message=str(error),
@@ -170,22 +156,3 @@ class AgentTrainingTaskRunnerService:
                 accepted_count=result.accepted_count,
                 message=result.message,
             )
-
-        training_examples = ()
-
-        service = self.federation_runtime_service_factory(request.server_base_url)
-        result: FederationRunResult = service.run_current_task(
-            training_examples=training_examples,
-            model_manifest=active_manifest,
-            agent_id=request.agent_id,
-            task_payload=task_payload,
-        )
-        return AgentTrainingTaskRunResult(
-            status=str(result.status),
-            round_id=result.round_id,
-            task_id=result.task_id,
-            update_id=result.update_id,
-            example_count=result.example_count,
-            accepted_count=result.accepted_count,
-            message=result.message,
-        )

@@ -28,17 +28,17 @@ from agent.src.infrastructure.repositories.training_usage_ledger_repository impo
     TrainingUsageRunRecord,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.federation.rounds.runtime_service import (
-    FederationRunResult,
-    FederationRunStatus,
+from agent.src.services.training_runtime.current_task.result import (
+    TrainingTaskRunResult,
+    TrainingTaskRunStatus,
 )
-from agent.src.services.training.datasets.captured_text_training_source_service import (
-    CapturedTextTrainingSourceService,
-)
-from agent.src.services.training.execution.query_ssl_local_training_service import (
+from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (
     QuerySslLocalTrainingService,
     QuerySslPeftEncoderClientTrainingResult,
     QuerySslPeftEncoderLocalTrainingRequest,
+)
+from agent.src.services.training_runtime.training_sources.captured_text_source import (
+    CapturedTextTrainingSourceService,
 )
 from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
 from methods.adaptation.peft_text_encoder.federated_ssl.method_owned_training import (
@@ -138,7 +138,7 @@ class AgentQuerySslTrainingTaskService:
     def run_current_task(
         self,
         request: AgentQuerySslTrainingTaskRunRequest,
-    ) -> FederationRunResult:
+    ) -> TrainingTaskRunResult:
         """Query SSL objective task를 실행하고 서버에 update를 업로드한다."""
 
         if not isinstance(request.active_state, PeftClassifierState):
@@ -229,8 +229,8 @@ class AgentQuerySslTrainingTaskService:
                 recorded_at=recorded_at,
             ),
         )
-        return FederationRunResult(
-            status=FederationRunStatus.UPLOADED,
+        return TrainingTaskRunResult(
+            status=TrainingTaskRunStatus.UPLOADED,
             round_id=request.training_task.round_id,
             task_id=request.training_task.task_id,
             update_id=local_result.update_envelope.update_id,
@@ -591,9 +591,9 @@ def _insufficient_query_ssl_examples(
     example_count: int = 0,
     accepted_count: int = 0,
     message: str,
-) -> FederationRunResult:
-    return FederationRunResult(
-        status=FederationRunStatus.INSUFFICIENT_EXAMPLES,
+) -> TrainingTaskRunResult:
+    return TrainingTaskRunResult(
+        status=TrainingTaskRunStatus.INSUFFICIENT_EXAMPLES,
         round_id=training_task.round_id,
         task_id=training_task.task_id,
         example_count=example_count,

@@ -187,9 +187,9 @@ agent가 task payload만 보고 실행할 수 있도록 해당 값을 `query_ssl
 2. `training_scope`와 `model_revision`이 빠지지 않아야 한다.
 3. objective와 selection policy가 분리돼 있어야 한다.
 4. `training_backend_name`, `example_generation_backend_name`,
-   `scorer_backend_name`, `score_policy_name`,
-   `pseudo_label_algorithm_name`, `acceptance_policy_name`,
-   `privacy_guard_name`은 서로 다른 교체 축으로 해석돼야 한다.
+   `scorer_backend_name`, `score_policy_name`, `privacy_guard_name`은 서로
+   다른 교체 축으로 해석돼야 한다.
    단, PEFT Query SSL raw-row runtime은 scorer backend를 쓰지 않으므로
-   `scorer_backend_name`을 기본값으로 채우지 않는다. stored-event scoring
-   runtime처럼 scorer가 실제로 필요한 경로만 명시한다.
+   `scorer_backend_name`을 기본값으로 채우지 않는다. method별 pseudo-label
+   acceptance/threshold 의미는 `query_ssl.*` extra나 `methods/federated_ssl/*`
+   descriptor에서 해석한다.

@@ -24,14 +24,11 @@ from agent.src.services.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.federation.rounds.runtime_service import (
-    FederationRuntimeService,
-)
-from agent.src.services.training.execution.agent_training_task_runner_service import (
+from agent.src.services.training_runtime.current_task.agent_training_task_runner_service import (  # noqa: E501
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
 )
-from agent.src.services.training.execution.query_ssl_training_task_service import (
+from agent.src.services.training_runtime.current_task.query_ssl_training_task_service import (  # noqa: E501
     AgentQuerySslTrainingTaskService,
 )
 from shared.src.contracts.training_contracts import TrainingTaskPayload
@@ -85,7 +82,6 @@ class TrainingStatusResponse(BaseModel):
 router = APIRouter(prefix="/api/v1/training", tags=["training"])
 
 RoundClientFactory = Callable[[str], RoundClient]
-FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
 
 
 # ------------------------------------------------------------------ #
@@ -137,19 +133,6 @@ def get_round_client_factory(request: Request) -> RoundClientFactory:
     return factory
 
 
-def get_federation_runtime_service_factory(
-    request: Request,
-) -> FederationRuntimeServiceFactory:
-    """app.state에서 FederationRuntimeService factory를 읽는다."""
-    factory = getattr(request.app.state, "federation_runtime_service_factory", None)
-    if factory is None:
-        raise RuntimeError(
-            "FederationRuntimeService factory가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.federation_runtime_service_factory를 설정하세요."
-        )
-    return factory
-
-
 def get_training_usage_ledger_repository(
     request: Request,
 ) -> TrainingUsageLedgerRepository:
@@ -176,10 +159,6 @@ SharedAdapterSyncServiceDep = Annotated[
     Depends(get_shared_adapter_sync_service),
 ]
 RoundClientFactoryDep = Annotated[RoundClientFactory, Depends(get_round_client_factory)]
-FederationRuntimeFactoryDep = Annotated[
-    FederationRuntimeServiceFactory,
-    Depends(get_federation_runtime_service_factory),
-]
 TrainingUsageLedgerRepoDep = Annotated[
     TrainingUsageLedgerRepository,
     Depends(get_training_usage_ledger_repository),
@@ -192,7 +171,6 @@ def get_training_task_runner_service(
     shared_adapter_runtime_service: SharedAdapterRuntimeServiceDep,
     shared_adapter_sync_service: SharedAdapterSyncServiceDep,
     round_client_factory: RoundClientFactoryDep,
-    runtime_factory: FederationRuntimeFactoryDep,
     training_usage_ledger_repository: TrainingUsageLedgerRepoDep,
 ) -> AgentTrainingTaskRunnerService:
     """run-current-task application service를 조립한다."""
@@ -202,7 +180,6 @@ def get_training_task_runner_service(
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
-        federation_runtime_service_factory=runtime_factory,
         captured_text_repository=_get_optional_captured_text_repository(request),
         query_ssl_task_service=AgentQuerySslTrainingTaskService(
             usage_ledger_repository=training_usage_ledger_repository

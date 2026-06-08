@@ -11,7 +11,7 @@ classifier/prototype scoring은 scorer backend와 local asset provider로 분리
 - `agent/src/services/README.md`
 - 로컬 추론 rail: `agent/src/services/inference/`
 - scorer asset runtime: `agent/src/services/assets/`
-- 로컬 학습 rail: `agent/src/services/training/`
+- 로컬 학습 rail: `agent/src/services/training_runtime/`
 - 서버 참여 orchestration: `agent/src/services/federation/rounds/`
 - language helper: `agent/src/services/language/`
 

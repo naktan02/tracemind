@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from agent.src.services.federation.rounds.runtime_service import (
-    FederationRunResult,
-    FederationRunStatus,
-)
-from agent.src.services.training.execution.agent_training_task_runner_service import (
+from agent.src.services.training_runtime.current_task.agent_training_task_runner_service import (  # noqa: E501
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
+)
+from agent.src.services.training_runtime.current_task.result import (
+    TrainingTaskRunResult,
+    TrainingTaskRunStatus,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_state_payload,
@@ -44,13 +44,9 @@ def _build_query_ssl_task_payload(
             algorithm_profile_name="peft_classifier_update_v1",
             training_backend_name="peft_classifier_trainer",
             example_generation_backend_name="weak_strong_pair",
-            evidence_backend_name="analysis_score_evidence",
             scorer_backend_name="classifier_head_logits",
-            acceptance_policy_name="top1_margin_threshold",
             privacy_guard_name="noop",
             extras={
-                "selection.confidence_threshold": 0.6,
-                "selection.margin_threshold": 0.02,
                 "query_ssl.method_name": "fixmatch_usb_v1",
                 "query_ssl.algorithm_name": "fixmatch",
                 "query_ssl.strong_view_policy": "first_aug",
@@ -84,9 +80,7 @@ def _build_legacy_task_payload() -> TrainingTaskPayload:
         objective_config=TrainingObjectiveConfigPayload(
             training_backend_name="peft_classifier_trainer",
             example_generation_backend_name="peft_classifier_raw_rows",
-            evidence_backend_name="analysis_score_evidence",
             scorer_backend_name="classifier_head_logits",
-            acceptance_policy_name="top1_margin_threshold",
             privacy_guard_name="noop",
         ),
         selection_policy=TrainingSelectionPolicyPayload(),
@@ -120,7 +114,6 @@ def _build_service(
     shared_adapter_runtime_service: MagicMock,
     shared_adapter_sync_service: MagicMock,
     round_client_factory: MagicMock,
-    runtime_factory: MagicMock,
     query_ssl_task_service: object | None = None,
 ) -> AgentTrainingTaskRunnerService:
     kwargs = {}
@@ -131,7 +124,6 @@ def _build_service(
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
-        federation_runtime_service_factory=runtime_factory,
         **kwargs,
     )
 
@@ -162,10 +154,9 @@ def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
         },
     )
     round_client_factory = MagicMock(return_value=round_client)
-    runtime_factory = MagicMock()
     query_ssl_task_service = MagicMock()
-    query_ssl_task_service.run_current_task.return_value = FederationRunResult(
-        status=FederationRunStatus.UPLOADED,
+    query_ssl_task_service.run_current_task.return_value = TrainingTaskRunResult(
+        status=TrainingTaskRunStatus.UPLOADED,
         round_id="round_query_ssl",
         task_id="task_query_ssl",
         update_id="update_query_ssl",
@@ -178,7 +169,6 @@ def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
-        runtime_factory=runtime_factory,
         query_ssl_task_service=query_ssl_task_service,
     )
 
@@ -186,7 +176,7 @@ def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
         AgentTrainingTaskRunRequest(server_base_url="http://server.test")
     )
 
-    assert response.status == str(FederationRunStatus.UPLOADED)
+    assert response.status == TrainingTaskRunStatus.UPLOADED
     assert response.round_id == "round_query_ssl"
     assert response.task_id == "task_query_ssl"
     assert response.update_id == "update_query_ssl"
@@ -199,7 +189,6 @@ def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
     assert query_ssl_request.training_task.fssl_context["method_name"] == "fedmatch"
     assert query_ssl_request.model_manifest is active_manifest
     assert query_ssl_request.active_state is active_state
-    runtime_factory.assert_not_called()
 
 
 def test_runner_rejects_legacy_non_query_ssl_task_without_runtime_contract() -> None:
@@ -217,26 +206,16 @@ def test_runner_rejects_legacy_non_query_ssl_task_without_runtime_contract() -> 
     round_client = MagicMock()
     round_client.fetch_current_task.return_value = _build_legacy_task_payload()
     round_client_factory = MagicMock(return_value=round_client)
-    federation_runtime = MagicMock()
-    federation_runtime.run_current_task.return_value = FederationRunResult(
-        status=FederationRunStatus.INSUFFICIENT_EXAMPLES,
-        round_id="round_legacy",
-        task_id="task_legacy",
-    )
-    runtime_factory = MagicMock(return_value=federation_runtime)
     service = _build_service(
         repo=repo,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
-        runtime_factory=runtime_factory,
     )
 
     response = service.run_current_task(
         AgentTrainingTaskRunRequest(server_base_url="http://server.test")
     )
 
-    assert response.status == "unsupported_runtime"
+    assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
     shared_adapter_sync_service.pull_current.assert_not_called()
-    runtime_factory.assert_not_called()
-    federation_runtime.run_current_task.assert_not_called()

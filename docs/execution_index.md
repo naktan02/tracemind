@@ -64,7 +64,7 @@ Agent runtime:
 1. `agent/AGENTS.md`
 2. `agent/src/services/README.md`
 3. `agent/src/services/inference/**`
-4. `agent/src/services/training/**`
+4. `agent/src/services/training_runtime/**`
 5. `agent/src/services/federation/**`
 
 Main server FL:

@@ -15,13 +15,15 @@ _OBJECTIVE_CONFIG_KEYS = {
     "loss",
     "loss_name",
     "example_generation_backend_name",
-    "evidence_backend_name",
     "scorer_backend_name",
     "score_policy_name",
     "score_top_k",
+    "privacy_guard_name",
+}
+_REMOVED_OBJECTIVE_CONFIG_KEYS = {
+    "evidence_backend_name",
     "pseudo_label_algorithm_name",
     "acceptance_policy_name",
-    "privacy_guard_name",
 }
 
 
@@ -53,10 +55,6 @@ class TrainingObjectiveConfigPayload(BaseModel):
         default=None,
         description="학습 예시 재구성 backend 식별자.",
     )
-    evidence_backend_name: str | None = Field(
-        default=None,
-        description="Pseudo-label evidence 정규화 backend 식별자.",
-    )
     scorer_backend_name: str | None = Field(
         default=None,
         description="카테고리 score 계산 backend 식별자.",
@@ -69,14 +67,6 @@ class TrainingObjectiveConfigPayload(BaseModel):
         default=None,
         ge=1,
         description="Top-k score 집계 정책이 사용할 k 값.",
-    )
-    pseudo_label_algorithm_name: str | None = Field(
-        default=None,
-        description="Pseudo-label 후보를 평가하는 selection 알고리즘 식별자.",
-    )
-    acceptance_policy_name: str | None = Field(
-        default=None,
-        description="Pseudo-label acceptance 정책 식별자.",
     )
     privacy_guard_name: str | None = Field(
         default=None,
@@ -96,20 +86,17 @@ class TrainingObjectiveConfigPayload(BaseModel):
         if source is None:
             raise ValueError("training_backend_name is required.")
         source = _flatten_objective_mapping(source)
+        removed_keys = sorted(
+            key for key in source if key in _REMOVED_OBJECTIVE_CONFIG_KEYS
+        )
+        if removed_keys:
+            raise ValueError(
+                "stored-event pseudo-label objective fields are not supported: "
+                f"{', '.join(removed_keys)}"
+            )
         backend_name = source.get("training_backend_name", source.get("loss"))
         if backend_name is None:
             raise ValueError("training_backend_name is required.")
-        pseudo_label_algorithm_name = optional_config_str(
-            source.get("pseudo_label_algorithm_name")
-        )
-        if pseudo_label_algorithm_name is None:
-            # compatibility:
-            # 과거 objective mapping은 acceptance 정책 이름을 selection 알고리즘
-            # 식별자로도 재사용했다. canonical contract는 분리하되,
-            # mapping 정규화 경로에서만 얇게 이어받는다.
-            pseudo_label_algorithm_name = optional_config_str(
-                source.get("acceptance_policy_name")
-            )
         return cls(
             training_backend_name=str(backend_name),
             algorithm_profile_name=optional_config_str(
@@ -119,16 +106,9 @@ class TrainingObjectiveConfigPayload(BaseModel):
             example_generation_backend_name=optional_config_str(
                 source.get("example_generation_backend_name")
             ),
-            evidence_backend_name=optional_config_str(
-                source.get("evidence_backend_name")
-            ),
             scorer_backend_name=optional_config_str(source.get("scorer_backend_name")),
             score_policy_name=optional_config_str(source.get("score_policy_name")),
             score_top_k=optional_config_positive_int(source.get("score_top_k")),
-            pseudo_label_algorithm_name=pseudo_label_algorithm_name,
-            acceptance_policy_name=optional_config_str(
-                source.get("acceptance_policy_name")
-            ),
             privacy_guard_name=optional_config_str(source.get("privacy_guard_name")),
             extras={
                 key: value
@@ -150,18 +130,12 @@ class TrainingObjectiveConfigPayload(BaseModel):
             result["example_generation_backend_name"] = (
                 self.example_generation_backend_name
             )
-        if self.evidence_backend_name is not None:
-            result["evidence_backend_name"] = self.evidence_backend_name
         if self.scorer_backend_name is not None:
             result["scorer_backend_name"] = self.scorer_backend_name
         if self.score_policy_name is not None:
             result["score_policy_name"] = self.score_policy_name
         if self.score_top_k is not None:
             result["score_top_k"] = self.score_top_k
-        if self.pseudo_label_algorithm_name is not None:
-            result["pseudo_label_algorithm_name"] = self.pseudo_label_algorithm_name
-        if self.acceptance_policy_name is not None:
-            result["acceptance_policy_name"] = self.acceptance_policy_name
         if self.privacy_guard_name is not None:
             result["privacy_guard_name"] = self.privacy_guard_name
         result.update(self.extras)

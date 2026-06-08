@@ -46,9 +46,6 @@ from agent.src.services.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.federation.rounds.runtime_service import (
-    FederationRuntimeService,
-)
 from agent.src.services.inference.pipeline_factory import build_default_pipeline_service
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.ingest.captured_text_lifecycle_service import (
@@ -82,7 +79,6 @@ from agent.src.services.wellbeing.timeseries_service import (
 )
 
 RoundClientFactory = Callable[[str], RoundClient]
-FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
 FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV = "FAMILY_EXTENSION_ALLOWED_ORIGINS"
 DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS = (
     "http://localhost:5174",
@@ -107,14 +103,6 @@ def _default_round_client_factory(server_base_url: str) -> RoundClient:
     return RoundClient(server_base_url=server_base_url)
 
 
-def _default_federation_runtime_service_factory(
-    server_base_url: str,
-) -> FederationRuntimeService:
-    return FederationRuntimeService(
-        round_client=_default_round_client_factory(server_base_url)
-    )
-
-
 def create_app(
     *,
     pipeline_service: InferencePipelineService | None = None,
@@ -136,7 +124,6 @@ def create_app(
     child_support_coach_service: ChildSupportCoachService | None = None,
     child_support_llm_provider: ChildSupportLlmProvider | None = None,
     round_client_factory: RoundClientFactory | None = None,
-    federation_runtime_service_factory: FederationRuntimeServiceFactory | None = None,
     family_extension_allowed_origins: tuple[str, ...] | None = None,
     auto_configure_pipeline: bool = False,
 ) -> FastAPI:
@@ -227,10 +214,6 @@ def create_app(
     )
     app.state.round_client_factory = (
         round_client_factory or _default_round_client_factory
-    )
-    app.state.federation_runtime_service_factory = (
-        federation_runtime_service_factory
-        or _default_federation_runtime_service_factory
     )
     if pipeline_service is not None:
         app.state.pipeline_service = pipeline_service

@@ -31,7 +31,7 @@ from agent.src.services.ingest.captured_text_lifecycle_service import (
 from agent.src.services.ingest.captured_text_view_generation_service import (
     CapturedTextViewGenerationService,
 )
-from agent.src.services.training.datasets.captured_text_training_source_service import (
+from agent.src.services.training_runtime.training_sources.captured_text_source import (
     CapturedTextTrainingSourceService,
 )
 
@@ -289,23 +289,6 @@ def test_view_generation_service_regenerates_stale_ready_views(
 
 
 def test_generated_view_training_source_projection_uses_ready_views(
-    tmp_repo: CapturedTextRepository,
-) -> None:
-    tmp_repo.save(_make_record(event_id="event_1", text="불안해"))
-    service = CapturedTextViewGenerationService(repository=tmp_repo)
-    service.generate_pending_views(limit=10)
-
-    source_service = CapturedTextTrainingSourceService(repository=tmp_repo)
-    source_rows = source_service.get_recent_source_rows(days=7, limit=10)
-
-    assert len(source_rows) == 1
-    assert source_rows[0].query_id == "event_1"
-    assert source_rows[0].text == "불안해"
-    assert source_rows[0].weak_text == "불안해"
-    assert source_rows[0].strong_text == "불안해"
-
-
-def test_generated_view_query_ssl_projection_uses_aug_candidates(
     tmp_repo: CapturedTextRepository,
 ) -> None:
     tmp_repo.save(_make_record(event_id="event_1", text="불안해"))

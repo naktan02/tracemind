@@ -415,12 +415,9 @@ def _default_training_task_config(
                 "confidence_threshold": confidence_threshold,
                 "margin_threshold": margin_threshold,
                 "example_generation_backend_name": "peft_classifier_raw_rows",
-                "evidence_backend_name": "peft_classifier_logits",
                 "scorer_backend_name": scorer_backend_name,
                 "score_policy_name": score_policy_name,
                 **({} if score_top_k is None else {"score_top_k": score_top_k}),
-                "pseudo_label_algorithm_name": "top1_margin_threshold",
-                "acceptance_policy_name": "top1_margin_threshold",
                 "privacy_guard_name": privacy_guard_name,
                 **(objective_extras or {}),
             }
@@ -689,11 +686,11 @@ def _peft_client_round_runtime_callables() -> dict[str, str]:
             "build_training_backend_for_peft_encoder_state"
         ),
         "query_ssl_request_factory": (
-            "agent.src.services.training.execution.query_ssl_local_training_service."
+            "agent.src.services.training_runtime.query_ssl_peft.local_training_service."
             "QuerySslPeftEncoderLocalTrainingRequest"
         ),
         "query_ssl_training_runner": (
-            "agent.src.services.training.execution.query_ssl_local_training_service."
+            "agent.src.services.training_runtime.query_ssl_peft.local_training_service."
             "run_query_ssl_peft_encoder_local_training"
         ),
     }
@@ -1332,9 +1329,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
                 "confidence_threshold": 0.0,
                 "margin_threshold": 0.0,
                 "example_generation_backend_name": "peft_classifier_raw_rows",
-                "evidence_backend_name": "peft_classifier_logits",
                 "scorer_backend_name": "peft_classifier_logits",
-                "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
                 **_peft_objective_extras(
                     delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
@@ -1657,9 +1652,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
                 "confidence_threshold": 0.0,
                 "margin_threshold": 0.0,
                 "example_generation_backend_name": "peft_classifier_raw_rows",
-                "evidence_backend_name": "peft_classifier_logits",
                 "scorer_backend_name": "peft_classifier_logits",
-                "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
                 **_peft_objective_extras(delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE),
             }

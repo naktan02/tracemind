@@ -19,7 +19,7 @@ from agent.src.infrastructure.repositories.training_usage_ledger_repository impo
     TRAINING_USAGE_ROLE_UNLABELED_GENERATED_VIEW,
     TrainingUsageLedgerRepository,
 )
-from agent.src.services.training.execution.query_ssl_training_task_service import (
+from agent.src.services.training_runtime.current_task.query_ssl_training_task_service import (  # noqa: E501
     AgentQuerySslTrainingTaskRunRequest,
     AgentQuerySslTrainingTaskService,
 )
@@ -410,13 +410,9 @@ def _query_ssl_task(
             algorithm_profile_name="peft_classifier_update_v1",
             training_backend_name="peft_classifier_trainer",
             example_generation_backend_name="weak_strong_pair",
-            evidence_backend_name="analysis_score_evidence",
             scorer_backend_name="classifier_head_logits",
-            acceptance_policy_name="top1_margin_threshold",
             privacy_guard_name="noop",
             extras={
-                "selection.confidence_threshold": 0.6,
-                "selection.margin_threshold": 0.02,
                 "query_ssl.method_name": "fixmatch_usb_v1",
                 "query_ssl.algorithm_name": "fixmatch",
                 "query_ssl.strong_view_policy": "first_aug",
