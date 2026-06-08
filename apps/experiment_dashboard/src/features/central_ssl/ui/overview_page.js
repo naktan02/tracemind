@@ -1,5 +1,5 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
-import { compareMetricValues, metricLabel } from "../../../shared/formatting/metrics.js";
+import { metricLabel } from "../../../shared/formatting/metrics.js";
 import { formatMetric } from "../../../shared/formatting/numbers.js";
 import { renderCheckboxList } from "../../../ui/controls/form_controls.js";
 import { emptyTableRow } from "../../../ui/tables/table.js";
@@ -37,13 +37,7 @@ export function renderOverviewPage(elements, rows, state) {
   );
   renderRunPicker(elements, rows, state);
   renderSelectedRunCards(elements, rows, state);
-  renderMetricCards(elements, rows, state);
   renderOverviewTable(elements, rows, state);
-  elements.overviewSelectionSummary.textContent = [
-    `selected runs=${state.overviewRunIds.length}/${rows.length}`,
-    `metrics=${state.overviewMetricIds.length}`,
-    "basis=best_validation_accuracy",
-  ].join(" · ");
 }
 
 function renderRunPicker(elements, rows, state) {
@@ -106,21 +100,6 @@ function renderSelectedRunCards(elements, rows, state) {
     .join("");
 }
 
-function renderMetricCards(elements, rows, state) {
-  const selectedRows = rows.filter((row) => state.overviewRunIds.includes(row.run_id));
-  const primaryMetric = state.overviewMetricIds[0] ?? "macro_f1";
-  const best = selectedRows
-    .slice()
-    .sort((left, right) => compareMetricValues(left[primaryMetric], right[primaryMetric], primaryMetric))[0];
-  const algorithmCount = new Set(rows.map(algorithmName)).size;
-  elements.metricCards.innerHTML = [
-    card("runs", rows.length),
-    card("algorithms", algorithmCount),
-    card(`best ${metricLabel(primaryMetric)}`, best ? formatMetric(best[primaryMetric]) : "-"),
-    card("selected runs", state.overviewRunIds.length),
-  ].join("");
-}
-
 function renderOverviewTable(elements, rows, state) {
   const rowsById = new Map(rows.map((row) => [row.run_id, row]));
   const selectedRows = state.overviewRunIds
@@ -150,8 +129,4 @@ function renderOverviewTable(elements, rows, state) {
       `,
     )
     .join("");
-}
-
-function card(label, value) {
-  return `<div class="metric-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`;
 }

@@ -35,8 +35,6 @@
         <section id="load-state" class="notice">dashboard data를 읽는 중</section>
 
         <section class="track-panel active" data-track-panel="central_ssl">
-          <div class="metric-cards" id="metric-cards"></div>
-
           <nav class="tab-nav" aria-label="central ssl result views">
             <button class="active" type="button" data-tab="overview">Overview</button>
             <button type="button" data-tab="compare">Graph Compare</button>
@@ -117,7 +115,6 @@
                   id="overview-selected-run-cards"
                   class="selected-run-cards alias-run-cards"
                 ></div>
-                <p id="overview-selection-summary" class="detail-summary"></p>
                 <div class="table-wrap">
                   <table>
                     <thead id="run-table-head"></thead>
@@ -280,8 +277,6 @@
         </section>
 
         <section class="track-panel" data-track-panel="fl_ssl">
-          <div class="metric-cards" id="fl-metric-cards"></div>
-
           <nav class="tab-nav" aria-label="fl ssl result views">
             <button class="active" type="button" data-fl-tab="runs">Runs</button>
             <button type="button" data-fl-tab="rounds">Rounds</button>
@@ -354,11 +349,10 @@
                   <div id="fl-run-checkboxes" class="run-checkbox-list table-run-picker"></div>
                 </section>
               </div>
-              <div
-                id="fl-run-selected-run-cards"
-                class="selected-run-cards alias-run-cards"
-              ></div>
-              <p id="fl-run-selection-summary" class="detail-summary"></p>
+                <div
+                  id="fl-run-selected-run-cards"
+                  class="selected-run-cards alias-run-cards"
+                ></div>
               <div class="table-wrap">
                 <table>
                   <thead id="fl-run-table-head"></thead>

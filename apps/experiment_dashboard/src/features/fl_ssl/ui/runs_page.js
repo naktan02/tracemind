@@ -1,9 +1,9 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
-import { compareMetricValues, metricLabel } from "../../../shared/formatting/metrics.js";
+import { metricLabel } from "../../../shared/formatting/metrics.js";
 import { renderCheckboxList } from "../../../ui/controls/form_controls.js";
 import { emptyTableRow } from "../../../ui/tables/table.js";
 import { algorithmName, compactRunSubLabel, runDescriptor, runDisplayLabel, runId } from "../logic/labels.js";
-import { flRunMetricKeys, flRunMetricValue, formatFlRunMetric } from "../logic/metrics.js";
+import { flRunMetricKeys, formatFlRunMetric } from "../logic/metrics.js";
 
 export function normalizeFlRunSelection(rows, state) {
   const metrics = flRunMetricKeys(rows);
@@ -28,7 +28,6 @@ export function renderFlRunsPage(elements, rows, state) {
   );
   renderRunPicker(elements, rows, state);
   renderSelectedRunCards(elements, rows, state);
-  renderMetricCards(elements, rows, state);
   renderRunTable(elements, rows, state);
 }
 
@@ -91,22 +90,6 @@ function renderSelectedRunCards(elements, rows, state) {
     .join("");
 }
 
-function renderMetricCards(elements, rows, state) {
-  const primaryMetric = state.runMetricIds[0] ?? "macro_f1";
-  const selectedRows = rows.filter((row) => state.runIds.includes(runId(row)));
-  const best = selectedRows
-    .slice()
-    .sort((left, right) =>
-      compareMetricValues(flRunMetricValue(left, primaryMetric), flRunMetricValue(right, primaryMetric), primaryMetric),
-    )[0];
-  elements.flMetricCards.innerHTML = [
-    card("runs", rows.length),
-    card("algorithms", new Set(rows.map(algorithmName)).size),
-    card(`best ${metricLabel(primaryMetric)}`, best ? formatFlRunMetric(best, primaryMetric) : "-"),
-    card("selected runs", state.runIds.length),
-  ].join("");
-}
-
 function renderRunTable(elements, rows, state) {
   const rowsById = new Map(rows.map((row) => [runId(row), row]));
   const selectedRows = state.runIds.map((id) => rowsById.get(id)).filter(Boolean);
@@ -120,7 +103,6 @@ function renderRunTable(elements, rows, state) {
   `;
   if (selectedRows.length === 0) {
     elements.flRunTable.innerHTML = emptyTableRow(state.runMetricIds.length + 3, "선택된 FL run이 없습니다.");
-    elements.flRunSelectionSummary.textContent = `selected runs=0/${rows.length} · metrics=${state.runMetricIds.length}`;
     return;
   }
   elements.flRunTable.innerHTML = selectedRows
@@ -135,12 +117,4 @@ function renderRunTable(elements, rows, state) {
       `,
     )
     .join("");
-  elements.flRunSelectionSummary.textContent = [
-    `selected runs=${state.runIds.length}/${rows.length}`,
-    `metrics=${state.runMetricIds.length}`,
-  ].join(" · ");
-}
-
-function card(label, value) {
-  return `<div class="metric-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`;
 }

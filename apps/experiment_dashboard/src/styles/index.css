@@ -234,33 +234,6 @@ code {
     rgba(255, 255, 255, 0.94);
 }
 
-.metric-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(130px, 1fr));
-  gap: 12px;
-  min-width: 320px;
-}
-
-.metric-card {
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 16px;
-  background: #ffffff;
-}
-
-.metric-card span {
-  display: block;
-  color: var(--muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-}
-
-.metric-card strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 1.5rem;
-}
-
 .tab-nav {
   display: flex;
   flex-wrap: wrap;
@@ -1220,10 +1193,6 @@ td button {
 
   .hero {
     display: grid;
-  }
-
-  .metric-cards {
-    min-width: 0;
   }
 
   .compare-controls {
