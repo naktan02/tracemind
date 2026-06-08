@@ -2,7 +2,6 @@ import { escapeHtml } from "../../../shared/formatting/html.js";
 import { metricLabel } from "../../../shared/formatting/metrics.js";
 import { formatMetric, numberOrNull } from "../../../shared/formatting/numbers.js";
 import { drawLineChart } from "../../../ui/charts/line_chart.js";
-import { renderCheckboxList } from "../../../ui/controls/form_controls.js";
 import { algorithmName, compareDisplayLabel, runDescriptor } from "../logic/labels.js";
 import {
   centralEpochMetricKeys,
@@ -24,24 +23,32 @@ export function normalizeCompareSelection(rows, state, bundle) {
 }
 
 export function renderComparePage(elements, rows, state, bundle) {
-  renderMetricTabs(elements, state, bundle);
+  renderMetricPicker(elements, state, bundle);
   renderRunPicker(elements, rows, state);
   renderSelectedRunCards(elements, rows, state);
   renderComparisonChart(elements, rows, state, bundle);
 }
 
-function renderMetricTabs(elements, state, bundle) {
-  elements.metricPicker.innerHTML = centralEpochMetricKeys(bundle)
-    .map(
-      (metric) => `
-        <button
-          type="button"
-          data-metric="${escapeHtml(metric)}"
-          class="${metric === state.compareMetric ? "active" : ""}"
-        >${escapeHtml(metricLabel(metric))}</button>
-      `,
-    )
-    .join("");
+function renderMetricPicker(elements, state, bundle) {
+  const metrics = centralEpochMetricKeys(bundle);
+  elements.metricPicker.innerHTML =
+    metrics.length === 0
+      ? `<p class="empty">선택 가능한 step metric이 없습니다.</p>`
+      : metrics
+          .map(
+            (metric) => `
+              <label class="check-row compact">
+                <input
+                  type="radio"
+                  name="central-compare-step-metric"
+                  data-comparison-step-metric="${escapeHtml(metric)}"
+                  ${metric === state.compareMetric ? "checked" : ""}
+                />
+                <span>${escapeHtml(metricLabel(metric))}</span>
+              </label>
+            `,
+          )
+          .join("");
 }
 
 function renderRunPicker(elements, rows, state) {

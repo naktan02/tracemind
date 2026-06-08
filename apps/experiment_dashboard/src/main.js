@@ -194,8 +194,8 @@ function bindCentralEvents() {
     state.central.compareIncludeInitial = event.target.checked;
     render();
   });
-  elements.metricPicker.addEventListener("click", (event) => {
-    const metric = event.target.dataset.metric;
+  elements.metricPicker.addEventListener("change", (event) => {
+    const metric = event.target.dataset.comparisonStepMetric;
     if (!metric) return;
     state.central.compareMetric = metric;
     render();
