@@ -32,15 +32,14 @@ export function UnlockPage({
     <div className="page-stack">
       <section className="hero-card unlock-hero">
         <div>
-          <p className="eyebrow">Protected Entry</p>
+          <p className="eyebrow">PIN 확인</p>
           <h2>{pinLabel} 검증</h2>
           <p className="section-copy">
-            role별 protected surface로 들어가기 전 PIN 검증을 먼저 수행합니다.
-            현재 검증 결과와 잠금 상태도 이 화면에서 같이 확인합니다.
+            선택한 화면으로 들어가기 위해 PIN을 확인합니다.
           </p>
         </div>
         <div className="hero-meter">
-          <span className="hero-meter-label">현재 unlock 상태</span>
+          <span className="hero-meter-label">현재 상태</span>
           <strong>
             {unlockState.phase === "idle" && "입력 대기"}
             {unlockState.phase === "submitting" && "확인 중"}
@@ -54,7 +53,7 @@ export function UnlockPage({
 
       <section className="surface-card">
         <PinPad
-          helpText={`이 PIN을 통과하면 ${role === "child" ? "아이용" : "부모용"} 화면으로 들어갑니다.`}
+          helpText={`확인 후 ${role === "child" ? "아이용" : "부모용"} 화면으로 이동합니다.`}
           inputId={`${role}-pin`}
           label={pinLabel}
           value={pin}
@@ -75,7 +74,7 @@ export function UnlockPage({
               type="button"
               onClick={onMoveToRoleSurface}
             >
-              {role === "child" ? "아이용 화면으로 이동" : "부모 상세로 이동"}
+              {role === "child" ? "아이용 화면으로 이동" : "보호자 안내로 이동"}
             </button>
           )}
         </div>
@@ -86,7 +85,7 @@ export function UnlockPage({
           <p className="card-label">검증 결과</p>
           {unlockState.phase === "idle" && (
             <p className="section-copy">
-              4~6자리 PIN을 입력하면 해당 role 화면 진입 가능 여부를 확인합니다.
+              4~6자리 PIN을 입력하면 선택한 화면을 열 수 있는지 확인합니다.
             </p>
           )}
           {unlockState.phase === "submitting" && (
@@ -121,11 +120,11 @@ export function UnlockPage({
           )}
         </article>
         <article className="surface-card">
-          <p className="card-label">이 단계에서 확보한 것</p>
+          <p className="card-label">안내</p>
           <ul className="bullet-list">
-            <li>role별 unlock API 연결</li>
-            <li>실패 횟수와 잠금 상태 해석</li>
-            <li>role session 기반 route guard</li>
+            <li>PIN이 여러 번 틀리면 잠시 잠깁니다.</li>
+            <li>자리를 비울 때는 선택 화면으로 돌아가 주세요.</li>
+            <li>부모용 화면에는 원문과 그래프가 표시되지 않습니다.</li>
           </ul>
         </article>
       </section>
@@ -140,7 +139,7 @@ export function UnlockPage({
           type="button"
           onClick={onMoveToRoleSurface}
         >
-          {role === "child" ? "아이용 화면으로 이동" : "부모 상세로 이동"}
+          {role === "child" ? "아이용 화면으로 이동" : "보호자 안내로 이동"}
         </button>
       </div>
     </div>

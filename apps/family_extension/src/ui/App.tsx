@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { ConnectionStateBanner } from "./components/ConnectionStateBanner";
-import { getAgentApiBaseUrl } from "../common/agentClient";
+import counselingHeroUrl from "./assets/counseling-hero.png";
 import { useFamilyAccess } from "./hooks/useFamilyAccess";
 import { useLocalProgramHealth } from "./hooks/useLocalProgramHealth";
 import { GatePage } from "./pages/gate/GatePage";
@@ -12,7 +12,6 @@ import { UnlockPage } from "./pages/unlock/UnlockPage";
 import {
   AppRoute,
   ROUTE_META,
-  isRouteLocked,
   normalizeRoute,
   resolveAccessibleRoute,
 } from "./lib/routes";
@@ -74,22 +73,6 @@ export default function App({ initialRoute }: AppProps) {
   }, [activeRole, currentRoute, fallbackRoute, isSetupComplete, isSetupResolved]);
 
   const routeMeta = useMemo(() => ROUTE_META[currentRoute], [currentRoute]);
-  const visibleRoutes = useMemo<AppRoute[]>(
-    () => {
-      if (!isSetupResolved) {
-        return [];
-      }
-      if (!isSetupComplete) {
-        return ["/setup"];
-      }
-      if (activeRole === null) {
-        return ["/gate"];
-      }
-      return activeRole === "child" ? ["/child"] : ["/parent"];
-    },
-    [activeRole, isSetupComplete, isSetupResolved],
-  );
-
   useEffect(() => {
     if (!isSetupResolved) {
       return;
@@ -145,69 +128,72 @@ export default function App({ initialRoute }: AppProps) {
 
   return (
     <div className="app-shell">
-      <aside className="side-rail">
-        <div className="brand-block">
-          <p className="brand-eyebrow">TraceMind Family</p>
-          <h1>Family Extension</h1>
-          <p className="brand-copy">
-            이 확장 프로그램은 이 PC의 로컬 agent만 사용합니다. setup이 끝나면
-            child와 parent는 각각 잠금 해제를 거쳐 role별 화면으로 들어갑니다.
-          </p>
-        </div>
-
-        <nav className="route-nav" aria-label="family extension routes">
-          {(visibleRoutes as AppRoute[]).map((route) => {
-            const meta = ROUTE_META[route];
-            const locked = isRouteLocked(route, { activeRole, isSetupComplete });
-            return (
+      <header className="top-bar">
+        <button className="brand-mark" type="button" onClick={() => moveTo("/gate")}>
+          <span className="brand-name">TraceMind</span>
+        </button>
+        <nav className="top-nav" aria-label="주요 화면">
+          {isSetupComplete ? (
+            <>
               <button
-                key={route}
-                className={
-                  route === currentRoute
-                    ? "route-link active"
-                    : locked
-                      ? "route-link locked"
-                      : "route-link"
-                }
                 type="button"
-                onClick={() => moveTo(route)}
+                onClick={() =>
+                  moveTo(activeRole === "child" ? "/child" : "/child/unlock")
+                }
               >
-                <span>{meta.label}</span>
-                <small>{locked ? `${route} · PIN 필요` : route}</small>
+                AI 도움
               </button>
-            );
-          })}
+              <button
+                type="button"
+                onClick={() =>
+                  moveTo(activeRole === "child" ? "/child" : "/child/unlock")
+                }
+              >
+                그래프 및 분석
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  moveTo(activeRole === "parent" ? "/parent" : "/parent/unlock")
+                }
+              >
+                보호자 안내
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => moveTo("/setup")}>
+              처음 설정
+            </button>
+          )}
         </nav>
-
-        <div className="status-panel">
-          <p className="status-label">로컬 프로그램 연결</p>
-          <strong
+        <div className="top-status">
+          <span
             className={
               healthState === "connected"
-                ? "status-text success"
+                ? "connection-dot connected"
                 : healthState === "offline"
-                  ? "status-text warning"
-                  : "status-text"
+                  ? "connection-dot offline"
+                  : "connection-dot"
             }
-          >
-            {healthState === "checking" && "확인 중"}
-            {healthState === "connected" && "연결됨"}
-            {healthState === "offline" && "연결 안 됨"}
-          </strong>
-          <span className="status-hint">{getAgentApiBaseUrl()}</span>
+            aria-hidden="true"
+          />
+          <span>
+            {healthState === "checking" && "연결 확인 중"}
+            {healthState === "connected" && "프로그램 연결됨"}
+            {healthState === "offline" && "프로그램 연결 안 됨"}
+          </span>
         </div>
-      </aside>
+      </header>
 
       <main className="main-panel">
-        <header className="page-header">
-          <div>
+        <header
+          className="page-hero"
+          style={{ backgroundImage: `url(${counselingHeroUrl})` }}
+        >
+          <div className="page-hero-content">
             <p className="page-eyebrow">{routeMeta.eyebrow}</p>
             <h2>{routeMeta.title}</h2>
             <p className="page-description">{routeMeta.description}</p>
-          </div>
-          <div className="badge-row">
-            <span className="badge">Phase 10 app-level gate</span>
-            <span className="badge subtle">local-only family access</span>
           </div>
         </header>
         <ConnectionStateBanner healthState={healthState} />
@@ -215,15 +201,14 @@ export default function App({ initialRoute }: AppProps) {
         {setupStatusState.phase === "loading" && (
           <section className="hero-card gate-hero">
             <div>
-              <p className="eyebrow">Family Access</p>
+              <p className="eyebrow">설정 확인</p>
               <h2>초기 설정 상태를 확인하는 중</h2>
               <p className="section-copy">
-                이 PC의 로컬 agent가 이미 초기 설정을 마쳤는지 확인하고
-                있습니다.
+                이 기기에서 사용할 아이용/부모용 화면 설정을 확인하고 있습니다.
               </p>
             </div>
             <div className="hero-meter">
-              <span className="hero-meter-label">setup status</span>
+              <span className="hero-meter-label">설정 상태</span>
               <strong>확인 중...</strong>
             </div>
           </section>

@@ -14,7 +14,7 @@ export function WellbeingSignalCard({ summary }: WellbeingSignalCardProps) {
   return (
     <section className="hero-card child-hero">
       <div>
-        <p className="eyebrow">Child View</p>
+        <p className="eyebrow">내 마음 상태</p>
         <h2>{summary.signal_label}</h2>
         <p className="section-copy">{summary.summary}</p>
         <div className="pill-row">
@@ -29,8 +29,11 @@ export function WellbeingSignalCard({ summary }: WellbeingSignalCardProps) {
         </div>
       </div>
       <div className="hero-meter">
-        <span className="hero-meter-label">마지막 업데이트</span>
-        <strong>{formatComputedAtLabel(summary.computed_at)}</strong>
+        <span className="hero-meter-label">현재 위험도</span>
+        <strong>{Math.round(summary.signal_score)}</strong>
+        <span className="status-hint">
+          업데이트 {formatComputedAtLabel(summary.computed_at)}
+        </span>
       </div>
     </section>
   );

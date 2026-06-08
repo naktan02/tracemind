@@ -16,7 +16,7 @@ export function ParentWellbeingSummaryCard({
   return (
     <section className="hero-card parent-hero">
       <div>
-        <p className="eyebrow">Parent Detail</p>
+        <p className="eyebrow">보호자 안내</p>
         <h2>{summary.signal_label}</h2>
         <p className="section-copy">{summary.summary}</p>
         <div className="pill-row">
@@ -32,10 +32,10 @@ export function ParentWellbeingSummaryCard({
       </div>
 
       <div className="hero-meter">
-        <span className="hero-meter-label">현재 signal score</span>
-        <strong>{Math.round(summary.signal_score)}</strong>
+        <span className="hero-meter-label">마지막 업데이트</span>
+        <strong>{formatComputedAtLabel(summary.computed_at)}</strong>
         <span className="status-hint">
-          마지막 업데이트 {formatComputedAtLabel(summary.computed_at)}
+          보호자 화면은 원문과 상세 그래프를 표시하지 않습니다.
         </span>
       </div>
     </section>

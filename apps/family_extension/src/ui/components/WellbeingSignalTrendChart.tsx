@@ -51,7 +51,7 @@ export function WellbeingSignalTrendChart({
         <div>
           <p className="card-label">최근 변화</p>
           <p className="section-copy">
-            전체 wellbeing signal만 보여주고, 내부 카테고리별 score는 숨깁니다.
+            최근 상태가 어떻게 변했는지 아이 본인이 확인할 수 있는 그래프입니다.
           </p>
         </div>
         <div className="range-toggle" role="tablist" aria-label="timeseries range">
@@ -83,7 +83,7 @@ export function WellbeingSignalTrendChart({
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           role="img"
-          aria-label={`${formatRangeLabel(timeseries.range)} wellbeing signal 추이`}
+          aria-label={`${formatRangeLabel(timeseries.range)} 위험도 변화 추이`}
         >
           <rect
             x="0"
@@ -122,7 +122,7 @@ export function WellbeingSignalTrendChart({
         </span>
         {latestPoint != null && (
           <span>
-            최근 값 {Math.round(latestPoint.signal_score)} /{" "}
+            최근 위험도 {Math.round(latestPoint.signal_score)} /{" "}
             {formatComputedAtLabel(latestPoint.ts)}
           </span>
         )}

@@ -1,10 +1,6 @@
-import { useState } from "react";
-
 import { ParentWellbeingSummaryCard } from "../../components/ParentWellbeingSummaryCard";
 import { WellbeingDataNotice } from "../../components/WellbeingDataNotice";
-import { WellbeingSignalTrendChart } from "../../components/WellbeingSignalTrendChart";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
-import { useWellbeingTimeseries } from "../../hooks/useWellbeingTimeseries";
 import { formatComputedAtLabel } from "../../lib/formatters";
 
 type ParentPageProps = {
@@ -18,12 +14,7 @@ export function ParentPage({
   onMoveToChildUnlock,
   onMoveToGate,
 }: ParentPageProps) {
-  const [selectedRange, setSelectedRange] = useState<"7d" | "14d" | "30d">("7d");
   const summaryState = useWellbeingSummary({ enabled: true });
-  const timeseriesState = useWellbeingTimeseries({
-    enabled: true,
-    requestedRange: selectedRange,
-  });
 
   return (
     <div className="page-stack">
@@ -36,10 +27,10 @@ export function ParentPage({
       {summaryState.status === "loading" && (
         <section className="hero-card parent-hero">
           <div>
-            <p className="eyebrow">Parent Detail</p>
+            <p className="eyebrow">보호자 안내</p>
             <h2>부모용 현재 상태를 불러오는 중</h2>
             <p className="section-copy">
-              현재 전체 상태와 권장 행동을 로컬 프로그램에서 읽고 있습니다.
+              아이에게 필요한 관심 수준과 대응 방향을 확인하고 있습니다.
             </p>
             {activeSessionExpiresAt != null && (
               <p className="section-copy">
@@ -49,7 +40,7 @@ export function ParentPage({
             )}
           </div>
           <div className="hero-meter">
-            <span className="hero-meter-label">current summary</span>
+            <span className="hero-meter-label">상태 확인</span>
             <strong>...</strong>
           </div>
         </section>
@@ -57,59 +48,35 @@ export function ParentPage({
       {summaryState.status === "error" && (
         <section className="hero-card parent-hero">
           <div>
-            <p className="eyebrow">Parent Detail</p>
+            <p className="eyebrow">보호자 안내</p>
             <h2>부모용 현재 상태를 아직 불러오지 못했습니다</h2>
             <p className="section-copy">{summaryState.errorMessage}</p>
           </div>
           <div className="hero-meter">
-            <span className="hero-meter-label">summary 상태</span>
+            <span className="hero-meter-label">요약 상태</span>
             <strong>요청 실패</strong>
           </div>
         </section>
       )}
 
-      {timeseriesState.status === "loaded" && (
-        <WellbeingSignalTrendChart
-          activeRange={selectedRange}
-          onRangeChange={setSelectedRange}
-          timeseries={timeseriesState.timeseries}
-        />
-      )}
-      {timeseriesState.status === "loading" && (
-        <section className="surface-card trend-card">
-          <div className="trend-card-header">
-            <div>
-              <p className="card-label">최근 변화</p>
-              <p className="section-copy">
-                최근 wellbeing signal 추이를 불러오는 중입니다.
-              </p>
-            </div>
-          </div>
-          <div className="trend-chart-loading">그래프 데이터를 준비하고 있습니다.</div>
-        </section>
-      )}
-      {timeseriesState.status === "error" && (
-        <section className="surface-card trend-card">
-          <div className="trend-card-header">
-            <div>
-              <p className="card-label">최근 변화</p>
-              <p className="section-copy">{timeseriesState.errorMessage}</p>
-            </div>
-          </div>
-        </section>
-      )}
-
       {summaryState.status === "loaded" && (
-        <section className="card-grid">
+        <section className="parent-guidance">
           <article className="surface-card">
-            <p className="card-label">권장 행동</p>
+            <p className="card-label">지금 필요한 대응</p>
             <p className="section-copy">{summaryState.summary.action_tip}</p>
           </article>
           <article className="surface-card">
-            <p className="card-label">현재 부모 세션</p>
+            <p className="card-label">대화 방향</p>
+            <p className="section-copy">
+              아이가 쓴 문장을 캐묻기보다, 오늘 가장 힘들었던 순간과 지금 필요한
+              도움을 먼저 물어보세요.
+            </p>
+          </article>
+          <article className="surface-card">
+            <p className="card-label">확인 상태</p>
             <ul className="bullet-list">
               <li>
-                만료 시각:{" "}
+                보호자 세션 만료:{" "}
                 {activeSessionExpiresAt == null
                   ? "확인할 수 없음"
                   : formatComputedAtLabel(activeSessionExpiresAt)}

@@ -39,7 +39,7 @@ const INITIAL_MESSAGE: CoachMessage = {
   id: "welcome",
   role: "assistant",
   text:
-    "여기는 아이용 마음 도움 공간이에요. 길게 말하지 않아도 괜찮아요. 지금 제일 크게 느껴지는 것 하나만 적어도 돼요.",
+    "요즘 혼자 버티는 시간이 많았던 것 같아요. 지금 가장 힘든 부분을 천천히 말해줄 수 있나요?",
   createdAt: new Date().toISOString(),
 };
 
@@ -156,18 +156,13 @@ export function ChildSupportCoachPanel() {
 
   return (
     <section className="coach-shell" aria-label="아이용 AI 마음 도움">
-      <div className="coach-backdrop" aria-hidden="true">
-        <span className="coach-orb coach-orb-a" />
-        <span className="coach-orb coach-orb-b" />
-        <span className="coach-orb coach-orb-c" />
-      </div>
       <div className="coach-header">
         <div>
           <p className="coach-eyebrow">AI 마음 도움</p>
           <h3>지금 마음을 작게 꺼내놓는 곳</h3>
           <p className="coach-copy">
-            로컬 agent가 현재 상태 카드와 아이 메시지를 함께 보고, 안전한
-            다음 한 문장을 제안합니다.
+            최근 상태 흐름을 참고해 대화를 이어가고, 필요할 때 도움 받을 곳을
+            함께 안내합니다.
           </p>
         </div>
         <div className="coach-mode-pill">
@@ -264,8 +259,8 @@ export function ChildSupportCoachPanel() {
       </form>
 
       <p className="coach-disclaimer">
-        위험하거나 혼자 감당하기 어려운 상황이면 이 대화보다 보호자나 믿을 수
-        있는 어른에게 바로 알리는 것이 먼저입니다.
+        위험하거나 혼자 감당하기 어려운 상황이면 보호자, 믿을 수 있는 어른,
+        청소년상담 1388, 자살예방 상담전화 109에 바로 연락하세요.
       </p>
     </section>
   );

@@ -44,17 +44,15 @@ export function SetupPage({
     <div className="page-stack">
       <section className="hero-card setup-hero">
         <div>
-          <p className="eyebrow">First Run Setup</p>
+          <p className="eyebrow">처음 설정</p>
           <h2>처음 사용할 PIN을 설정합니다</h2>
           <p className="section-copy">
-            이 단계에서는 원격 agent를 고르지 않습니다. 이 확장 프로그램은 현재
-            이 PC의 로컬 agent만 사용하며, 아이용/부모용 화면에 각각 별도 PIN을
-            둡니다.
+            아이용 화면과 부모용 화면은 서로 다른 PIN으로 열립니다.
           </p>
         </div>
         <div className="hero-meter">
-          <span className="hero-meter-label">현재 연결 정책</span>
-          <strong>로컬 전용</strong>
+          <span className="hero-meter-label">보호 방식</span>
+          <strong>화면별 PIN 분리</strong>
         </div>
       </section>
 

@@ -12,8 +12,8 @@
 4. `family_access`와 `wellbeing_signal` contract를 같이 소비하는 client layer
 5. 최초 1회 child/parent PIN 설정 화면
 6. role 선택 gate 화면
-7. child role용 현재 상태 카드
-8. parent role용 현재 상태 카드와 7d / 14d / 30d 추이 그래프
+7. child role용 현재 상태 카드, AI 마음 도움 탭, 7d / 14d / 30d 위험도 변화 그래프
+8. parent role용 현재 상태 요약과 대응 방향 안내
 9. role별 PIN unlock API 연결
 10. 실패 횟수/잠금 상태 안내
 11. role session 기반 route guard
@@ -21,6 +21,7 @@
 13. low-data / stale-data 안내 배너
 14. scored event -> wellbeing snapshot projection을 통한 실제 로컬 출력 연결
 15. role 화면 이탈 시 즉시 재잠금
+16. 부모 화면에서 원문 텍스트와 상세 추이 그래프 미노출
 
 ## 내부 구조
 
