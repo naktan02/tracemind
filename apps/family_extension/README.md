@@ -8,17 +8,17 @@
 
 1. 확장 아이콘용 compact popup entry
 2. parent detail용 별도 entry
-3. `/setup`, `/gate`, `/child/unlock`, `/parent/unlock`, `/child`, `/parent` route shell
+3. `/setup`, `/child/unlock`, `/parent/unlock`, `/child`, `/parent` route shell
 4. `family_access`와 `wellbeing_signal` contract를 같이 소비하는 client layer
 5. 최초 1회 child/parent PIN 설정 화면
-6. role 선택 gate 화면
-7. child role용 현재 상태 카드, AI 마음 도움 탭, 7d / 14d / 30d 위험도 변화 그래프
+6. popup의 본인 페이지/부모 페이지 직접 진입 버튼
+7. child role용 현재 상태 카드, AI 마음 도움, 7d / 14d / 30d 위험도 변화 그래프
 8. parent role용 현재 상태 요약과 대응 방향 안내
 9. role별 PIN unlock API 연결
 10. 실패 횟수/잠금 상태 안내
 11. role session 기반 route guard
 12. health polling 기반 연결 상태 배너
-13. low-data / stale-data 안내 배너
+13. low-data / stale-data 상태는 API 상태로 유지하되 본인/부모 화면 배너에는 노출하지 않음
 14. scored event -> wellbeing snapshot projection을 통한 실제 로컬 출력 연결
 15. role 화면 이탈 시 즉시 재잠금
 16. 부모 화면에서 원문 텍스트와 상세 추이 그래프 미노출
@@ -30,9 +30,9 @@
 
 페이지 분리는 HTML entry가 아니라 product/runtime surface 기준으로 잡는다.
 `index.html`과 `parent.html`은 같은 React app shell인 `src/ui/main.tsx`를 쓰고,
-`/setup`, `/gate`, `/child/unlock`, `/parent/unlock`, `/child`, `/parent`는
+`/setup`, `/child/unlock`, `/parent/unlock`, `/child`, `/parent`는
 `src/ui/pages/**`의 page component 파일로 분리한다. role/session/access guard는
-`src/ui/App.tsx`가 공유하므로 setup/gate/unlock을 별도 Vite entry로 쪼개지 않는다.
+`src/ui/App.tsx`가 공유하므로 setup/unlock을 별도 Vite entry로 쪼개지 않는다.
 반대로 `popup.html`, `collector-debug.html`, content script, background service
 worker는 manifest surface와 runtime 책임이 달라 독립 entry로 둔다.
 
@@ -41,7 +41,7 @@ worker는 manifest surface와 runtime 책임이 달라 독립 entry로 둔다.
   - wellbeing/child-support 의미를 재정의하지 않고 agent API payload를 표시한다.
 - `src/popup/`
   - 확장 아이콘을 눌렀을 때 뜨는 compact 상태 popup을 둔다.
-  - collector status, debug toggle, debug page 진입만 보여준다.
+  - 본인 페이지/부모 페이지 진입과 하단 debug 도구 진입을 제공한다.
 - `src/common/`
   - UI, background service worker, content script가 함께 쓸 수 있는 얇은 공통
     helper를 둔다.
@@ -144,15 +144,15 @@ uvicorn agent.src.api.main:app --reload --port 8001
 ## 확장 entry
 
 - `index.html`
-  - 아이용/가족용 React app entry
+  - 본인용/가족용 React app entry
   - 초기 setup 전에는 `/setup`
-  - setup 완료 후 잠금 상태면 `/gate`
+  - setup 완료 후 잠금 상태면 `/child/unlock`
 - `popup.html`
   - 확장 아이콘 compact popup entry
-  - collector status와 debug 진입을 제공한다
+  - 본인 페이지/부모 페이지 진입과 하단 debug 진입을 제공한다
 - `parent.html`
   - 부모용 상세 entry
-  - 세션이 없으면 `/gate` 또는 `/parent/unlock` 흐름으로 정규화된다
+  - 세션이 없으면 `/parent/unlock` 흐름으로 정규화된다
 - `assets/content.js`
   - 웹페이지 입력 surface에 주입되는 content script
 - `assets/background.js`

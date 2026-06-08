@@ -10,7 +10,6 @@ type UnlockPageProps = {
   unlockState: FamilyUnlockState;
   onPinChange: (nextValue: string) => void;
   onSubmitUnlock: () => void;
-  onMoveToGate: () => void;
   onMoveToRoleSurface: () => void;
 };
 
@@ -21,7 +20,6 @@ export function UnlockPage({
   unlockState,
   onPinChange,
   onSubmitUnlock,
-  onMoveToGate,
   onMoveToRoleSurface,
 }: UnlockPageProps) {
   const isSubmitting = unlockState.phase === "submitting";
@@ -53,7 +51,7 @@ export function UnlockPage({
 
       <section className="surface-card">
         <PinPad
-          helpText={`확인 후 ${role === "child" ? "아이용" : "부모용"} 화면으로 이동합니다.`}
+          helpText={`확인 후 ${role === "child" ? "본인" : "부모"} 페이지로 이동합니다.`}
           inputId={`${role}-pin`}
           label={pinLabel}
           value={pin}
@@ -74,7 +72,7 @@ export function UnlockPage({
               type="button"
               onClick={onMoveToRoleSurface}
             >
-              {role === "child" ? "아이용 화면으로 이동" : "보호자 안내로 이동"}
+              {role === "child" ? "본인 페이지로 이동" : "보호자 안내로 이동"}
             </button>
           )}
         </div>
@@ -96,7 +94,7 @@ export function UnlockPage({
           {unlockState.phase === "granted" &&
             unlockState.response?.session_expires_at != null && (
               <p className="section-copy">
-                {role === "child" ? "아이용" : "부모용"} 세션이 열렸습니다.{" "}
+                {role === "child" ? "본인" : "부모"} 세션이 열렸습니다.{" "}
                 {formatComputedAtLabel(unlockState.response.session_expires_at)}까지
                 같은 세션을 사용할 수 있습니다.
               </p>
@@ -123,23 +121,20 @@ export function UnlockPage({
           <p className="card-label">안내</p>
           <ul className="bullet-list">
             <li>PIN이 여러 번 틀리면 잠시 잠깁니다.</li>
-            <li>자리를 비울 때는 선택 화면으로 돌아가 주세요.</li>
-            <li>부모용 화면에는 원문과 그래프가 표시되지 않습니다.</li>
+            <li>자리를 비울 때는 화면을 닫아 주세요.</li>
+            <li>부모 페이지에는 원문과 그래프가 표시되지 않습니다.</li>
           </ul>
         </article>
       </section>
 
       <div className="button-row">
-        <button className="ghost-button" type="button" onClick={onMoveToGate}>
-          선택 화면으로
-        </button>
         <button
           className="ghost-button"
           disabled={!isGranted}
           type="button"
           onClick={onMoveToRoleSurface}
         >
-          {role === "child" ? "아이용 화면으로 이동" : "보호자 안내로 이동"}
+          {role === "child" ? "본인 페이지로 이동" : "보호자 안내로 이동"}
         </button>
       </div>
     </div>

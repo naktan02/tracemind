@@ -1,19 +1,12 @@
 import { ParentWellbeingSummaryCard } from "../../components/ParentWellbeingSummaryCard";
-import { WellbeingDataNotice } from "../../components/WellbeingDataNotice";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
 import { formatComputedAtLabel } from "../../lib/formatters";
 
 type ParentPageProps = {
   activeSessionExpiresAt: string | null;
-  onMoveToChildUnlock: () => void;
-  onMoveToGate: () => void;
 };
 
-export function ParentPage({
-  activeSessionExpiresAt,
-  onMoveToChildUnlock,
-  onMoveToGate,
-}: ParentPageProps) {
+export function ParentPage({ activeSessionExpiresAt }: ParentPageProps) {
   const summaryState = useWellbeingSummary({ enabled: true });
 
   return (
@@ -21,16 +14,13 @@ export function ParentPage({
       {summaryState.status === "loaded" && (
         <ParentWellbeingSummaryCard summary={summaryState.summary} />
       )}
-      {summaryState.status === "loaded" && (
-        <WellbeingDataNotice summary={summaryState.summary} />
-      )}
       {summaryState.status === "loading" && (
         <section className="hero-card parent-hero">
           <div>
             <p className="eyebrow">보호자 안내</p>
             <h2>부모용 현재 상태를 불러오는 중</h2>
             <p className="section-copy">
-              아이에게 필요한 관심 수준과 대응 방향을 확인하고 있습니다.
+              지금 필요한 관심 수준과 대응 방향을 확인하고 있습니다.
             </p>
             {activeSessionExpiresAt != null && (
               <p className="section-copy">
@@ -68,7 +58,7 @@ export function ParentPage({
           <article className="surface-card">
             <p className="card-label">대화 방향</p>
             <p className="section-copy">
-              아이가 쓴 문장을 캐묻기보다, 오늘 가장 힘들었던 순간과 지금 필요한
+              자녀가 쓴 문장을 캐묻기보다, 오늘 가장 힘들었던 순간과 지금 필요한
               도움을 먼저 물어보세요.
             </p>
           </article>
@@ -91,19 +81,6 @@ export function ParentPage({
           </article>
         </section>
       )}
-
-      <div className="button-row">
-        <button className="ghost-button" type="button" onClick={onMoveToGate}>
-          선택 화면으로 돌아가기
-        </button>
-        <button
-          className="ghost-button"
-          type="button"
-          onClick={onMoveToChildUnlock}
-        >
-          아이용 화면으로 전환
-        </button>
-      </div>
     </div>
   );
 }

@@ -35,7 +35,7 @@ export function ParentWellbeingSummaryCard({
         <span className="hero-meter-label">마지막 업데이트</span>
         <strong>{formatComputedAtLabel(summary.computed_at)}</strong>
         <span className="status-hint">
-          보호자 화면은 원문과 상세 그래프를 표시하지 않습니다.
+          부모 페이지는 필요한 대응 방향만 간단히 안내합니다.
         </span>
       </div>
     </section>

@@ -29,7 +29,7 @@ export function SetupPage({
 
   async function handleSubmit() {
     if (childPin !== childPinConfirm) {
-      setLocalError("아이용 PIN 확인이 일치하지 않습니다.");
+      setLocalError("본인 PIN 확인이 일치하지 않습니다.");
       return;
     }
     if (parentPin !== parentPinConfirm) {
@@ -47,7 +47,7 @@ export function SetupPage({
           <p className="eyebrow">처음 설정</p>
           <h2>처음 사용할 PIN을 설정합니다</h2>
           <p className="section-copy">
-            아이용 화면과 부모용 화면은 서로 다른 PIN으로 열립니다.
+            본인 페이지와 부모 페이지는 서로 다른 PIN으로 열립니다.
           </p>
         </div>
         <div className="hero-meter">
@@ -58,16 +58,16 @@ export function SetupPage({
 
       <section className="card-grid">
         <article className="surface-card setup-card">
-          <p className="card-label">아이용 PIN</p>
+          <p className="card-label">본인 PIN</p>
           <PinInput
             id="child-pin"
-            label="아이용 PIN"
+            label="본인 PIN"
             value={childPin}
             onChange={setChildPin}
           />
           <PinInput
             id="child-pin-confirm"
-            label="아이용 PIN 확인"
+            label="본인 PIN 확인"
             value={childPinConfirm}
             onChange={setChildPinConfirm}
           />

@@ -155,7 +155,7 @@ export function ChildSupportCoachPanel() {
   }
 
   return (
-    <section className="coach-shell" aria-label="아이용 AI 마음 도움">
+    <section className="coach-shell" aria-label="본인 페이지 AI 마음 도움">
       <div className="coach-header">
         <div>
           <p className="coach-eyebrow">AI 마음 도움</p>

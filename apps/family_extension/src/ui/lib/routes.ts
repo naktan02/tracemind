@@ -2,7 +2,6 @@ import type { FamilyAccessRole } from "../../contracts/generated";
 
 export const APP_ROUTES = [
   "/setup",
-  "/gate",
   "/child/unlock",
   "/parent/unlock",
   "/child",
@@ -22,21 +21,14 @@ export const ROUTE_META: Record<AppRoute, AppRouteMeta> = {
   "/setup": {
     label: "초기 설정",
     eyebrow: "처음 설정",
-    title: "아이/부모 PIN 초기 설정",
+    title: "본인/부모 PIN 초기 설정",
     description:
-      "아이 화면과 보호자 화면을 안전하게 나누기 위해 각각의 PIN을 설정합니다.",
-  },
-  "/gate": {
-    label: "역할 선택",
-    eyebrow: "화면 선택",
-    title: "들어갈 화면 선택",
-    description:
-      "아이용 자기 점검 화면과 보호자 안내 화면 중 하나를 선택합니다.",
+      "본인 페이지와 부모 페이지를 안전하게 나누기 위해 각각의 PIN을 설정합니다.",
   },
   "/child/unlock": {
-    label: "아이용 PIN",
-    eyebrow: "아이용 PIN",
-    title: "아이용 PIN 검증",
+    label: "본인 PIN",
+    eyebrow: "본인 PIN",
+    title: "본인 PIN 확인",
     description:
       "내 마음 상태와 AI 마음 도움을 확인하기 전에 PIN을 입력합니다.",
   },
@@ -49,10 +41,9 @@ export const ROUTE_META: Record<AppRoute, AppRouteMeta> = {
   },
   "/child": {
     label: "AI 마음 도움",
-    eyebrow: "아이 페이지",
-    title: "내 마음 상태와 AI 도움",
-    description:
-      "상태 단계, 위험도 변화, 개인 맥락 기반 대화 도움을 한곳에서 확인합니다.",
+    eyebrow: "본인 페이지",
+    title: "내 마음 상태",
+    description: "오늘의 상태를 확인하고 필요한 도움을 받아보세요.",
   },
   "/parent": {
     label: "보호자 안내",
@@ -82,13 +73,6 @@ type RouteAccessOptions = {
   isSetupComplete: boolean;
 };
 
-export function isRouteLocked(
-  route: AppRoute,
-  options: RouteAccessOptions,
-): boolean {
-  return resolveAccessibleRoute(route, options) !== route;
-}
-
 export function resolveAccessibleRoute(
   route: AppRoute,
   options: RouteAccessOptions,
@@ -98,8 +82,14 @@ export function resolveAccessibleRoute(
   }
 
   if (options.activeRole == null) {
-    if (route === "/child" || route === "/parent" || route === "/setup") {
-      return "/gate";
+    if (route === "/child") {
+      return "/child/unlock";
+    }
+    if (route === "/parent") {
+      return "/parent/unlock";
+    }
+    if (route === "/setup") {
+      return "/child/unlock";
     }
     return route;
   }

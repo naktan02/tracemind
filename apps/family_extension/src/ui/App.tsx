@@ -4,8 +4,7 @@ import { ConnectionStateBanner } from "./components/ConnectionStateBanner";
 import counselingHeroUrl from "./assets/counseling-hero.png";
 import { useFamilyAccess } from "./hooks/useFamilyAccess";
 import { useLocalProgramHealth } from "./hooks/useLocalProgramHealth";
-import { GatePage } from "./pages/gate/GatePage";
-import { ChildPage } from "./pages/child/ChildPage";
+import { ChildPage, type ChildTab } from "./pages/child/ChildPage";
 import { ParentPage } from "./pages/parent/ParentPage";
 import { SetupPage } from "./pages/setup/SetupPage";
 import { UnlockPage } from "./pages/unlock/UnlockPage";
@@ -32,7 +31,7 @@ function updateHash(route: AppRoute) {
 }
 
 export default function App({ initialRoute }: AppProps) {
-  const fallbackRoute = normalizeRoute(initialRoute, "/gate");
+  const fallbackRoute = normalizeRoute(initialRoute, "/child/unlock");
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(() =>
     normalizeRoute(getHashRoute(), fallbackRoute),
   );
@@ -50,6 +49,7 @@ export default function App({ initialRoute }: AppProps) {
   } = useFamilyAccess();
   const [childUnlockPin, setChildUnlockPin] = useState("");
   const [parentUnlockPin, setParentUnlockPin] = useState("");
+  const [childActiveTab, setChildActiveTab] = useState<ChildTab>("analysis");
   const isSetupResolved = setupStatusState.phase === "loaded";
   const isSetupComplete = setupStatusState.status?.is_setup_complete ?? false;
 
@@ -121,68 +121,49 @@ export default function App({ initialRoute }: AppProps) {
   async function handleSetupSubmit(childPin: string, parentPin: string) {
     const response = await submitSetup(childPin, parentPin);
     if (response?.is_setup_complete) {
-      setCurrentRoute("/gate");
-      updateHash("/gate");
+      setCurrentRoute("/child/unlock");
+      updateHash("/child/unlock");
     }
   }
 
   return (
     <div className="app-shell">
       <header className="top-bar">
-        <button className="brand-mark" type="button" onClick={() => moveTo("/gate")}>
+        <button
+          className="brand-mark"
+          type="button"
+          onClick={() => moveTo("/child/unlock")}
+        >
           <span className="brand-name">TraceMind</span>
         </button>
-        <nav className="top-nav" aria-label="주요 화면">
-          {isSetupComplete ? (
-            <>
+        {currentRoute === "/child" && activeRole === "child" && (
+          <nav className="top-nav" aria-label="본인 페이지 탭">
+            {(
+              [
+                ["analysis", "그래프 및 분석"],
+                ["ai", "AI 마음 도움"],
+                ["checkin", "자기 점검"],
+              ] as const
+            ).map(([tab, label]) => (
               <button
+                key={tab}
+                className={childActiveTab === tab ? "active" : undefined}
                 type="button"
-                onClick={() =>
-                  moveTo(activeRole === "child" ? "/child" : "/child/unlock")
-                }
+                onClick={() => setChildActiveTab(tab)}
               >
-                AI 도움
+                {label}
               </button>
-              <button
-                type="button"
-                onClick={() =>
-                  moveTo(activeRole === "child" ? "/child" : "/child/unlock")
-                }
-              >
-                그래프 및 분석
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  moveTo(activeRole === "parent" ? "/parent" : "/parent/unlock")
-                }
-              >
-                보호자 안내
-              </button>
-            </>
-          ) : (
+            ))}
+          </nav>
+        )}
+        {!isSetupComplete && (
+          <nav className="top-nav" aria-label="처음 설정">
             <button type="button" onClick={() => moveTo("/setup")}>
               처음 설정
             </button>
-          )}
-        </nav>
-        <div className="top-status">
-          <span
-            className={
-              healthState === "connected"
-                ? "connection-dot connected"
-                : healthState === "offline"
-                  ? "connection-dot offline"
-                  : "connection-dot"
-            }
-            aria-hidden="true"
-          />
-          <span>
-            {healthState === "checking" && "연결 확인 중"}
-            {healthState === "connected" && "프로그램 연결됨"}
-            {healthState === "offline" && "프로그램 연결 안 됨"}
-          </span>
-        </div>
+          </nav>
+        )}
+        <div className="top-spacer" aria-hidden="true" />
       </header>
 
       <main className="main-panel">
@@ -204,7 +185,7 @@ export default function App({ initialRoute }: AppProps) {
               <p className="eyebrow">설정 확인</p>
               <h2>초기 설정 상태를 확인하는 중</h2>
               <p className="section-copy">
-                이 기기에서 사용할 아이용/부모용 화면 설정을 확인하고 있습니다.
+                이 기기에서 사용할 본인/부모 화면 설정을 확인하고 있습니다.
               </p>
             </div>
             <div className="hero-meter">
@@ -216,7 +197,7 @@ export default function App({ initialRoute }: AppProps) {
         {setupStatusState.phase === "error" && (
           <section className="hero-card gate-hero">
             <div>
-              <p className="eyebrow">Family Access</p>
+              <p className="eyebrow">설정 확인</p>
               <h2>초기 설정 상태를 아직 확인하지 못했습니다</h2>
               <p className="section-copy">{setupStatusState.errorMessage}</p>
             </div>
@@ -239,24 +220,17 @@ export default function App({ initialRoute }: AppProps) {
             onSubmitSetup={handleSetupSubmit}
           />
         )}
-        {setupStatusState.phase === "loaded" && currentRoute === "/gate" && (
-          <GatePage
-            onMoveToChildUnlock={() => moveTo("/child/unlock")}
-            onMoveToParentUnlock={() => moveTo("/parent/unlock")}
-          />
-        )}
         {setupStatusState.phase === "loaded" && currentRoute === "/child" && (
-          <ChildPage onMoveToParentUnlock={() => moveTo("/parent/unlock")} />
+          <ChildPage activeTab={childActiveTab} />
         )}
         {setupStatusState.phase === "loaded" && currentRoute === "/child/unlock" && (
           <UnlockPage
             pin={childUnlockPin}
-            pinLabel="아이용 PIN"
+            pinLabel="본인 PIN"
             role="child"
             unlockState={getUnlockState("child")}
             onPinChange={setChildUnlockPin}
             onSubmitUnlock={() => void handleRoleUnlockSubmit("child")}
-            onMoveToGate={() => moveTo("/gate")}
             onMoveToRoleSurface={() => moveTo("/child")}
           />
         )}
@@ -269,15 +243,12 @@ export default function App({ initialRoute }: AppProps) {
             unlockState={getUnlockState("parent")}
             onPinChange={setParentUnlockPin}
             onSubmitUnlock={() => void handleRoleUnlockSubmit("parent")}
-            onMoveToGate={() => moveTo("/gate")}
             onMoveToRoleSurface={() => moveTo("/parent")}
           />
           )}
         {setupStatusState.phase === "loaded" && currentRoute === "/parent" && (
           <ParentPage
             activeSessionExpiresAt={activeSession?.sessionExpiresAt ?? null}
-            onMoveToChildUnlock={() => moveTo("/child/unlock")}
-            onMoveToGate={() => moveTo("/gate")}
           />
         )}
       </main>

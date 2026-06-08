@@ -51,7 +51,7 @@ export function WellbeingSignalTrendChart({
         <div>
           <p className="card-label">최근 변화</p>
           <p className="section-copy">
-            최근 상태가 어떻게 변했는지 아이 본인이 확인할 수 있는 그래프입니다.
+            최근 상태가 어떻게 변했는지 본인이 확인할 수 있는 그래프입니다.
           </p>
         </div>
         <div className="range-toggle" role="tablist" aria-label="timeseries range">

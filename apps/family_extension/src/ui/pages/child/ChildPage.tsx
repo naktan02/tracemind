@@ -1,20 +1,18 @@
 import { useState } from "react";
 
 import { ChildSupportCoachPanel } from "../../components/ChildSupportCoachPanel";
-import { WellbeingDataNotice } from "../../components/WellbeingDataNotice";
 import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
 import { WellbeingSignalTrendChart } from "../../components/WellbeingSignalTrendChart";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
 import { useWellbeingTimeseries } from "../../hooks/useWellbeingTimeseries";
 
 type ChildPageProps = {
-  onMoveToParentUnlock: () => void;
+  activeTab: ChildTab;
 };
 
-type ChildTab = "ai" | "analysis" | "checkin";
+export type ChildTab = "ai" | "analysis" | "checkin";
 
-export function ChildPage({ onMoveToParentUnlock }: ChildPageProps) {
-  const [activeTab, setActiveTab] = useState<ChildTab>("ai");
+export function ChildPage({ activeTab }: ChildPageProps) {
   const [selectedRange, setSelectedRange] = useState<"7d" | "14d" | "30d">("7d");
   const summaryState = useWellbeingSummary();
   const timeseriesState = useWellbeingTimeseries({
@@ -26,9 +24,6 @@ export function ChildPage({ onMoveToParentUnlock }: ChildPageProps) {
     <div className="page-stack">
       {summaryState.status === "loaded" && (
         <WellbeingSignalCard summary={summaryState.summary} />
-      )}
-      {summaryState.status === "loaded" && (
-        <WellbeingDataNotice summary={summaryState.summary} />
       )}
       {summaryState.status === "loading" && (
         <section className="hero-card child-hero">
@@ -60,34 +55,6 @@ export function ChildPage({ onMoveToParentUnlock }: ChildPageProps) {
           </div>
         </section>
       )}
-
-      <nav className="content-tabs" aria-label="아이용 화면 탭">
-        <button
-          className={activeTab === "ai" ? "content-tab active" : "content-tab"}
-          type="button"
-          onClick={() => setActiveTab("ai")}
-        >
-          AI 마음 도움
-        </button>
-        <button
-          className={
-            activeTab === "analysis" ? "content-tab active" : "content-tab"
-          }
-          type="button"
-          onClick={() => setActiveTab("analysis")}
-        >
-          그래프 및 분석
-        </button>
-        <button
-          className={
-            activeTab === "checkin" ? "content-tab active" : "content-tab"
-          }
-          type="button"
-          onClick={() => setActiveTab("checkin")}
-        >
-          자기 점검
-        </button>
-      </nav>
 
       {activeTab === "ai" && <ChildSupportCoachPanel />}
 
@@ -160,16 +127,6 @@ export function ChildPage({ onMoveToParentUnlock }: ChildPageProps) {
           </article>
         </section>
       )}
-
-      <div className="button-row">
-        <button
-          className="primary-button"
-          type="button"
-          onClick={onMoveToParentUnlock}
-        >
-          부모용 화면으로 전환
-        </button>
-      </div>
     </div>
   );
 }

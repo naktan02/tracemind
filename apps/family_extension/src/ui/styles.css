@@ -70,8 +70,8 @@ button:disabled {
   min-height: 76px;
   padding: 0 7vw;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 30px;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 24px;
   align-items: center;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.96);
@@ -94,8 +94,8 @@ button:disabled {
 
 .top-nav {
   display: flex;
-  justify-content: center;
-  gap: 28px;
+  justify-content: flex-start;
+  gap: 24px;
 }
 
 .top-nav button {
@@ -112,33 +112,9 @@ button:disabled {
   border-bottom-color: var(--teal-700);
 }
 
-.top-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--paper);
-  color: var(--ink-650);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.connection-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #c0c7c2;
-}
-
-.connection-dot.connected {
-  background: var(--teal-700);
-}
-
-.connection-dot.offline {
-  background: var(--amber-600);
+.top-nav button.active {
+  border-bottom-color: var(--teal-700);
+  color: var(--ink-950);
 }
 
 .main-panel {
@@ -364,30 +340,6 @@ button:disabled {
 
 .status-text.warning {
   color: var(--amber-600);
-}
-
-.content-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--line-strong);
-  background: var(--paper);
-}
-
-.content-tab {
-  min-height: 54px;
-  padding: 0 22px;
-  border: 0;
-  border-right: 1px solid var(--line);
-  border-bottom: 4px solid transparent;
-  background: var(--paper);
-  color: var(--ink-650);
-  font-weight: 850;
-}
-
-.content-tab.active {
-  color: var(--teal-800);
-  border-bottom-color: var(--teal-700);
-  background: #f2fbf9;
 }
 
 .tab-panel {
@@ -801,10 +753,6 @@ button:disabled {
     gap: 18px;
   }
 
-  .top-status {
-    width: fit-content;
-  }
-
   .page-hero {
     min-height: 300px;
     padding: 44px 28px;
@@ -827,14 +775,6 @@ button:disabled {
   .trend-footer,
   .coach-header {
     flex-direction: column;
-  }
-
-  .content-tabs {
-    overflow-x: auto;
-  }
-
-  .content-tab {
-    flex: 0 0 auto;
   }
 
   .coach-composer {
