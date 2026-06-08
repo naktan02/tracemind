@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from agent.src.infrastructure.repositories.local_agent_database import (
+    DEFAULT_AGENT_LOCAL_DB_PATH,
+)
 from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
     TRAINING_USAGE_ROLE_LABELED_ANCHOR,
     TRAINING_USAGE_STAGE_QUERY_SSL_INPUT,
@@ -52,6 +55,10 @@ def test_training_usage_ledger_round_trips_run_and_rows(tmp_path) -> None:
 
     run = repository.get_run("update_001")
     rows = repository.get_rows_for_update("update_001")
+    source_rows = repository.get_rows_for_source(
+        source_kind="analysis_event",
+        source_id="query_001",
+    )
 
     assert run is not None
     assert run.round_id == "round_001"
@@ -61,4 +68,11 @@ def test_training_usage_ledger_round_trips_run_and_rows(tmp_path) -> None:
     assert len(rows) == 1
     assert rows[0].source_id == "query_001"
     assert rows[0].label == "anxiety"
+    assert source_rows == rows
     assert repository.count_rows() == 1
+
+
+def test_training_usage_ledger_default_uses_agent_local_db() -> None:
+    repository = TrainingUsageLedgerRepository()
+
+    assert repository.db_path == DEFAULT_AGENT_LOCAL_DB_PATH

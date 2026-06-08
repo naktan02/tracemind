@@ -9,6 +9,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from agent.src.infrastructure.repositories.local_agent_database import (
+    DEFAULT_AGENT_LOCAL_DB_PATH,
+    connect_agent_local_db,
+)
+
 TRAINING_USAGE_RUN_V1 = "training_usage_run.v1"
 TRAINING_USAGE_ROW_V1 = "training_usage_row.v1"
 TRAINING_USAGE_STATUS_UPLOADED = "uploaded"
@@ -16,7 +21,7 @@ TRAINING_USAGE_ROLE_LABELED_ANCHOR = "labeled_anchor"
 TRAINING_USAGE_ROLE_UNLABELED_GENERATED_VIEW = "unlabeled_generated_view"
 TRAINING_USAGE_STAGE_QUERY_SSL_INPUT = "query_ssl_input"
 
-_DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "training_usage_ledger.db"
+_DEFAULT_DB_PATH = DEFAULT_AGENT_LOCAL_DB_PATH
 
 _CREATE_RUN_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS training_usage_runs (
@@ -67,6 +72,11 @@ CREATE INDEX IF NOT EXISTS idx_training_usage_rows_round_task
 ON training_usage_rows (round_id, task_id);
 """
 
+_CREATE_ROW_SOURCE_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_training_usage_rows_source
+ON training_usage_rows (source_kind, source_id, recorded_at);
+"""
+
 _INSERT_RUN_SQL = """
 INSERT OR REPLACE INTO training_usage_runs
     (update_id, schema_version, round_id, task_id, recorded_at, agent_id,
@@ -105,6 +115,14 @@ SELECT update_id, source_id, role, schema_version, round_id, task_id, recorded_a
 FROM training_usage_rows
 WHERE update_id = ?
 ORDER BY role ASC, source_id ASC;
+"""
+
+_SELECT_ROWS_FOR_SOURCE_SQL = """
+SELECT update_id, source_id, role, schema_version, round_id, task_id, recorded_at,
+       source_kind, stage, label, metadata
+FROM training_usage_rows
+WHERE source_kind = ? AND source_id = ?
+ORDER BY recorded_at DESC;
 """
 
 _COUNT_ROWS_SQL = "SELECT COUNT(*) FROM training_usage_rows;"
@@ -184,6 +202,7 @@ class TrainingUsageLedgerRepository:
             conn.execute(_CREATE_ROW_TABLE_SQL)
             conn.execute(_CREATE_RUN_ROUND_TASK_INDEX_SQL)
             conn.execute(_CREATE_ROW_ROUND_TASK_INDEX_SQL)
+            conn.execute(_CREATE_ROW_SOURCE_INDEX_SQL)
 
     def save_run(
         self,
@@ -266,6 +285,23 @@ class TrainingUsageLedgerRepository:
             rows = conn.execute(_SELECT_ROWS_FOR_UPDATE_SQL, (update_id,)).fetchall()
         return tuple(_row_to_usage_row_record(row) for row in rows)
 
+    def get_rows_for_source(
+        self,
+        *,
+        source_kind: str,
+        source_id: str,
+    ) -> tuple[TrainingUsageRowRecord, ...]:
+        """특정 source row가 학습 입력으로 사용된 이력을 최신순으로 읽는다."""
+
+        _require_non_empty(source_kind, "source_kind")
+        _require_non_empty(source_id, "source_id")
+        with self._connect() as conn:
+            rows = conn.execute(
+                _SELECT_ROWS_FOR_SOURCE_SQL,
+                (source_kind, source_id),
+            ).fetchall()
+        return tuple(_row_to_usage_row_record(row) for row in rows)
+
     def count_rows(self) -> int:
         """저장된 row 사용 기록 수를 반환한다."""
 
@@ -273,7 +309,7 @@ class TrainingUsageLedgerRepository:
             return int(conn.execute(_COUNT_ROWS_SQL).fetchone()[0])
 
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path)
+        return connect_agent_local_db(self.db_path)
 
 
 def _row_to_run_record(row: tuple[Any, ...]) -> TrainingUsageRunRecord:

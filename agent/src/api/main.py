@@ -160,9 +160,7 @@ def create_app(
     app.state.analysis_event_repository = (
         analysis_event_repository or AnalysisEventRepository()
     )
-    app.state.query_buffer_repository = (
-        query_buffer_repository or QueryBufferRepository()
-    )
+    app.state.query_buffer_repository = query_buffer_repository
     app.state.captured_text_repository = (
         captured_text_repository or CapturedTextRepository()
     )

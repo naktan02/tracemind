@@ -36,7 +36,7 @@ AGENT_EMBEDDING_HASH_DIM_ENV = "TRACEMIND_AGENT_EMBEDDING_HASH_DIM"
 def build_default_pipeline_service(
     *,
     analysis_event_repository: AnalysisEventRepository,
-    query_buffer_repository: QueryBufferRepository,
+    query_buffer_repository: QueryBufferRepository | None,
     shared_adapter_runtime_service: SharedAdapterRuntimeService,
     translation_service: TranslationService | None,
 ) -> InferencePipelineService:

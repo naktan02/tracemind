@@ -128,7 +128,7 @@ Reddit Labeled Data
 -> Fixed Embedding
 -> Classifier Seed
 -> Local Deployment
--> Query Buffer
+-> Generated View Source or legacy Query Buffer
 -> Threshold / Policy Selection
 -> Accepted Query-derived Rows
 -> Continue PEFT text encoder + linear head adaptation
@@ -145,8 +145,9 @@ Reddit Labeled Data
 | 중앙/FL 공통 text encoder SSL runtime support | `scripts/support/query_ssl_text_encoder/*` |
 | trainer core | `methods/adaptation/query_text_views/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | evaluation metric core | `methods/evaluation/*` |
-| query buffer repository | `agent/src/infrastructure/repositories/query_buffer_repository.py` |
-| query buffer selection | `agent/src/services/training/selection/query_buffer_selection_service.py` |
+| captured generated view source | `agent/src/services/training/datasets/captured_text_training_source_service.py` |
+| training source usage ledger | `agent/src/infrastructure/repositories/training_usage_ledger_repository.py` |
+| legacy query buffer selection | `agent/src/services/training/selection/query_buffer_selection_service.py` |
 
 주의:
 

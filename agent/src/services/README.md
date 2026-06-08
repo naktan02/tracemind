@@ -89,9 +89,10 @@
 - `training/selection/pseudo_label_service.py`
   - score를 pseudo-label candidate/accepted set으로 해석
 - `docs/contracts/query_buffer_v1.md`
-  - agent-owned local query retention과 selection 입력 경계
+  - legacy 일반 inference 기반 local query retention과 selection 입력 경계
 - `infrastructure/repositories/query_buffer_repository.py`
-  - raw text + prediction snapshot을 로컬에 저장하는 query buffer 저장소
+  - raw text + prediction snapshot을 로컬에 저장하는 legacy query buffer 저장소
+  - 기본 app runtime에서는 자동 생성하지 않는다
 - `training/selection/query_buffer_projection.py`
   - query buffer snapshot + analysis event를 `PseudoLabelEvidence`에 투영
 - `training/selection/query_buffer_selection_service.py`
@@ -125,8 +126,11 @@
     `TrainingExampleSource`로 정규화한다
   - captured text는 raw string이나 임의 JSON으로 학습에 직접 들어가지 않고,
     captured event -> generated view -> source row 단계를 거친다
+- `infrastructure/repositories/training_usage_ledger_repository.py`
+  - generated view나 analysis event가 어떤 round/task/update의 학습 입력으로
+    사용됐는지 source id와 recorded_at 기준으로 기록한다
 - `training/selection/query_buffer_lifecycle_service.py`
-  - query buffer raw text retention / purge 정책과 lifecycle 실행
+  - legacy query buffer raw text retention / purge 정책과 lifecycle 실행
 - `training/examples/models.py`
   - local training과 federation이 공유하는 example DTO
 - `training/execution/runtime_compatibility.py`

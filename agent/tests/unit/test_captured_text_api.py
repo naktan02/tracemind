@@ -143,6 +143,12 @@ def test_captured_text_router_is_registered_on_agent_app() -> None:
     assert "/api/v1/captured-text/debug-job/run-view-generation" in route_paths
 
 
+def test_agent_app_does_not_create_query_buffer_by_default() -> None:
+    client = TestClient(create_app(auto_configure_pipeline=False))
+
+    assert client.app.state.query_buffer_repository is None
+
+
 def test_captured_text_endpoint_stores_without_pipeline(tmp_path: Path) -> None:
     repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
     client = TestClient(create_app(auto_configure_pipeline=False))
