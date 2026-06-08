@@ -40,9 +40,9 @@ export function renderFilterPanel({
     .join("");
 
   if (visibleAxes.length === 0) {
-    activeFilters.innerHTML = `<p class="empty">현재 조건에서 더 나눌 필터 축이 없습니다.</p>`;
+    activeFilters.innerHTML = `<p class="empty">현재 조건에서 더 나눌 필터 메타가 없습니다.</p>`;
   } else if (selectedAxisIds.length === 0) {
-    activeFilters.innerHTML = `<p class="empty">왼쪽에서 사용할 필터 축을 선택하세요.</p>`;
+    activeFilters.innerHTML = `<p class="empty">왼쪽에서 사용할 필터 메타를 선택하세요.</p>`;
   } else {
     activeFilters.innerHTML = selectedAxisIds
       .map((axisId) => {
@@ -82,7 +82,7 @@ export function renderFilterPanel({
   );
   summary.textContent = [
     `filtered runs=${filteredRows.length}/${rows.length}`,
-    `axes=${visibleAxes.length}`,
+    `meta=${visibleAxes.length}`,
     `selected values=${selectedValueCount}`,
   ].join(" · ");
 }
