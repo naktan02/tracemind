@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS analysis_events (
     model_revision       TEXT NOT NULL,
     top_category         TEXT,
     top_score            REAL,
-    confidence_kind      TEXT NOT NULL,
     embedding_model_id   TEXT,
     translation_model_id TEXT,
     base_embedding       TEXT,
@@ -72,9 +71,8 @@ _INSERT_ANALYSIS_EVENT_SQL = """
 INSERT OR REPLACE INTO analysis_events
     (analysis_id, source_event_id, occurred_at, translated_text,
      scorer_family, scorer_name, model_revision, top_category, top_score,
-     confidence_kind, embedding_model_id, translation_model_id,
-     base_embedding, metadata)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     embedding_model_id, translation_model_id, base_embedding, metadata)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 _INSERT_CATEGORY_SCORE_SQL = """
@@ -85,8 +83,8 @@ VALUES (?, ?, ?);
 
 _SELECT_RECENT_SQL = """
 SELECT analysis_id, source_event_id, occurred_at, translated_text,
-       scorer_family, scorer_name, model_revision, confidence_kind,
-       embedding_model_id, translation_model_id, base_embedding, metadata
+       scorer_family, scorer_name, model_revision, embedding_model_id,
+       translation_model_id, base_embedding, metadata
 FROM analysis_events
 WHERE occurred_at >= ?
 ORDER BY occurred_at DESC;
@@ -141,7 +139,6 @@ class AnalysisEventRepository:
         scorer_family: str = "unknown",
         scorer_name: str = "unknown",
         model_revision: str = "unknown",
-        confidence_kind: str = "unknown",
         metadata: dict[str, str | int | float | bool | None] | None = None,
     ) -> None:
         """AnalysisEvent를 저장한다. base_embedding이 있으면 함께 저장한다."""
@@ -159,9 +156,6 @@ class AnalysisEventRepository:
         effective_model_revision = (
             model_revision if model_revision != "unknown" else event.model_revision
         )
-        effective_confidence_kind = (
-            confidence_kind if confidence_kind != "unknown" else event.confidence_kind
-        )
         effective_metadata = {**event.metadata, **(metadata or {})}
         with self._connect() as conn:
             conn.execute(_DELETE_CATEGORY_SCORES_SQL, (analysis_id,))
@@ -177,7 +171,6 @@ class AnalysisEventRepository:
                     effective_model_revision,
                     top_category,
                     top_score,
-                    effective_confidence_kind,
                     event.embedding_model_id,
                     event.translation_model_id,
                     json.dumps(base_embedding) if base_embedding is not None else None,
@@ -231,6 +224,7 @@ def ensure_analysis_event_schema(conn: sqlite3.Connection) -> None:
     """analysis event 관련 table/index를 생성한다."""
 
     conn.execute(_CREATE_ANALYSIS_EVENTS_TABLE_SQL)
+    _drop_legacy_confidence_kind_column(conn)
     conn.execute(_CREATE_ANALYSIS_CATEGORY_SCORES_TABLE_SQL)
     conn.execute(_CREATE_ANALYSIS_OCCURRED_AT_INDEX_SQL)
     conn.execute(_CREATE_ANALYSIS_SCORER_FAMILY_INDEX_SQL)
@@ -260,7 +254,6 @@ def _row_to_stored(conn: sqlite3.Connection, row: tuple) -> StoredAnalysisEvent:
         scorer_family,
         scorer_name,
         model_revision,
-        confidence_kind,
         embedding_model_id,
         translation_model_id,
         base_embedding_json,
@@ -282,7 +275,6 @@ def _row_to_stored(conn: sqlite3.Connection, row: tuple) -> StoredAnalysisEvent:
         scorer_family=scorer_family,
         scorer_name=scorer_name,
         model_revision=model_revision,
-        confidence_kind=confidence_kind,
         metadata=json.loads(metadata_json),
     )
     base_embedding = (
@@ -292,3 +284,53 @@ def _row_to_stored(conn: sqlite3.Connection, row: tuple) -> StoredAnalysisEvent:
         analysis_event=analysis_event,
         base_embedding=base_embedding,
     )
+
+
+def _drop_legacy_confidence_kind_column(conn: sqlite3.Connection) -> None:
+    columns = {
+        str(row[1])
+        for row in conn.execute("PRAGMA table_info(analysis_events);").fetchall()
+    }
+    if "confidence_kind" not in columns:
+        return
+    try:
+        conn.execute("ALTER TABLE analysis_events DROP COLUMN confidence_kind;")
+        return
+    except sqlite3.OperationalError:
+        pass
+
+    category_rows = []
+    category_table_exists = conn.execute(
+        """
+        SELECT 1
+        FROM sqlite_master
+        WHERE type = 'table' AND name = 'analysis_category_scores'
+        LIMIT 1;
+        """
+    ).fetchone()
+    if category_table_exists is not None:
+        category_rows = conn.execute(
+            """
+            SELECT analysis_id, category, score
+            FROM analysis_category_scores;
+            """
+        ).fetchall()
+        conn.execute("DROP TABLE analysis_category_scores;")
+    conn.execute("ALTER TABLE analysis_events RENAME TO analysis_events_legacy;")
+    conn.execute(_CREATE_ANALYSIS_EVENTS_TABLE_SQL)
+    conn.execute(
+        """
+        INSERT INTO analysis_events
+            (analysis_id, source_event_id, occurred_at, translated_text,
+             scorer_family, scorer_name, model_revision, top_category, top_score,
+             embedding_model_id, translation_model_id, base_embedding, metadata)
+        SELECT analysis_id, source_event_id, occurred_at, translated_text,
+               scorer_family, scorer_name, model_revision, top_category, top_score,
+               embedding_model_id, translation_model_id, base_embedding, metadata
+        FROM analysis_events_legacy;
+        """
+    )
+    conn.execute("DROP TABLE analysis_events_legacy;")
+    if category_table_exists is not None:
+        conn.execute(_CREATE_ANALYSIS_CATEGORY_SCORES_TABLE_SQL)
+        conn.executemany(_INSERT_CATEGORY_SCORE_SQL, category_rows)

@@ -34,7 +34,6 @@ class AnalysisScoreEvidenceBackend:
 
     backend_name: str = ANALYSIS_SCORE_EVIDENCE_BACKEND_NAME
     supported_adapter_kinds: tuple[str, ...] = (ANY_ADAPTER_KIND,)
-    confidence_kind: str = "analysis_score_top1"
     view_kind: str = "single_view"
 
     def build_evidence(
@@ -46,7 +45,6 @@ class AnalysisScoreEvidenceBackend:
         return build_ranked_evidence(
             analysis_event=analysis_event,
             ranked_scores=ranked_scores,
-            confidence_kind=self.confidence_kind,
             view_kind=self.view_kind,
             backend_name=self.backend_name,
         )

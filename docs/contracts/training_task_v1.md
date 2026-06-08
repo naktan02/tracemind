@@ -134,7 +134,6 @@ v1 원칙:
     "algorithm_profile_name": "peft_classifier_update_v1",
     "example_generation_backend_name": "weak_strong_pair",
     "evidence_backend_name": "analysis_score_evidence",
-    "scorer_backend_name": "classifier_head_logits",
     "pseudo_label_algorithm_name": "top1_ranked",
     "acceptance_policy_name": "top1_ranked",
     "privacy_guard_name": "noop"
@@ -181,3 +180,6 @@ Query SSL raw-row runner로 분기한다.
    `scorer_backend_name`, `score_policy_name`,
    `pseudo_label_algorithm_name`, `acceptance_policy_name`,
    `privacy_guard_name`은 서로 다른 교체 축으로 해석돼야 한다.
+   단, PEFT Query SSL raw-row runtime은 scorer backend를 쓰지 않으므로
+   `scorer_backend_name`을 기본값으로 채우지 않는다. stored-event scoring
+   runtime처럼 scorer가 실제로 필요한 경로만 명시한다.

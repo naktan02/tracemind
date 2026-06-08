@@ -99,7 +99,6 @@ class SelectionDiagnosticsWriter:
                         "pre_cap_rank": selection_context.pre_cap_rank,
                         "is_prediction_correct": candidate.label == true_label,
                         "view_kind": example.view_kind,
-                        "confidence_kind": candidate.confidence_kind,
                         "category_scores": raw_scores,
                         "label_distribution": label_distribution,
                         "evidence_view_kind": (

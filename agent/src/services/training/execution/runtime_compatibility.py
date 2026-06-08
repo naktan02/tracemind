@@ -60,10 +60,7 @@ def validate_live_agent_stored_event_runtime(
         objective_config=objective,
         training_backend=resolved_training_backend,
     )
-    scorer_backend_name = (
-        objective.scorer_backend_name
-        or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-    )
+    scorer_backend_name = _require_scorer_backend_name(objective.scorer_backend_name)
     build_scoring_backend(
         scorer_backend_name,
         objective_config=objective,
@@ -119,10 +116,7 @@ def validate_local_training_runtime(
     evidence_backend = resolve_pseudo_label_evidence_backend(
         objective_config=objective,
     )
-    scorer_backend_name = (
-        objective.scorer_backend_name
-        or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-    )
+    scorer_backend_name = _require_scorer_backend_name(objective.scorer_backend_name)
     scorer_backend = build_scoring_backend(
         scorer_backend_name,
         objective_config=objective,
@@ -206,3 +200,12 @@ def _require_adapter_kind_support(
         f"Incompatible {component_type}: {component_name} does not support "
         f"adapter_kind={adapter_kind}."
     )
+
+
+def _require_scorer_backend_name(value: str | None) -> str:
+    if value is None:
+        raise ValueError(
+            "scorer_backend_name is required for stored-event scoring runtime. "
+            "Query SSL raw-row PEFT runtimes should not enter this scorer path."
+        )
+    return value

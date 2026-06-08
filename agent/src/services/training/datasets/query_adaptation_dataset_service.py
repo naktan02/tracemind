@@ -45,7 +45,6 @@ class QueryAdaptationDatasetProvenance:
     locale: str
     source_type: str
     model_revision: str
-    selection_confidence_kind: str
     translated_text_present: bool
     candidate_id: str
     evidence_ref: str | None = None
@@ -60,8 +59,6 @@ class QueryAdaptationDatasetProvenance:
             raise ValueError("source_type must not be empty.")
         if not self.model_revision.strip():
             raise ValueError("model_revision must not be empty.")
-        if not self.selection_confidence_kind.strip():
-            raise ValueError("selection_confidence_kind must not be empty.")
         if not self.candidate_id.strip():
             raise ValueError("candidate_id must not be empty.")
 
@@ -203,11 +200,6 @@ def _build_dataset_provenance(
         locale=str(candidate.metadata.get("locale", "unknown")),
         source_type=str(candidate.metadata.get("source_type", "unknown")),
         model_revision=str(candidate.metadata.get("model_revision", "unknown")),
-        selection_confidence_kind=(
-            "unknown"
-            if candidate.confidence_kind is None
-            else str(candidate.confidence_kind)
-        ),
         translated_text_present=(
             False
             if analysis_event is None

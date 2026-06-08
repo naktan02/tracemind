@@ -27,7 +27,6 @@ SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS = frozenset(
         "max_examples",
         "pseudo_label_algorithm_name",
         "evidence_backend_name",
-        "confidence_kind",
         "view_kind",
     }
 )
@@ -46,7 +45,6 @@ class PseudoLabelSelectionContext:
     pre_cap_rank: int | None = None
     pseudo_label_algorithm_name: str | None = None
     evidence_backend_name: str | None = None
-    evidence_confidence_kind: str | None = None
     evidence_view_kind: str | None = None
 
     def __post_init__(self) -> None:
@@ -79,8 +77,6 @@ class PseudoLabelSelectionContext:
             metadata["pseudo_label_algorithm_name"] = self.pseudo_label_algorithm_name
         if self.evidence_backend_name is not None:
             metadata["evidence_backend_name"] = self.evidence_backend_name
-        if self.evidence_confidence_kind is not None:
-            metadata["confidence_kind"] = self.evidence_confidence_kind
         if self.evidence_view_kind is not None:
             metadata["view_kind"] = self.evidence_view_kind
         return metadata
@@ -101,7 +97,6 @@ class PseudoLabelCandidate:
     runner_up_label: str | None = None
     runner_up_score: float | None = None
     evidence_ref: str | None = None
-    confidence_kind: str | None = None
     sample_weight: float = 1.0
     task_id: str | None = None
     round_id: str | None = None

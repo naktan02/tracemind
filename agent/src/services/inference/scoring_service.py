@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from agent.src.services.inference.scoring_backends.base import (
     ScoringAssets,
@@ -11,15 +11,10 @@ from agent.src.services.inference.scoring_backends.base import (
 )
 from agent.src.services.inference.scoring_backends.helpers import (
     resolve_scoring_backend_name,
-    resolve_scoring_confidence_kind,
 )
 from agent.src.services.inference.scoring_backends.registry import (
     build_scoring_backend,
 )
-from methods.classification.linear_head.scoring import (
-    ClassifierHeadLogitsScoringBackend,
-)
-from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
@@ -28,7 +23,7 @@ from shared.src.domain.entities.training.shared_adapter_state import SharedAdapt
 class ScoringService:
     """설정된 scoring backend로 category score dict를 계산한다."""
 
-    backend: ScoringBackend = field(default_factory=ClassifierHeadLogitsScoringBackend)
+    backend: ScoringBackend
     shared_state: SharedAdapterState | None = None
 
     @classmethod
@@ -41,10 +36,9 @@ class ScoringService:
     ) -> "ScoringService":
         """학습 objective config로부터 scoring service를 조립한다."""
 
-        backend_name = (
-            objective_config.scorer_backend_name
-            or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-        )
+        backend_name = objective_config.scorer_backend_name
+        if backend_name is None:
+            raise ValueError("scorer_backend_name is required for ScoringService.")
         backend = build_scoring_backend(
             backend_name,
             objective_config=objective_config,
@@ -73,9 +67,3 @@ class ScoringService:
         """현재 backend canonical name."""
 
         return resolve_scoring_backend_name(self.backend)
-
-    @property
-    def confidence_kind(self) -> str:
-        """analysis event에 남길 confidence kind."""
-
-        return resolve_scoring_confidence_kind(self.backend)

@@ -36,7 +36,6 @@ class PseudoLabelFeedbackBuilder:
                 "round_id": training_task.round_id,
                 "margin": candidate.margin,
                 "runner_up_score": candidate.runner_up_score or 0.0,
-                "confidence_kind": candidate.confidence_kind or "unknown",
                 "sample_weight": candidate.sample_weight,
                 "evidence_ref": candidate.evidence_ref or "",
             },

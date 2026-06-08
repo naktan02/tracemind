@@ -484,7 +484,6 @@ def _patch_peft_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
             accepted_ratio=1.0,
             loss_kind="cross_entropy_from_peft_classifier_logits",
             score_distribution_kind="peft_classifier_logits_softmax",
-            selection_confidence_kind="peft_classifier_top1_probability",
             mean_selection_confidence=float(report["mean_top_1_probability"]),
             mean_selection_margin=float(report["mean_margin_top1_top2"]),
         )

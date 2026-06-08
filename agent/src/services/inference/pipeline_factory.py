@@ -18,6 +18,7 @@ from agent.src.services.inference.embedding_service import EmbeddingService
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.language.translation_service import TranslationService
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 AGENT_EMBEDDING_BACKEND_ENV = "TRACEMIND_AGENT_EMBEDDING_BACKEND"
@@ -28,6 +29,7 @@ AGENT_EMBEDDING_BATCH_SIZE_ENV = "TRACEMIND_AGENT_EMBEDDING_BATCH_SIZE"
 AGENT_EMBEDDING_CACHE_DIR_ENV = "TRACEMIND_AGENT_EMBEDDING_CACHE_DIR"
 AGENT_EMBEDDING_LOCAL_FILES_ONLY_ENV = "TRACEMIND_AGENT_EMBEDDING_LOCAL_FILES_ONLY"
 AGENT_EMBEDDING_HASH_DIM_ENV = "TRACEMIND_AGENT_EMBEDDING_HASH_DIM"
+AGENT_SCORING_BACKEND_ENV = "TRACEMIND_AGENT_SCORING_BACKEND"
 
 
 def build_default_pipeline_service(
@@ -39,11 +41,17 @@ def build_default_pipeline_service(
     """agent runtime 기본 inference pipeline을 조립한다."""
 
     embedding_spec = load_agent_embedding_spec_from_env()
+    scoring_backend_name = _required_env_value(os.environ, AGENT_SCORING_BACKEND_ENV)
     return InferencePipelineService(
         embedding_service=EmbeddingService(
             adapter=EmbeddingAdapterFactory.create(embedding_spec)
         ),
-        scoring_service=ScoringService(),
+        scoring_service=ScoringService.from_objective_config(
+            TrainingObjectiveConfig(
+                training_backend_name="agent_inference_scoring",
+                scorer_backend_name=scoring_backend_name,
+            )
+        ),
         event_repository=analysis_event_repository,
         shared_adapter_provider=shared_adapter_runtime_service,
         translation_service=translation_service,
@@ -90,6 +98,13 @@ def _env_value(environ: Mapping[str, str], key: str, default: str) -> str:
 def _env_optional_value(environ: Mapping[str, str], key: str) -> str | None:
     value = environ.get(key, "").strip()
     return value or None
+
+
+def _required_env_value(environ: Mapping[str, str], key: str) -> str:
+    value = environ.get(key, "").strip()
+    if not value:
+        raise ValueError(f"{key} is required.")
+    return value
 
 
 def _env_int(environ: Mapping[str, str], key: str, default: int) -> int:

@@ -13,6 +13,10 @@ import pytest
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
+from agent.src.services.inference.pipeline_factory import (
+    AGENT_SCORING_BACKEND_ENV,
+    build_default_pipeline_service,
+)
 from agent.src.services.inference.pipeline_service import (
     InferencePipelineService,
 )
@@ -67,7 +71,7 @@ def _get_analysis_metadata_row(
     with sqlite3.connect(pipeline.event_repository.db_path) as conn:
         row = conn.execute(
             """
-            SELECT model_revision, confidence_kind, metadata
+            SELECT model_revision, metadata
             FROM analysis_events
             WHERE analysis_id = ?
             """,
@@ -76,8 +80,7 @@ def _get_analysis_metadata_row(
     assert row is not None
     return {
         "model_revision": str(row[0]),
-        "confidence_kind": str(row[1]),
-        "metadata": json.loads(str(row[2])),
+        "metadata": json.loads(str(row[1])),
     }
 
 
@@ -121,10 +124,86 @@ def test_repo_uses_analysis_event_schema(tmp_repo: AnalysisEventRepository) -> N
         "scorer_family",
         "scorer_name",
         "model_revision",
-        "confidence_kind",
         "metadata",
     }.issubset(analysis_columns)
+    assert "confidence_kind" not in analysis_columns
     assert {"analysis_id", "category", "score"}.issubset(score_columns)
+
+
+def test_repo_drops_legacy_confidence_kind_column(tmp_path: Path) -> None:
+    """기존 analysis_events.confidence_kind 컬럼을 제거한다."""
+    db_path = tmp_path / "legacy_events.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE analysis_events (
+                analysis_id          TEXT PRIMARY KEY,
+                source_event_id      TEXT NOT NULL,
+                occurred_at          TEXT NOT NULL,
+                translated_text      TEXT,
+                scorer_family        TEXT NOT NULL,
+                scorer_name          TEXT NOT NULL,
+                model_revision       TEXT NOT NULL,
+                top_category         TEXT,
+                top_score            REAL,
+                confidence_kind      TEXT NOT NULL,
+                embedding_model_id   TEXT,
+                translation_model_id TEXT,
+                base_embedding       TEXT,
+                metadata             TEXT NOT NULL
+            );
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE analysis_category_scores (
+                analysis_id TEXT NOT NULL,
+                category    TEXT NOT NULL,
+                score       REAL NOT NULL,
+                PRIMARY KEY (analysis_id, category),
+                FOREIGN KEY (analysis_id)
+                    REFERENCES analysis_events (analysis_id)
+                    ON DELETE CASCADE
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO analysis_events
+                (analysis_id, source_event_id, occurred_at, translated_text,
+                 scorer_family, scorer_name, model_revision, top_category, top_score,
+                 confidence_kind, embedding_model_id, translation_model_id,
+                 base_embedding, metadata)
+            VALUES (
+                'q1', 'q1', '2026-03-29T00:00:00+00:00', NULL,
+                'classifier', 'classifier_head_logits', 'rev_001',
+                'anxiety', 0.9, 'legacy_top1', 'embed_001', NULL,
+                NULL, '{}'
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO analysis_category_scores (analysis_id, category, score)
+            VALUES ('q1', 'anxiety', 0.9);
+            """
+        )
+
+    repo = AnalysisEventRepository(db_path=db_path)
+
+    with sqlite3.connect(repo.db_path) as conn:
+        analysis_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(analysis_events)")
+        }
+        score_rows = conn.execute(
+            """
+            SELECT analysis_id, category, score
+            FROM analysis_category_scores
+            """
+        ).fetchall()
+
+    assert "confidence_kind" not in analysis_columns
+    assert score_rows == [("q1", "anxiety", 0.9)]
 
 
 def test_repo_get_recent_filters_old_events(tmp_repo: AnalysisEventRepository) -> None:
@@ -139,6 +218,43 @@ def test_repo_get_recent_filters_old_events(tmp_repo: AnalysisEventRepository) -
     events = tmp_repo.get_recent(days=7)
     assert len(events) == 1
     assert events[0].query_id == "new"
+
+
+def test_default_pipeline_requires_explicit_scoring_backend(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_repo: AnalysisEventRepository,
+) -> None:
+    monkeypatch.delenv(AGENT_SCORING_BACKEND_ENV, raising=False)
+
+    with pytest.raises(ValueError, match=AGENT_SCORING_BACKEND_ENV):
+        build_default_pipeline_service(
+            analysis_event_repository=tmp_repo,
+            shared_adapter_runtime_service=MagicMock(),
+            translation_service=None,
+        )
+
+
+def test_default_pipeline_uses_configured_scoring_backend(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_repo: AnalysisEventRepository,
+) -> None:
+    class _FakeEmbeddingAdapter:
+        def embed_texts(self, texts: list[str]) -> list[list[float]]:
+            return [[0.0] for _text in texts]
+
+    monkeypatch.setenv(AGENT_SCORING_BACKEND_ENV, "classifier_head_logits")
+    monkeypatch.setattr(
+        "agent.src.services.inference.pipeline_factory.EmbeddingAdapterFactory.create",
+        lambda _spec: _FakeEmbeddingAdapter(),
+    )
+
+    pipeline = build_default_pipeline_service(
+        analysis_event_repository=tmp_repo,
+        shared_adapter_runtime_service=MagicMock(),
+        translation_service=None,
+    )
+
+    assert pipeline.scoring_service.backend_name == "classifier_head_logits"
 
 
 def test_repo_save_overwrites_same_query_id(tmp_repo: AnalysisEventRepository) -> None:
@@ -186,7 +302,6 @@ def _make_pipeline(
     scoring_service = MagicMock()
     scoring_service.score.return_value = {"anxiety": 0.85, "depression": 0.25}
     scoring_service.backend_name = "classifier_head_logits"
-    scoring_service.confidence_kind = "classifier_head_logit_top1"
 
     scoring_asset_provider = None
     if with_scoring_asset_provider:
@@ -230,7 +345,6 @@ def test_pipeline_can_score_without_scoring_asset_provider(tmp_path: Path) -> No
     """classifier 계열처럼 asset 없이 점수를 내는 scorer를 허용한다."""
     pipeline = _make_pipeline(tmp_path, with_scoring_asset_provider=False)
     pipeline.scoring_service.backend_name = "classifier_head_logits"
-    pipeline.scoring_service.confidence_kind = "classifier_head_logit_top1"
 
     event = _make_query_event(text="I feel anxious", locale="en")
     result = pipeline.process(event)
@@ -296,7 +410,6 @@ def test_pipeline_stores_analysis_event_metadata(tmp_path: Path) -> None:
     assert stored[0].analysis_event.query_id == result.analysis_event.query_id
     row = _get_analysis_metadata_row(pipeline, event.query_id)
     assert row["model_revision"] == "seed_rev_001"
-    assert row["confidence_kind"] == "classifier_head_logit_top1"
     assert row["metadata"]["embedding_model_id"] == "test-embed"
     assert row["metadata"]["was_translated"] is False
 
@@ -439,7 +552,7 @@ def test_pipeline_stores_scorer_metadata_in_analysis_event(tmp_path: Path) -> No
     with sqlite3.connect(pipeline.event_repository.db_path) as conn:
         row = conn.execute(
             """
-            SELECT scorer_family, scorer_name, model_revision, confidence_kind
+            SELECT scorer_family, scorer_name, model_revision
             FROM analysis_events
             WHERE analysis_id = ?
             """,
@@ -450,5 +563,4 @@ def test_pipeline_stores_scorer_metadata_in_analysis_event(tmp_path: Path) -> No
         "classifier",
         "classifier_head_logits",
         "seed_rev_001",
-        "classifier_head_logit_top1",
     )

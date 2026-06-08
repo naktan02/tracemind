@@ -23,7 +23,6 @@ class SelectionContextSeed:
 
     pseudo_label_algorithm_name: str
     evidence_backend_name: str
-    evidence_confidence_kind: str
     evidence_view_kind: str
 
 
@@ -67,7 +66,6 @@ class PseudoLabelCandidateBuilder:
                 runner_up_label=decision.runner_up_label,
                 runner_up_score=decision.runner_up_score,
                 evidence_ref=evidence.evidence_id,
-                confidence_kind=decision.confidence_kind,
                 sample_weight=decision.sample_weight,
                 task_id=training_task.task_id,
                 round_id=training_task.round_id,
@@ -78,7 +76,6 @@ class PseudoLabelCandidateBuilder:
                     evidence=evidence,
                     training_task=training_task,
                 ),
-                evidence_confidence_kind=evidence.confidence_kind,
                 evidence_view_kind=evidence.view_kind,
             ),
         )

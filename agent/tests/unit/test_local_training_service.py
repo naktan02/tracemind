@@ -118,7 +118,6 @@ register_shared_adapter_training_backend(
 @dataclass(slots=True)
 class TestShiftScoringBackend:
     backend_name: str = "test_shift_scorer"
-    confidence_kind: str = "test_shift_top1"
     supported_adapter_kinds: tuple[str, ...] = ("test_shift",)
     requires_shared_state: bool = False
 

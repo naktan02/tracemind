@@ -37,7 +37,6 @@ class AnalysisEvent:
     scorer_family: str = "unknown"
     scorer_name: str = "unknown"
     model_revision: str = "unknown"
-    confidence_kind: str = "unknown"
     metadata: dict[str, JsonScalar] = field(default_factory=dict)
 
     def __post_init__(self) -> None:

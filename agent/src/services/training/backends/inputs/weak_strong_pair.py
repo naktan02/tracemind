@@ -112,14 +112,12 @@ def _to_embedded_example(
         source_row=source_row,
         category_scores=weak_scores,
         model_id=request.model_id,
-        confidence_kind=request.scoring_service.confidence_kind,
         view_kind="weak",
     )
     strong_event = _analysis_event_for_view(
         source_row=source_row,
         category_scores=strong_scores,
         model_id=request.model_id,
-        confidence_kind=request.scoring_service.confidence_kind,
         view_kind="strong",
     )
     metadata: dict[str, str | int | float | bool] = {
@@ -151,7 +149,6 @@ def _analysis_event_for_view(
     source_row: TrainingExampleSource,
     category_scores: dict[str, float],
     model_id: str,
-    confidence_kind: str,
     view_kind: str,
 ) -> AnalysisEvent:
     translated_text = (
@@ -168,7 +165,6 @@ def _analysis_event_for_view(
         category_scores=category_scores,
         scorer_family="classifier",
         scorer_name="weak_strong_pair",
-        confidence_kind=confidence_kind,
         metadata={"view_kind": view_kind},
     )
 

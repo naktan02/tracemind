@@ -280,7 +280,6 @@ def test_captured_text_debug_job_generates_view_and_classifies_weak_text(
         "depression": 0.2,
     }
     scoring_service.backend_name = "unit_classifier"
-    scoring_service.confidence_kind = "unit_top1"
     pipeline_service = InferencePipelineService(
         embedding_service=embedding_service,
         scoring_service=scoring_service,

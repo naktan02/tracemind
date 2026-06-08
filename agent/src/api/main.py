@@ -138,7 +138,7 @@ def create_app(
     round_client_factory: RoundClientFactory | None = None,
     federation_runtime_service_factory: FederationRuntimeServiceFactory | None = None,
     family_extension_allowed_origins: tuple[str, ...] | None = None,
-    auto_configure_pipeline: bool = True,
+    auto_configure_pipeline: bool = False,
 ) -> FastAPI:
     """Agent API 앱을 생성하고 override 가능한 기본 의존성을 연결한다."""
     app = FastAPI(title="TraceMind Agent", version="0.1.0")
@@ -255,4 +255,9 @@ def create_app(
     return app
 
 
-app = create_app()
+try:
+    app = create_app(auto_configure_pipeline=True)
+except ValueError as exc:
+    if "TRACEMIND_AGENT_SCORING_BACKEND" not in str(exc):
+        raise
+    app = create_app(auto_configure_pipeline=False)

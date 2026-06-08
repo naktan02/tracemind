@@ -72,7 +72,6 @@ class SimulationEvaluation:
     mean_correct_top_1_probability: float = 0.0
     mean_incorrect_top_1_probability: float = 0.0
     score_distribution_kind: str = "not_computed"
-    selection_confidence_kind: str | None = None
     mean_selection_confidence: float = 0.0
     mean_selection_margin: float = 0.0
     per_label: dict[str, dict[str, int | float]] = field(default_factory=dict)

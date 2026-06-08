@@ -73,7 +73,6 @@ def _registry_catalog_entry(
 @dataclass(slots=True)
 class _VectorScoringBackend:
     backend_name: str = "test_vector_classifier"
-    confidence_kind: str = "test_vector_top1"
     supported_adapter_kinds: tuple[str, ...] = ("*",)
     requires_shared_state: bool = True
 

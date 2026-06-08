@@ -16,7 +16,6 @@ from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 CLASSIFIER_HEAD_LOGITS_BACKEND_NAME = "classifier_head_logits"
-CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND = "classifier_head_logit_top1"
 
 CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
@@ -28,7 +27,6 @@ CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     tags=("requires_shared_state",),
     metadata={
         "requires_shared_state": True,
-        "confidence_kind": CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND,
     },
 )
 
@@ -38,7 +36,6 @@ class ClassifierHeadLogitsScoringBackend:
     """공통 classifier head state로 category logits를 계산한다."""
 
     backend_name: str = CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
-    confidence_kind: str = CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND
     supported_adapter_kinds: tuple[str, ...] = (CLASSIFIER_HEAD_ADAPTER_KIND,)
     requires_shared_state: bool = True
 

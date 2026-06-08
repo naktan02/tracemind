@@ -71,7 +71,6 @@ TEST_PEFT_SCORER_BACKEND_NAME = "test_peft_classifier_scorer"
 
 class _TestPeftClassifierScoringBackend:
     backend_name = TEST_PEFT_SCORER_BACKEND_NAME
-    confidence_kind = "test_peft_classifier_top1"
     supported_adapter_kinds = (PEFT_CLASSIFIER_ADAPTER_KIND,)
     requires_shared_state = True
 

@@ -71,11 +71,9 @@ def test_selection_service_uses_top1_ranked_as_default() -> None:
     candidate = result.candidates[0]
     evidence = result.evidences[0]
 
-    assert evidence.confidence_kind == "analysis_score_top1"
     assert evidence.top1_label == "anxiety"
     assert candidate.accepted is True
     assert candidate.evidence_ref == "evidence:q1"
-    assert candidate.confidence_kind == "analysis_score_top1"
     assert candidate.sample_weight == pytest.approx(0.62)
     assert candidate.margin == pytest.approx(0.01)
     assert candidate.selection_context is not None

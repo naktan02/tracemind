@@ -35,7 +35,6 @@ def _build_dataset() -> QueryAdaptationDataset:
                     locale="ko-KR",
                     source_type="user_message",
                     model_revision="rev_001",
-                    selection_confidence_kind="classifier_head_logit_top1",
                     translated_text_present=True,
                     candidate_id="round_001:q1",
                 ),

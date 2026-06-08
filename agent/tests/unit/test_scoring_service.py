@@ -24,7 +24,6 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
     @dataclass(slots=True)
     class _ConstantScoringBackend:
         backend_name: str = "constant_test_backend"
-        confidence_kind: str = "constant_test_backend_top1"
 
         def score(self, embedding, scoring_assets, shared_state=None):
             del embedding, shared_state
@@ -43,7 +42,6 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
             core_method_name="constant_test_backend",
             family_name="scoring",
             supported_adapter_kinds=("*",),
-            metadata={"confidence_kind": "constant_test_backend_top1"},
         ),
     )
     service = ScoringService.from_objective_config(
@@ -62,7 +60,6 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
     )
 
     assert scores == {"alert": 1.0, "safe": 2.0}
-    assert service.confidence_kind == "constant_test_backend_top1"
 
 
 def test_score_service_uses_methods_owned_classifier_head_logits_backend() -> None:
@@ -89,16 +86,17 @@ def test_score_service_uses_methods_owned_classifier_head_logits_backend() -> No
     scores = service.score([0.5, 1.0], {})
 
     assert service.backend_name == "classifier_head_logits"
-    assert service.confidence_kind == "classifier_head_logit_top1"
     assert scores["anxiety"] == pytest.approx(1.1)
     assert scores["normal"] == pytest.approx(0.9)
 
 
-def test_score_service_default_backend_is_classifier_head_logits() -> None:
-    service = ScoringService()
-
-    assert service.backend_name == "classifier_head_logits"
-    assert service.confidence_kind == "classifier_head_logit_top1"
+def test_score_service_requires_explicit_backend_name() -> None:
+    with pytest.raises(ValueError, match="scorer_backend_name is required"):
+        ScoringService.from_objective_config(
+            TrainingObjectiveConfig(
+                training_backend_name="peft_classifier_trainer",
+            )
+        )
 
 
 def test_classifier_head_logits_catalog_points_to_classification_core() -> None:

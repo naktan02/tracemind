@@ -21,9 +21,6 @@ from methods.adaptation.peft_text_encoder.config import (
     PEFT_ENCODER_TRAINING_BACKEND_NAME,
 )
 from methods.adaptation.privacy_guards.noop import NOOP_PRIVACY_GUARD_NAME
-from methods.classification.linear_head.scoring import (
-    CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
-)
 from methods.common.config_reading import freeze_mapping
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
@@ -142,7 +139,6 @@ class RuntimeFallbackTrainingProfile:
     default_acceptance_policy_name: str = "top1_ranked"
     default_pseudo_label_algorithm_name: str = "top1_ranked"
     default_evidence_backend_name: str = "analysis_score_evidence"
-    default_scorer_backend_name: str = CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
     default_score_policy_name: str = "max_cosine"
 
     def __post_init__(self) -> None:
@@ -193,13 +189,6 @@ class RuntimeFallbackTrainingProfile:
         return self._objective_str(
             "evidence_backend_name",
             default=self.default_evidence_backend_name,
-        )
-
-    @property
-    def scorer_backend_name(self) -> str:
-        return self._objective_str(
-            "scorer_backend_name",
-            default=self.default_scorer_backend_name,
         )
 
     @property

@@ -12,7 +12,6 @@ def build_classification_evaluation_payload(
     accepted_ratio: float,
     loss_kind: str,
     score_distribution_kind: str,
-    selection_confidence_kind: str | None,
     mean_selection_confidence: float,
     mean_selection_margin: float,
 ) -> dict[str, object]:
@@ -48,7 +47,6 @@ def build_classification_evaluation_payload(
             report["mean_incorrect_top_1_probability"]
         ),
         "score_distribution_kind": score_distribution_kind,
-        "selection_confidence_kind": selection_confidence_kind,
         "mean_selection_confidence": mean_selection_confidence,
         "mean_selection_margin": mean_selection_margin,
         "per_label": typed_per_label(report["per_category"]),

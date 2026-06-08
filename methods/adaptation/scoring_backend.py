@@ -15,7 +15,6 @@ class SharedAdapterScoringBackend(Protocol):
     """category score dict를 계산하는 method-owned backend interface."""
 
     backend_name: str
-    confidence_kind: str
     supported_adapter_kinds: tuple[str, ...]
     requires_shared_state: bool
 

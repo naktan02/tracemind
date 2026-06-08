@@ -38,6 +38,5 @@ class PseudoLabelSelectionContextBuilder:
             max_examples=max_examples,
             pseudo_label_algorithm_name=context_seed.pseudo_label_algorithm_name,
             evidence_backend_name=context_seed.evidence_backend_name,
-            evidence_confidence_kind=context_seed.evidence_confidence_kind,
             evidence_view_kind=context_seed.evidence_view_kind,
         )

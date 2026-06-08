@@ -15,7 +15,6 @@ class ScoringBackend(Protocol):
     """category score dict를 계산하는 backend 인터페이스."""
 
     backend_name: str
-    confidence_kind: str
     supported_adapter_kinds: tuple[str, ...]
     requires_shared_state: bool
 

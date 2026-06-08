@@ -21,3 +21,6 @@ classifier/prototype scoring은 scorer backend와 local asset provider로 분리
 - agent embedding adapter factory: `agent/src/infrastructure/model_adapters/embedding/factory.py`
 - backtranslation runtime: `agent/src/services/language/backtranslation_service.py`
 - 실제 추론 파이프라인 조립: `agent/src/services/inference/pipeline_service.py`
+
+운영 추론 pipeline의 scoring backend는 `TRACEMIND_AGENT_SCORING_BACKEND`로
+명시한다. `classifier_head_logits` 같은 scorer를 묵시 기본값으로 붙이지 않는다.

@@ -47,7 +47,6 @@ PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES = (
     PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
 )
 PEFT_ENCODER_CLASSIFIER_DISTRIBUTION_KIND = "peft_classifier_logits_softmax"
-PEFT_ENCODER_CLASSIFIER_CONFIDENCE_KIND = "peft_classifier_top1_probability"
 
 
 def evaluate_peft_encoder_state(
@@ -115,7 +114,6 @@ def evaluate_peft_encoder_state_payload(
     runtime_resource_cache: RuntimeResourceCache | None = None,
     loss_kind: str = "cross_entropy_from_peft_classifier_logits",
     score_distribution_kind: str = PEFT_ENCODER_CLASSIFIER_DISTRIBUTION_KIND,
-    selection_confidence_kind: str = PEFT_ENCODER_CLASSIFIER_CONFIDENCE_KIND,
 ) -> dict[str, object]:
     """PEFT encoder global state 평가 결과를 canonical payload로 반환한다."""
 
@@ -136,7 +134,6 @@ def evaluate_peft_encoder_state_payload(
         accepted_ratio=1.0 if row_count > 0 else 0.0,
         loss_kind=loss_kind,
         score_distribution_kind=score_distribution_kind,
-        selection_confidence_kind=selection_confidence_kind,
         mean_selection_confidence=float(report["mean_top_1_probability"]),
         mean_selection_margin=float(report["mean_margin_top1_top2"]),
     )
@@ -174,7 +171,6 @@ def evaluate_peft_encoder_validation_payload(
         runtime_resource_cache=runtime_resource_cache,
         loss_kind="cross_entropy_from_peft_classifier_logits",
         score_distribution_kind=PEFT_ENCODER_CLASSIFIER_DISTRIBUTION_KIND,
-        selection_confidence_kind=PEFT_ENCODER_CLASSIFIER_CONFIDENCE_KIND,
     )
 
 

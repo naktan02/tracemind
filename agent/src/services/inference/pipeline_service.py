@@ -99,7 +99,6 @@ class InferencePipelineService:
             shared_state=adapter_context.shared_state,
         )
         scorer_name = self.scoring_service.backend_name
-        confidence_kind = self.scoring_service.confidence_kind
         model_revision = adapter_context.model_revision_for_record(self.model_revision)
 
         analysis_event = AnalysisEvent(
@@ -126,7 +125,6 @@ class InferencePipelineService:
             scorer_family=_resolve_scorer_family(scorer_name),
             scorer_name=scorer_name,
             model_revision=model_revision,
-            confidence_kind=confidence_kind,
             metadata=metadata,
         )
         return InferencePipelineResult(
