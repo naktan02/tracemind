@@ -9,8 +9,8 @@ from methods.common.config_reading import normalize_non_empty_str
 from methods.federated.client_split import LABELED_EXPOSURE_SERVER_ONLY_SEED
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.capabilities.axes import (
-    LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
     LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
+    QUERY_SSL_LOCAL_OBJECTIVE_POLICY_NAMES,
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,
     is_query_ssl_local_objective_policy,
 )
@@ -275,7 +275,7 @@ def _validate_manual_capability_plan(
         )
     if capability_plan.local_ssl_policy_name not in {
         LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
-        *LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
+        *QUERY_SSL_LOCAL_OBJECTIVE_POLICY_NAMES,
     }:
         raise ValueError(
             "manual FL SSL baseline cannot use a method-local local_ssl_policy; "
