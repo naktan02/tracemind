@@ -44,6 +44,7 @@ function createHarness(): {
     inputType: string | null,
     insertedText: string | null,
     isCompositionUpdate: boolean,
+    surfaceType?: "contenteditable" | "input",
   ) => void;
   advance: (ms: number) => void;
   flush: () => void;
@@ -66,12 +67,15 @@ function createHarness(): {
       inputType: string | null,
       insertedText: string | null,
       isCompositionUpdate: boolean,
+      surfaceType: "contenteditable" | "input" = "contenteditable",
     ): void {
       buffer.observe({
         ...baseContext,
         snapshot: {
           ...baseContext.snapshot,
           text,
+          surfaceType,
+          captureConfidence: surfaceType === "input" ? "high" : "medium",
         },
         now: new Date(nowMs),
         eventType,
@@ -172,6 +176,38 @@ function createHarness(): {
   assert.equal(firstSegment.final_text, "첫 문장");
   assert.equal(firstSegment.deleted_text, null);
   assert.equal(secondSegment.final_text, "다음 문장");
+  assert.equal(secondSegment.deleted_text, null);
+}
+
+{
+  const harness = createHarness();
+  harness.observe(
+    "네이버를 찾고 싶어",
+    "compositionend",
+    null,
+    "네이버를 찾고 싶어",
+    false,
+    "input",
+  );
+  harness.flush();
+  harness.advance(5000);
+  harness.observe(
+    "네이버를 찾고 싶어요",
+    "compositionend",
+    null,
+    "요",
+    false,
+    "input",
+  );
+  harness.flush();
+
+  assert.equal(harness.emitted.length, 2);
+  const secondSegment = harness.emitted[1] as {
+    final_text: string | null;
+    deleted_text: string | null;
+  };
+
+  assert.equal(secondSegment.final_text, "네이버를 찾고 싶어요");
   assert.equal(secondSegment.deleted_text, null);
 }
 

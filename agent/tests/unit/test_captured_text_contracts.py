@@ -87,10 +87,10 @@ def test_captured_text_debug_job_contracts_are_strict() -> None:
         captured_text_event_count=2,
         generated_view_count=2,
         view_generation_status_counts={"ready": 2},
+        analysis_status_counts={"pending": 2},
         last_run_result=result,
     )
 
     assert status.schema_version == "captured_text_debug_job_status.v1"
     assert status.last_run_result is not None
     assert status.last_run_result.generated_count == 2
-    assert status.last_run_result.analysis_processed_count == 0

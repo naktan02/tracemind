@@ -22,7 +22,6 @@ from agent.src.contracts.captured_text_contracts import (
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
 )
-from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.ingest.captured_text_debug_job_service import (
     CapturedTextDebugJobService,
 )
@@ -59,20 +58,11 @@ def get_captured_text_ingest_service(
     service = getattr(request.app.state, "captured_text_ingest_service", None)
     if service is not None:
         return service
-    pipeline_service = getattr(request.app.state, "pipeline_service", None)
     captured_text_repository = getattr(
         request.app.state,
         "captured_text_repository",
         None,
     )
-    if pipeline_service is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "CapturedTextIngestService를 만들 pipeline_service가 없습니다. "
-                "앱 시작 시 app.state.pipeline_service를 설정하세요."
-            ),
-        )
     if captured_text_repository is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -83,7 +73,6 @@ def get_captured_text_ingest_service(
             ),
         )
     service = CapturedTextIngestService(
-        pipeline_service=pipeline_service,
         captured_text_repository=captured_text_repository,
         lifecycle_service=getattr(
             request.app.state,
@@ -163,13 +152,6 @@ def get_captured_text_debug_job_state(request: Request) -> CapturedTextDebugJobS
     return job_state
 
 
-def get_optional_pipeline_service(request: Request) -> InferencePipelineService | None:
-    """debug 실행에서 사용할 pipeline service를 읽는다."""
-
-    service = getattr(request.app.state, "pipeline_service", None)
-    return service if isinstance(service, InferencePipelineService) else service
-
-
 CapturedTextIngestServiceDep = Annotated[
     CapturedTextIngestService,
     Depends(get_captured_text_ingest_service),
@@ -201,7 +183,7 @@ def ingest_captured_text_event(
     request: CapturedTextEventPayload,
     service: CapturedTextIngestServiceDep,
 ) -> CapturedTextIngestResponsePayload:
-    """단일 captured text event를 받아 agent-local inference pipeline을 실행한다."""
+    """단일 captured text event를 agent-local raw store에 저장한다."""
 
     try:
         return service.process(request)
@@ -221,7 +203,7 @@ def ingest_captured_text_batch(
     request: CapturedTextBatchIngestRequestPayload,
     service: CapturedTextIngestServiceDep,
 ) -> CapturedTextBatchIngestResponsePayload:
-    """복수 captured text event를 일괄 처리한다."""
+    """복수 captured text event를 agent-local raw store에 일괄 저장한다."""
 
     try:
         return service.process_batch(request.events)
@@ -243,7 +225,9 @@ def captured_text_status(
         "view_generation_status_counts": (
             service.captured_text_repository.count_by_view_generation_status()
         ),
-        "stored_event_count": service.pipeline_service.event_repository.count(),
+        "analysis_status_counts": (
+            service.captured_text_repository.count_by_analysis_status()
+        ),
     }
 
 
@@ -292,7 +276,6 @@ async def configure_captured_text_debug_job(
             _captured_text_debug_job_loop(
                 job_state=job_state,
                 service=_debug_job_service(
-                    request=request,
                     repository=repository,
                     view_generation_service=service,
                     lifecycle_service=lifecycle_service,
@@ -322,7 +305,7 @@ async def run_captured_text_view_generation_once(
     lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,
 ) -> CapturedTextDebugJobRunResultPayload:
-    """pending captured text view generation과 미분석 ready event를 즉시 실행한다."""
+    """pending captured text view generation을 즉시 실행한다."""
 
     if job_state.run_lock.locked():
         raise HTTPException(
@@ -333,7 +316,6 @@ async def run_captured_text_view_generation_once(
     async with job_state.run_lock:
         result = await asyncio.to_thread(
             _debug_job_service(
-                request=request,
                 repository=service.repository,
                 view_generation_service=service,
                 lifecycle_service=lifecycle_service,
@@ -384,6 +366,7 @@ def _build_debug_job_status(
         captured_text_event_count=repository.count(),
         generated_view_count=repository.count_generated_views(),
         view_generation_status_counts=repository.count_by_view_generation_status(),
+        analysis_status_counts=repository.count_by_analysis_status(),
         last_run_at=job_state.last_run_at,
         last_run_result=job_state.last_run_result,
     )
@@ -391,7 +374,6 @@ def _build_debug_job_status(
 
 def _debug_job_service(
     *,
-    request: Request,
     repository: CapturedTextRepository,
     view_generation_service: CapturedTextViewGenerationService,
     lifecycle_service: CapturedTextLifecycleService,
@@ -400,5 +382,4 @@ def _debug_job_service(
         repository=repository,
         view_generation_service=view_generation_service,
         lifecycle_service=lifecycle_service,
-        pipeline_service=get_optional_pipeline_service(request),
     )

@@ -229,9 +229,6 @@ export interface CapturedTextDebugJobRunResultPayload {
   failed_count: number;
   pending_remaining_count: number;
   generated_view_count: number;
-  analysis_selected_count: number;
-  analysis_processed_count: number;
-  analysis_failed_count: number;
   message: string;
 }
 
@@ -248,6 +245,7 @@ export interface CapturedTextDebugJobStatusPayload {
   captured_text_event_count: number;
   generated_view_count: number;
   view_generation_status_counts: Record<string, number>;
+  analysis_status_counts: Record<string, number>;
   last_run_at: string | null;
   last_run_result: CapturedTextDebugJobRunResultPayload | null;
 }

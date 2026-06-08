@@ -105,8 +105,23 @@ def test_repo_initialization_migrates_existing_table(tmp_path: Path) -> None:
 
     loaded = repository.get("event_1")
     assert loaded is not None
-    assert loaded.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_PENDING
     assert loaded.text_fingerprint
+    assert repository.count_by_view_generation_status() == {
+        CAPTURED_TEXT_VIEW_STATUS_PENDING: 1
+    }
+    with sqlite3.connect(db_path) as conn:
+        event_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(captured_text_events)")
+        }
+        tables = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+    assert "view_generation_status" not in event_columns
+    assert "captured_text_view_generation_jobs" in tables
+    assert "captured_text_analysis_jobs" in tables
 
 
 def test_repo_save_overwrites_same_event_id(
@@ -147,10 +162,12 @@ def test_repo_marks_same_source_surface_text_as_duplicate(
     loaded_second = tmp_repo.get("second")
     assert loaded_first is not None
     assert loaded_second is not None
-    assert loaded_first.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_PENDING
-    assert loaded_second.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_DUPLICATE
     assert loaded_second.duplicate_of_event_id == "first"
     assert loaded_second.metadata["duplicate_of_event_id"] == "first"
+    assert tmp_repo.count_by_view_generation_status() == {
+        CAPTURED_TEXT_VIEW_STATUS_PENDING: 1,
+        CAPTURED_TEXT_VIEW_STATUS_DUPLICATE: 1,
+    }
 
 
 def test_repo_pending_view_generation_excludes_duplicates(
@@ -199,6 +216,7 @@ def test_repo_saves_generated_view(
     assert generated is not None
     assert generated.weak_text == "I feel anxious"
     assert tmp_repo.count_generated_views() == 1
+    assert tmp_repo.count_by_analysis_status() == {"pending": 1}
 
 
 def test_view_generation_service_materializes_identity_fallback(
@@ -216,7 +234,10 @@ def test_view_generation_service_materializes_identity_fallback(
     assert generated.weak_text == "불안해"
     assert generated.strong_text_0 == "불안해"
     assert generated.metadata["weak_text_provider"] == "identity"
-    assert loaded.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_READY
+    assert tmp_repo.count_by_view_generation_status() == {
+        CAPTURED_TEXT_VIEW_STATUS_READY: 1
+    }
+    assert tmp_repo.count_by_analysis_status() == {"pending": 1}
     assert result.generated_count == 1
 
 
@@ -262,7 +283,9 @@ def test_view_generation_service_regenerates_stale_ready_views(
     assert generated.strong_text_0 == "translated:불안해:aug0"
     assert generated.metadata["weak_text_provider"] == "translation-provider"
     assert generated.metadata["strong_text_provider"] == "strong-provider"
-    assert loaded.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_READY
+    assert tmp_repo.count_by_view_generation_status() == {
+        CAPTURED_TEXT_VIEW_STATUS_READY: 1
+    }
 
 
 def test_generated_view_training_source_projection_uses_ready_views(
@@ -317,7 +340,9 @@ def test_view_generation_service_marks_provider_failure(
 
     loaded = tmp_repo.get("event_1")
     assert loaded is not None
-    assert loaded.view_generation_status == CAPTURED_TEXT_VIEW_STATUS_FAILED
+    assert tmp_repo.count_by_view_generation_status() == {
+        CAPTURED_TEXT_VIEW_STATUS_FAILED: 1
+    }
     assert result.failed_count == 1
     assert tmp_repo.count_generated_views() == 0
 

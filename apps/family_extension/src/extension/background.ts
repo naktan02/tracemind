@@ -114,7 +114,23 @@ async function postCapturedTextBatch(
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error(`Agent captured text ingest failed: ${response.status}`);
+    const detail = await readAgentErrorDetail(response);
+    throw new Error(
+      detail === null
+        ? `Agent captured text ingest failed: ${response.status}`
+        : `Agent captured text ingest failed: ${response.status}: ${detail}`,
+    );
+  }
+}
+
+async function readAgentErrorDetail(response: Response): Promise<string | null> {
+  try {
+    const payload = (await response.json()) as { detail?: unknown };
+    return typeof payload.detail === "string" && payload.detail.trim() !== ""
+      ? payload.detail
+      : null;
+  } catch {
+    return null;
   }
 }
 

@@ -91,7 +91,12 @@ class CapturedTextBatchIngestRequestPayload(BaseModel):
 
 
 class CapturedTextIngestResponsePayload(BaseModel):
-    """agent가 단일 captured text event를 처리한 결과."""
+    """agent가 단일 captured text event를 저장한 결과.
+
+    captured text ingest는 raw event 저장만 담당한다. query_id는 이전 consumer와의
+    payload shape 호환을 위해 event_id와 같은 값으로 채우며, 분석 score는 별도
+    후처리 job이 생성한다.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -140,7 +145,7 @@ class CapturedTextDebugJobConfigRequestPayload(BaseModel):
 
 
 class CapturedTextDebugJobRunResultPayload(BaseModel):
-    """captured text view generation과 local analysis 실행 결과."""
+    """captured text view generation 실행 결과."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -152,9 +157,6 @@ class CapturedTextDebugJobRunResultPayload(BaseModel):
     failed_count: int = Field(ge=0)
     pending_remaining_count: int = Field(ge=0)
     generated_view_count: int = Field(ge=0)
-    analysis_selected_count: int = Field(default=0, ge=0)
-    analysis_processed_count: int = Field(default=0, ge=0)
-    analysis_failed_count: int = Field(default=0, ge=0)
     message: str = ""
 
 
@@ -177,5 +179,6 @@ class CapturedTextDebugJobStatusPayload(BaseModel):
     captured_text_event_count: int = Field(ge=0)
     generated_view_count: int = Field(ge=0)
     view_generation_status_counts: dict[str, int] = Field(default_factory=dict)
+    analysis_status_counts: dict[str, int] = Field(default_factory=dict)
     last_run_at: datetime | None = None
     last_run_result: CapturedTextDebugJobRunResultPayload | None = None

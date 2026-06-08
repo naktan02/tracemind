@@ -108,6 +108,8 @@
   - captured text weak/strong view generation provider를 agent env에서 조립한다
   - 기본은 identity fallback이며, NLLB provider를 켜면 모델은 실제 view generation
     실행 시 lazy-load된다
+  - captured text DB 상태는 raw event row에 섞지 않고 view generation job,
+    generated view, analysis job 상태 테이블로 분리한다
 - `training/datasets/query_adaptation_dataset_service.py`
   - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립
   - `query_id`는 `source_row.query_id`를 single source of truth로 두고,

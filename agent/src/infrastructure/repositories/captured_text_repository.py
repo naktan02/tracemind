@@ -20,6 +20,9 @@ CAPTURED_TEXT_VIEW_STATUS_PENDING = "pending"
 CAPTURED_TEXT_VIEW_STATUS_DUPLICATE = "duplicate"
 CAPTURED_TEXT_VIEW_STATUS_READY = "ready"
 CAPTURED_TEXT_VIEW_STATUS_FAILED = "failed"
+CAPTURED_TEXT_ANALYSIS_STATUS_PENDING = "pending"
+CAPTURED_TEXT_ANALYSIS_STATUS_COMPLETED = "completed"
+CAPTURED_TEXT_ANALYSIS_STATUS_FAILED = "failed"
 CAPTURED_TEXT_GENERATED_VIEW_V1 = "captured_text_generated_view.v1"
 
 _CAPTURED_TEXT_VIEW_STATUSES = frozenset(
@@ -28,6 +31,14 @@ _CAPTURED_TEXT_VIEW_STATUSES = frozenset(
         CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
         CAPTURED_TEXT_VIEW_STATUS_READY,
         CAPTURED_TEXT_VIEW_STATUS_FAILED,
+    }
+)
+
+_CAPTURED_TEXT_ANALYSIS_STATUSES = frozenset(
+    {
+        CAPTURED_TEXT_ANALYSIS_STATUS_PENDING,
+        CAPTURED_TEXT_ANALYSIS_STATUS_COMPLETED,
+        CAPTURED_TEXT_ANALYSIS_STATUS_FAILED,
     }
 )
 
@@ -45,9 +56,21 @@ CREATE TABLE IF NOT EXISTS captured_text_events (
     page_title        TEXT,
     collector_version TEXT,
     text_fingerprint  TEXT NOT NULL DEFAULT '',
-    view_generation_status TEXT NOT NULL DEFAULT 'pending',
     duplicate_of_event_id TEXT,
     metadata          TEXT NOT NULL
+);
+"""
+
+_CREATE_VIEW_GENERATION_JOB_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS captured_text_view_generation_jobs (
+    event_id      TEXT PRIMARY KEY,
+    status        TEXT NOT NULL,
+    updated_at    TEXT NOT NULL,
+    error_message TEXT,
+    metadata      TEXT NOT NULL DEFAULT '{}',
+    FOREIGN KEY (event_id)
+        REFERENCES captured_text_events (event_id)
+        ON DELETE CASCADE
 );
 """
 
@@ -62,7 +85,24 @@ CREATE TABLE IF NOT EXISTS captured_text_generated_views (
     generator_name          TEXT NOT NULL,
     generator_version       TEXT NOT NULL,
     source_text_fingerprint TEXT NOT NULL,
-    metadata                TEXT NOT NULL
+    metadata                TEXT NOT NULL,
+    FOREIGN KEY (event_id)
+        REFERENCES captured_text_events (event_id)
+        ON DELETE CASCADE
+);
+"""
+
+_CREATE_ANALYSIS_JOB_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS captured_text_analysis_jobs (
+    event_id      TEXT PRIMARY KEY,
+    status        TEXT NOT NULL,
+    updated_at    TEXT NOT NULL,
+    analysis_id   TEXT,
+    error_message TEXT,
+    metadata      TEXT NOT NULL DEFAULT '{}',
+    FOREIGN KEY (event_id)
+        REFERENCES captured_text_events (event_id)
+        ON DELETE CASCADE
 );
 """
 
@@ -70,14 +110,14 @@ _INSERT_SQL = """
 INSERT OR REPLACE INTO captured_text_events
     (event_id, schema_version, occurred_at, received_at, text, locale,
      source_type, surface_type, page_url, page_title, collector_version,
-     text_fingerprint, view_generation_status, duplicate_of_event_id, metadata)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     text_fingerprint, duplicate_of_event_id, metadata)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 _SELECT_ONE_SQL = """
 SELECT event_id, schema_version, occurred_at, received_at, text, locale,
        source_type, surface_type, page_url, page_title, collector_version,
-       text_fingerprint, view_generation_status, duplicate_of_event_id, metadata
+       text_fingerprint, duplicate_of_event_id, metadata
 FROM captured_text_events
 WHERE event_id = ?;
 """
@@ -85,19 +125,31 @@ WHERE event_id = ?;
 _SELECT_RECENT_SQL = """
 SELECT event_id, schema_version, occurred_at, received_at, text, locale,
        source_type, surface_type, page_url, page_title, collector_version,
-       text_fingerprint, view_generation_status, duplicate_of_event_id, metadata
+       text_fingerprint, duplicate_of_event_id, metadata
 FROM captured_text_events
 ORDER BY occurred_at DESC
 LIMIT ?;
 """
 
 _SELECT_PENDING_VIEW_GENERATION_SQL = """
-SELECT event_id, schema_version, occurred_at, received_at, text, locale,
-       source_type, surface_type, page_url, page_title, collector_version,
-       text_fingerprint, view_generation_status, duplicate_of_event_id, metadata
-FROM captured_text_events
-WHERE view_generation_status = ?
-ORDER BY occurred_at ASC
+SELECT e.event_id, e.schema_version, e.occurred_at, e.received_at, e.text, e.locale,
+       e.source_type, e.surface_type, e.page_url, e.page_title, e.collector_version,
+       e.text_fingerprint, e.duplicate_of_event_id, e.metadata
+FROM captured_text_events e
+JOIN captured_text_view_generation_jobs j ON e.event_id = j.event_id
+WHERE j.status = ?
+ORDER BY e.occurred_at ASC
+LIMIT ?;
+"""
+
+_SELECT_RECENT_VIEW_GENERATION_BY_STATUS_SQL = """
+SELECT e.event_id, e.schema_version, e.occurred_at, e.received_at, e.text, e.locale,
+       e.source_type, e.surface_type, e.page_url, e.page_title, e.collector_version,
+       e.text_fingerprint, e.duplicate_of_event_id, e.metadata
+FROM captured_text_events e
+JOIN captured_text_view_generation_jobs j ON e.event_id = j.event_id
+WHERE j.status = ?
+ORDER BY e.occurred_at DESC
 LIMIT ?;
 """
 
@@ -114,15 +166,26 @@ LIMIT 1;
 _COUNT_SQL = "SELECT COUNT(*) FROM captured_text_events;"
 
 _COUNT_BY_STATUS_SQL = """
-SELECT view_generation_status, COUNT(*)
-FROM captured_text_events
-GROUP BY view_generation_status;
+SELECT status, COUNT(*)
+FROM captured_text_view_generation_jobs
+GROUP BY status;
 """
 
 _UPDATE_VIEW_GENERATION_STATUS_SQL = """
-UPDATE captured_text_events
-SET view_generation_status = ?
+UPDATE captured_text_view_generation_jobs
+SET status = ?, updated_at = ?, error_message = NULL
 WHERE event_id = ?;
+"""
+
+_UPSERT_VIEW_GENERATION_JOB_SQL = """
+INSERT INTO captured_text_view_generation_jobs
+    (event_id, status, updated_at, error_message, metadata)
+VALUES (?, ?, ?, NULL, ?)
+ON CONFLICT(event_id) DO UPDATE SET
+    status = excluded.status,
+    updated_at = excluded.updated_at,
+    error_message = NULL,
+    metadata = excluded.metadata;
 """
 
 _DELETE_OLDER_THAN_SQL = """
@@ -142,6 +205,20 @@ WHERE event_id IN (
 
 _DELETE_ORPHANED_GENERATED_VIEWS_SQL = """
 DELETE FROM captured_text_generated_views
+WHERE event_id NOT IN (
+    SELECT event_id FROM captured_text_events
+);
+"""
+
+_DELETE_ORPHANED_VIEW_GENERATION_JOBS_SQL = """
+DELETE FROM captured_text_view_generation_jobs
+WHERE event_id NOT IN (
+    SELECT event_id FROM captured_text_events
+);
+"""
+
+_DELETE_ORPHANED_ANALYSIS_JOBS_SQL = """
+DELETE FROM captured_text_analysis_jobs
 WHERE event_id NOT IN (
     SELECT event_id FROM captured_text_events
 );
@@ -179,13 +256,32 @@ LIMIT ?;
 
 _COUNT_GENERATED_VIEWS_SQL = "SELECT COUNT(*) FROM captured_text_generated_views;"
 
+_COUNT_BY_ANALYSIS_STATUS_SQL = """
+SELECT status, COUNT(*)
+FROM captured_text_analysis_jobs
+GROUP BY status;
+"""
+
+_UPSERT_ANALYSIS_JOB_SQL = """
+INSERT INTO captured_text_analysis_jobs
+    (event_id, status, updated_at, analysis_id, error_message, metadata)
+VALUES (?, ?, ?, NULL, NULL, ?)
+ON CONFLICT(event_id) DO UPDATE SET
+    status = excluded.status,
+    updated_at = excluded.updated_at,
+    analysis_id = NULL,
+    error_message = NULL,
+    metadata = excluded.metadata;
+"""
+
 _SELECT_READY_GENERATED_TRAINING_SOURCES_SQL = """
 SELECT e.event_id, e.occurred_at, e.text, e.locale, e.source_type, e.surface_type,
        e.text_fingerprint, v.generated_at, v.weak_text, v.strong_text_0,
        v.strong_text_1, v.generator_name, v.generator_version, v.metadata
 FROM captured_text_events e
+JOIN captured_text_view_generation_jobs j ON e.event_id = j.event_id
 JOIN captured_text_generated_views v ON e.event_id = v.event_id
-WHERE e.view_generation_status = ?
+WHERE j.status = ?
   AND e.occurred_at >= ?
 ORDER BY e.occurred_at DESC
 LIMIT ?;
@@ -207,7 +303,6 @@ class CapturedTextRecord:
     page_title: str | None = None
     collector_version: str | None = None
     text_fingerprint: str = ""
-    view_generation_status: str = CAPTURED_TEXT_VIEW_STATUS_PENDING
     duplicate_of_event_id: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     schema_version: str = CAPTURED_TEXT_EVENT_V1
@@ -225,8 +320,6 @@ class CapturedTextRecord:
             raise ValueError("surface_type must not be empty.")
         if not self.schema_version.strip():
             raise ValueError("schema_version must not be empty.")
-        if self.view_generation_status not in _CAPTURED_TEXT_VIEW_STATUSES:
-            raise ValueError("view_generation_status is unsupported.")
         if self.duplicate_of_event_id is not None and not (
             self.duplicate_of_event_id.strip()
         ):
@@ -325,9 +418,11 @@ class CapturedTextRepository:
     def __post_init__(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
+            _reset_legacy_schema(conn)
             conn.execute(_CREATE_TABLE_SQL)
+            conn.execute(_CREATE_VIEW_GENERATION_JOB_TABLE_SQL)
             conn.execute(_CREATE_GENERATED_VIEW_TABLE_SQL)
-            _ensure_schema(conn)
+            conn.execute(_CREATE_ANALYSIS_JOB_TABLE_SQL)
 
     def save(self, record: CapturedTextRecord) -> None:
         """event_id 기준으로 raw captured text event를 저장한다."""
@@ -349,10 +444,23 @@ class CapturedTextRepository:
                     normalized.page_title,
                     normalized.collector_version,
                     normalized.text_fingerprint,
-                    normalized.view_generation_status,
                     normalized.duplicate_of_event_id,
                     json.dumps(normalized.metadata, ensure_ascii=False),
                 ),
+            )
+            _upsert_view_generation_job(
+                conn,
+                event_id=normalized.event_id,
+                status=(
+                    CAPTURED_TEXT_VIEW_STATUS_DUPLICATE
+                    if normalized.duplicate_of_event_id is not None
+                    else CAPTURED_TEXT_VIEW_STATUS_PENDING
+                ),
+                metadata={
+                    "duplicate_of_event_id": normalized.duplicate_of_event_id,
+                }
+                if normalized.duplicate_of_event_id is not None
+                else {},
             )
 
     def get(self, event_id: str) -> CapturedTextRecord | None:
@@ -400,6 +508,13 @@ class CapturedTextRepository:
             rows = conn.execute(_COUNT_BY_STATUS_SQL).fetchall()
         return {str(status): int(count) for status, count in rows}
 
+    def count_by_analysis_status(self) -> dict[str, int]:
+        """분석 job 상태별 event 수를 반환한다."""
+
+        with self._connect() as conn:
+            rows = conn.execute(_COUNT_BY_ANALYSIS_STATUS_SQL).fetchall()
+        return {str(status): int(count) for status, count in rows}
+
     def mark_view_generation_status(self, *, event_id: str, status: str) -> int:
         """단일 event의 view generation 상태를 갱신한다."""
 
@@ -408,9 +523,28 @@ class CapturedTextRepository:
         with self._connect() as conn:
             cursor = conn.execute(
                 _UPDATE_VIEW_GENERATION_STATUS_SQL,
-                (status, event_id),
+                (status, datetime.now(tz=timezone.utc).isoformat(), event_id),
             )
         return max(cursor.rowcount, 0)
+
+    def get_recent_view_generation_by_status(
+        self,
+        *,
+        status: str,
+        limit: int = 50,
+    ) -> list[CapturedTextRecord]:
+        """view generation job 상태로 최근 raw event를 반환한다."""
+
+        if status not in _CAPTURED_TEXT_VIEW_STATUSES:
+            raise ValueError("status is unsupported.")
+        if limit <= 0:
+            raise ValueError("limit must be positive.")
+        with self._connect() as conn:
+            rows = conn.execute(
+                _SELECT_RECENT_VIEW_GENERATION_BY_STATUS_SQL,
+                (status, limit),
+            ).fetchall()
+        return [_row_to_record(row) for row in rows]
 
     def save_generated_view(self, record: CapturedTextGeneratedViewRecord) -> None:
         """weak/strong generated view를 저장한다."""
@@ -430,6 +564,16 @@ class CapturedTextRepository:
                     record.source_text_fingerprint,
                     json.dumps(record.metadata, ensure_ascii=False),
                 ),
+            )
+            _upsert_analysis_job(
+                conn,
+                event_id=record.event_id,
+                status=CAPTURED_TEXT_ANALYSIS_STATUS_PENDING,
+                metadata={
+                    "source_text_fingerprint": record.source_text_fingerprint,
+                    "generator_name": record.generator_name,
+                    "generator_version": record.generator_version,
+                },
             )
 
     def get_generated_view(
@@ -495,6 +639,8 @@ class CapturedTextRepository:
         with self._connect() as conn:
             cursor = conn.execute(_DELETE_OLDER_THAN_SQL, (cutoff.isoformat(),))
             conn.execute(_DELETE_ORPHANED_GENERATED_VIEWS_SQL)
+            conn.execute(_DELETE_ORPHANED_VIEW_GENERATION_JOBS_SQL)
+            conn.execute(_DELETE_ORPHANED_ANALYSIS_JOBS_SQL)
         return max(cursor.rowcount, 0)
 
     def delete_oldest_excess(self, *, keep_latest: int) -> int:
@@ -505,10 +651,14 @@ class CapturedTextRepository:
         with self._connect() as conn:
             cursor = conn.execute(_DELETE_EXCESS_SQL, (keep_latest,))
             conn.execute(_DELETE_ORPHANED_GENERATED_VIEWS_SQL)
+            conn.execute(_DELETE_ORPHANED_VIEW_GENERATION_JOBS_SQL)
+            conn.execute(_DELETE_ORPHANED_ANALYSIS_JOBS_SQL)
         return max(cursor.rowcount, 0)
 
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
 
 
 def _row_to_record(row: tuple[Any, ...]) -> CapturedTextRecord:
@@ -525,7 +675,6 @@ def _row_to_record(row: tuple[Any, ...]) -> CapturedTextRecord:
         page_title,
         collector_version,
         text_fingerprint,
-        view_generation_status,
         duplicate_of_event_id,
         metadata_json,
     ) = row
@@ -545,7 +694,6 @@ def _row_to_record(row: tuple[Any, ...]) -> CapturedTextRecord:
         page_title=None if page_title is None else str(page_title),
         collector_version=None if collector_version is None else str(collector_version),
         text_fingerprint=str(text_fingerprint),
-        view_generation_status=str(view_generation_status),
         duplicate_of_event_id=(
             None if duplicate_of_event_id is None else str(duplicate_of_event_id)
         ),
@@ -642,7 +790,6 @@ def _record_with_dedup_status(
             **{
                 **_record_payload(record),
                 "text_fingerprint": fingerprint,
-                "view_generation_status": record.view_generation_status,
                 "duplicate_of_event_id": record.duplicate_of_event_id,
             }
         )
@@ -656,7 +803,6 @@ def _record_with_dedup_status(
         **{
             **_record_payload(record),
             "text_fingerprint": fingerprint,
-            "view_generation_status": CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
             "duplicate_of_event_id": original_event_id,
             "metadata": metadata,
         }
@@ -697,24 +843,76 @@ def _text_fingerprint(
     return sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def _ensure_schema(conn: sqlite3.Connection) -> None:
-    columns = {
+def _upsert_view_generation_job(
+    conn: sqlite3.Connection,
+    *,
+    event_id: str,
+    status: str,
+    metadata: dict[str, object],
+) -> None:
+    if status not in _CAPTURED_TEXT_VIEW_STATUSES:
+        raise ValueError("status is unsupported.")
+    conn.execute(
+        _UPSERT_VIEW_GENERATION_JOB_SQL,
+        (
+            event_id,
+            status,
+            datetime.now(tz=timezone.utc).isoformat(),
+            json.dumps(metadata, ensure_ascii=False),
+        ),
+    )
+
+
+def _upsert_analysis_job(
+    conn: sqlite3.Connection,
+    *,
+    event_id: str,
+    status: str,
+    metadata: dict[str, object],
+) -> None:
+    if status not in _CAPTURED_TEXT_ANALYSIS_STATUSES:
+        raise ValueError("status is unsupported.")
+    conn.execute(
+        _UPSERT_ANALYSIS_JOB_SQL,
+        (
+            event_id,
+            status,
+            datetime.now(tz=timezone.utc).isoformat(),
+            json.dumps(metadata, ensure_ascii=False),
+        ),
+    )
+
+
+def _reset_legacy_schema(conn: sqlite3.Connection) -> None:
+    """테스트 단계 destructive migration: legacy captured-text schema를 버린다."""
+
+    table_names = {
+        str(row[0])
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        ).fetchall()
+    }
+    if "captured_text_events" not in table_names:
+        return
+
+    event_columns = {
         str(row[1])
         for row in conn.execute("PRAGMA table_info(captured_text_events)").fetchall()
     }
-    migrations = {
-        "text_fingerprint": (
-            "ALTER TABLE captured_text_events "
-            "ADD COLUMN text_fingerprint TEXT NOT NULL DEFAULT ''"
-        ),
-        "view_generation_status": (
-            "ALTER TABLE captured_text_events "
-            "ADD COLUMN view_generation_status TEXT NOT NULL DEFAULT 'pending'"
-        ),
-        "duplicate_of_event_id": (
-            "ALTER TABLE captured_text_events ADD COLUMN duplicate_of_event_id TEXT"
-        ),
+    legacy_event_columns = {
+        "view_generation_status",
     }
-    for column_name, statement in migrations.items():
-        if column_name not in columns:
-            conn.execute(statement)
+    required_tables = {
+        "captured_text_view_generation_jobs",
+        "captured_text_generated_views",
+        "captured_text_analysis_jobs",
+    }
+    if event_columns.isdisjoint(legacy_event_columns) and required_tables.issubset(
+        table_names
+    ):
+        return
+
+    conn.execute("DROP TABLE IF EXISTS captured_text_analysis_jobs")
+    conn.execute("DROP TABLE IF EXISTS captured_text_generated_views")
+    conn.execute("DROP TABLE IF EXISTS captured_text_view_generation_jobs")
+    conn.execute("DROP TABLE IF EXISTS captured_text_events")

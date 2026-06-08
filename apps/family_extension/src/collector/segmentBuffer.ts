@@ -178,11 +178,7 @@ export class SegmentBuffer {
       return;
     }
     this.states.delete(elementId);
-    const finalText = chooseFinalText(
-      state.baselineText.trim(),
-      state.lastText.trim(),
-      state.bestText.trim(),
-    );
+    const finalText = readFinalText(state);
     const deletedText = state.deletedTextParts.join(" ").trim();
     this.baselineTexts.set(elementId, state.lastText);
     if (!finalText && !deletedText) {
@@ -207,6 +203,17 @@ export class SegmentBuffer {
       stats: state.stats,
     });
   }
+}
+
+function readFinalText(state: SegmentState): string {
+  if (state.surfaceType === "input") {
+    return state.lastText.trim();
+  }
+  return chooseFinalText(
+    state.baselineText.trim(),
+    state.lastText.trim(),
+    state.bestText.trim(),
+  );
 }
 
 function createInitialState(

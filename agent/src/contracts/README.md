@@ -12,8 +12,8 @@
 
 현재 계약:
 
-- `captured_text_contracts.py`: extension/local collector -> agent captured text ingest와
-  debug job payload.
+- `captured_text_contracts.py`: extension/local collector -> agent raw captured text
+  ingest와 view generation debug job payload.
 - `typing_segment_contracts.py`: browser/desktop typing segment -> agent ingest payload.
 - `child_support_contracts.py`: family extension child-support UI -> agent support
   conversation/proactive prompt payload.
@@ -25,6 +25,15 @@
 조회하고 개발용 on/off, 즉시 실행을 요청하기 위한 payload다. production scheduler나
 main_server orchestration 계약이 아니며, raw text와 generated weak/strong view는
 agent local boundary에 남긴다.
+
+Captured text 저장소는 raw event, view generation job/output, analysis job 상태를
+분리한다. `captured_text_events`는 원문 snapshot만 소유하고, weak/strong view 생성
+상태는 `captured_text_view_generation_jobs`, 후속 분류/분석 대기 상태는
+`captured_text_analysis_jobs`가 소유한다.
+
+Captured text ingest 응답의 `query_id`는 shape compatibility를 위해 `event_id`와 같은
+값을 반환한다. ingest 경로는 분석 score를 생성하지 않으며, `top_category`와
+`top_score`는 후처리 분석 job이 별도 저장소에 남길 때까지 `null`이다.
 
 `ChildSupportConversation*` raw message와 conversation 저장도 agent-local 경계다.
 LLM provider, prompt, safety policy, response plan 실행 방식은 agent runtime이

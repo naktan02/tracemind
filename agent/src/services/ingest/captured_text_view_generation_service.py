@@ -172,9 +172,10 @@ class CapturedTextViewGenerationService:
         """현재 provider와 맞지 않는 ready generated view를 재생성 대상으로 돌린다."""
 
         reset_count = 0
-        for record in self.repository.get_recent(limit=limit):
-            if record.view_generation_status != CAPTURED_TEXT_VIEW_STATUS_READY:
-                continue
+        for record in self.repository.get_recent_view_generation_by_status(
+            status=CAPTURED_TEXT_VIEW_STATUS_READY,
+            limit=limit,
+        ):
             generated_view = self.repository.get_generated_view(record.event_id)
             if generated_view is None:
                 reset_count += self.repository.mark_view_generation_status(
