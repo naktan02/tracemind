@@ -1,4 +1,4 @@
-import { escapeHtml } from "../../../shared/formatting/html.js";
+import { escapeHtml } from "../../shared/formatting/html.js";
 
 export function emptyTableRow(columnCount, message) {
   return `<tr><td class="empty-cell" colspan="${columnCount}">${message}</td></tr>`;
