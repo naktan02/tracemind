@@ -1,6 +1,6 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
 import { fillSelect } from "../../../ui/controls/form_controls.js";
-import { algorithmName, runDescriptor } from "../logic/labels.js";
+import { algorithmName, centralEvalSetLabel, runDescriptor } from "../logic/labels.js";
 import { centralAlgorithms, rowsForAlgorithms, rowsWithProjection } from "../logic/selectors.js";
 
 export function normalizeProjectionSelection(bundle, rows, state) {
@@ -69,7 +69,7 @@ function renderProjectionGallery(elements, state, bundle) {
                 <img src="${escapeHtml(image.image_src)}" alt="${escapeHtml(image.run_id)} ${escapeHtml(image.eval_set)} projection" loading="lazy" />
                 <figcaption>
                   <strong>${escapeHtml(image.run_id)}</strong>
-                  <span>${escapeHtml(image.eval_set)} · ${escapeHtml(image.reducer ?? "projection")}</span>
+                  <span>${escapeHtml(centralEvalSetLabel(image.eval_set))} · ${escapeHtml(image.reducer ?? "projection")}</span>
                 </figcaption>
               </figure>
             `,

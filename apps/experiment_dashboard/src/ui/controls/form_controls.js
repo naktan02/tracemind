@@ -1,13 +1,24 @@
 import { escapeHtml } from "../../shared/formatting/html.js";
 
-export function fillSelect(select, values, selectedValue, emptyLabel = "선택") {
+export function fillSelect(
+  select,
+  values,
+  selectedValue,
+  emptyLabel = "선택",
+  labelForValue = null,
+) {
   const selectedValues = Array.isArray(selectedValue)
     ? new Set(selectedValue)
     : new Set([selectedValue]);
+  const labelResolver = typeof labelForValue === "function" ? labelForValue : null;
   const options = values
     .map((value) => {
       const selected = selectedValues.has(value) ? "selected" : "";
-      const label = value === "__all__" ? "All" : value;
+      const label = labelResolver
+        ? labelResolver(value)
+        : value === "__all__"
+          ? "All"
+          : value;
       return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)}</option>`;
     })
     .join("");

@@ -12,6 +12,7 @@ import { applyFlFilters, flFilterAxes, flSslRows, pruneFlFilters, sortedFlRows }
 import { renderFilterPanel } from "./ui/controls/filter_panel.js";
 import { fillSelect, checkedValues } from "./ui/controls/form_controls.js";
 import { storeRunAliases, storeSeriesColors } from "./state/preferences.js";
+import { centralEvalSetLabel } from "./features/central_ssl/logic/labels.js";
 import { normalizeOverviewSelection, renderOverviewPage } from "./features/central_ssl/ui/overview_page.js";
 import { normalizeCompareSelection, renderComparePage } from "./features/central_ssl/ui/compare_page.js";
 import { normalizeDetailSelection, renderDetailPage } from "./features/central_ssl/ui/detail_page.js";
@@ -66,7 +67,13 @@ function hydrateEvalFilters() {
     elements.classEvalFilter,
     elements.projectionEvalFilter,
   ]) {
-    fillSelect(select, centralEvalValues, selectDefault(select.id), "eval 없음");
+    fillSelect(
+      select,
+      centralEvalValues,
+      selectDefault(select.id),
+      "eval 없음",
+      centralEvalSetLabel,
+    );
   }
 }
 

@@ -63,6 +63,12 @@ export function runDetail(row) {
   ].join(" · ");
 }
 
+export function centralEvalSetLabel(evalSet) {
+  if (evalSet === "best") return "best_checkpoint";
+  if (evalSet === "final") return "final_epoch";
+  return evalSet;
+}
+
 export function peftAdapterConfigLabel(row) {
   return [
     `adapter=${peftAdapterLabel(row)}`,

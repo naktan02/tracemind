@@ -2,7 +2,7 @@ import { escapeHtml } from "../../../shared/formatting/html.js";
 import { formatMetric } from "../../../shared/formatting/numbers.js";
 import { fillSelect } from "../../../ui/controls/form_controls.js";
 import { emptyTableRow } from "../../../ui/tables/table.js";
-import { algorithmName, runDetail } from "../logic/labels.js";
+import { algorithmName, centralEvalSetLabel, runDetail } from "../logic/labels.js";
 import { centralAlgorithms, rowsForAlgorithms } from "../logic/selectors.js";
 
 export function normalizeDetailSelection(rows, state) {
@@ -37,7 +37,11 @@ export function renderDetailPage(elements, rows, state, bundle) {
   });
   const row = detailRows.find((candidate) => candidate.run_id === state.detailRunId);
   elements.detailRunSummary.textContent = row
-    ? [algorithmName(row), `eval=${state.classEvalSet}`, row.run_id].join(" · ")
+    ? [
+        algorithmName(row),
+        `eval=${centralEvalSetLabel(state.classEvalSet)}`,
+        row.run_id,
+      ].join(" · ")
     : "Per-class와 confusion matrix를 보려면 상세 run을 선택하세요.";
   renderClassTable(elements, row, state, bundle);
   renderClassChart(elements, row, state, bundle);

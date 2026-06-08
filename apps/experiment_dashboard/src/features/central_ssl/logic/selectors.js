@@ -5,22 +5,36 @@ import {
 import { algorithmName } from "./labels.js";
 import { compareMetricValues } from "../../../shared/formatting/metrics.js";
 
+const HIDDEN_CENTRAL_EVAL_SETS = new Set(["test"]);
+
+function preferredCentralEvalSetOrder(evalSets) {
+  const prioritized = [];
+  for (const key of ["validation", "best", "final"]) {
+    if (evalSets.delete(key)) {
+      prioritized.push(key);
+    }
+  }
+  return [...prioritized, ...Array.from(evalSets).sort()];
+}
+
 export function isCentralResultTrack(track) {
   return track === CENTRAL_SSL_TRACK || track === "central_peft_full_encoder_ssl";
 }
 
 export function centralEvalSets(bundle) {
-  return Array.from(
-    new Set(
-      (bundle.eval_metrics ?? [])
-        .filter((row) =>
-          (bundle.runs ?? []).some(
-            (run) => run.run_id === row.run_id && isCentralResultTrack(run.track),
-          ),
-        )
-        .map((row) => row.eval_set),
-    ),
-  ).sort();
+  const candidateSets = new Set(
+    (bundle.eval_metrics ?? [])
+      .filter((row) =>
+        (bundle.runs ?? []).some(
+          (run) => run.run_id === row.run_id && isCentralResultTrack(run.track),
+        ),
+      )
+      .map((row) => row.eval_set),
+  );
+  for (const hidden of HIDDEN_CENTRAL_EVAL_SETS) {
+    candidateSets.delete(hidden);
+  }
+  return preferredCentralEvalSetOrder(candidateSets);
 }
 
 export function centralMetricRows(bundle, evalSet, sortMetric = "macro_f1") {
