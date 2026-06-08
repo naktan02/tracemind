@@ -8,13 +8,13 @@
 
 1. 확장 아이콘용 compact popup entry
 2. parent detail용 별도 entry
-3. `/setup`, `/child/unlock`, `/parent/unlock`, `/child`, `/parent` route shell
+3. `/setup`, `/child`, `/parent` route shell
 4. `family_access`와 `wellbeing_signal` contract를 같이 소비하는 client layer
 5. 최초 1회 child/parent PIN 설정 화면
 6. popup의 본인 페이지/부모 페이지 직접 진입 버튼
 7. child role용 현재 상태 카드, AI 마음 도움, 7d / 14d / 30d 위험도 변화 그래프
 8. parent role용 현재 상태 요약과 대응 방향 안내
-9. role별 PIN unlock API 연결
+9. popup 기반 role별 PIN unlock API 연결
 10. 실패 횟수/잠금 상태 안내
 11. role session 기반 route guard
 12. health polling 기반 연결 상태 배너
@@ -30,9 +30,9 @@
 
 페이지 분리는 HTML entry가 아니라 product/runtime surface 기준으로 잡는다.
 `index.html`과 `parent.html`은 같은 React app shell인 `src/ui/main.tsx`를 쓰고,
-`/setup`, `/child/unlock`, `/parent/unlock`, `/child`, `/parent`는
+`/setup`, `/child`, `/parent`는
 `src/ui/pages/**`의 page component 파일로 분리한다. role/session/access guard는
-`src/ui/App.tsx`가 공유하므로 setup/unlock을 별도 Vite entry로 쪼개지 않는다.
+`src/ui/App.tsx`가 공유하므로 setup을 별도 Vite entry로 쪼개지 않는다.
 반대로 `popup.html`, `collector-debug.html`, content script, background service
 worker는 manifest surface와 runtime 책임이 달라 독립 entry로 둔다.
 
@@ -146,14 +146,14 @@ uvicorn agent.src.api.main:app --reload --port 8001
 - `index.html`
   - 본인용/가족용 React app entry
   - 초기 setup 전에는 `/setup`
-  - setup 완료 후 잠금 상태면 `/child/unlock`
+  - setup 완료 후 세션이 없으면 popup PIN 입력 안내만 보여준다
 - `popup.html`
   - 확장 아이콘 compact popup entry
   - 본인 페이지/부모 페이지 선택 후 PIN을 입력하고 통과하면 해당 페이지를 연다
   - debug/queue 도구는 하단 관리 영역에 둔다
 - `parent.html`
   - 부모용 상세 entry
-  - 세션이 없으면 `/parent/unlock` 흐름으로 정규화된다
+  - 세션이 없으면 popup PIN 입력 안내만 보여준다
 - `assets/content.js`
   - 웹페이지 입력 surface에 주입되는 content script
 - `assets/background.js`

@@ -1700,7 +1700,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tracemind-server"
+name = "tracemind"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

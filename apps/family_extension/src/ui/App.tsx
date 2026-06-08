@@ -7,7 +7,6 @@ import { useLocalProgramHealth } from "./hooks/useLocalProgramHealth";
 import { ChildPage, type ChildTab } from "./pages/child/ChildPage";
 import { ParentPage } from "./pages/parent/ParentPage";
 import { SetupPage } from "./pages/setup/SetupPage";
-import { UnlockPage } from "./pages/unlock/UnlockPage";
 import {
   AppRoute,
   ROUTE_META,
@@ -31,7 +30,7 @@ function updateHash(route: AppRoute) {
 }
 
 export default function App({ initialRoute }: AppProps) {
-  const fallbackRoute = normalizeRoute(initialRoute, "/child/unlock");
+  const fallbackRoute = normalizeRoute(initialRoute, "/child");
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(() =>
     normalizeRoute(getHashRoute(), fallbackRoute),
   );
@@ -40,15 +39,11 @@ export default function App({ initialRoute }: AppProps) {
     activeRole,
     activeSession,
     clearRoleSession,
-    getUnlockState,
     reloadSetupStatus,
     setupStatusState,
     setupSubmissionState,
-    submitRoleUnlock,
     submitSetup,
   } = useFamilyAccess();
-  const [childUnlockPin, setChildUnlockPin] = useState("");
-  const [parentUnlockPin, setParentUnlockPin] = useState("");
   const [childActiveTab, setChildActiveTab] = useState<ChildTab>("analysis");
   const isSetupResolved = setupStatusState.phase === "loaded";
   const isSetupComplete = setupStatusState.status?.is_setup_complete ?? false;
@@ -111,27 +106,11 @@ export default function App({ initialRoute }: AppProps) {
     updateHash("/child");
   }
 
-  async function handleRoleUnlockSubmit(role: "child" | "parent") {
-    const pin = role === "child" ? childUnlockPin : parentUnlockPin;
-    const response = await submitRoleUnlock(role, pin);
-    if (response?.granted) {
-      if (role === "child") {
-        setChildUnlockPin("");
-        setCurrentRoute("/child");
-        updateHash("/child");
-        return;
-      }
-      setParentUnlockPin("");
-      setCurrentRoute("/parent");
-      updateHash("/parent");
-    }
-  }
-
   async function handleSetupSubmit(childPin: string, parentPin: string) {
     const response = await submitSetup(childPin, parentPin);
     if (response?.is_setup_complete) {
-      setCurrentRoute("/child/unlock");
-      updateHash("/child/unlock");
+      setCurrentRoute("/child");
+      updateHash("/child");
     }
   }
 
@@ -229,38 +208,50 @@ export default function App({ initialRoute }: AppProps) {
             onSubmitSetup={handleSetupSubmit}
           />
         )}
-        {setupStatusState.phase === "loaded" && currentRoute === "/child" && (
+        {setupStatusState.phase === "loaded" &&
+          currentRoute === "/child" &&
+          activeRole !== "child" && <PopupAccessRequiredPanel roleLabel="본인" />}
+        {setupStatusState.phase === "loaded" &&
+          currentRoute === "/child" &&
+          activeRole === "child" && (
           <ChildPage activeTab={childActiveTab} />
         )}
-        {setupStatusState.phase === "loaded" && currentRoute === "/child/unlock" && (
-          <UnlockPage
-            pin={childUnlockPin}
-            pinLabel="본인 PIN"
-            role="child"
-            unlockState={getUnlockState("child")}
-            onPinChange={setChildUnlockPin}
-            onSubmitUnlock={() => void handleRoleUnlockSubmit("child")}
-            onMoveToRoleSurface={() => moveTo("/child")}
-          />
-        )}
         {setupStatusState.phase === "loaded" &&
-          currentRoute === "/parent/unlock" && (
-          <UnlockPage
-            pin={parentUnlockPin}
-            pinLabel="부모용 PIN"
-            role="parent"
-            unlockState={getUnlockState("parent")}
-            onPinChange={setParentUnlockPin}
-            onSubmitUnlock={() => void handleRoleUnlockSubmit("parent")}
-            onMoveToRoleSurface={() => moveTo("/parent")}
-          />
-          )}
-        {setupStatusState.phase === "loaded" && currentRoute === "/parent" && (
+          currentRoute === "/parent" &&
+          activeRole !== "parent" && <PopupAccessRequiredPanel roleLabel="부모" />}
+        {setupStatusState.phase === "loaded" &&
+          currentRoute === "/parent" &&
+          activeRole === "parent" && (
           <ParentPage
             activeSessionExpiresAt={activeSession?.sessionExpiresAt ?? null}
           />
         )}
       </main>
     </div>
+  );
+}
+
+type PopupAccessRequiredPanelProps = {
+  roleLabel: "본인" | "부모";
+};
+
+function PopupAccessRequiredPanel({ roleLabel }: PopupAccessRequiredPanelProps) {
+  return (
+    <section className="page-stack">
+      <article className="hero-card">
+        <div>
+          <p className="eyebrow">{roleLabel} 페이지</p>
+          <h2>확장 프로그램에서 PIN을 입력해 주세요</h2>
+          <p className="section-copy">
+            {roleLabel} 페이지는 TraceMind 확장 popup에서 PIN을 확인한 뒤 열립니다.
+            브라우저 상단의 확장 아이콘을 눌러 {roleLabel} 페이지를 선택해 주세요.
+          </p>
+        </div>
+        <div className="hero-meter">
+          <span className="hero-meter-label">접근 방법</span>
+          <strong>popup PIN 확인</strong>
+        </div>
+      </article>
+    </section>
   );
 }

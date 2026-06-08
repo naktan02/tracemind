@@ -3,7 +3,7 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tracemind-server"
+name = "tracemind"
 version = "0.1.0"
 description = "프라이버시 보존 기반 아동·청소년 온라인 위험 변화 감지 시스템"
 requires-python = ">=3.11,<3.13"

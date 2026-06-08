@@ -3,18 +3,15 @@ import { useEffect, useMemo, useState } from "react";
 import {
   fetchFamilySetupStatus,
   submitInitialFamilySetup,
-  unlockFamilyRole,
 } from "../api/familyAccess";
 import {
   clearFamilySession,
   loadFamilySessionSync,
-  saveFamilySession,
 } from "../../common/familySessionStorage";
 import type {
   FamilyAccessRole,
   FamilySetupResponsePayload,
   FamilySetupStatusPayload,
-  FamilyUnlockResponsePayload,
 } from "../../contracts/generated";
 
 export type FamilySetupStatusPhase = "loading" | "loaded" | "error";
@@ -22,13 +19,6 @@ export type FamilySetupSubmissionPhase =
   | "idle"
   | "submitting"
   | "completed"
-  | "error";
-export type FamilyUnlockPhase =
-  | "idle"
-  | "submitting"
-  | "granted"
-  | "rejected"
-  | "locked"
   | "error";
 
 export type FamilySetupStatusState = {
@@ -43,22 +33,10 @@ export type FamilySetupSubmissionState = {
   errorMessage: string | null;
 };
 
-export type FamilyUnlockState = {
-  phase: FamilyUnlockPhase;
-  response: FamilyUnlockResponsePayload | null;
-  errorMessage: string | null;
-};
-
 export type ActiveFamilySession = {
   role: FamilyAccessRole;
   sessionToken: string;
   sessionExpiresAt: string | null;
-};
-
-const INITIAL_UNLOCK_STATE: FamilyUnlockState = {
-  phase: "idle",
-  response: null,
-  errorMessage: null,
 };
 
 export function useFamilyAccess() {
@@ -73,12 +51,6 @@ export function useFamilyAccess() {
       response: null,
       errorMessage: null,
     });
-  const [unlockStates, setUnlockStates] = useState<
-    Record<FamilyAccessRole, FamilyUnlockState>
-  >({
-    child: INITIAL_UNLOCK_STATE,
-    parent: INITIAL_UNLOCK_STATE,
-  });
   const [activeSession, setActiveSession] = useState<ActiveFamilySession | null>(() =>
     loadFamilySessionSync(),
   );
@@ -179,85 +151,18 @@ export function useFamilyAccess() {
     }
   }
 
-  async function submitRoleUnlock(role: FamilyAccessRole, pin: string) {
-    setUnlockStates((prev) => ({
-      ...prev,
-      [role]: {
-        phase: "submitting",
-        response: null,
-        errorMessage: null,
-      },
-    }));
-    try {
-      const response = await unlockFamilyRole(role, pin);
-      if (response.granted && response.session_token != null) {
-        const nextSession = {
-          role: response.role,
-          sessionToken: response.session_token,
-          sessionExpiresAt: response.session_expires_at,
-        };
-        setActiveSession(nextSession);
-        void saveFamilySession(nextSession);
-        setUnlockStates((prev) => ({
-          ...prev,
-          [role]: {
-            phase: "granted",
-            response,
-            errorMessage: null,
-          },
-        }));
-        return response;
-      }
-      setUnlockStates((prev) => ({
-        ...prev,
-        [role]: {
-          phase: response.locked_until == null ? "rejected" : "locked",
-          response,
-          errorMessage: null,
-        },
-      }));
-      return response;
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "PIN 검증 요청에 실패했습니다.";
-      setUnlockStates((prev) => ({
-        ...prev,
-        [role]: {
-          phase: "error",
-          response: null,
-          errorMessage,
-        },
-      }));
-      return null;
-    }
-  }
-
   function clearRoleSession() {
     setActiveSession(null);
     void clearFamilySession();
-  }
-
-  function getUnlockState(role: FamilyAccessRole): FamilyUnlockState {
-    return unlockStates[role];
-  }
-
-  function resetUnlockState(role: FamilyAccessRole) {
-    setUnlockStates((prev) => ({
-      ...prev,
-      [role]: INITIAL_UNLOCK_STATE,
-    }));
   }
 
   return {
     activeRole,
     activeSession,
     clearRoleSession,
-    getUnlockState,
     reloadSetupStatus,
-    resetUnlockState,
     setupStatusState,
     setupSubmissionState,
-    submitRoleUnlock,
     submitSetup,
   };
 }

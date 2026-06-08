@@ -2,8 +2,6 @@ import type { FamilyAccessRole } from "../../contracts/generated";
 
 export const APP_ROUTES = [
   "/setup",
-  "/child/unlock",
-  "/parent/unlock",
   "/child",
   "/parent",
 ] as const;
@@ -24,20 +22,6 @@ export const ROUTE_META: Record<AppRoute, AppRouteMeta> = {
     title: "본인/부모 PIN 초기 설정",
     description:
       "본인 페이지와 부모 페이지를 안전하게 나누기 위해 각각의 PIN을 설정합니다.",
-  },
-  "/child/unlock": {
-    label: "본인 PIN",
-    eyebrow: "본인 PIN",
-    title: "본인 PIN 확인",
-    description:
-      "내 마음 상태와 AI 마음 도움을 확인하기 전에 PIN을 입력합니다.",
-  },
-  "/parent/unlock": {
-    label: "부모용 PIN",
-    eyebrow: "부모용 PIN",
-    title: "부모용 PIN 검증",
-    description:
-      "보호자 안내 화면으로 들어가기 전에 PIN을 입력합니다.",
   },
   "/child": {
     label: "AI 마음 도움",
@@ -82,14 +66,8 @@ export function resolveAccessibleRoute(
   }
 
   if (options.activeRole == null) {
-    if (route === "/child") {
-      return "/child/unlock";
-    }
-    if (route === "/parent") {
-      return "/parent/unlock";
-    }
     if (route === "/setup") {
-      return "/child/unlock";
+      return "/child";
     }
     return route;
   }
