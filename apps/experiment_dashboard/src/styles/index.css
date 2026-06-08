@@ -530,6 +530,12 @@ code {
   margin-bottom: 18px;
 }
 
+.comparison-picker-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .overview-picker-grid {
   display: grid;
   grid-template-columns: minmax(220px, 0.7fr) minmax(360px, 1.3fr);
@@ -545,6 +551,11 @@ code {
   font-size: 0.76rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.comparison-metric-list {
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .metric-picker {

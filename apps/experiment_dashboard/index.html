@@ -174,21 +174,16 @@
                 Bar 계열은 선택 metric의 마지막 기록 값을 run별로 비교한다.
               </p>
               <div class="comparison-picker-grid">
-                <section>
+                <section class="comparison-picker-column">
                   <h4>지표</h4>
-                  <div id="metric-picker" class="filter-value-list"></div>
+                  <div id="metric-picker" class="filter-value-list comparison-metric-list"></div>
                 </section>
-                <section>
+                <section class="comparison-picker-column">
                   <h4>Run Selection</h4>
-                  <div class="selection-controls">
-                    <div>
-                      <p class="control-label">Filtered Runs</p>
-                      <div
-                        id="comparison-run-checkboxes"
-                        class="run-checkbox-list table-run-picker"
-                      ></div>
-                    </div>
-                  </div>
+                  <div
+                    id="comparison-run-checkboxes"
+                    class="run-checkbox-list table-run-picker"
+                  ></div>
                 </section>
               </div>
               <div id="selected-run-cards" class="selected-run-cards"></div>
@@ -370,7 +365,7 @@
                   <div id="fl-run-axis-picker" class="filter-value-list" hidden></div>
                 </section>
                 <section>
-                  <h4>Filtered Runs</h4>
+                  <h4>Run Selection</h4>
                   <div id="fl-run-checkboxes" class="run-checkbox-list table-run-picker"></div>
                 </section>
               </div>
@@ -401,7 +396,7 @@
                   <div id="fl-round-table-metric-picker" class="filter-value-list"></div>
                 </section>
                 <section>
-                  <h4>Filtered Runs</h4>
+                  <h4>Run Selection</h4>
                   <div
                     id="fl-round-run-checkboxes"
                     class="run-checkbox-list table-run-picker"
@@ -525,7 +520,7 @@
                   <select id="fl-projection-eval-filter"></select>
                 </section>
                 <section class="fl-projection-run-picker">
-                  <h4>Filtered Runs</h4>
+                  <h4>Run Selection</h4>
                   <div
                     id="fl-projection-run-checkboxes"
                     class="run-checkbox-list compact"
