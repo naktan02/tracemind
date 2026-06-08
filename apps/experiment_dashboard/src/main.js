@@ -33,11 +33,11 @@ async function init() {
   bindEvents();
   try {
     state.bundle = await loadDashboardBundle(DATA_URL);
-    elements.loadState.className = "notice success";
-    elements.loadState.textContent = "dashboard data 로드 완료";
+    elements.loadState.hidden = true;
     hydrateEvalFilters();
     render();
   } catch (error) {
+    elements.loadState.hidden = false;
     elements.loadState.className = "notice warning";
     elements.loadState.innerHTML = `
       <strong>dashboard data를 찾지 못했습니다.</strong>
