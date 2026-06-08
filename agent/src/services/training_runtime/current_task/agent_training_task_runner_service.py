@@ -212,7 +212,7 @@ def _resolve_current_task_runtime(
     capability_plan = _validate_fssl_runtime_snapshot(task_payload)
     return AgentCurrentTaskRuntimePlan(
         runtime_name=AGENT_RUNTIME_QUERY_SSL_PEFT,
-        update_family_name=PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME,
+        update_family_name=_resolve_update_family_name(task_payload),
         query_ssl_config=query_ssl_config,
         fssl_method=_optional_name(getattr(task_payload, "fssl_method", None)),
         fssl_capability_plan=capability_plan,
@@ -232,6 +232,26 @@ def _require_supported_query_ssl_profile(task_payload: object) -> None:
             f"{PEFT_CLASSIFIER_UPDATE_PROFILE_NAME!r} profile만 지원합니다: "
             f"{profile_name!r}."
         )
+
+
+def _resolve_update_family_name(task_payload: object) -> str:
+    execution = getattr(task_payload, "fssl_execution", None)
+    if not isinstance(execution, Mapping):
+        return PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME
+    runtime_surface = execution.get("runtime_surface")
+    if not isinstance(runtime_surface, Mapping):
+        return PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME
+    update_family_name = (
+        _optional_name(runtime_surface.get("update_family_name"))
+        or PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME
+    )
+    if update_family_name != PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME:
+        raise ValueError(
+            "live agent Query SSL runtime은 현재 "
+            f"{PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME!r} update family만 "
+            f"지원합니다: {update_family_name!r}."
+        )
+    return update_family_name
 
 
 def _validate_fssl_runtime_snapshot(

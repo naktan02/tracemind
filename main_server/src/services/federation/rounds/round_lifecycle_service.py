@@ -131,6 +131,24 @@ def _runtime_update_family_name(round_runtime_config: object | None) -> str:
     return normalized
 
 
+def _runtime_update_family_name_or_default(round_runtime_config: object | None) -> str:
+    value = getattr(round_runtime_config, "update_family_name", None)
+    if value is None:
+        from methods.federated_ssl.runtime_fallbacks import (
+            RUNTIME_FALLBACK_SERVER_ROUND_PROFILE,
+        )
+
+        return RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.update_family_name
+    normalized = str(value).strip()
+    if not normalized:
+        from methods.federated_ssl.runtime_fallbacks import (
+            RUNTIME_FALLBACK_SERVER_ROUND_PROFILE,
+        )
+
+        return RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.update_family_name
+    return normalized
+
+
 def _runtime_aggregation_backend_name(round_runtime_config: object | None) -> str:
     value = getattr(round_runtime_config, "aggregation_backend_name", None)
     if value is None:
@@ -222,7 +240,8 @@ class RoundLifecycleService:
 
         created_at = self.clock.now()
         training_task = self.round_manager_service.create_training_task(
-            resolved_request
+            resolved_request,
+            runtime_surface=self._round_runtime_surface_payload(),
         )
         record = RoundRecord(
             round_id=round_id,
@@ -238,6 +257,19 @@ class RoundLifecycleService:
 
     def get_round(self, round_id: str) -> RoundRecord:
         return self.round_repository.load_round(round_id)
+
+    def _round_runtime_surface_payload(self) -> dict[str, object]:
+        return {
+            "payload_adapter_kind": (
+                self.round_manager_service.payload_adapter.adapter_kind
+            ),
+            "update_family_name": _runtime_update_family_name_or_default(
+                self.round_runtime_config
+            ),
+            "aggregation_backend_name": _runtime_aggregation_backend_name(
+                self.round_runtime_config
+            ),
+        }
 
     def get_current_round(self) -> RoundRecord:
         active_pointer = self.round_repository.load_active_pointer()

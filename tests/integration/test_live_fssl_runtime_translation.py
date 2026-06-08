@@ -17,6 +17,9 @@ from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenRequest,
     RoundStrategyConfig,
 )
+from main_server.src.services.federation.rounds.payload_adapters.registry import (
+    build_shared_adapter_round_payload_adapter,
+)
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
@@ -39,7 +42,12 @@ def test_live_method_owned_fssl_task_snapshot_routes_through_agent_runner() -> N
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
     )
-    task = RoundManagerService(payload_adapter=MagicMock()).create_training_task(
+    task = RoundManagerService(
+        payload_adapter=build_shared_adapter_round_payload_adapter(
+            "peft_classifier",
+            aggregation_backend_name="fedavg",
+        )
+    ).create_training_task(
         RoundOpenRequest(
             active_manifest=manifest,
             round_id="round_fedmatch",
@@ -50,6 +58,11 @@ def test_live_method_owned_fssl_task_snapshot_routes_through_agent_runner() -> N
         )
     )
     assert task.fssl_execution is not None
+    assert task.fssl_execution["runtime_surface"] == {
+        "payload_adapter_kind": "peft_classifier",
+        "update_family_name": "peft_text_encoder",
+        "aggregation_backend_name": "fedavg",
+    }
     assert task.fssl_capability_plan is not None
 
     round_client = MagicMock()

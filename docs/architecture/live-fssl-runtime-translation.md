@@ -57,4 +57,6 @@ server aggregation/publication semantics
 `TrainingTaskPayload`에는 하위 호환용 `fssl_method`/`fssl_context`가 남아 있다.
 새 live producer는 `fssl_execution`과 `fssl_capability_plan`을 함께 기록한다. 기존
 task는 계속 읽을 수 있지만, 새 snapshot이 있는 task는 agent가 method/capability
-drift를 먼저 검증한다.
+drift를 먼저 검증한다. `fssl_execution.runtime_surface`는 live dispatcher가
+사용하는 `update_family_name`, `payload_adapter_kind`, `aggregation_backend_name`을
+담는다.

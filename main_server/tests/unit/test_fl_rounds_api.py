@@ -326,6 +326,11 @@ def test_fl_round_open_embeds_fssl_peer_context_from_previous_round(
     assert second_round.training_task.fssl_method == "fedmatch"
     assert second_round.training_task.fssl_execution is not None
     assert second_round.training_task.fssl_execution["method_name"] == "fedmatch"
+    assert second_round.training_task.fssl_execution["runtime_surface"] == {
+        "payload_adapter_kind": "classifier_head",
+        "update_family_name": "peft_text_encoder",
+        "aggregation_backend_name": "fedavg",
+    }
     assert second_round.training_task.fssl_capability_plan is not None
     assert (
         second_round.training_task.fssl_capability_plan["server_update_policy"]["name"]

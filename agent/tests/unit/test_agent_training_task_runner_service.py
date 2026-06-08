@@ -299,6 +299,43 @@ def test_runner_rejects_unsupported_query_ssl_runtime_profile_before_sync() -> N
     shared_adapter_sync_service.pull_current.assert_not_called()
 
 
+def test_runner_rejects_unsupported_update_family_before_sync() -> None:
+    repo = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    shared_adapter_runtime_service = MagicMock()
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        fssl_method="fedmatch",
+        fssl_execution={
+            "composition_mode": "method_owned",
+            "execution_role": "method_owned",
+            "method_name": "fedmatch",
+            "descriptor_name": "fedmatch",
+            "runtime_surface": {
+                "payload_adapter_kind": "linear_head",
+                "update_family_name": "linear_head",
+                "aggregation_backend_name": "fedavg",
+            },
+        },
+        fssl_capability_plan=_fedmatch_capability_plan_payload(),
+    )
+    round_client_factory = MagicMock(return_value=round_client)
+    service = _build_service(
+        repo=repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
+    assert "peft_text_encoder" in str(response.message)
+    shared_adapter_sync_service.pull_current.assert_not_called()
+
+
 def test_runner_rejects_legacy_non_query_ssl_task_without_runtime_contract() -> None:
     repo = MagicMock()
     shared_adapter_sync_service = MagicMock()

@@ -28,6 +28,7 @@ from methods.federated_ssl.compatibility import (
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from methods.federated_ssl.runtime_fallbacks import (
+    RUNTIME_FALLBACK_SERVER_ROUND_PROFILE,
     build_runtime_fallback_secure_aggregation_config,
     build_runtime_fallback_training_objective_config,
     build_runtime_fallback_training_selection_policy,
@@ -87,9 +88,17 @@ class RoundManagerService:
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
-    def create_training_task(self, request: RoundOpenRequest) -> TrainingTask:
+    def create_training_task(
+        self,
+        request: RoundOpenRequest,
+        *,
+        runtime_surface: Mapping[str, object] | None = None,
+    ) -> TrainingTask:
         if request.round_id is None:
             raise ValueError("RoundOpenRequest.round_id must be set.")
+        resolved_runtime_surface = self._resolve_runtime_surface_payload(
+            runtime_surface
+        )
         return TrainingTask(
             schema_version="training_task.v1",
             task_id=request.task_id or f"task_{request.round_id}_{uuid4().hex[:8]}",
@@ -112,7 +121,10 @@ class RoundManagerService:
                 request.secure_aggregation
             ),
             fssl_method=getattr(request.strategy, "fssl_method", None),
-            fssl_execution=self._resolve_fssl_execution_payload(request.strategy),
+            fssl_execution=self._resolve_fssl_execution_payload(
+                request.strategy,
+                runtime_surface=resolved_runtime_surface,
+            ),
             fssl_capability_plan=self._resolve_fssl_capability_plan_payload(
                 request.strategy
             ),
@@ -273,6 +285,8 @@ class RoundManagerService:
     @staticmethod
     def _resolve_fssl_execution_payload(
         strategy: object | None,
+        *,
+        runtime_surface: Mapping[str, object],
     ) -> dict[str, object] | None:
         method_name = _strategy_text(strategy, "fssl_method")
         if method_name is None:
@@ -287,7 +301,28 @@ class RoundManagerService:
             security_policy=None,
             method_descriptor=descriptor,
         )
-        return plan.to_mapping()
+        payload = plan.to_mapping()
+        payload["runtime_surface"] = dict(runtime_surface)
+        return payload
+
+    def _resolve_runtime_surface_payload(
+        self,
+        source: Mapping[str, object] | None,
+    ) -> dict[str, object]:
+        return {
+            "payload_adapter_kind": (
+                _mapping_text(source, "payload_adapter_kind")
+                or self.payload_adapter.adapter_kind
+            ),
+            "update_family_name": (
+                _mapping_text(source, "update_family_name")
+                or RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.update_family_name
+            ),
+            "aggregation_backend_name": (
+                _mapping_text(source, "aggregation_backend_name")
+                or RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.aggregation_backend_name
+            ),
+        }
 
     @staticmethod
     def _resolve_fssl_capability_plan_payload(
@@ -321,6 +356,19 @@ def _strategy_text(strategy: object | None, field_name: str) -> str | None:
     if strategy is None:
         return None
     raw_value = getattr(strategy, field_name, None)
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip()
+    return text or None
+
+
+def _mapping_text(
+    source: Mapping[str, object] | None,
+    field_name: str,
+) -> str | None:
+    if source is None:
+        return None
+    raw_value = source.get(field_name)
     if raw_value is None:
         return None
     text = str(raw_value).strip()

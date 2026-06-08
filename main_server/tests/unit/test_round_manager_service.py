@@ -266,6 +266,11 @@ def test_round_manager_adds_fssl_runtime_snapshots_for_method_owned_task() -> No
     assert task.fssl_execution is not None
     assert task.fssl_execution["execution_role"] == "method_owned"
     assert task.fssl_execution["method_name"] == "fedmatch"
+    assert task.fssl_execution["runtime_surface"] == {
+        "payload_adapter_kind": "peft_classifier",
+        "update_family_name": "peft_text_encoder",
+        "aggregation_backend_name": "fedavg",
+    }
     assert task.fssl_capability_plan is not None
     assert (
         task.fssl_capability_plan["server_update_policy"]["name"]
