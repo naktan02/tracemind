@@ -229,6 +229,17 @@ def test_legacy_federated_agent_stored_event_runtime_is_removed() -> None:
     )
 
 
+def test_fl_simulation_selection_diagnostics_writer_is_removed() -> None:
+    legacy_path = FL_SIMULATION_IO_SRC / "selection_diagnostics_writer.py"
+
+    assert not legacy_path.exists(), (
+        "stored-event/query-buffer 시절 selection diagnostics writer를 active FL "
+        "simulation I/O에 다시 만들지 않는다. 현재 diagnostics는 simulation report와 "
+        "methods-owned FSSL diagnostics helper가 소유한다.\n"
+        f"path={_relative_repo_path(legacy_path)}"
+    )
+
+
 def test_fl_entrypoint_does_not_embed_update_family_objective_payload_scope() -> None:
     entrypoint_path = (
         CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml"

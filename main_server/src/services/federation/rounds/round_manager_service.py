@@ -24,6 +24,7 @@ from methods.federated_ssl.capabilities.plan import (
 )
 from methods.federated_ssl.compatibility import (
     validate_federated_ssl_capability_compatibility,
+    validate_federated_ssl_runtime_surface_compatibility,
 )
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
@@ -292,6 +293,17 @@ class RoundManagerService:
         if method_name is None:
             return None
         descriptor = resolve_federated_ssl_method_descriptor(method_name)
+        validate_federated_ssl_runtime_surface_compatibility(
+            method_descriptor=descriptor,
+            update_family_name=_required_mapping_text(
+                runtime_surface,
+                "update_family_name",
+            ),
+            aggregation_backend_name=_required_mapping_text(
+                runtime_surface,
+                "aggregation_backend_name",
+            ),
+        )
         plan = build_federated_ssl_execution_plan(
             fl_method={
                 "name": descriptor.name,
@@ -360,6 +372,16 @@ def _strategy_text(strategy: object | None, field_name: str) -> str | None:
         return None
     text = str(raw_value).strip()
     return text or None
+
+
+def _required_mapping_text(
+    source: Mapping[str, object],
+    field_name: str,
+) -> str:
+    value = _mapping_text(source, field_name)
+    if value is None:
+        raise ValueError(f"runtime_surface.{field_name} must not be empty.")
+    return value
 
 
 def _mapping_text(

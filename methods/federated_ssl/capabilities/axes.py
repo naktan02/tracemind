@@ -19,7 +19,7 @@ LOCAL_SSL_POLICIES_REQUIRING_STATE_SURFACE = frozenset(
         LOCAL_SSL_POLICY_ADAMATCH,
     }
 )
-LOCAL_SSL_POLICIES_FROM_QUERY_SSL = frozenset(
+QUERY_SSL_LOCAL_OBJECTIVE_POLICY_NAMES = frozenset(
     {
         LOCAL_SSL_POLICY_PSEUDOLABEL,
         LOCAL_SSL_POLICY_FIXMATCH,
@@ -28,13 +28,21 @@ LOCAL_SSL_POLICIES_FROM_QUERY_SSL = frozenset(
         LOCAL_SSL_POLICY_ADAMATCH,
     }
 )
+LOCAL_SSL_POLICIES_FROM_QUERY_SSL = QUERY_SSL_LOCAL_OBJECTIVE_POLICY_NAMES
 LOCAL_SSL_POLICY_NAMES = frozenset(
     {
         LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
-        *LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
+        *QUERY_SSL_LOCAL_OBJECTIVE_POLICY_NAMES,
         LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     }
 )
+
+
+def is_query_ssl_local_objective_policy(policy_name: str) -> bool:
+    """기존 Query SSL algorithm config surface를 재사용하는지 반환한다."""
+
+    normalized = policy_name.strip().lower().replace("-", "_")
+    return normalized in QUERY_SSL_LOCAL_OBJECTIVE_POLICY_NAMES
 
 SERVER_UPDATE_FEDAVG_MERGED_DELTA = "fedavg_merged_delta"
 SERVER_UPDATE_FEDMATCH_PARTITIONED = "fedmatch_partitioned"
@@ -74,7 +82,7 @@ class LocalSslPolicy:
     def uses_query_ssl_algorithm(self) -> bool:
         """기존 Query SSL algorithm parameter surface를 재사용하는 정책인지 반환한다."""
 
-        return self.name in LOCAL_SSL_POLICIES_FROM_QUERY_SSL
+        return is_query_ssl_local_objective_policy(self.name)
 
     @property
     def requires_state_surface(self) -> bool:

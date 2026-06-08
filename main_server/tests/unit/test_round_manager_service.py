@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from main_server.src.infrastructure.repositories import (  # noqa: E402
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
@@ -280,6 +282,40 @@ def test_round_manager_adds_fssl_runtime_snapshots_for_method_owned_task() -> No
         task.fssl_capability_plan["local_ssl_policy"]["name"]
         == "fedmatch_agreement"
     )
+
+
+def test_round_manager_rejects_method_owned_runtime_surface_drift() -> None:
+    service = RoundManagerService(
+        payload_adapter=_build_peft_classifier_round_payload_adapter()
+    )
+
+    with pytest.raises(ValueError, match="method recipe does not support"):
+        service.create_training_task(
+            RoundOpenRequest(
+                active_manifest=ModelManifest(
+                    schema_version="model_manifest.v1",
+                    model_id="tracemind-embed",
+                    model_revision="rev_000",
+                    published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+                    artifact_kind="shared_adapter_state",
+                    artifact_ref="/tmp/rev_000.json",
+                    auxiliary_artifact_versions={},
+                    training_scope="adapter_only",
+                    training_enabled=True,
+                    compatible_task_types=("pseudo_label_self_training",),
+                ),
+                round_id="round_fedmatch",
+                strategy=RoundStrategyConfig(
+                    mode="method_owned",
+                    fssl_method="fedmatch",
+                ),
+            ),
+            runtime_surface={
+                "payload_adapter_kind": "linear_head",
+                "update_family_name": "linear_head",
+                "aggregation_backend_name": "fedavg",
+            },
+        )
 
 
 def test_round_manager_accepts_secure_aggregation_config_on_training_task() -> None:

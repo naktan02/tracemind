@@ -2259,6 +2259,61 @@ def test_live_runtime_layers_do_not_import_concrete_fssl_method_packages() -> No
     )
 
 
+def test_agent_current_task_runner_delegates_runtime_resolution() -> None:
+    path = (
+        AGENT_SRC
+        / "services"
+        / "training_runtime"
+        / "current_task"
+        / "agent_training_task_runner_service.py"
+    )
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "validate_federated_ssl_capability_compatibility",
+        "resolve_federated_ssl_method_descriptor",
+        "FederatedSslCapabilityPlan",
+        "QuerySslObjectiveRuntimeConfig",
+        "PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME",
+        "PEFT_CLASSIFIER_UPDATE_PROFILE_NAME",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert "resolve_current_task_runtime" in source
+    assert not violations, (
+        "agent current-task runner는 orchestration만 소유한다. runtime/profile/"
+        "capability 해석은 runtime_dispatch.py로 위임해 live task 경계가 runner에 "
+        "다시 누적되지 않게 한다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_agent_query_ssl_service_delegates_live_fssl_context_parsing() -> None:
+    path = (
+        AGENT_SRC
+        / "services"
+        / "training_runtime"
+        / "current_task"
+        / "query_ssl_training_task_service.py"
+    )
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "def _method_config_from_task_context",
+        "def _peer_context_from_task",
+        "def _find_peer_context_client_payload",
+        "client_contexts",
+        "helper_client_ids",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert "build_method_config_from_live_fssl_context" in source
+    assert "build_peer_context_from_live_fssl_context" in source
+    assert not violations, (
+        "agent query SSL service는 학습 실행만 조립한다. live FSSL context payload "
+        "해석은 methods/federated_ssl/live_task_context.py가 소유한다.\n"
+        f"violations={violations}"
+    )
+
+
 def _live_runtime_import_violation(item: tuple[Path, str]) -> str:
     path, name = item
     return f"- {_relative_repo_path(path)}: {name}"
@@ -2767,6 +2822,22 @@ def test_federated_ssl_capability_axes_do_not_split_tiny_policy_files() -> None:
         "capabilities/axes.py에 함께 둔다. 이름/상수만 가진 sibling policy 파일은 "
         "reader path를 늘린다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_peft_partitioned_runtime_uses_query_ssl_policy_predicate() -> None:
+    path = (
+        PEFT_TEXT_ENCODER_SRC
+        / "federated_ssl"
+        / "partitioned_objective_training.py"
+    )
+    source = path.read_text(encoding="utf-8")
+
+    assert "is_query_ssl_local_objective_policy" in source
+    assert "LOCAL_SSL_POLICIES_FROM_QUERY_SSL" not in source, (
+        "active PEFT partitioned runtime은 Query SSL local objective 여부를 "
+        "canonical predicate로 확인한다. LOCAL_SSL_POLICIES_FROM_QUERY_SSL 이름은 "
+        "compatibility alias로만 남긴다."
     )
 
 

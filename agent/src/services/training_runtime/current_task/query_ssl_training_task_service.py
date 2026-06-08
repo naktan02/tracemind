@@ -62,7 +62,10 @@ from methods.federated.aggregation.base import (
     AggregationJsonArtifactLoader,
     FederatedAggregationContext,
 )
-from methods.federated_ssl.hooks.peer_context import FederatedSslPeerContext
+from methods.federated_ssl.live_task_context import (
+    build_method_config_from_live_fssl_context,
+    build_peer_context_from_live_fssl_context,
+)
 from methods.federated_ssl.method_config_surface import (
     DEFAULT_LOCAL_BUDGET_POLICY,
     default_method_local_ssl_policy_name,
@@ -300,7 +303,10 @@ class AgentQuerySslTrainingTaskService:
             raise ValueError(
                 f"fssl_method={method_name!r}는 live agent runtime을 지원하지 않습니다."
             )
-        method_config = _method_config_from_task_context(request.training_task)
+        method_config = build_method_config_from_live_fssl_context(
+            fssl_method=request.training_task.fssl_method,
+            fssl_context=request.training_task.fssl_context,
+        )
         parameter_snapshot = build_federated_ssl_method_parameter_snapshot(
             method_name=descriptor.name,
             method_config=method_config,
@@ -345,8 +351,8 @@ class AgentQuerySslTrainingTaskService:
             delta_materializer=PeftEncoderDeltaMaterializer(
                 artifact_store=_InlineOnlyPeftEncoderArtifactStore()
             ),
-            peer_context=_peer_context_from_task(
-                training_task=request.training_task,
+            peer_context=build_peer_context_from_live_fssl_context(
+                fssl_context=request.training_task.fssl_context,
                 client_id=client_id,
                 default_policy_name=default_method_peer_context_policy_name(
                     descriptor,
@@ -393,95 +399,6 @@ def _top_label(category_scores: Mapping[str, float]) -> str:
 def _seed_from_task(training_task: TrainingTask) -> int:
     source = f"{training_task.round_id}:{training_task.task_id}".encode("utf-8")
     return int.from_bytes(sha256(source).digest()[:4], byteorder="big") % (2**31)
-
-
-def _method_config_from_task_context(training_task: TrainingTask) -> dict[str, object]:
-    context = training_task.fssl_context or {}
-    method_name = _optional_name(training_task.fssl_method)
-    if method_name is None:
-        raise ValueError("fssl_method is required for method-owned local runtime.")
-    method_config = {
-        "name": method_name,
-        "use_original_parameters": True,
-        "parameter_overrides": {},
-    }
-    raw_method_config = context.get("method_config")
-    if isinstance(raw_method_config, Mapping):
-        method_config.update(dict(raw_method_config))
-        method_config["name"] = method_name
-    raw_peer_context = context.get("peer_context")
-    if isinstance(raw_peer_context, Mapping):
-        scenario = _optional_name(raw_peer_context.get("scenario"))
-        if scenario is not None:
-            method_config["scenario"] = scenario
-    return method_config
-
-
-def _peer_context_from_task(
-    *,
-    training_task: TrainingTask,
-    client_id: str,
-    default_policy_name: str | None = None,
-) -> FederatedSslPeerContext | None:
-    context = training_task.fssl_context or {}
-    raw_peer_context = context.get("peer_context")
-    if not isinstance(raw_peer_context, Mapping):
-        return None
-    policy_name = _optional_name(raw_peer_context.get("policy_name"))
-    if policy_name is None:
-        policy_name = _optional_name(default_policy_name)
-    if policy_name is None:
-        return None
-    client_payload = _find_peer_context_client_payload(
-        raw_peer_context=raw_peer_context,
-        client_id=client_id,
-    )
-    return FederatedSslPeerContext(
-        client_id=client_id,
-        policy_name=policy_name,
-        round_index_zero_based=_round_index_zero_based(raw_peer_context),
-        helper_client_ids=(
-            ()
-            if client_payload is None
-            else tuple(
-                str(helper_id)
-                for helper_id in client_payload.get("helper_client_ids", ())
-            )
-        ),
-        refreshed=not bool(raw_peer_context.get("warmup", False)),
-        metadata={
-            "source_round_id": raw_peer_context.get("source_round_id"),
-            "context_kind": context.get("context_kind"),
-            "method_name": context.get("method_name"),
-            "summary_metrics": dict(raw_peer_context.get("summary_metrics", {})),
-        },
-    )
-
-
-def _find_peer_context_client_payload(
-    *,
-    raw_peer_context: Mapping[str, object],
-    client_id: str,
-) -> Mapping[str, object] | None:
-    raw_client_contexts = raw_peer_context.get("client_contexts", ())
-    if not isinstance(raw_client_contexts, Sequence) or isinstance(
-        raw_client_contexts,
-        (str, bytes),
-    ):
-        return None
-    for item in raw_client_contexts:
-        if not isinstance(item, Mapping):
-            continue
-        if str(item.get("client_id", "")).strip() == client_id:
-            return item
-    return None
-
-
-def _round_index_zero_based(raw_peer_context: Mapping[str, object]) -> int:
-    raw_round_index = raw_peer_context.get("round_index_zero_based")
-    if raw_round_index is None:
-        return 0
-    return max(0, int(raw_round_index))
 
 
 def _optional_name(value: object) -> str | None:

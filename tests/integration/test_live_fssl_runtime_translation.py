@@ -29,25 +29,35 @@ from shared.src.contracts.adapter_contract_families.factories import (
 from shared.src.contracts.model_contracts import ModelManifest
 
 
-def test_live_method_owned_fssl_task_snapshot_routes_through_agent_runner() -> None:
-    manifest = ModelManifest(
-        schema_version="model_manifest.v1",
-        model_id="tracemind-embed",
-        model_revision="rev_000",
-        published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
-        artifact_kind="shared_adapter_state",
-        artifact_ref="/server/state/rev_000.json",
-        auxiliary_artifact_versions={},
-        training_scope="adapter_only",
-        training_enabled=True,
-        compatible_task_types=("pseudo_label_self_training",),
-    )
-    task = RoundManagerService(
-        payload_adapter=build_shared_adapter_round_payload_adapter(
-            "peft_classifier",
-            aggregation_backend_name="fedavg",
+def test_live_manual_query_ssl_task_routes_through_agent_runner() -> None:
+    manifest = _manifest()
+    task = _round_manager().create_training_task(
+        RoundOpenRequest(
+            active_manifest=manifest,
+            round_id="round_query_ssl",
+            strategy=RoundStrategyConfig(
+                mode="composed",
+                ssl_method="fixmatch_usb_v1",
+            ),
         )
-    ).create_training_task(
+    )
+
+    assert task.fssl_method is None
+    assert task.fssl_execution is None
+    assert task.fssl_capability_plan is None
+
+    result, query_ssl_task_service = _run_agent_with_task(
+        task=task,
+        manifest=manifest,
+    )
+
+    assert result.status == TrainingTaskRunStatus.UPLOADED
+    query_ssl_task_service.run_current_task.assert_called_once()
+
+
+def test_live_method_owned_no_peer_task_routes_through_agent_runner() -> None:
+    manifest = _manifest()
+    task = _round_manager().create_training_task(
         RoundOpenRequest(
             active_manifest=manifest,
             round_id="round_fedmatch",
@@ -65,6 +75,87 @@ def test_live_method_owned_fssl_task_snapshot_routes_through_agent_runner() -> N
     }
     assert task.fssl_capability_plan is not None
 
+    result, query_ssl_task_service = _run_agent_with_task(
+        task=task,
+        manifest=manifest,
+    )
+
+    assert result.status == TrainingTaskRunStatus.UPLOADED
+    query_ssl_task_service.run_current_task.assert_called_once()
+
+
+def test_live_method_owned_peer_context_task_routes_through_agent_runner() -> None:
+    manifest = _manifest()
+    task = _round_manager().create_training_task(
+        RoundOpenRequest(
+            active_manifest=manifest,
+            round_id="round_fedmatch_peer",
+            strategy=RoundStrategyConfig(
+                mode="method_owned",
+                fssl_method="fedmatch",
+            ),
+            fssl_context={
+                "schema_version": "fssl_context.v1",
+                "method_name": "fedmatch",
+                "context_kind": "peer_context",
+                "peer_context": {
+                    "schema_version": "peer_context_task.v1",
+                    "policy_name": "fixed_probe_output_knn",
+                    "source_round_id": "round_prev",
+                    "client_contexts": [
+                        {
+                            "client_id": "agent_01",
+                            "helper_client_ids": ["agent_02"],
+                        }
+                    ],
+                },
+            },
+        )
+    )
+
+    result, query_ssl_task_service = _run_agent_with_task(
+        task=task,
+        manifest=manifest,
+        agent_id="agent_01",
+    )
+
+    assert result.status == TrainingTaskRunStatus.UPLOADED
+    query_ssl_request = query_ssl_task_service.run_current_task.call_args.args[0]
+    assert query_ssl_request.training_task.fssl_context["context_kind"] == (
+        "peer_context"
+    )
+
+
+def _manifest() -> ModelManifest:
+    return ModelManifest(
+        schema_version="model_manifest.v1",
+        model_id="tracemind-embed",
+        model_revision="rev_000",
+        published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+        artifact_kind="shared_adapter_state",
+        artifact_ref="/server/state/rev_000.json",
+        auxiliary_artifact_versions={},
+        training_scope="adapter_only",
+        training_enabled=True,
+        compatible_task_types=("pseudo_label_self_training",),
+    )
+
+
+def _round_manager() -> RoundManagerService:
+    return RoundManagerService(
+        payload_adapter=build_shared_adapter_round_payload_adapter(
+            "peft_classifier",
+            aggregation_backend_name="fedavg",
+        )
+    )
+
+
+def _run_agent_with_task(
+    *,
+    task,
+    manifest: ModelManifest,
+    agent_id: str | None = None,
+) -> tuple[TrainingTaskRunResult, MagicMock]:
     round_client = MagicMock()
     round_client.fetch_current_task.return_value = task
     query_ssl_task_service = MagicMock()
@@ -108,8 +199,10 @@ def test_live_method_owned_fssl_task_snapshot_routes_through_agent_runner() -> N
     )
 
     result = service.run_current_task(
-        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+        AgentTrainingTaskRunRequest(
+            server_base_url="http://server.test",
+            agent_id=agent_id,
+        )
     )
 
-    assert result.status == TrainingTaskRunStatus.UPLOADED
-    query_ssl_task_service.run_current_task.assert_called_once()
+    return result, query_ssl_task_service

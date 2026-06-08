@@ -643,7 +643,7 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
             )
         )
 
-    with pytest.raises(ValueError, match="method recipe.*round runtime pair"):
+    with pytest.raises(ValueError, match="method recipe.*runtime surface"):
         validate_federated_ssl_profile_compatibility(
             FederatedSslProfileCompatibilityContext(
                 method_descriptor=METHOD_OWNED_DESCRIPTOR,
@@ -655,7 +655,7 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
             )
         )
 
-    with pytest.raises(ValueError, match="method recipe.*round runtime pair"):
+    with pytest.raises(ValueError, match="method recipe.*runtime surface"):
         validate_federated_ssl_profile_compatibility(
             FederatedSslProfileCompatibilityContext(
                 method_descriptor=METHOD_OWNED_DESCRIPTOR,

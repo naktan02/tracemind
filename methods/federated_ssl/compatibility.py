@@ -12,6 +12,7 @@ from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
     LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,
+    is_query_ssl_local_objective_policy,
 )
 from methods.federated_ssl.capabilities.plan import (
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
@@ -104,23 +105,50 @@ def validate_federated_ssl_profile_compatibility(
                 f"{profile_name} for method={context.method_descriptor.name}."
             )
 
-    if not recipe.supports_runtime_pair(
+    validate_federated_ssl_runtime_surface_compatibility(
+        method_descriptor=context.method_descriptor,
         update_family_name=context.round_update_family_name,
         aggregation_backend_name=context.round_aggregation_backend_name,
-    ):
-        raise ValueError(
-            "FL SSL compatibility failed: method recipe does not support "
-            "round runtime pair: "
-            f"method={context.method_descriptor.name}, "
-            f"update_family={context.round_update_family_name}, "
-            f"aggregation_backend={context.round_aggregation_backend_name}."
-        )
+    )
 
     if context.capability_plan is not None:
         validate_federated_ssl_capability_compatibility(
             method_descriptor=context.method_descriptor,
             capability_plan=context.capability_plan,
         )
+
+
+def validate_federated_ssl_runtime_surface_compatibility(
+    *,
+    method_descriptor: FederatedSslMethodDescriptor,
+    update_family_name: str,
+    aggregation_backend_name: str,
+) -> None:
+    """method recipe가 live/simulation runtime surface를 지원하는지 검증한다."""
+
+    recipe = method_descriptor.recipe
+    if recipe is None:
+        return
+    normalized_update_family = normalize_non_empty_str(
+        update_family_name,
+        field_name="update_family_name",
+    )
+    normalized_aggregation = normalize_non_empty_str(
+        aggregation_backend_name,
+        field_name="aggregation_backend_name",
+    )
+    if recipe.supports_runtime_pair(
+        update_family_name=normalized_update_family,
+        aggregation_backend_name=normalized_aggregation,
+    ):
+        return
+    raise ValueError(
+        "FL SSL compatibility failed: method recipe does not support "
+        "runtime surface: "
+        f"method={method_descriptor.name}, "
+        f"update_family={normalized_update_family}, "
+        f"aggregation_backend={normalized_aggregation}."
+    )
 
 
 def validate_federated_ssl_payload_adapter_compatibility(
@@ -263,7 +291,7 @@ def validate_federated_ssl_local_ssl_policy_alignment(
     """local_ssl_policy가 query_ssl_method와 같은 algorithm을 가리키는지 검증한다."""
 
     local_ssl_policy_name = capability_plan.local_ssl_policy_name
-    if local_ssl_policy_name not in LOCAL_SSL_POLICIES_FROM_QUERY_SSL:
+    if not is_query_ssl_local_objective_policy(local_ssl_policy_name):
         return
     actual = None if query_ssl_algorithm_name is None else query_ssl_algorithm_name
     if actual is None:

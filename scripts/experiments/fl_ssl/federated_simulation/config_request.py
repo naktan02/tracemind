@@ -9,7 +9,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.capabilities.axes import LOCAL_SSL_POLICIES_FROM_QUERY_SSL
+from methods.federated_ssl.capabilities.axes import is_query_ssl_local_objective_policy
 from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     validate_federated_ssl_local_ssl_policy_alignment,
@@ -289,7 +289,7 @@ def _uses_query_ssl_objective_payload(
     if local_ssl_policy is None:
         return False
     policy_name = str(local_ssl_policy.get("name", "") or "").strip().lower()
-    return policy_name in LOCAL_SSL_POLICIES_FROM_QUERY_SSL
+    return is_query_ssl_local_objective_policy(policy_name)
 
 
 def _build_capability_plan(

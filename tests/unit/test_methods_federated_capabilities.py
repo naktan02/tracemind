@@ -32,6 +32,7 @@ from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,
     SERVER_UPDATE_FEDMATCH_PARTITIONED,
+    is_query_ssl_local_objective_policy,
 )
 from methods.federated_ssl.capabilities.plan import (
     LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
@@ -562,3 +563,11 @@ def test_local_ssl_policy_must_match_query_ssl_algorithm_when_query_ssl_owned() 
             capability_plan=plan,
             query_ssl_algorithm_name=LOCAL_SSL_POLICY_FLEXMATCH,
         )
+
+
+def test_query_ssl_local_objective_policy_predicate_normalizes_names() -> None:
+    assert is_query_ssl_local_objective_policy("fixmatch")
+    assert is_query_ssl_local_objective_policy("FLEXMATCH")
+    assert not is_query_ssl_local_objective_policy(
+        LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
+    )
