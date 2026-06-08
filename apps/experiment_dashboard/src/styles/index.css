@@ -598,7 +598,7 @@ code {
 }
 
 .table-run-picker {
-  max-height: 300px;
+  max-height: 240px;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 }
 
@@ -700,6 +700,15 @@ code {
 .run-option span {
   display: grid;
   gap: 3px;
+  min-width: 0;
+}
+
+.run-option strong,
+.run-option small {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .selected-run-cards {
