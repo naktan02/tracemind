@@ -116,6 +116,11 @@ runtime과 test는 family별 direct import를 사용한다.
 - `TrainingSelectionPolicyPayload`
   - 한 라운드에서 사용할 로컬 예시 선택 제한과 selection policy별 확장값을 담는다
 
+### `scoring_contracts.py`
+
+추론/검증에서 category score를 계산할 backend와 score policy를 정의한다.
+training objective에는 scorer field를 두지 않는다.
+
 ### `training_example_backends.py`
 
 agent training example backend 이름 중 여러 계층이 함께 읽는 canonical 값을 정의한다.

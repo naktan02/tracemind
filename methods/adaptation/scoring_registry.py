@@ -10,7 +10,7 @@ from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
 )
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 
 from .scoring_backend import (
     SharedAdapterScoringBackend,
@@ -53,17 +53,17 @@ def register_shared_adapter_scoring_backend(
 def build_shared_adapter_scoring_backend(
     backend_name: str,
     *,
-    objective_config: TrainingObjectiveConfig,
+    scoring_config: ScoringConfigPayload,
     similarity_name: str = "cosine",
 ) -> SharedAdapterScoringBackend:
-    """backend 이름과 objective config로 method-owned scoring backend를 조립한다."""
+    """backend 이름과 scoring config로 method-owned scoring backend를 조립한다."""
 
     _import_adaptation_scoring_modules()
     normalized_name = backend_name.strip().lower()
     registered_item = _SCORING_BACKEND_REGISTRY.get(normalized_name)
     if registered_item is not None:
         factory, _catalog_entry = registered_item
-        return factory(objective_config, similarity_name)
+        return factory(scoring_config, similarity_name)
     raise ValueError(f"Unsupported shared adapter scoring backend: {backend_name}.")
 
 

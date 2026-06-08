@@ -94,11 +94,7 @@ def _training_task_config() -> object:
         min_required_examples=1,
         gradient_clip_norm=1.0,
         objective_config=TrainingObjectiveConfig.from_mapping(
-            {
-                "training_backend_name": "peft_classifier_trainer",
-                "confidence_threshold": 0.0,
-                "margin_threshold": 0.0,
-            }
+            {"training_backend_name": "peft_classifier_trainer"}
         ),
         selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 8}),
     )

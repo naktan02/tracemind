@@ -55,9 +55,9 @@ v1 원칙:
 11. `max_steps`
 
 12. `objective_config`
-    - local update backend 식별자, loss 이름, threshold, score/acceptance/privacy 정책 등
-    - canonical key는 `training_backend_name`
-    - 입력 호환을 위해 legacy key `loss`를 받을 수 있지만, 직렬화와 문서 기준 키는 `training_backend_name`
+    - local update backend, profile, privacy guard, method별 scoped parameter
+    - 필수 canonical key는 `training_backend_name`
+    - scoring/validation backend는 objective가 아니라 validation 또는 inference config가 소유한다
 
 13. `selection_policy`
     - 어떤 로컬 샘플을 학습에 사용할지
@@ -132,7 +132,6 @@ v1 원칙:
   "objective_config": {
     "training_backend_name": "peft_classifier_trainer",
     "algorithm_profile_name": "peft_classifier_update_v1",
-    "example_generation_backend_name": "peft_classifier_raw_rows",
     "privacy_guard_name": "noop",
     "query_ssl.method_name": "fixmatch_usb_v1",
     "query_ssl.algorithm_name": "fixmatch",
@@ -186,10 +185,7 @@ agent가 task payload만 보고 실행할 수 있도록 해당 값을 `query_ssl
 1. task만 보고 로컬이 학습 가능 여부를 판단할 수 있어야 한다.
 2. `training_scope`와 `model_revision`이 빠지지 않아야 한다.
 3. objective와 selection policy가 분리돼 있어야 한다.
-4. `training_backend_name`, `example_generation_backend_name`,
-   `scorer_backend_name`, `score_policy_name`, `privacy_guard_name`은 서로
-   다른 교체 축으로 해석돼야 한다.
-   단, PEFT Query SSL raw-row runtime은 scorer backend를 쓰지 않으므로
-   `scorer_backend_name`을 기본값으로 채우지 않는다. method별 pseudo-label
-   acceptance/threshold 의미는 `query_ssl.*` extra나 `methods/federated_ssl/*`
-   descriptor에서 해석한다.
+4. `training_backend_name`, `algorithm_profile_name`, `privacy_guard_name`은
+   서로 다른 교체 축으로 해석돼야 한다.
+   method별 pseudo-label acceptance/threshold 의미는 `query_ssl.*` extra나
+   `methods/federated_ssl/*` descriptor에서 해석한다.

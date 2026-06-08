@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from typing import Protocol
 
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 ScoringAssets = Mapping[str, Sequence[float] | Sequence[Sequence[float]]]
@@ -27,4 +27,4 @@ class ScoringBackend(Protocol):
         """임베딩과 scorer별 asset으로 category score dict를 계산한다."""
 
 
-ScoringBackendFactory = Callable[[TrainingObjectiveConfig, str], ScoringBackend]
+ScoringBackendFactory = Callable[[ScoringConfigPayload, str], ScoringBackend]

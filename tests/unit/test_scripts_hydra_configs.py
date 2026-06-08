@@ -1082,9 +1082,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.training_task.objective.training_backend_name == (
         "peft_classifier_trainer"
     )
-    assert cfg.training_task.objective.example_generation_backend_name == (
-        "peft_classifier_raw_rows"
-    )
+    assert "example_generation_backend_name" not in cfg.training_task.objective
     assert "evidence_backend_name" not in cfg.training_task.objective
     assert "scorer_backend_name" not in cfg.training_task.objective
     assert "score_policy_name" not in cfg.training_task.objective

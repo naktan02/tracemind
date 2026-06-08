@@ -7,6 +7,7 @@ from shared.src.contracts.common_types import (
     TrainingTaskType,
 )
 from shared.src.contracts.model_contracts import ArtifactKind
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.contracts.training_contracts import (
     FeedbackSignalType,
     SecureAggregationConfig,
@@ -138,21 +139,11 @@ def test_training_objective_config_payload_accepts_current_objective_fields() ->
     payload = TrainingObjectiveConfigPayload(
         training_backend_name="contrastive",
         algorithm_profile_name="peft_classifier_update_v1",
-        loss_name="cross_entropy",
-        example_generation_backend_name="weak_strong_pair",
-        scorer_backend_name="classifier_head_logits",
-        score_policy_name=None,
-        score_top_k=None,
         privacy_guard_name="clip_only",
     )
 
     assert payload.training_backend_name == "contrastive"
     assert payload.algorithm_profile_name == "peft_classifier_update_v1"
-    assert payload.loss_name == "cross_entropy"
-    assert payload.example_generation_backend_name == "weak_strong_pair"
-    assert payload.scorer_backend_name == "classifier_head_logits"
-    assert payload.score_policy_name is None
-    assert payload.score_top_k is None
     assert payload.privacy_guard_name == "clip_only"
 
 
@@ -161,47 +152,56 @@ def test_training_objective_config_round_trips_current_objective_fields() -> Non
         {
             "training_backend_name": "peft_classifier_trainer",
             "algorithm_profile_name": "peft_classifier_update_v1",
-            "loss_name": "cross_entropy",
-            "example_generation_backend_name": "weak_strong_pair",
-            "scorer_backend_name": "classifier_head_logits",
-            "query_ssl.acceptance_threshold": 0.65,
+            "query_ssl.p_cutoff": 0.65,
             "privacy_guard_name": "noop",
-            "temperature": 0.8,
+            "query_ssl.temperature": 0.8,
         }
     )
 
     assert config.training_backend_name == "peft_classifier_trainer"
     assert config.algorithm_profile_name == "peft_classifier_update_v1"
-    assert config.loss_name == "cross_entropy"
-    assert config.example_generation_backend_name == "weak_strong_pair"
-    assert config.scorer_backend_name == "classifier_head_logits"
-    assert config.score_policy_name is None
-    assert config.score_top_k is None
     assert config.privacy_guard_name == "noop"
     assert config.extras == {
-        "query_ssl.acceptance_threshold": 0.65,
-        "temperature": 0.8,
+        "query_ssl.p_cutoff": 0.65,
+        "query_ssl.temperature": 0.8,
     }
     assert config.to_mapping() == {
         "training_backend_name": "peft_classifier_trainer",
         "algorithm_profile_name": "peft_classifier_update_v1",
-        "loss_name": "cross_entropy",
-        "query_ssl.acceptance_threshold": 0.65,
-        "example_generation_backend_name": "weak_strong_pair",
-        "scorer_backend_name": "classifier_head_logits",
+        "query_ssl.p_cutoff": 0.65,
         "privacy_guard_name": "noop",
-        "temperature": 0.8,
+        "query_ssl.temperature": 0.8,
     }
 
 
-def test_training_objective_config_rejects_legacy_stored_event_policy_fields() -> None:
-    with pytest.raises(ValueError, match="stored-event pseudo-label"):
+def test_scoring_config_round_trips_scoring_fields() -> None:
+    config = ScoringConfigPayload.from_mapping(
+        {
+            "scorer_backend_name": "classifier_head_logits",
+            "score_policy_name": "topk_mean_cosine",
+            "score_top_k": 3,
+        }
+    )
+
+    assert config.scorer_backend_name == "classifier_head_logits"
+    assert config.score_policy_name == "topk_mean_cosine"
+    assert config.score_top_k == 3
+    assert config.to_mapping() == {
+        "scorer_backend_name": "classifier_head_logits",
+        "score_policy_name": "topk_mean_cosine",
+        "score_top_k": 3,
+    }
+
+
+def test_training_objective_config_rejects_unscoped_objective_extras() -> None:
+    with pytest.raises(ValueError, match="extras must be scoped"):
         TrainingObjectiveConfig.from_mapping(
             {
                 "training_backend_name": "peft_classifier_trainer",
-                "evidence_backend_name": "analysis_score_evidence",
-                "pseudo_label_algorithm_name": "top1_confidence_only",
-                "acceptance_policy_name": "top1_confidence_only",
+                "loss": "legacy_backend",
+                "confidence_threshold": 0.95,
+                "margin_threshold": 0.02,
+                "scorer_backend_name": "classifier_head_logits",
             }
         )
 
@@ -251,7 +251,6 @@ def test_training_objective_config_preserves_algorithm_profile_without_expansion
 
     assert config.algorithm_profile_name == "peft_classifier_update_v1"
     assert config.training_backend_name == "peft_classifier_trainer"
-    assert config.example_generation_backend_name is None
     assert config.extras == {}
 
 
@@ -265,8 +264,6 @@ def test_training_objective_config_does_not_expand_unknown_algorithm_profile() -
 
     assert config.algorithm_profile_name == "custom_pseudo_label_v1"
     assert config.training_backend_name == "peft_classifier_trainer"
-    assert config.example_generation_backend_name is None
-    assert config.scorer_backend_name is None
     assert config.privacy_guard_name is None
 
 
@@ -275,13 +272,6 @@ def test_training_objective_config_requires_training_backend_name() -> None:
         TrainingObjectiveConfig.from_mapping(
             {"algorithm_profile_name": "peft_classifier_update_v1"}
         )
-
-
-def test_training_objective_config_accepts_legacy_loss_alias() -> None:
-    payload = TrainingObjectiveConfigPayload(loss="legacy_backend")
-
-    assert payload.training_backend_name == "legacy_backend"
-    assert payload.loss == "legacy_backend"
 
 
 def test_training_task_payload_accepts_legacy_secure_aggregation_required(

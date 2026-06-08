@@ -7,10 +7,6 @@ from methods.federated_ssl.runtime_fallbacks import (
     build_runtime_fallback_secure_aggregation_config,
     build_runtime_fallback_training_objective_config,
     build_runtime_fallback_training_selection_policy,
-    resolve_runtime_example_generation_backend_name,
-)
-from shared.src.contracts.training_example_backends import (
-    WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
 )
 
 
@@ -24,20 +20,17 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
     assert config.to_mapping() == dict(
         RUNTIME_FALLBACK_TRAINING_PROFILE.objective_mapping
     )
-    assert config.example_generation_backend_name == WEAK_STRONG_PAIR_EXAMPLE_BACKEND
 
 
 def test_runtime_fallback_objective_builder_accepts_overrides() -> None:
     config = build_runtime_fallback_training_objective_config(
         overrides={
-            "selection.confidence_threshold": 0.75,
-            "score_top_k": 3,
+            "query_ssl.p_cutoff": 0.75,
             "training_backend.max_abs_delta": 0.02,
         }
     )
 
-    assert config.score_top_k == 3
-    assert config.extras["selection.confidence_threshold"] == 0.75
+    assert config.extras["query_ssl.p_cutoff"] == 0.75
     assert config.extras["training_backend.max_abs_delta"] == 0.02
 
 
@@ -73,27 +66,4 @@ def test_runtime_fallback_profile_exposes_round_task_runtime_defaults() -> None:
     assert (
         RUNTIME_FALLBACK_TRAINING_PROFILE.task_runtime_defaults
         is RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS
-    )
-
-
-def test_runtime_fallback_resolves_example_generation_backend_name() -> None:
-    assert (
-        resolve_runtime_example_generation_backend_name(None)
-        == WEAK_STRONG_PAIR_EXAMPLE_BACKEND
-    )
-    assert (
-        resolve_runtime_example_generation_backend_name(
-            type("Objective", (), {"example_generation_backend_name": ""})()
-        )
-        == WEAK_STRONG_PAIR_EXAMPLE_BACKEND
-    )
-    assert (
-        resolve_runtime_example_generation_backend_name(
-            type(
-                "Objective",
-                (),
-                {"example_generation_backend_name": "peft_classifier_raw_rows"},
-            )()
-        )
-        == "peft_classifier_raw_rows"
     )

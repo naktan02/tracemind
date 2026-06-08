@@ -12,7 +12,7 @@ from shared.src.contracts.adapter_contract_families.classifier_head import (
     ClassifierHeadState,
 )
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 CLASSIFIER_HEAD_LOGITS_BACKEND_NAME = "classifier_head_logits"
@@ -60,12 +60,12 @@ class ClassifierHeadLogitsScoringBackend:
     catalog_entry=CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
 )
 def build_classifier_head_logits_scoring_backend(
-    objective_config: TrainingObjectiveConfig,
+    scoring_config: ScoringConfigPayload,
     similarity_name: str,
 ) -> ClassifierHeadLogitsScoringBackend:
     """classifier-head logits scoring backend factory."""
 
-    del objective_config, similarity_name
+    del scoring_config, similarity_name
     return ClassifierHeadLogitsScoringBackend()
 
 

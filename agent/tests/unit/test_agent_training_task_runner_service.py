@@ -43,8 +43,6 @@ def _build_query_ssl_task_payload(
         objective_config=TrainingObjectiveConfigPayload(
             algorithm_profile_name="peft_classifier_update_v1",
             training_backend_name="peft_classifier_trainer",
-            example_generation_backend_name="weak_strong_pair",
-            scorer_backend_name="classifier_head_logits",
             privacy_guard_name="noop",
             extras={
                 "query_ssl.method_name": "fixmatch_usb_v1",
@@ -79,8 +77,6 @@ def _build_legacy_task_payload() -> TrainingTaskPayload:
         max_steps=4,
         objective_config=TrainingObjectiveConfigPayload(
             training_backend_name="peft_classifier_trainer",
-            example_generation_backend_name="peft_classifier_raw_rows",
-            scorer_backend_name="classifier_head_logits",
             privacy_guard_name="noop",
         ),
         selection_policy=TrainingSelectionPolicyPayload(),

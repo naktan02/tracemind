@@ -77,7 +77,6 @@ training_task:
   objective:
     algorithm_profile_name: ${local_update_profile.algorithm_profile_name}
     training_backend_name: ${local_update_profile.training_backend_name}
-    example_generation_backend_name: ${local_update_profile.example_generation_backend_name}
     privacy_guard_name: ${local_update_profile.privacy_guard_name}
     query_ssl:
       method_name: ${query_ssl_method.name}

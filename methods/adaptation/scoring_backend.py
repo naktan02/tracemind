@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from typing import Protocol
 
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 ScoringAssets = Mapping[str, Sequence[float] | Sequence[Sequence[float]]]
@@ -28,6 +28,6 @@ class SharedAdapterScoringBackend(Protocol):
 
 
 SharedAdapterScoringBackendFactory = Callable[
-    [TrainingObjectiveConfig, str],
+    [ScoringConfigPayload, str],
     SharedAdapterScoringBackend,
 ]

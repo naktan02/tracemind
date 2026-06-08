@@ -18,7 +18,7 @@ from agent.src.services.inference.embedding_service import EmbeddingService
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.language.translation_service import TranslationService
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 AGENT_EMBEDDING_BACKEND_ENV = "TRACEMIND_AGENT_EMBEDDING_BACKEND"
@@ -46,9 +46,8 @@ def build_default_pipeline_service(
         embedding_service=EmbeddingService(
             adapter=EmbeddingAdapterFactory.create(embedding_spec)
         ),
-        scoring_service=ScoringService.from_objective_config(
-            TrainingObjectiveConfig(
-                training_backend_name="agent_inference_scoring",
+        scoring_service=ScoringService.from_scoring_config(
+            ScoringConfigPayload(
                 scorer_backend_name=scoring_backend_name,
             )
         ),

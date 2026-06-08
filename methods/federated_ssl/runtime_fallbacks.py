@@ -28,9 +28,6 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
-from shared.src.contracts.training_example_backends import (
-    WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
-)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 QUERY_SSL_METHOD_CONFIG_DIR = (
@@ -161,10 +158,6 @@ class RuntimeFallbackTrainingProfile:
     @property
     def algorithm_profile_name(self) -> str:
         return self._objective_str("algorithm_profile_name")
-
-    @property
-    def example_generation_backend_name(self) -> str:
-        return self._objective_str("example_generation_backend_name")
 
     @property
     def privacy_guard_name(self) -> str:
@@ -311,7 +304,6 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
     {
         "algorithm_profile_name": PEFT_CLASSIFIER_UPDATE_PROFILE_NAME,
         "training_backend_name": PEFT_ENCODER_TRAINING_BACKEND_NAME,
-        "example_generation_backend_name": WEAK_STRONG_PAIR_EXAMPLE_BACKEND,
         "privacy_guard_name": NOOP_PRIVACY_GUARD_NAME,
         "query_ssl.method_name": FIXMATCH_QUERY_SSL_METHOD_NAME,
         "query_ssl.algorithm_name": FIXMATCH_QUERY_SSL_ALGORITHM_NAME,
@@ -456,22 +448,6 @@ def _optional_name(value: str | None) -> str | None:
         return None
     normalized = value.strip()
     return normalized or None
-
-
-def resolve_runtime_example_generation_backend_name(
-    objective_config: object | None,
-) -> str:
-    """명시 objective 값이 없으면 runtime fallback backend 이름을 반환한다."""
-
-    if objective_config is None:
-        return RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    raw_value = getattr(objective_config, "example_generation_backend_name", None)
-    if raw_value is None:
-        return RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    normalized = str(raw_value).strip()
-    return (
-        normalized or RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    )
 
 
 def build_runtime_fallback_training_selection_policy(

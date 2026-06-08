@@ -5,19 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 
-def resolve_example_generation_backend_name(
-    *,
-    objective_config: Any | None,
-) -> str:
-    """objective config에서 training example backend 이름을 정한다."""
-
-    from methods.federated_ssl.runtime_fallbacks import (
-        resolve_runtime_example_generation_backend_name,
-    )
-
-    return resolve_runtime_example_generation_backend_name(objective_config)
-
-
 def resolve_federated_training_backend_adapter_kind(
     *,
     objective_config: Any,

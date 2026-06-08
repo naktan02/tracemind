@@ -17,7 +17,7 @@ from shared.src.contracts.adapter_contract_families.classifier_head import (
 )
 from shared.src.contracts.common_types import TrainingScope
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 
 
 def test_score_service_can_switch_registered_scoring_backend() -> None:
@@ -34,7 +34,7 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
 
     register_scoring_backend(
         "constant_test_backend",
-        factory=lambda _objective_config, _similarity_name: _ConstantScoringBackend(),
+        factory=lambda _scoring_config, _similarity_name: _ConstantScoringBackend(),
         catalog_entry=RegistryCatalogEntry(
             item_name="constant_test_backend",
             display_name="constant_test_backend",
@@ -44,9 +44,8 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
             supported_adapter_kinds=("*",),
         ),
     )
-    service = ScoringService.from_objective_config(
-        TrainingObjectiveConfig(
-            training_backend_name="peft_classifier_trainer",
+    service = ScoringService.from_scoring_config(
+        ScoringConfigPayload(
             scorer_backend_name="constant_test_backend",
         )
     )
@@ -63,9 +62,8 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
 
 
 def test_score_service_uses_methods_owned_classifier_head_logits_backend() -> None:
-    service = ScoringService.from_objective_config(
-        TrainingObjectiveConfig(
-            training_backend_name="peft_classifier_trainer",
+    service = ScoringService.from_scoring_config(
+        ScoringConfigPayload(
             scorer_backend_name="classifier_head_logits",
         ),
         shared_state=ClassifierHeadState(
@@ -92,11 +90,7 @@ def test_score_service_uses_methods_owned_classifier_head_logits_backend() -> No
 
 def test_score_service_requires_explicit_backend_name() -> None:
     with pytest.raises(ValueError, match="scorer_backend_name is required"):
-        ScoringService.from_objective_config(
-            TrainingObjectiveConfig(
-                training_backend_name="peft_classifier_trainer",
-            )
-        )
+        ScoringConfigPayload.from_mapping({})
 
 
 def test_classifier_head_logits_catalog_points_to_classification_core() -> None:

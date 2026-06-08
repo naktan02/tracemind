@@ -389,15 +389,10 @@ def _default_shard_policy() -> FederatedShardPolicyConfig:
 
 def _default_training_task_config(
     *,
-    confidence_threshold: float,
-    margin_threshold: float,
     max_examples: int,
     gradient_clip_norm: float | None,
     training_backend_name: str = "peft_classifier_trainer",
     privacy_guard_name: str = "noop",
-    scorer_backend_name: str = "peft_classifier_logits",
-    score_policy_name: str = "top1_probability",
-    score_top_k: int | None = None,
     task_type: TrainingTaskType | str = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
     objective_extras: dict[str, str | int | float | bool] | None = None,
 ) -> object:
@@ -412,12 +407,6 @@ def _default_training_task_config(
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
                 "training_backend_name": training_backend_name,
-                "confidence_threshold": confidence_threshold,
-                "margin_threshold": margin_threshold,
-                "example_generation_backend_name": "peft_classifier_raw_rows",
-                "scorer_backend_name": scorer_backend_name,
-                "score_policy_name": score_policy_name,
-                **({} if score_top_k is None else {"score_top_k": score_top_k}),
                 "privacy_guard_name": privacy_guard_name,
                 **(objective_extras or {}),
             }
@@ -433,10 +422,7 @@ def _default_validation_config(
     scorer_backend_name: str = PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
     score_policy_name: str | None = None,
     score_top_k: int | None = None,
-    confidence_threshold: float | None = None,
-    margin_threshold: float | None = None,
 ) -> FederatedValidationConfig:
-    _ = confidence_threshold, margin_threshold
     return FederatedValidationConfig(
         similarity_name="cosine",
         scorer_backend_name=scorer_backend_name,
@@ -445,14 +431,8 @@ def _default_validation_config(
     )
 
 
-def _default_peft_validation_config(
-    *,
-    confidence_threshold: float,
-    margin_threshold: float,
-) -> FederatedValidationConfig:
+def _default_peft_validation_config() -> FederatedValidationConfig:
     return _default_validation_config(
-        confidence_threshold=confidence_threshold,
-        margin_threshold=margin_threshold,
         scorer_backend_name=PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
         score_policy_name=None,
     )
@@ -951,17 +931,11 @@ def _default_simulation_request(
         shard_policy=shard_policy or _default_shard_policy(),
         training_task_config=training_task_config
         or _default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=validation_config
-        or _default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=validation_config or _default_validation_config(),
         diagnostics_config=_default_diagnostics_config(),
         resume_config=resume_config or FederatedResumeConfig(),
         ssl_method_config=ssl_method_config,
@@ -1326,10 +1300,6 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
                 "training_backend_name": "peft_classifier_trainer",
-                "confidence_threshold": 0.0,
-                "margin_threshold": 0.0,
-                "example_generation_backend_name": "peft_classifier_raw_rows",
-                "scorer_backend_name": "peft_classifier_logits",
                 "privacy_guard_name": "noop",
                 **_peft_objective_extras(
                     delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
@@ -1523,8 +1493,6 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -1533,10 +1501,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
                 delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
             ),
         ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_validation_config(),
         query_ssl_objective_config=FederatedQuerySslObjectiveConfig(
             method_name="fixmatch_usb_v1",
             algorithm_name="fixmatch",
@@ -1649,10 +1614,6 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
                 "training_backend_name": "peft_classifier_trainer",
-                "confidence_threshold": 0.0,
-                "margin_threshold": 0.0,
-                "example_generation_backend_name": "peft_classifier_raw_rows",
-                "scorer_backend_name": "peft_classifier_logits",
                 "privacy_guard_name": "noop",
                 **_peft_objective_extras(delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE),
             }
@@ -1871,8 +1832,6 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
             release_transient_model_cache_after_client=release_after_client,
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -1881,10 +1840,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
                 delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE
             ),
         ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_validation_config(),
         ssl_method_config=FederatedSslMethodConfig(
             schema_version="federated_ssl_method.v1",
             name="fedmatch",
@@ -2430,8 +2386,6 @@ def test_split_rows_into_client_shards_keeps_all_validation_rows() -> None:
 
 def test_federated_training_task_config_reuses_round_task_config() -> None:
     training_task_config = _default_training_task_config(
-        confidence_threshold=0.6,
-        margin_threshold=0.02,
         max_examples=8,
         gradient_clip_norm=0.5,
     )
@@ -2452,8 +2406,6 @@ def test_federated_training_task_config_reuses_round_task_config() -> None:
 
 def test_federated_training_task_config_accepts_method_task_type() -> None:
     training_task_config = _default_training_task_config(
-        confidence_threshold=0.6,
-        margin_threshold=0.02,
         max_examples=8,
         gradient_clip_norm=0.5,
         task_type="feedback_supervised",
@@ -2523,8 +2475,6 @@ def test_run_simulation_request_rejects_manual_partitioned_update_until_producer
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2595,8 +2545,6 @@ def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
         tmp_path,
         output_name="task_type_mismatch",
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             task_type=TrainingTaskType.FEEDBACK_SUPERVISED,
@@ -2622,8 +2570,6 @@ def test_run_simulation_request_rejects_local_update_round_family_drift(
             ),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2660,8 +2606,6 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
             aggregation_backend_name="fedavg",
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
         ),
@@ -2784,8 +2728,6 @@ def test_run_simulation_request_rejects_peft_runtime_objective_drift(
             peft_classifier=drifted_peft_runtime,
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2826,8 +2768,6 @@ def test_run_simulation_request_rejects_missing_peft_runtime_config(
             ),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2869,18 +2809,13 @@ def test_run_simulation_request_bootstraps_peft_classifier_profile(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_peft_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_peft_validation_config(),
     )
 
     result = run_simulation_request(request)
@@ -2900,8 +2835,6 @@ def test_peft_classifier_validation_rejects_unsupported_scorer(tmp_path) -> None
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2909,8 +2842,6 @@ def test_peft_classifier_validation_rejects_unsupported_scorer(tmp_path) -> None
             objective_extras=_peft_objective_extras(),
         ),
         validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             scorer_backend_name="unsupported_legacy_scorer",
             score_policy_name="unsupported_legacy_policy",
         ),
@@ -2961,18 +2892,13 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_peft_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_peft_validation_config(),
     )
 
     result = run_simulation_request(request)
@@ -3113,18 +3039,13 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_peft_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_peft_validation_config(),
     )
 
     result = run_simulation_request(request)
@@ -3206,18 +3127,13 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_peft_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_peft_validation_config(),
     )
 
     first_result = run_simulation_request(base_request)
@@ -3273,13 +3189,10 @@ def test_run_simulation_request_rejects_unsupported_legacy_local_update_backend(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="unsupported_legacy_backend",
             privacy_guard_name="unsupported_legacy_guard",
-            scorer_backend_name="unsupported_legacy_scorer",
             objective_extras={},
         ),
     )
@@ -3537,16 +3450,10 @@ def test_run_simulation_accepts_hydra_style_detail_configs(
                 client_id_prefix="agent",
             ),
             training_task_config=_default_training_task_config(
-                confidence_threshold=0.0,
-                margin_threshold=0.0,
                 max_examples=4,
                 gradient_clip_norm=1.0,
-                score_policy_name="topk_mean_cosine",
-                score_top_k=1,
             ),
             validation_config=_default_validation_config(
-                confidence_threshold=0.0,
-                margin_threshold=0.0,
                 score_policy_name="topk_mean_cosine",
                 score_top_k=1,
             ),

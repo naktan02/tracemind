@@ -13,7 +13,7 @@ from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
 )
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 
 from .base import ScoringBackend, ScoringBackendFactory
 
@@ -40,7 +40,7 @@ def register_scoring_backend(
 def build_scoring_backend(
     backend_name: str,
     *,
-    objective_config: TrainingObjectiveConfig,
+    scoring_config: ScoringConfigPayload,
     similarity_name: str = "cosine",
 ) -> ScoringBackend:
     """backend 이름과 objective config로 scoring backend를 조립한다."""
@@ -50,10 +50,10 @@ def build_scoring_backend(
     except ValueError:
         return build_shared_adapter_scoring_backend(
             backend_name,
-            objective_config=objective_config,
+            scoring_config=scoring_config,
             similarity_name=similarity_name,
         )
-    return factory(objective_config, similarity_name)
+    return factory(scoring_config, similarity_name)
 
 
 def list_registered_scoring_backend_names() -> tuple[str, ...]:

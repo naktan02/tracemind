@@ -35,17 +35,14 @@ from methods.adaptation.peft_text_encoder.update.local_update import (
 from methods.adaptation.query_text_views.local_training_budget import (
     build_query_ssl_local_step_plan,
 )
-from methods.adaptation.scoring_registry import register_shared_adapter_scoring_backend
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_delta_payload,
 )
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
-    PEFT_CLASSIFIER_ADAPTER_KIND,
     PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     PeftClassifierDelta,
 )
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
@@ -60,43 +57,6 @@ from shared.src.domain.entities.training.pseudo_label_candidate import (
 QuerySslPeftEncoderClientTrainingResult = (
     qssl_training.QuerySslPeftEncoderClientTrainingResult
 )
-
-
-TEST_PEFT_SCORER_BACKEND_NAME = "test_peft_classifier_scorer"
-
-
-class _TestPeftClassifierScoringBackend:
-    backend_name = TEST_PEFT_SCORER_BACKEND_NAME
-    supported_adapter_kinds = (PEFT_CLASSIFIER_ADAPTER_KIND,)
-    requires_shared_state = True
-
-    def score(
-        self,
-        embedding: Sequence[float],
-        scoring_assets: object,
-        shared_state: object | None = None,
-    ) -> dict[str, float]:
-        del embedding, scoring_assets, shared_state
-        return {"anxiety": 1.0}
-
-
-@register_shared_adapter_scoring_backend(
-    TEST_PEFT_SCORER_BACKEND_NAME,
-    catalog_entry=RegistryCatalogEntry(
-        item_name=TEST_PEFT_SCORER_BACKEND_NAME,
-        display_name=TEST_PEFT_SCORER_BACKEND_NAME,
-        implementation_module=__name__,
-        core_method_name=TEST_PEFT_SCORER_BACKEND_NAME,
-        family_name="scoring",
-        supported_adapter_kinds=(PEFT_CLASSIFIER_ADAPTER_KIND,),
-    ),
-)
-def _build_test_peft_classifier_scoring_backend(
-    objective_config: TrainingObjectiveConfig,
-    similarity_name: str,
-) -> _TestPeftClassifierScoringBackend:
-    del objective_config, similarity_name
-    return _TestPeftClassifierScoringBackend()
 
 
 class _RecordingPeftEncoderTrainExecutor:
@@ -208,7 +168,6 @@ def _build_task(
         max_steps=1,
         objective_config=TrainingObjectiveConfig(
             training_backend_name="peft_classifier_trainer",
-            scorer_backend_name=TEST_PEFT_SCORER_BACKEND_NAME,
             privacy_guard_name="noop",
             extras={
                 **({} if extras is None else extras),

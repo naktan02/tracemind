@@ -54,9 +54,6 @@ from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
 )
-from methods.federated_ssl.runtime_fallbacks import (
-    RUNTIME_FALLBACK_TRAINING_PROFILE,
-)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
@@ -70,9 +67,6 @@ from scripts.runtime_adapters.federated_agent import (
 )
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
-)
-from scripts.runtime_adapters.federated_agent.backend_resolver import (
-    resolve_example_generation_backend_name,
 )
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
     load_peft_encoder_base_parameters,
@@ -167,29 +161,6 @@ def prepare_delta_materialization(*, output_dir, **kwargs):
     return PeftEncoderDeltaMaterializer(
         artifact_store=SimulationClientArtifactStore(output_dir=output_dir)
     ).prepare(**kwargs)
-
-
-def test_resolve_example_generation_backend_name_uses_runtime_fallback() -> None:
-    assert resolve_example_generation_backend_name(objective_config=None) == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    )
-    assert (
-        resolve_example_generation_backend_name(
-            objective_config=SimpleNamespace(example_generation_backend_name=None),
-        )
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    )
-
-
-def test_resolve_example_generation_backend_name_prefers_objective_config() -> None:
-    assert (
-        resolve_example_generation_backend_name(
-            objective_config=SimpleNamespace(
-                example_generation_backend_name="weak_strong_pair",
-            ),
-        )
-        == "weak_strong_pair"
-    )
 
 
 def test_query_text_view_requirement_rejects_missing_weak_strong_views() -> None:

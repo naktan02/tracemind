@@ -64,7 +64,6 @@ def _local_update_profile_mapping(
         "algorithm_profile_name": profile_name,
         "training_scope": "adapter_only",
         "training_backend_name": "test_only_training_backend",
-        "example_generation_backend_name": "test_only_example_generation_backend",
         "validation_scorer_backend_name": "test_only_validation_scorer_backend",
         "validation_score_policy_name": "test_only_validation_score_policy",
         "validation_score_top_k": None,

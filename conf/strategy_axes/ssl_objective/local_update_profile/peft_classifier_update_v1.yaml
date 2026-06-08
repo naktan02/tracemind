@@ -6,7 +6,6 @@
 algorithm_profile_name: peft_classifier_update_v1
 training_scope: adapter_only
 training_backend_name: peft_classifier_trainer
-example_generation_backend_name: peft_classifier_raw_rows
 validation_scorer_backend_name: peft_classifier_eval
 validation_score_policy_name: null
 validation_score_top_k: null

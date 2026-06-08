@@ -15,7 +15,7 @@ from agent.src.services.inference.scoring_backends.helpers import (
 from agent.src.services.inference.scoring_backends.registry import (
     build_scoring_backend,
 )
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 
@@ -27,21 +27,19 @@ class ScoringService:
     shared_state: SharedAdapterState | None = None
 
     @classmethod
-    def from_objective_config(
+    def from_scoring_config(
         cls,
-        objective_config: TrainingObjectiveConfig,
+        scoring_config: ScoringConfigPayload,
         *,
         similarity_name: str = "cosine",
         shared_state: SharedAdapterState | None = None,
     ) -> "ScoringService":
-        """학습 objective config로부터 scoring service를 조립한다."""
+        """Scoring config로부터 scoring service를 조립한다."""
 
-        backend_name = objective_config.scorer_backend_name
-        if backend_name is None:
-            raise ValueError("scorer_backend_name is required for ScoringService.")
+        backend_name = scoring_config.scorer_backend_name
         backend = build_scoring_backend(
             backend_name,
-            objective_config=objective_config,
+            scoring_config=scoring_config,
             similarity_name=similarity_name,
         )
         return cls(backend=backend, shared_state=shared_state)

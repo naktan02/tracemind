@@ -24,7 +24,6 @@ class LocalUpdateProfile:
     algorithm_profile_name: str
     training_scope: str
     training_backend_name: str
-    example_generation_backend_name: str
     validation_scorer_backend_name: str
     validation_score_policy_name: str | None
     validation_score_top_k: int | None
@@ -35,7 +34,6 @@ class LocalUpdateProfile:
             "algorithm_profile_name",
             "training_scope",
             "training_backend_name",
-            "example_generation_backend_name",
             "validation_scorer_backend_name",
             "privacy_guard_name",
         ):
@@ -87,11 +85,6 @@ class LocalUpdateProfile:
                 "training_backend_name",
                 field_prefix="local_update_profile",
             ),
-            example_generation_backend_name=read_str(
-                source,
-                "example_generation_backend_name",
-                field_prefix="local_update_profile",
-            ),
             validation_scorer_backend_name=read_str(
                 source,
                 "validation_scorer_backend_name",
@@ -120,7 +113,6 @@ class LocalUpdateProfile:
         result: dict[str, TrainingConfigScalar] = {
             "algorithm_profile_name": self.algorithm_profile_name,
             "training_backend_name": self.training_backend_name,
-            "example_generation_backend_name": self.example_generation_backend_name,
             "privacy_guard_name": self.privacy_guard_name,
         }
         return result
@@ -153,7 +145,6 @@ _LOCAL_UPDATE_PROFILE_KEYS = frozenset(
         "algorithm_profile_name",
         "training_scope",
         "training_backend_name",
-        "example_generation_backend_name",
         "validation_scorer_backend_name",
         "validation_score_policy_name",
         "validation_score_top_k",

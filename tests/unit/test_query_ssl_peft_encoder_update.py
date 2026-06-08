@@ -56,11 +56,7 @@ def _training_task() -> TrainingTask:
         learning_rate=1e-4,
         max_steps=3,
         objective_config=TrainingObjectiveConfig.from_mapping(
-            {
-                "training_backend_name": "peft_classifier_trainer",
-                "confidence_threshold": 0.0,
-                "margin_threshold": 0.0,
-            }
+            {"training_backend_name": "peft_classifier_trainer"}
         ),
         selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 4}),
         gradient_clip_norm=1.0,
