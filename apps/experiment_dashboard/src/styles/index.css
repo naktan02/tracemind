@@ -470,7 +470,7 @@ code {
   margin: -6px 0 16px;
 }
 
-.fl-round-run-picker .run-checkbox-list.compact {
+.fl-round-run-picker.run-checkbox-list.compact {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
