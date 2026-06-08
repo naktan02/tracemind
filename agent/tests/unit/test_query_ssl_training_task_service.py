@@ -211,6 +211,9 @@ def test_query_ssl_training_task_service_uploads_query_ssl_update(tmp_path) -> N
     assert usage_run.agent_id == "agent_01"
     assert usage_run.objective_method_name == "fixmatch_usb_v1"
     assert usage_run.objective_algorithm_name == "fixmatch"
+    assert usage_run.metadata["effective_method_family"] == "query_ssl"
+    assert usage_run.metadata["fssl_method"] is None
+    assert usage_run.metadata["query_ssl_method_name"] == "fixmatch_usb_v1"
     assert usage_run.candidate_count == 2
     assert usage_run.accepted_count == 1
     assert {(row.source_id, row.role) for row in usage_rows} == {
@@ -292,6 +295,7 @@ def test_query_ssl_training_task_service_routes_fedmatch_method_owned_runtime(
         delta_format="inline_delta",
     )
     captured_call: dict[str, object] = {}
+    usage_ledger = TrainingUsageLedgerRepository(db_path=tmp_path / "usage.db")
 
     def _method_core(**kwargs: object) -> QuerySslPeftEncoderClientTrainingResult:
         captured_call.update(kwargs)
@@ -325,7 +329,10 @@ def test_query_ssl_training_task_service_routes_fedmatch_method_owned_runtime(
         )
 
     round_client = MagicMock()
-    service = AgentQuerySslTrainingTaskService(method_owned_training_core=_method_core)
+    service = AgentQuerySslTrainingTaskService(
+        method_owned_training_core=_method_core,
+        usage_ledger_repository=usage_ledger,
+    )
 
     result = service.run_current_task(
         AgentQuerySslTrainingTaskRunRequest(
@@ -370,6 +377,15 @@ def test_query_ssl_training_task_service_routes_fedmatch_method_owned_runtime(
     assert captured_call["ssl_method_config"].name == "fedmatch"
     assert captured_call["ssl_method_config"].scenario == "labels-at-client"
     assert captured_call["peer_context"].helper_client_ids == ("helper_02",)
+    usage_run = usage_ledger.get_run("update_fedmatch_test")
+    assert usage_run is not None
+    assert usage_run.objective_method_name == "fedmatch"
+    assert usage_run.objective_algorithm_name == "federated_ssl"
+    assert usage_run.metadata["effective_method_family"] == "federated_ssl"
+    assert usage_run.metadata["fssl_method"] == "fedmatch"
+    assert usage_run.metadata["query_ssl_method_name"] == "fixmatch_usb_v1"
+    assert usage_run.metadata["local_epochs"] == 1
+    assert usage_run.metadata["max_steps"] == 2
     round_client.upload_update.assert_called_once()
 
 

@@ -296,10 +296,6 @@ def test_fl_round_open_embeds_fssl_peer_context_from_previous_round(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
-    strategy_service.switch(
-        ssl_method="fixmatch_usb_v1",
-        fssl_method="fedmatch",
-    )
     service, _active_manifest = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
@@ -309,12 +305,6 @@ def test_fl_round_open_embeds_fssl_peer_context_from_previous_round(
         RoundOpenRequestPayload(round_id="round_0001"),
         service=service,
     )
-    assert first_round.training_task.fssl_method == "fedmatch"
-    assert first_round.training_task.fssl_context is not None
-    first_peer_context = first_round.training_task.fssl_context["peer_context"]
-    assert isinstance(first_peer_context, dict)
-    assert first_peer_context["warmup"] is True
-
     update = _build_update(
         tmp_path=tmp_path,
         round_id="round_0001",
@@ -327,11 +317,17 @@ def test_fl_round_open_embeds_fssl_peer_context_from_previous_round(
         service=service,
     )
 
+    strategy_service.switch(fssl_method="fedmatch")
     second_round = fl_rounds_api.open_round(
         RoundOpenRequestPayload(round_id="round_0002"),
         service=service,
     )
 
+    assert second_round.training_task.fssl_method == "fedmatch"
+    assert (
+        second_round.training_task.objective_config.extras["query_ssl.method_name"]
+        == "fixmatch_usb_v1"
+    )
     context = second_round.training_task.fssl_context
     assert context is not None
     assert context["method_name"] == "fedmatch"

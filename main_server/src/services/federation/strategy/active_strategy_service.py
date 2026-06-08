@@ -12,6 +12,7 @@ from main_server.src.infrastructure.repositories.active_strategy_repository impo
 )
 from main_server.src.services.federation.strategy.models import (
     ACTIVE_STRATEGY_CONFIG_V1,
+    DEFAULT_SSL_METHOD,
     ActiveStrategyConfig,
 )
 from shared.src.domain.services.clock import Clock, SystemUtcClock
@@ -29,7 +30,9 @@ def _build_active_strategy_repository() -> ActiveStrategyRepository:
 class ActiveStrategyService:
     """운영 중 FL strategy 전환을 관리한다.
 
-    Phase 1에서는 live composed SSL method 전환만 소유한다.
+    composed SSL은 ssl_method를, method-owned FL SSL은 fssl_method를 active
+    pointer로 저장한다. fssl_method가 설정된 동안 ssl_method는 사용자 선택값으로
+    저장하지 않는다.
     """
 
     repository: ActiveStrategyRepository = field(
@@ -51,19 +54,30 @@ class ActiveStrategyService:
     ) -> ActiveStrategyConfig:
         """strategy를 전환하고 이력을 기록한다.
 
-        ssl_method는 runtime_fallbacks에 등록된 live SSL method여야 한다.
+        ssl_method는 composed mode에서만 runtime_fallbacks에 등록된 live SSL
+        method여야 한다.
         """
         current = self.repository.load_active()
 
-        effective_ssl_method = ssl_method or current.ssl_method
         effective_fssl_method = (
             fssl_method if fssl_method is not None else current.fssl_method
         )
         if fssl_method == "":
             effective_fssl_method = None
+        if effective_fssl_method is not None and ssl_method is not None:
+            raise StrategyValidationError(
+                "fssl_method 모드에서는 ssl_method를 함께 지정하지 않습니다. "
+                "composed SSL로 돌아가려면 fssl_method=''와 ssl_method를 보내세요."
+            )
+        effective_ssl_method = (
+            None
+            if effective_fssl_method is not None
+            else (ssl_method or current.ssl_method or DEFAULT_SSL_METHOD)
+        )
         effective_backend = aggregation_backend or current.aggregation_backend
 
-        self._validate_ssl_method(effective_ssl_method)
+        if effective_ssl_method is not None:
+            self._validate_ssl_method(effective_ssl_method)
         if effective_fssl_method is not None:
             self._validate_fssl_method(effective_fssl_method)
         self._validate_aggregation_backend(effective_backend)
@@ -97,7 +111,7 @@ class ActiveStrategyService:
             )
 
     def _validate_fssl_method(self, fssl_method: str) -> None:
-        """fssl_method descriptor가 live server를 지원하는지 확인한다."""
+        """fssl_method descriptor가 live server/agent를 지원하는지 확인한다."""
         from methods.federated_ssl.registry import (
             resolve_federated_ssl_method_descriptor,
         )
@@ -112,6 +126,10 @@ class ActiveStrategyService:
         if not descriptor.runtime_capabilities.live_server_supported:
             raise StrategyValidationError(
                 f"fssl_method={fssl_method!r}는 아직 live server를 지원하지 않습니다."
+            )
+        if not descriptor.runtime_capabilities.live_agent_supported:
+            raise StrategyValidationError(
+                f"fssl_method={fssl_method!r}는 아직 live agent를 지원하지 않습니다."
             )
 
     def _validate_aggregation_backend(self, aggregation_backend: str) -> None:

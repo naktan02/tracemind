@@ -17,7 +17,7 @@ class ActiveStrategyConfig:
     """다음 round open 시 적용할 서버 운영 strategy 포인터."""
 
     schema_version: str
-    ssl_method: str
+    ssl_method: str | None
     aggregation_backend: str
     activated_at: datetime
     fssl_method: str | None = None

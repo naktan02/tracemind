@@ -498,6 +498,10 @@ def _build_usage_run_record(
     local_result: QuerySslPeftEncoderClientTrainingResult,
     recorded_at: datetime,
 ) -> TrainingUsageRunRecord:
+    fssl_method = _optional_name(request.training_task.fssl_method)
+    effective_method_family = (
+        "federated_ssl" if fssl_method is not None else "query_ssl"
+    )
     return TrainingUsageRunRecord(
         update_id=local_result.update_envelope.update_id,
         round_id=request.training_task.round_id,
@@ -506,15 +510,25 @@ def _build_usage_run_record(
         agent_id=request.agent_id,
         model_id=request.training_task.model_id,
         model_revision=request.training_task.model_revision,
-        objective_method_name=query_ssl_config.method_name,
-        objective_algorithm_name=query_ssl_config.algorithm_name,
+        objective_method_name=fssl_method or query_ssl_config.method_name,
+        objective_algorithm_name=(
+            effective_method_family
+            if fssl_method is not None
+            else query_ssl_config.algorithm_name
+        ),
         status=TRAINING_USAGE_STATUS_UPLOADED,
         candidate_count=local_result.candidate_count,
         accepted_count=local_result.accepted_count,
         metadata={
+            "effective_method_family": effective_method_family,
+            "fssl_method": fssl_method,
+            "query_ssl_method_name": query_ssl_config.method_name,
+            "query_ssl_algorithm_name": query_ssl_config.algorithm_name,
             "training_scope": str(request.training_task.training_scope),
             "local_epochs": request.training_task.local_epochs,
             "max_steps": request.training_task.max_steps,
+            "batch_size": request.training_task.batch_size,
+            "learning_rate": request.training_task.learning_rate,
             "selection_max_examples": (
                 request.training_task.selection_policy.max_examples
             ),

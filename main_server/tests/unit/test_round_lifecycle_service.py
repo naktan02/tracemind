@@ -570,7 +570,6 @@ def test_round_lifecycle_uses_partitioned_backend_for_fedmatch_finalize(
             round_id="round_fedmatch",
             strategy=RoundStrategyConfig(
                 mode="method_owned",
-                ssl_method="fixmatch_usb_v1",
                 fssl_method="fedmatch",
             ),
         )

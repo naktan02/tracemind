@@ -180,9 +180,12 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | `ModelManifestPayload` | `shared/src/contracts/model_contracts.py` |
 | `CurrentSharedAdapterStatePayload` | `shared/src/contracts/adapter_contract_families/base.py` |
 
-`RoundOpenRequestPayload.strategy`는 운영 round에서 local update profile, SSL/FSSL
-method, server update policy, aggregation backend 이름을 받는 일반 입력 표면이다.
-`strategy.parameter_overrides`의 bare key는 선택한 SSL method 파라미터로 해석되어
+`RoundOpenRequestPayload.strategy`는 운영 round에서 local update profile, composed
+SSL method, method-owned FSSL method, server update policy, aggregation backend
+이름을 받는 일반 입력 표면이다. composed SSL 모드에서는 `ssl_method`를 사용하고,
+method-owned FSSL 모드에서는 `fssl_method`를 사용한다. active strategy 전환 API는
+`fssl_method`가 설정된 동안 `ssl_method`를 사용자 선택값으로 저장하지 않는다.
+`strategy.parameter_overrides`의 bare key는 composed SSL method 파라미터로 해석되어
 `query_ssl.*` scope로 정규화된다.
 `objective_config`는 debug/advanced override용 raw task objective이며, 둘을 동시에
 제공하면 거부한다.

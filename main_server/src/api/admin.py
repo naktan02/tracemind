@@ -29,14 +29,17 @@ class SwitchStrategyRequest(BaseModel):
 
     ssl_method: str | None = Field(
         default=None,
-        description="로컬 SSL objective 이름. 없으면 현재 값 유지.",
+        description=(
+            "composed SSL objective 이름. fssl_method를 설정할 때는 보내지 않는다. "
+            "없으면 현재 composed 값 유지."
+        ),
         examples=["fixmatch_usb_v1", "flexmatch_usb_v1"],
     )
     fssl_method: str | None = Field(
         default=None,
         description=(
-            "Full FL SSL method 이름. 없으면 현재 값 유지. "
-            "빈 문자열('')이면 composed 모드로 초기화."
+            "Full FL SSL method 이름. 없으면 현재 값 유지. 빈 문자열('')이면 "
+            "composed SSL 모드로 초기화."
         ),
         examples=["fedmatch", None],
     )
@@ -57,7 +60,7 @@ class StrategyResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str
-    ssl_method: str
+    ssl_method: str | None
     fssl_method: str | None
     aggregation_backend: str
     activated_at: str
