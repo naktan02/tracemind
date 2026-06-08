@@ -149,7 +149,8 @@ uvicorn agent.src.api.main:app --reload --port 8001
   - setup 완료 후 잠금 상태면 `/child/unlock`
 - `popup.html`
   - 확장 아이콘 compact popup entry
-  - 본인 페이지/부모 페이지 진입과 하단 debug 진입을 제공한다
+  - 본인 페이지/부모 페이지 선택 후 PIN을 입력하고 통과하면 해당 페이지를 연다
+  - debug/queue 도구는 하단 관리 영역에 둔다
 - `parent.html`
   - 부모용 상세 entry
   - 세션이 없으면 `/parent/unlock` 흐름으로 정규화된다

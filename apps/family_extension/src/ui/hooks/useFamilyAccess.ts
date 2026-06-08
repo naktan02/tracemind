@@ -5,6 +5,11 @@ import {
   submitInitialFamilySetup,
   unlockFamilyRole,
 } from "../api/familyAccess";
+import {
+  clearFamilySession,
+  loadFamilySessionSync,
+  saveFamilySession,
+} from "../../common/familySessionStorage";
 import type {
   FamilyAccessRole,
   FamilySetupResponsePayload,
@@ -74,7 +79,9 @@ export function useFamilyAccess() {
     child: INITIAL_UNLOCK_STATE,
     parent: INITIAL_UNLOCK_STATE,
   });
-  const [activeSession, setActiveSession] = useState<ActiveFamilySession | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveFamilySession | null>(() =>
+    loadFamilySessionSync(),
+  );
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -94,6 +101,7 @@ export function useFamilyAccess() {
     }
     if (new Date(activeSession.sessionExpiresAt).getTime() <= currentTimeMs) {
       setActiveSession(null);
+      void clearFamilySession();
     }
   }, [activeSession, currentTimeMs]);
 
@@ -183,11 +191,13 @@ export function useFamilyAccess() {
     try {
       const response = await unlockFamilyRole(role, pin);
       if (response.granted && response.session_token != null) {
-        setActiveSession({
+        const nextSession = {
           role: response.role,
           sessionToken: response.session_token,
           sessionExpiresAt: response.session_expires_at,
-        });
+        };
+        setActiveSession(nextSession);
+        void saveFamilySession(nextSession);
         setUnlockStates((prev) => ({
           ...prev,
           [role]: {
@@ -224,6 +234,7 @@ export function useFamilyAccess() {
 
   function clearRoleSession() {
     setActiveSession(null);
+    void clearFamilySession();
   }
 
   function getUnlockState(role: FamilyAccessRole): FamilyUnlockState {

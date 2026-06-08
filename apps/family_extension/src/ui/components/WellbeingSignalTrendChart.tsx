@@ -19,18 +19,24 @@ function buildPolylinePoints(values: number[]): string {
 
   const width = 100;
   const height = 100;
-  const maxValue = Math.max(...values, 100);
-  const minValue = Math.min(...values, 0);
-  const valueSpan = Math.max(maxValue - minValue, 1);
 
   return values
     .map((value, index) => {
       const x = values.length === 1 ? width / 2 : (index / (values.length - 1)) * width;
-      const normalized = (value - minValue) / valueSpan;
-      const y = height - normalized * height;
+      const clampedValue = Math.min(Math.max(value, 0), 100);
+      const y = height - clampedValue;
       return `${x},${y}`;
     })
     .join(" ");
+}
+
+function buildPointMarkers(values: number[]) {
+  return values.map((value, index) => {
+    const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100;
+    const clampedValue = Math.min(Math.max(value, 0), 100);
+    const y = 100 - clampedValue;
+    return { x, y, key: `${index}-${Math.round(value)}` };
+  });
 }
 
 export function WellbeingSignalTrendChart({
@@ -40,6 +46,7 @@ export function WellbeingSignalTrendChart({
 }: WellbeingSignalTrendChartProps) {
   const points = timeseries.points.map((point) => point.signal_score);
   const polylinePoints = buildPolylinePoints(points);
+  const pointMarkers = buildPointMarkers(points);
   const latestPoint =
     timeseries.points.length === 0
       ? null
@@ -71,7 +78,7 @@ export function WellbeingSignalTrendChart({
       </div>
 
       <div className="trend-chart-shell">
-        <div className="trend-band-grid" aria-hidden="true">
+        <div className="trend-axis-labels" aria-hidden="true">
           <span>0</span>
           <span>25</span>
           <span>50</span>
@@ -85,34 +92,26 @@ export function WellbeingSignalTrendChart({
           role="img"
           aria-label={`${formatRangeLabel(timeseries.range)} 위험도 변화 추이`}
         >
-          <rect
-            x="0"
-            y="0"
-            width="100"
-            height="25"
-            className="trend-band very-high"
-          />
-          <rect x="0" y="25" width="100" height="25" className="trend-band high" />
-          <rect
-            x="0"
-            y="50"
-            width="100"
-            height="25"
-            className="trend-band moderate"
-          />
-          <rect
-            x="0"
-            y="75"
-            width="100"
-            height="25"
-            className="trend-band low"
-          />
+          <line x1="0" y1="0" x2="100" y2="0" className="trend-grid-line" />
+          <line x1="0" y1="25" x2="100" y2="25" className="trend-grid-line" />
+          <line x1="0" y1="50" x2="100" y2="50" className="trend-grid-line" />
+          <line x1="0" y1="75" x2="100" y2="75" className="trend-grid-line" />
+          <line x1="0" y1="100" x2="100" y2="100" className="trend-grid-line" />
           <polyline
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.2"
+            strokeWidth="1.8"
             points={polylinePoints}
           />
+          {pointMarkers.map((point) => (
+            <circle
+              key={point.key}
+              className="trend-point"
+              cx={point.x}
+              cy={point.y}
+              r="1.4"
+            />
+          ))}
         </svg>
       </div>
 

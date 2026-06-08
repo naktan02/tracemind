@@ -102,6 +102,15 @@ export default function App({ initialRoute }: AppProps) {
     updateHash(nextRoute);
   }
 
+  function moveToSelfHome() {
+    setChildActiveTab("analysis");
+    if (activeRole !== "child") {
+      return;
+    }
+    setCurrentRoute("/child");
+    updateHash("/child");
+  }
+
   async function handleRoleUnlockSubmit(role: "child" | "parent") {
     const pin = role === "child" ? childUnlockPin : parentUnlockPin;
     const response = await submitRoleUnlock(role, pin);
@@ -132,7 +141,7 @@ export default function App({ initialRoute }: AppProps) {
         <button
           className="brand-mark"
           type="button"
-          onClick={() => moveTo("/child/unlock")}
+          onClick={moveToSelfHome}
         >
           <span className="brand-name">TraceMind</span>
         </button>
