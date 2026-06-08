@@ -458,6 +458,13 @@ code {
   overflow: auto;
 }
 
+#fl-round-table-metric-picker {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  align-items: start;
+  max-height: 240px;
+  overflow: auto;
+}
+
 .fl-round-run-picker {
   max-width: 1120px;
   margin: -6px 0 16px;
