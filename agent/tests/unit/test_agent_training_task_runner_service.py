@@ -25,6 +25,7 @@ from shared.src.contracts.training_contracts import (
 
 def _build_query_ssl_task_payload(
     *,
+    algorithm_profile_name: str | None = "peft_classifier_update_v1",
     fssl_method: str | None = None,
     fssl_execution: dict[str, object] | None = None,
     fssl_capability_plan: dict[str, object] | None = None,
@@ -43,7 +44,7 @@ def _build_query_ssl_task_payload(
         learning_rate=1e-2,
         max_steps=4,
         objective_config=TrainingObjectiveConfigPayload(
-            algorithm_profile_name="peft_classifier_update_v1",
+            algorithm_profile_name=algorithm_profile_name,
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             extras={
@@ -270,6 +271,31 @@ def test_runner_rejects_drifted_fssl_runtime_snapshot() -> None:
 
     assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
     assert "fssl_method와 fssl_execution.method_name" in str(response.message)
+    shared_adapter_sync_service.pull_current.assert_not_called()
+
+
+def test_runner_rejects_unsupported_query_ssl_runtime_profile_before_sync() -> None:
+    repo = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    shared_adapter_runtime_service = MagicMock()
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        algorithm_profile_name="unsupported_profile"
+    )
+    round_client_factory = MagicMock(return_value=round_client)
+    service = _build_service(
+        repo=repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
+    assert "peft_classifier_update_v1" in str(response.message)
     shared_adapter_sync_service.pull_current.assert_not_called()
 
 

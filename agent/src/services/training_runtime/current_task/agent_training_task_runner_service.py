@@ -27,6 +27,10 @@ from methods.federated_ssl.compatibility import (
     validate_federated_ssl_capability_compatibility,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from methods.federated_ssl.runtime_fallbacks import (
+    PEFT_CLASSIFIER_UPDATE_PROFILE_NAME,
+    PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME,
+)
 from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
 
 from .query_ssl_training_task_service import (
@@ -40,6 +44,7 @@ from .result import (
 
 RoundClientFactory = Callable[[str], RoundClient]
 RoundArtifactClientFactory = Callable[[str], RoundArtifactClient]
+AGENT_RUNTIME_QUERY_SSL_PEFT = "query_ssl_peft"
 
 
 @dataclass(slots=True, frozen=True)
@@ -49,6 +54,17 @@ class AgentTrainingTaskRunRequest:
     server_base_url: str
     analysis_event_days: int = 7
     agent_id: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class AgentCurrentTaskRuntimePlan:
+    """agent가 현재 task를 어떤 live runtime으로 실행할지 해석한 결과."""
+
+    runtime_name: str
+    update_family_name: str
+    query_ssl_config: QuerySslObjectiveRuntimeConfig
+    fssl_method: str | None = None
+    fssl_capability_plan: FederatedSslCapabilityPlan | None = None
 
 
 AgentTrainingTaskRunResult = TrainingTaskRunResult
@@ -85,7 +101,7 @@ class AgentTrainingTaskRunnerService:
                 message="현재 active round 또는 open task가 없습니다.",
             )
         try:
-            _resolve_current_task_runtime(task_payload)
+            runtime_plan = _resolve_current_task_runtime(task_payload)
         except ValueError as error:
             return AgentTrainingTaskRunResult(
                 status=TrainingTaskRunStatus.UNSUPPORTED_RUNTIME,
@@ -124,20 +140,13 @@ class AgentTrainingTaskRunnerService:
             )
 
         try:
-            result = self.query_ssl_task_service.run_current_task(
-                AgentQuerySslTrainingTaskRunRequest(
-                    training_task=task_payload,
-                    model_manifest=active_manifest,
-                    active_state=active_state,
-                    round_client=round_client,
-                    artifact_loader=self.round_artifact_client_factory(
-                        request.server_base_url
-                    ),
-                    analysis_event_repository=self.analysis_event_repository,
-                    captured_text_repository=self.captured_text_repository,
-                    analysis_event_days=request.analysis_event_days,
-                    agent_id=request.agent_id,
-                )
+            result = self._run_runtime_plan(
+                runtime_plan=runtime_plan,
+                task_payload=task_payload,
+                request=request,
+                round_client=round_client,
+                active_manifest=active_manifest,
+                active_state=active_state,
             )
         except ValueError as error:
             return AgentTrainingTaskRunResult(
@@ -156,10 +165,41 @@ class AgentTrainingTaskRunnerService:
             message=result.message,
         )
 
+    def _run_runtime_plan(
+        self,
+        *,
+        runtime_plan: AgentCurrentTaskRuntimePlan,
+        task_payload: object,
+        request: AgentTrainingTaskRunRequest,
+        round_client: RoundClient,
+        active_manifest: object,
+        active_state: object,
+    ) -> TrainingTaskRunResult:
+        if runtime_plan.runtime_name != AGENT_RUNTIME_QUERY_SSL_PEFT:
+            raise ValueError(
+                "지원되지 않는 agent task runtime입니다: "
+                f"{runtime_plan.runtime_name!r}."
+            )
+        return self.query_ssl_task_service.run_current_task(
+            AgentQuerySslTrainingTaskRunRequest(
+                training_task=task_payload,
+                model_manifest=active_manifest,
+                active_state=active_state,
+                round_client=round_client,
+                artifact_loader=self.round_artifact_client_factory(
+                    request.server_base_url
+                ),
+                analysis_event_repository=self.analysis_event_repository,
+                captured_text_repository=self.captured_text_repository,
+                analysis_event_days=request.analysis_event_days,
+                agent_id=request.agent_id,
+            )
+        )
+
 
 def _resolve_current_task_runtime(
     task_payload: object,
-) -> QuerySslObjectiveRuntimeConfig:
+) -> AgentCurrentTaskRuntimePlan:
     query_ssl_config = QuerySslObjectiveRuntimeConfig.from_objective_config(
         getattr(task_payload, "objective_config", None)
     )
@@ -168,15 +208,39 @@ def _resolve_current_task_runtime(
             "Query SSL objective가 없는 legacy stored-event training task는 "
             "agent runtime에서 지원하지 않습니다."
         )
-    _validate_fssl_runtime_snapshot(task_payload)
-    return query_ssl_config
+    _require_supported_query_ssl_profile(task_payload)
+    capability_plan = _validate_fssl_runtime_snapshot(task_payload)
+    return AgentCurrentTaskRuntimePlan(
+        runtime_name=AGENT_RUNTIME_QUERY_SSL_PEFT,
+        update_family_name=PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME,
+        query_ssl_config=query_ssl_config,
+        fssl_method=_optional_name(getattr(task_payload, "fssl_method", None)),
+        fssl_capability_plan=capability_plan,
+    )
 
 
-def _validate_fssl_runtime_snapshot(task_payload: object) -> None:
+def _require_supported_query_ssl_profile(task_payload: object) -> None:
+    objective_config = getattr(task_payload, "objective_config", None)
+    profile_name = _optional_name(
+        getattr(objective_config, "algorithm_profile_name", None)
+    )
+    if profile_name is None:
+        return
+    if profile_name != PEFT_CLASSIFIER_UPDATE_PROFILE_NAME:
+        raise ValueError(
+            "live agent Query SSL runtime은 현재 "
+            f"{PEFT_CLASSIFIER_UPDATE_PROFILE_NAME!r} profile만 지원합니다: "
+            f"{profile_name!r}."
+        )
+
+
+def _validate_fssl_runtime_snapshot(
+    task_payload: object,
+) -> FederatedSslCapabilityPlan | None:
     execution = getattr(task_payload, "fssl_execution", None)
     capability_payload = getattr(task_payload, "fssl_capability_plan", None)
     if execution is None and capability_payload is None:
-        return
+        return None
     if not isinstance(execution, Mapping):
         raise ValueError("fssl_execution snapshot이 필요합니다.")
     if not isinstance(capability_payload, Mapping):
@@ -205,6 +269,7 @@ def _validate_fssl_runtime_snapshot(task_payload: object) -> None:
         method_descriptor=descriptor,
         capability_plan=capability_plan,
     )
+    return capability_plan
 
 
 def _capability_plan_from_task_payload(
