@@ -76,7 +76,12 @@ class InferencePipelineService:
     embedding_model_id: str = "unknown"
     model_revision: str = "unknown"
 
-    def process(self, event: QueryEvent) -> InferencePipelineResult:
+    def process(
+        self,
+        event: QueryEvent,
+        *,
+        save_query_buffer: bool = True,
+    ) -> InferencePipelineResult:
         """단일 QueryEvent를 처리하고 결과를 저장한다."""
         normalized = self.preprocess_service.normalize(event.text)
 
@@ -137,7 +142,7 @@ class InferencePipelineService:
             metadata=metadata,
         )
         query_buffer_record = None
-        if self.query_buffer_repository is not None:
+        if save_query_buffer and self.query_buffer_repository is not None:
             query_buffer_record = build_query_buffer_record(
                 event=event,
                 analysis_event=analysis_event,

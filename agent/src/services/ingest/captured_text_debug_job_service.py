@@ -59,7 +59,10 @@ class CapturedTextDebugJobService:
         last_error = ""
         for source in sources:
             try:
-                result = self.pipeline_service.process(_source_to_query_event(source))
+                result = self.pipeline_service.process(
+                    _source_to_query_event(source),
+                    save_query_buffer=False,
+                )
                 analysis_id = result.analysis_event.analysis_id or source.event_id
                 self.repository.mark_analysis_completed(
                     event_id=source.event_id,

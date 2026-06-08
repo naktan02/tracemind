@@ -329,10 +329,7 @@ def test_captured_text_debug_job_generates_view_and_classifies_weak_text(
     assert len(analysis_events) == 1
     assert analysis_events[0].query_id == "event_1"
     assert analysis_events[0].category_scores["anxiety"] == 0.91
-    query_buffer_record = query_buffer_repository.get("event_1")
-    assert query_buffer_record is not None
-    assert query_buffer_record.raw_text == "I feel anxious"
-    assert query_buffer_record.predicted_label == "anxiety"
+    assert query_buffer_repository.get("event_1") is None
     scoring_service.score.assert_called_once()
 
 

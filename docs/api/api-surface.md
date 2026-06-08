@@ -80,7 +80,8 @@ page context, generated weak/strong view는 main_server나 FL update envelope으
 captured text ingest는 raw 저장만 수행하며, main_server current shared adapter나
 agent FL active cache를 직접 읽지 않는다. debug job은 view generation 이후 generated
 weak text를 agent-local inference pipeline에 넣어 `analysis_events`,
-`analysis_category_scores`, `query_buffer_records`에 분류 결과를 저장한다.
+`analysis_category_scores`에 분류 결과를 저장한다. captured text 학습 입력은
+`query_buffer_records`가 아니라 generated weak/strong view source에서 시작한다.
 Agent-local runtime DB는 기본적으로 하나의 SQLite 파일(`agent_local.db`)을 사용한다.
 Captured text DB는 테스트 단계 destructive migration을 허용한다. 현재 정규화 구조는
 `captured_text_events` raw 원문, `captured_text_view_generation_jobs` 처리 상태,
