@@ -93,6 +93,9 @@ from methods.federated_ssl.method_config_surface import (
     default_method_server_update_policy_name,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from methods.federated_ssl.runtime_fallbacks import (
+    RUNTIME_FALLBACK_SERVER_ROUND_PROFILE,
+)
 
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
@@ -134,17 +137,9 @@ def _runtime_update_family_name(round_runtime_config: object | None) -> str:
 def _runtime_update_family_name_or_default(round_runtime_config: object | None) -> str:
     value = getattr(round_runtime_config, "update_family_name", None)
     if value is None:
-        from methods.federated_ssl.runtime_fallbacks import (
-            RUNTIME_FALLBACK_SERVER_ROUND_PROFILE,
-        )
-
         return RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.update_family_name
     normalized = str(value).strip()
     if not normalized:
-        from methods.federated_ssl.runtime_fallbacks import (
-            RUNTIME_FALLBACK_SERVER_ROUND_PROFILE,
-        )
-
         return RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.update_family_name
     return normalized
 
@@ -152,9 +147,9 @@ def _runtime_update_family_name_or_default(round_runtime_config: object | None) 
 def _runtime_aggregation_backend_name(round_runtime_config: object | None) -> str:
     value = getattr(round_runtime_config, "aggregation_backend_name", None)
     if value is None:
-        return "fedavg"
+        return RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.aggregation_backend_name
     normalized = str(value).strip()
-    return normalized or "fedavg"
+    return normalized or RUNTIME_FALLBACK_SERVER_ROUND_PROFILE.aggregation_backend_name
 
 
 @dataclass(slots=True)

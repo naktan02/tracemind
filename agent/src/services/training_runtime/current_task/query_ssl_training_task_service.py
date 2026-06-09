@@ -42,7 +42,10 @@ from agent.src.services.training_runtime.training_sources.captured_text_source i
 )
 from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
 from methods.adaptation.peft_text_encoder.federated_ssl.method_owned_training import (
-    run_method_owned_peft_encoder_training_core,
+    run_method_owned_peft_encoder_training_request,
+)
+from methods.adaptation.peft_text_encoder.federated_ssl.method_training_surface import (
+    FsslPeftEncoderMethodTrainingRequest,
 )
 from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
     PeftEncoderTrainerRuntimeConfig,
@@ -88,7 +91,7 @@ from shared.src.contracts.training_contracts import (
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 
 MethodOwnedPeftEncoderTrainingCore = Callable[
-    ...,
+    [FsslPeftEncoderMethodTrainingRequest],
     QuerySslPeftEncoderClientTrainingResult,
 ]
 
@@ -131,7 +134,7 @@ class AgentQuerySslTrainingTaskService:
     )
     backend: SharedAdapterTrainingBackend | None = None
     method_owned_training_core: MethodOwnedPeftEncoderTrainingCore = (
-        run_method_owned_peft_encoder_training_core
+        run_method_owned_peft_encoder_training_request
     )
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig = field(
         default_factory=AgentQuerySslTrainerRuntimeConfig
@@ -322,43 +325,45 @@ class AgentQuerySslTrainingTaskService:
         )
         client_id = request.agent_id or "agent"
         return self.method_owned_training_core(
-            client_id=client_id,
-            seed=_seed_from_task(request.training_task),
-            labeled_rows=labeled_rows,
-            unlabeled_rows=unlabeled_rows,
-            labels=labels,
-            base_parameters=base_parameters,
-            training_task=request.training_task,
-            model_manifest=request.model_manifest,
-            ssl_method_config=SimpleNamespace(
-                name=descriptor.name,
-                scenario=parameter_snapshot.scenario,
-                local_budget_policy=str(
-                    method_config.get(
-                        "local_budget_policy",
-                        DEFAULT_LOCAL_BUDGET_POLICY,
-                    )
-                ),
-                effective_parameters=parameter_snapshot.effective_parameters,
-            ),
-            local_ssl_policy_name=local_ssl_policy,
-            query_ssl_config=query_ssl_config,
-            strong_view_policy=query_ssl_config.strong_view_policy,
-            unlabeled_batch_size=query_ssl_config.unlabeled_batch_size,
-            peft_config=peft_config,
-            trainer_runtime_config=self.trainer_runtime_config,
-            created_at=created_at,
-            delta_materializer=PeftEncoderDeltaMaterializer(
-                artifact_store=_InlineOnlyPeftEncoderArtifactStore()
-            ),
-            peer_context=build_peer_context_from_live_fssl_context(
-                fssl_context=request.training_task.fssl_context,
+            FsslPeftEncoderMethodTrainingRequest(
                 client_id=client_id,
-                default_policy_name=default_method_peer_context_policy_name(
-                    descriptor,
-                    method_config,
+                seed=_seed_from_task(request.training_task),
+                labeled_rows=labeled_rows,
+                unlabeled_rows=unlabeled_rows,
+                labels=labels,
+                base_parameters=base_parameters,
+                training_task=request.training_task,
+                model_manifest=request.model_manifest,
+                ssl_method_config=SimpleNamespace(
+                    name=descriptor.name,
+                    scenario=parameter_snapshot.scenario,
+                    local_budget_policy=str(
+                        method_config.get(
+                            "local_budget_policy",
+                            DEFAULT_LOCAL_BUDGET_POLICY,
+                        )
+                    ),
+                    effective_parameters=parameter_snapshot.effective_parameters,
                 ),
-            ),
+                local_ssl_policy_name=local_ssl_policy,
+                query_ssl_config=query_ssl_config,
+                strong_view_policy=query_ssl_config.strong_view_policy,
+                unlabeled_batch_size=query_ssl_config.unlabeled_batch_size,
+                peft_config=peft_config,
+                trainer_runtime_config=self.trainer_runtime_config,
+                created_at=created_at,
+                delta_materializer=PeftEncoderDeltaMaterializer(
+                    artifact_store=_InlineOnlyPeftEncoderArtifactStore()
+                ),
+                peer_context=build_peer_context_from_live_fssl_context(
+                    fssl_context=request.training_task.fssl_context,
+                    client_id=client_id,
+                    default_policy_name=default_method_peer_context_policy_name(
+                        descriptor,
+                        method_config,
+                    ),
+                ),
+            )
         )
 
 

@@ -12,6 +12,9 @@ from methods.adaptation.peft_text_encoder.config import (
 from methods.adaptation.peft_text_encoder.federated_ssl import (
     partitioned_objective_training,
 )
+from methods.adaptation.peft_text_encoder.federated_ssl.method_training_surface import (
+    FsslPeftEncoderMethodTrainingRequest,
+)
 from methods.adaptation.peft_text_encoder.federated_ssl.partitioned import (
     training_loop,
 )
@@ -78,38 +81,77 @@ def run_method_owned_peft_encoder_training_core(
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslPeftEncoderClientTrainingResult:
+    """호환용 kwargs entrypoint. Descriptor는 request entrypoint를 사용한다."""
+
+    return run_method_owned_peft_encoder_training_request(
+        FsslPeftEncoderMethodTrainingRequest(
+            client_id=client_id,
+            seed=seed,
+            labeled_rows=labeled_rows,
+            unlabeled_rows=unlabeled_rows,
+            diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
+            labels=labels,
+            base_parameters=base_parameters,
+            base_partition_parameters=base_partition_parameters,
+            previous_client_partition_parameters=previous_client_partition_parameters,
+            training_task=training_task,
+            model_manifest=model_manifest,
+            ssl_method_config=ssl_method_config,
+            local_ssl_policy_name=local_ssl_policy_name,
+            query_ssl_config=query_ssl_config,
+            strong_view_policy=strong_view_policy,
+            unlabeled_batch_size=unlabeled_batch_size,
+            peft_config=peft_config,
+            trainer_runtime_config=trainer_runtime_config,
+            created_at=created_at,
+            delta_materializer=delta_materializer,
+            peer_context=peer_context,
+            helper_weak_probability_provider=helper_weak_probability_provider,
+            peer_probe_rows=peer_probe_rows,
+            runtime_resource_cache=runtime_resource_cache,
+            timing_recorder=timing_recorder,
+            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+        )
+    )
+
+
+def run_method_owned_peft_encoder_training_request(
+    request: FsslPeftEncoderMethodTrainingRequest,
+) -> QuerySslPeftEncoderClientTrainingResult:
     """FedMatch descriptor가 호출하는 PEFT text encoder local runtime."""
 
     runtime_plan = build_fedmatch_partitioned_runtime_plan(
-        scenario_name=ssl_method_config.scenario,
-        effective_parameters=ssl_method_config.effective_parameters,
+        scenario_name=request.ssl_method_config.scenario,
+        effective_parameters=request.ssl_method_config.effective_parameters,
     )
     return partitioned_objective_training.run_partitioned_peft_encoder_training_core(
-        client_id=client_id,
-        seed=seed,
-        labeled_rows=labeled_rows,
-        unlabeled_rows=unlabeled_rows,
-        diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
-        labels=labels,
-        base_parameters=base_parameters,
-        base_partition_parameters=base_partition_parameters,
-        previous_client_partition_parameters=previous_client_partition_parameters,
-        training_task=training_task,
-        model_manifest=model_manifest,
-        ssl_method_config=ssl_method_config,
+        client_id=request.client_id,
+        seed=request.seed,
+        labeled_rows=request.labeled_rows,
+        unlabeled_rows=request.unlabeled_rows,
+        diagnostic_unlabeled_rows=request.diagnostic_unlabeled_rows,
+        labels=request.labels,
+        base_parameters=request.base_parameters,
+        base_partition_parameters=request.base_partition_parameters,
+        previous_client_partition_parameters=(
+            request.previous_client_partition_parameters
+        ),
+        training_task=request.training_task,
+        model_manifest=request.model_manifest,
+        ssl_method_config=request.ssl_method_config,
         partitioned_runtime_plan=runtime_plan,
-        local_ssl_policy_name=local_ssl_policy_name,
-        query_ssl_config=query_ssl_config,
-        strong_view_policy=strong_view_policy,
-        unlabeled_batch_size=unlabeled_batch_size,
-        peft_config=peft_config,
-        trainer_runtime_config=trainer_runtime_config,
-        created_at=created_at,
-        delta_materializer=delta_materializer,
-        peer_context=peer_context,
-        helper_weak_probability_provider=helper_weak_probability_provider,
-        peer_probe_rows=peer_probe_rows,
-        runtime_resource_cache=runtime_resource_cache,
-        timing_recorder=timing_recorder,
-        initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+        local_ssl_policy_name=request.local_ssl_policy_name,
+        query_ssl_config=request.query_ssl_config,
+        strong_view_policy=request.strong_view_policy,
+        unlabeled_batch_size=request.unlabeled_batch_size,
+        peft_config=request.peft_config,
+        trainer_runtime_config=request.trainer_runtime_config,
+        created_at=request.created_at,
+        delta_materializer=request.delta_materializer,
+        peer_context=request.peer_context,
+        helper_weak_probability_provider=request.helper_weak_probability_provider,
+        peer_probe_rows=request.peer_probe_rows,
+        runtime_resource_cache=request.runtime_resource_cache,
+        timing_recorder=request.timing_recorder,
+        initial_query_ssl_algorithm_state=request.initial_query_ssl_algorithm_state,
     )

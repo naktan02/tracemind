@@ -303,10 +303,19 @@ def test_query_ssl_training_task_service_routes_fedmatch_method_owned_runtime(
     captured_call: dict[str, object] = {}
     usage_ledger = TrainingUsageLedgerRepository(db_path=tmp_path / "usage.db")
 
-    def _method_core(**kwargs: object) -> QuerySslPeftEncoderClientTrainingResult:
-        captured_call.update(kwargs)
-        training_task = kwargs["training_task"]
-        model_manifest = kwargs["model_manifest"]
+    def _method_core(request: object) -> QuerySslPeftEncoderClientTrainingResult:
+        captured_call.update(
+            {
+                "labels": tuple(request.labels),
+                "labeled_rows": tuple(request.labeled_rows),
+                "unlabeled_rows": tuple(request.unlabeled_rows),
+                "ssl_method_config": request.ssl_method_config,
+                "local_ssl_policy_name": request.local_ssl_policy_name,
+                "peer_context": request.peer_context,
+            }
+        )
+        training_task = request.training_task
+        model_manifest = request.model_manifest
         update_envelope = make_training_update_envelope(
             update_id="update_fedmatch_test",
             round_id=training_task.round_id,

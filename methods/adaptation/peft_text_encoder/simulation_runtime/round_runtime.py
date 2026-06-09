@@ -10,6 +10,9 @@ from typing import Any
 from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
 )
+from methods.adaptation.peft_text_encoder.federated_ssl.method_training_surface import (
+    FsslPeftEncoderMethodTrainingRequest,
+)
 from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
     QuerySslPeftEncoderClientTrainingResult,
 )
@@ -158,6 +161,7 @@ def release_transient_model_cache(runtime_resource_cache: object | None) -> int:
     from methods.adaptation.peft_text_encoder.resource_cache import (
         clear_peft_encoder_helper_model_cache,
     )
+
     removed = (
         0
         if runtime_resource_cache is None
@@ -178,6 +182,7 @@ def _trim_process_allocator() -> None:
     """Linux allocator가 해제된 CPU tensor memory를 OS에 반환하도록 요청한다."""
 
     import sys
+
     if not sys.platform.startswith("linux"):
         return
     try:
@@ -258,32 +263,33 @@ def run_method_owned_peft_encoder_local_training_core(
             timing_recorder=timing_recorder,
         )
     )
-    return method_owned_training.run_method_owned_peft_encoder_training_core(
-        client_id=client_id,
-        seed=seed,
-        labeled_rows=labeled_rows,
-        unlabeled_rows=unlabeled_rows,
-        diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
-        labels=labels,
-        base_parameters=base_parameters,
-        base_partition_parameters=base_partition_parameters,
-        previous_client_partition_parameters=previous_client_partition_parameters,
-        training_task=training_task,
-        model_manifest=model_manifest,
-        ssl_method_config=ssl_method_config,
-        local_ssl_policy_name=local_ssl_policy_name,
-        query_ssl_config=query_ssl_config,
-        peer_context=peer_context,
-        strong_view_policy=strong_view_policy,
-        unlabeled_batch_size=unlabeled_batch_size,
-        peft_config=effective_peft_config,
-        trainer_runtime_config=trainer_runtime_config,
-        created_at=effective_created_at,
-        delta_materializer=delta_materializer,
-        helper_weak_probability_provider=helper_weak_probability_provider,
-        peer_probe_rows=peer_probe_rows,
-        runtime_resource_cache=runtime_resource_cache,
-        timing_recorder=timing_recorder,
-        initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+    return method_owned_training.run_method_owned_peft_encoder_training_request(
+        FsslPeftEncoderMethodTrainingRequest(
+            client_id=client_id,
+            seed=seed,
+            labeled_rows=labeled_rows,
+            unlabeled_rows=unlabeled_rows,
+            diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
+            labels=labels,
+            base_parameters=base_parameters,
+            base_partition_parameters=base_partition_parameters,
+            previous_client_partition_parameters=previous_client_partition_parameters,
+            training_task=training_task,
+            model_manifest=model_manifest,
+            ssl_method_config=ssl_method_config,
+            local_ssl_policy_name=local_ssl_policy_name,
+            query_ssl_config=query_ssl_config,
+            peer_context=peer_context,
+            strong_view_policy=strong_view_policy,
+            unlabeled_batch_size=unlabeled_batch_size,
+            peft_config=effective_peft_config,
+            trainer_runtime_config=trainer_runtime_config,
+            created_at=effective_created_at,
+            delta_materializer=delta_materializer,
+            helper_weak_probability_provider=helper_weak_probability_provider,
+            peer_probe_rows=peer_probe_rows,
+            runtime_resource_cache=runtime_resource_cache,
+            timing_recorder=timing_recorder,
+            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+        )
     )
-

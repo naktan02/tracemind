@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
@@ -24,6 +24,11 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
 
+from .method_training_surface import (
+    FederatedSslMethodLocalTrainingConfig,
+    FsslPeftEncoderMethodTrainingRequest,
+)
+
 PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
 QuerySslPeftEncoderClientTrainingResult = (
     qssl_training.QuerySslPeftEncoderClientTrainingResult
@@ -36,16 +41,8 @@ QuerySslPeftEncoderObjectiveRuntimeConfig = (
 )
 
 
-class FederatedSslMethodLocalTrainingConfig(Protocol):
-    """method-owned PEFT local core가 필요한 method config surface."""
-
-    name: str
-    scenario: str | None
-    effective_parameters: Mapping[str, object]
-
-
 MethodOwnedPeftEncoderTrainingCore = Callable[
-    ...,
+    [FsslPeftEncoderMethodTrainingRequest],
     QuerySslPeftEncoderClientTrainingResult,
 ]
 
@@ -126,34 +123,46 @@ def run_method_owned_peft_encoder_training_core(
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslPeftEncoderClientTrainingResult:
+    """호환용 kwargs entrypoint. 새 호출부는 request surface를 사용한다."""
+
+    return run_method_owned_peft_encoder_training_request(
+        FsslPeftEncoderMethodTrainingRequest(
+            client_id=client_id,
+            seed=seed,
+            labeled_rows=labeled_rows,
+            unlabeled_rows=unlabeled_rows,
+            diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
+            labels=labels,
+            base_parameters=base_parameters,
+            base_partition_parameters=base_partition_parameters,
+            previous_client_partition_parameters=previous_client_partition_parameters,
+            training_task=training_task,
+            model_manifest=model_manifest,
+            ssl_method_config=ssl_method_config,
+            local_ssl_policy_name=local_ssl_policy_name,
+            query_ssl_config=query_ssl_config,
+            peer_context=peer_context,
+            strong_view_policy=strong_view_policy,
+            unlabeled_batch_size=unlabeled_batch_size,
+            peft_config=peft_config,
+            trainer_runtime_config=trainer_runtime_config,
+            created_at=created_at,
+            delta_materializer=delta_materializer,
+            helper_weak_probability_provider=helper_weak_probability_provider,
+            peer_probe_rows=peer_probe_rows,
+            runtime_resource_cache=runtime_resource_cache,
+            timing_recorder=timing_recorder,
+            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+        )
+    )
+
+
+def run_method_owned_peft_encoder_training_request(
+    request: FsslPeftEncoderMethodTrainingRequest,
+) -> QuerySslPeftEncoderClientTrainingResult:
     """선택된 method-owned PEFT text encoder/head local training core를 실행한다."""
 
-    core = resolve_method_owned_peft_encoder_training_core(ssl_method_config.name)
-    return core(
-        client_id=client_id,
-        seed=seed,
-        labeled_rows=labeled_rows,
-        unlabeled_rows=unlabeled_rows,
-        diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
-        labels=labels,
-        base_parameters=base_parameters,
-        base_partition_parameters=base_partition_parameters,
-        previous_client_partition_parameters=previous_client_partition_parameters,
-        training_task=training_task,
-        model_manifest=model_manifest,
-        ssl_method_config=ssl_method_config,
-        local_ssl_policy_name=local_ssl_policy_name,
-        query_ssl_config=query_ssl_config,
-        peer_context=peer_context,
-        strong_view_policy=strong_view_policy,
-        unlabeled_batch_size=unlabeled_batch_size,
-        peft_config=peft_config,
-        trainer_runtime_config=trainer_runtime_config,
-        created_at=created_at,
-        delta_materializer=delta_materializer,
-        helper_weak_probability_provider=helper_weak_probability_provider,
-        peer_probe_rows=peer_probe_rows,
-        runtime_resource_cache=runtime_resource_cache,
-        timing_recorder=timing_recorder,
-        initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+    core = resolve_method_owned_peft_encoder_training_core(
+        request.ssl_method_config.name
     )
+    return core(request)

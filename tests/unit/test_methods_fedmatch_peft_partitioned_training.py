@@ -37,7 +37,7 @@ from methods.federated_ssl.fedmatch.local_objective import (
     build_fedmatch_partitioned_tensor_objective,
 )
 from methods.federated_ssl.fedmatch.local_runtime import (
-    run_method_owned_peft_encoder_training_core as run_fedmatch_partitioned_training,
+    run_method_owned_peft_encoder_training_request as run_fedmatch_partitioned_training,
 )
 from methods.federated_ssl.fedmatch.partitioning import (
     FEDMATCH_PSI_PARTITION,

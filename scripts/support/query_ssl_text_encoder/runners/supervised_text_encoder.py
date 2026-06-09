@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,25 @@ from scripts.support.query_ssl_text_encoder.text_encoder_run_context import (
     prepare_text_encoder_run_context,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+
+
+@dataclass(frozen=True, slots=True)
+class SupervisedTextEncoderTrainingRequest:
+    """중앙 supervised text encoder 학습 함수가 받는 typed request surface."""
+
+    model: Any
+    train_loader: Any
+    selection_loader: Any
+    categories: list[str]
+    device: str
+    epochs: int
+    max_train_steps: int | None
+    learning_rate: float
+    classifier_learning_rate: float
+    weight_decay: float
+    max_grad_norm: float
+    log_every_steps: int
+    after_epoch: Callable[[int, list[dict[str, Any]], dict[str, Any], Any], None] | None
 
 
 def run_supervised_text_encoder_baseline(
@@ -73,20 +93,23 @@ def run_supervised_text_encoder_baseline(
         (model, history, best_selection_report),
         runtime_metrics,
     ) = run_with_training_runtime_metrics(
-        lambda: train_classifier_func(
-            model=context.model,
-            train_loader=context.train_loader,
-            selection_loader=context.selection_loader,
-            categories=context.categories,
-            device=context.training_device,
-            epochs=int(context.cfg.epochs),
-            max_train_steps=max_train_steps,
-            learning_rate=float(context.cfg.learning_rate),
-            classifier_learning_rate=float(context.cfg.classifier_learning_rate),
-            weight_decay=float(context.cfg.weight_decay),
-            max_grad_norm=float(context.cfg.max_grad_norm),
-            log_every_steps=int(context.cfg.log_every_steps),
-            **({} if after_epoch is None else {"after_epoch": after_epoch}),
+        lambda: _run_supervised_training(
+            train_classifier_func=train_classifier_func,
+            request=SupervisedTextEncoderTrainingRequest(
+                model=context.model,
+                train_loader=context.train_loader,
+                selection_loader=context.selection_loader,
+                categories=context.categories,
+                device=context.training_device,
+                epochs=int(context.cfg.epochs),
+                max_train_steps=max_train_steps,
+                learning_rate=float(context.cfg.learning_rate),
+                classifier_learning_rate=float(context.cfg.classifier_learning_rate),
+                weight_decay=float(context.cfg.weight_decay),
+                max_grad_norm=float(context.cfg.max_grad_norm),
+                log_every_steps=int(context.cfg.log_every_steps),
+                after_epoch=after_epoch,
+            ),
         ),
         training_example_count=_estimate_supervised_training_example_count(
             cfg=context.cfg,
@@ -115,9 +138,7 @@ def run_supervised_text_encoder_baseline(
     if epoch_checkpoint_records:
         effective_extra_manifest["epoch_checkpoint_policy"] = {
             "kind": str(getattr(context.cfg, "epoch_artifact_kind", "")),
-            "every_epochs": int(
-                getattr(context.cfg, "epoch_artifact_every_epochs", 0)
-            ),
+            "every_epochs": int(getattr(context.cfg, "epoch_artifact_every_epochs", 0)),
         }
         effective_extra_manifest["epoch_checkpoints"] = epoch_checkpoint_records
     if extra_manifest:
@@ -147,6 +168,32 @@ def run_supervised_text_encoder_baseline(
     return outputs
 
 
+def _run_supervised_training(
+    *,
+    train_classifier_func: Callable[
+        ..., tuple[Any, list[dict[str, Any]], dict[str, Any]]
+    ],
+    request: SupervisedTextEncoderTrainingRequest,
+) -> tuple[Any, list[dict[str, Any]], dict[str, Any]]:
+    kwargs: dict[str, object] = {
+        "model": request.model,
+        "train_loader": request.train_loader,
+        "selection_loader": request.selection_loader,
+        "categories": request.categories,
+        "device": request.device,
+        "epochs": request.epochs,
+        "max_train_steps": request.max_train_steps,
+        "learning_rate": request.learning_rate,
+        "classifier_learning_rate": request.classifier_learning_rate,
+        "weight_decay": request.weight_decay,
+        "max_grad_norm": request.max_grad_norm,
+        "log_every_steps": request.log_every_steps,
+    }
+    if request.after_epoch is not None:
+        kwargs["after_epoch"] = request.after_epoch
+    return train_classifier_func(**kwargs)
+
+
 def _resolve_max_train_steps(cfg: Any) -> int | None:
     raw_value = getattr(cfg, "max_train_steps", None)
     if raw_value is None:
@@ -164,9 +211,7 @@ def _build_epoch_checkpoint_callback(
     checkpoint_records: list[dict[str, str]],
 ) -> Callable[[int, list[dict[str, Any]], dict[str, Any], Any], None] | None:
     checkpoint_kind = str(getattr(cfg, "epoch_artifact_kind", "none") or "none")
-    checkpoint_every_epochs = int(
-        getattr(cfg, "epoch_artifact_every_epochs", 0) or 0
-    )
+    checkpoint_every_epochs = int(getattr(cfg, "epoch_artifact_every_epochs", 0) or 0)
     if checkpoint_kind == "none" or checkpoint_every_epochs <= 0:
         return None
     if checkpoint_kind != "peft_adapter_classifier":

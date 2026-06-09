@@ -65,7 +65,7 @@ descriptor = FederatedSslMethodDescriptor(
         training_row_source=TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
         runtime_entrypoint=(
             "methods.federated_ssl.fedmatch.local_runtime:"
-            "run_method_owned_peft_encoder_training_core"
+            "run_method_owned_peft_encoder_training_request"
         ),
     ),
     server_step=FederatedSslServerStepSpec(

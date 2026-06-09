@@ -137,7 +137,7 @@ def test_fedmatch_descriptor_prefers_peft_encoder_recipe_surface() -> None:
     descriptor = resolve_federated_ssl_method_descriptor("fedmatch")
 
     assert descriptor.local_step.runtime_entrypoint.endswith(
-        ":run_method_owned_peft_encoder_training_core"
+        ":run_method_owned_peft_encoder_training_request"
     )
     assert descriptor.recipe is not None
     assert descriptor.recipe.supported_local_update_profile_names == (

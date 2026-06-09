@@ -168,6 +168,36 @@ def test_central_peft_ssl_uses_methods_local_training_request_surface() -> None:
     )
 
 
+def test_method_owned_fssl_uses_request_training_surface() -> None:
+    surface_path = (
+        PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "method_training_surface.py"
+    )
+    agent_task_path = (
+        AGENT_SRC
+        / "services"
+        / "training_runtime"
+        / "current_task"
+        / "query_ssl_training_task_service.py"
+    )
+    fedmatch_descriptor_path = METHODS_FEDERATED_SSL_SRC / "fedmatch" / "descriptor.py"
+    method_owned_path = (
+        PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "method_owned_training.py"
+    )
+
+    assert surface_path.exists()
+    assert "FsslPeftEncoderMethodTrainingRequest" in surface_path.read_text(
+        encoding="utf-8"
+    )
+    assert "FsslPeftEncoderMethodTrainingRequest" in agent_task_path.read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "run_method_owned_peft_encoder_training_request"
+        in fedmatch_descriptor_path.read_text(encoding="utf-8")
+    )
+    assert "return core(request)" in method_owned_path.read_text(encoding="utf-8")
+
+
 def test_ssl_root_keeps_framework_surface_not_primitives() -> None:
     allowed_root_files = {
         "NEW_METHOD.md",
@@ -2202,6 +2232,37 @@ def test_server_round_runtime_config_isolates_legacy_adapter_profile() -> None:
         "main_server runtime config는 기본 payload/update/aggregation 선택 문자열을 "
         "직접 하드코딩하지 않는다. live/API compatibility fallback은 "
         "runtime_fallbacks.py의 named profile이 소유한다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_round_lifecycle_uses_fallback_profile_for_runtime_defaults() -> None:
+    path = (
+        MAIN_SERVER_SRC
+        / "services"
+        / "federation"
+        / "rounds"
+        / "round_lifecycle_service.py"
+    )
+    source = path.read_text(encoding="utf-8")
+
+    assert "RUNTIME_FALLBACK_SERVER_ROUND_PROFILE" in source, (
+        "RoundLifecycleService는 live/API fallback 값을 직접 소유하지 않는다. "
+        "runtime surface 기본값은 methods.federated_ssl.runtime_fallbacks의 "
+        "named profile에서 읽는다."
+    )
+    forbidden_default_literals = (
+        'return "fedavg"',
+        'or "fedavg"',
+        'return "peft_text_encoder"',
+        'or "peft_text_encoder"',
+    )
+    violations = [
+        snippet for snippet in forbidden_default_literals if snippet in source
+    ]
+    assert not violations, (
+        "RoundLifecycleService는 update family나 aggregation backend 기본값을 "
+        "문자열로 직접 하드코딩하지 않는다.\n"
         f"violations={violations}"
     )
 
