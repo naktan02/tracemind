@@ -117,9 +117,14 @@ export function setTableColumnVisibility(state, columns, visibleIds, defaultVisi
   const availableSet = new Set((Array.isArray(columns) ? columns : []).map((column) => column.id));
   const nextVisible = (Array.isArray(visibleIds) ? visibleIds : [])
     .filter((id) => availableSet.has(id));
+  const requiredVisible = (Array.isArray(defaultVisible) ? defaultVisible : [])
+    .filter((id) => availableSet.has(id));
+
+  const forcedVisible = nextVisible.filter((id) => !requiredVisible.includes(id));
+  const mergedVisible = [...requiredVisible, ...forcedVisible];
   const fallback = defaultVisible.filter((id) => availableSet.has(id));
 
-  const appliedVisible = nextVisible.length > 0 ? nextVisible : fallback;
+  const appliedVisible = mergedVisible.length > 0 ? mergedVisible : fallback;
   const visibleSet = new Set(appliedVisible);
   const order = (Array.isArray(state.order) ? state.order : [])
     .filter((id) => availableSet.has(id) && visibleSet.has(id));
