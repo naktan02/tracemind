@@ -134,6 +134,40 @@ def test_shared_layer_does_not_import_runtime_layers() -> None:
     assert not violations, _format_violations(violations)
 
 
+def test_central_query_ssl_support_does_not_import_agent_runtime() -> None:
+    violations = _find_forbidden_imports(
+        root=QUERY_SSL_TEXT_ENCODER_SRC,
+        forbidden_prefixes=("agent.src", "main_server.src"),
+    )
+    assert not violations, (
+        "central Query SSL support는 offline control adapter다. live agent/server "
+        "runtime 재사용은 methods-owned local training surface를 통해 하고, "
+        "agent.src/main_server.src를 직접 import하지 않는다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_central_peft_ssl_uses_methods_local_training_request_surface() -> None:
+    trainable_surface_path = (
+        CONF_SRC
+        / "strategy_axes"
+        / "model_architecture"
+        / "trainable_surface"
+        / "peft_text_encoder.yaml"
+    )
+    runner_path = QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "consistency.py"
+    trainable_surface_source = trainable_surface_path.read_text(encoding="utf-8")
+    runner_source = runner_path.read_text(encoding="utf-8")
+
+    assert "run_query_ssl_peft_encoder_local_session" in trainable_surface_source
+    assert "QuerySslPeftEncoderLocalSessionRequest" in runner_source
+    assert "**local_session_request" not in runner_source, (
+        "central SSL runner는 methods-owned dataclass request를 그대로 넘긴다. "
+        "dict/kwargs surface로 되돌리면 central/agent/FL training 의미 drift를 "
+        "테스트하기 어려워진다."
+    )
+
+
 def test_ssl_root_keeps_framework_surface_not_primitives() -> None:
     allowed_root_files = {
         "NEW_METHOD.md",
@@ -2826,11 +2860,7 @@ def test_federated_ssl_capability_axes_do_not_split_tiny_policy_files() -> None:
 
 
 def test_peft_partitioned_runtime_uses_query_ssl_policy_predicate() -> None:
-    path = (
-        PEFT_TEXT_ENCODER_SRC
-        / "federated_ssl"
-        / "partitioned_objective_training.py"
-    )
+    path = PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned_objective_training.py"
     source = path.read_text(encoding="utf-8")
 
     assert "is_query_ssl_local_objective_policy" in source

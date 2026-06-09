@@ -86,6 +86,7 @@ class _RecordingPeftEncoderTrainExecutor:
 
 class _QuerySslPeftBackend:
     backend_name = "peft_classifier_trainer"
+    config = peft_config.PeftEncoderTrainingBackendConfig()
 
     def __init__(self, update_payload: PeftClassifierDelta) -> None:
         self.update_payload = update_payload
@@ -100,11 +101,11 @@ class _QuerySslPeftBackend:
 
     def build_query_ssl_update(
         self,
-        **kwargs: object,
+        request: object,
     ) -> QuerySslPeftEncoderClientTrainingResult:
         self.called = True
-        training_task = kwargs["training_task"]
-        model_manifest = kwargs["model_manifest"]
+        training_task = request.local_session.training_task
+        model_manifest = request.model_manifest
         assert isinstance(training_task, TrainingTask)
         assert isinstance(model_manifest, ModelManifest)
         update_envelope = make_training_update_envelope(

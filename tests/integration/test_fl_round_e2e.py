@@ -71,6 +71,7 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
+from methods.adaptation.peft_text_encoder import config as peft_config
 from methods.adaptation.peft_text_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
@@ -224,6 +225,7 @@ class _QuerySslUploadSmokeBackend:
     """Query SSL upload smoke에서 외부 모델 학습만 대체하는 fake backend."""
 
     backend_name = "peft_classifier_trainer"
+    config = peft_config.PeftEncoderTrainingBackendConfig()
 
     def __init__(self, update_payload: PeftClassifierDelta) -> None:
         self.update_payload = update_payload
@@ -235,11 +237,16 @@ class _QuerySslUploadSmokeBackend:
 
     def build_query_ssl_update(
         self,
-        **kwargs: object,
+        request: object,
     ) -> QuerySslPeftEncoderClientTrainingResult:
-        self.captured_kwargs = dict(kwargs)
-        training_task = kwargs["training_task"]
-        model_manifest = kwargs["model_manifest"]
+        local_session = request.local_session
+        self.captured_kwargs = {
+            "labels": tuple(local_session.labels),
+            "labeled_rows": tuple(local_session.labeled_rows),
+            "unlabeled_rows": tuple(local_session.unlabeled_rows),
+        }
+        training_task = local_session.training_task
+        model_manifest = request.model_manifest
         update_envelope = make_training_update_envelope(
             update_id="update_query_ssl_upload_smoke",
             round_id=training_task.round_id,

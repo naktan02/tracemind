@@ -6,8 +6,7 @@ import random
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
@@ -40,6 +39,12 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingTask
 
 from .delta_extraction import load_peft_encoder_base_parameters_into_model
+from .local_training_surface import (
+    PeftEncoderTrainerRuntimeConfig,
+    QuerySslPeftEncoderLocalSessionRequest,
+    QuerySslPeftEncoderLocalTrainerOptions,
+    QuerySslPeftEncoderObjectiveRuntimeConfig,
+)
 from .loops import set_seed, train_query_ssl_classifier
 from .modeling import (
     PeftTextEncoderWithLinearHead,
@@ -50,27 +55,6 @@ from .pseudo_label_diagnostics import (
     resolve_fixed_pseudo_label_diagnostic_threshold,
     tokenization_cache_namespace,
 )
-
-
-class QuerySslPeftEncoderObjectiveRuntimeConfig(Protocol):
-    """Query SSL PEFT encoder local core가 필요한 objective config surface."""
-
-    algorithm_name: str
-    parameters: Mapping[str, object]
-    strong_view_policy: str
-    unlabeled_batch_size: int | None
-    drop_last_train_batches: bool
-    drop_last_unlabeled_batches: bool
-
-
-class PeftEncoderTrainerRuntimeConfig(Protocol):
-    """PEFT text encoder/head 모델 로딩/학습 core가 필요한 runtime config surface."""
-
-    device: str
-    classifier_dropout: float
-    cache_dir: str | None
-    local_files_only: bool
-    trust_remote_code: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,18 +75,6 @@ class QuerySslPeftEncoderLocalSslResult:
     diagnostic_client_metrics: Mapping[str, float]
     tokenization_cache: TextTokenizationCache | None
     tokenization_cache_namespace: str
-
-
-@dataclass(frozen=True, slots=True)
-class QuerySslPeftEncoderLocalTrainerOptions:
-    """문맥별 runner가 공통 local session에 넘기는 trainer 실행 옵션."""
-
-    classifier_learning_rate: float | None = None
-    weight_decay: float = 0.0
-    log_every_steps: int = 0
-    resume_checkpoint_path: str | Path | None = None
-    resume_checkpoint_output_dir: str | Path | None = None
-    resume_checkpoint_every_epochs: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -231,6 +203,30 @@ def run_query_ssl_peft_encoder_local_ssl(
         diagnostic_client_metrics=diagnostic_threshold.to_client_metrics(),
         tokenization_cache=runtime.tokenization_cache,
         tokenization_cache_namespace=runtime.tokenization_cache_namespace,
+    )
+
+
+def run_query_ssl_peft_encoder_local_session(
+    request: QuerySslPeftEncoderLocalSessionRequest,
+) -> QuerySslPeftEncoderLocalSslResult:
+    """공통 request surface로 PEFT text encoder Query SSL local 학습을 실행한다."""
+
+    return run_query_ssl_peft_encoder_local_ssl(
+        seed=request.seed,
+        labeled_rows=request.labeled_rows,
+        unlabeled_rows=request.unlabeled_rows,
+        diagnostic_unlabeled_rows=request.diagnostic_unlabeled_rows,
+        selection_rows=request.selection_rows,
+        labels=request.labels,
+        base_parameters=request.base_parameters,
+        training_task=request.training_task,
+        query_ssl_config=request.query_ssl_config,
+        peft_config=request.peft_config,
+        trainer_runtime_config=request.trainer_runtime_config,
+        runtime_resource_cache=request.runtime_resource_cache,
+        timing_recorder=request.timing_recorder,
+        initial_query_ssl_algorithm_state=request.initial_query_ssl_algorithm_state,
+        trainer_options=request.trainer_options,
     )
 
 

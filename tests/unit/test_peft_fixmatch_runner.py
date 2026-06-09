@@ -80,7 +80,7 @@ def _build_cfg() -> object:
                     "local_session_runner": (
                         "methods.adaptation.peft_text_encoder.training."
                         "query_ssl_training_session."
-                        "run_query_ssl_peft_encoder_local_ssl"
+                        "run_query_ssl_peft_encoder_local_session"
                     ),
                     "trainer_version_prefix": "peft",
                 },
@@ -187,9 +187,9 @@ def _patch_central_local_session(
         ),
     )
 
-    def _fake_local_session_runner(**kwargs):
-        captured["local_session_request"] = kwargs
-        query_ssl_config = kwargs["query_ssl_config"]
+    def _fake_local_session_runner(request):
+        captured["local_session_request"] = request
+        query_ssl_config = request.query_ssl_config
         algorithm = resolve_query_ssl_algorithm_descriptor(
             query_ssl_config.algorithm_name
         ).build_algorithm(query_ssl_config.parameters)
@@ -197,10 +197,10 @@ def _patch_central_local_session(
             model=session_model,
             tokenizer=tokenizer,
             algorithm=algorithm,
-            effective_labeled_rows=tuple(kwargs["labeled_rows"]),
-            effective_unlabeled_rows=tuple(kwargs["unlabeled_rows"]),
-            effective_labels=tuple(kwargs["labels"]),
-            selection_rows=tuple(kwargs["selection_rows"]),
+            effective_labeled_rows=tuple(request.labeled_rows),
+            effective_unlabeled_rows=tuple(request.unlabeled_rows),
+            effective_labels=tuple(request.labels),
+            selection_rows=tuple(request.selection_rows),
             local_step_plan=QuerySslLocalStepPlan(
                 labeled_loader_steps=1,
                 unlabeled_loader_steps=1,
@@ -228,7 +228,7 @@ def _patch_central_local_session(
 
     monkeypatch.setattr(
         "methods.adaptation.peft_text_encoder.training.query_ssl_training_session."
-        "run_query_ssl_peft_encoder_local_ssl",
+        "run_query_ssl_peft_encoder_local_session",
         _fake_local_session_runner,
     )
 
@@ -310,13 +310,13 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
     assert outputs["output_dir"] == "runs/fake_fixmatch"
     assert captured["history"] == [{"epoch": 1, "train_loss": 0.1}]
     local_request = captured["local_session_request"]
-    query_ssl_config = local_request["query_ssl_config"]
+    query_ssl_config = local_request.query_ssl_config
     assert query_ssl_config.algorithm_name == "fixmatch"
     assert query_ssl_config.parameters["p_cutoff"] == 0.95
     assert query_ssl_config.parameters["hard_label"] is True
     assert query_ssl_config.parameters["supervised_loss_weight"] == 1.0
-    assert local_request["training_task"].max_steps == 1
-    assert local_request["trainer_options"].classifier_learning_rate == 0.001
+    assert local_request.training_task.max_steps == 1
+    assert local_request.trainer_options.classifier_learning_rate == 0.001
     assert captured["extra_manifest"]["unlabeled_row_count"] == 1
     assert (
         captured["extra_manifest"]["query_ssl_method"]["preset_name"]
@@ -386,7 +386,7 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
         },
     )
 
-    query_ssl_config = captured["local_session_request"]["query_ssl_config"]
+    query_ssl_config = captured["local_session_request"].query_ssl_config
     assert query_ssl_config.algorithm_name == "fixmatch"
     assert query_ssl_config.parameters["require_multiview"] is True
 
@@ -447,11 +447,11 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
     )
 
     local_request = captured["local_session_request"]
-    query_ssl_config = local_request["query_ssl_config"]
+    query_ssl_config = local_request.query_ssl_config
     assert query_ssl_config.algorithm_name == "flexmatch"
     assert query_ssl_config.parameters["thresh_warmup"] is True
-    assert local_request["unlabeled_rows"][0]["aug_0"] == "de::우울해요"
-    assert local_request["unlabeled_rows"][1]["aug_1"] == "fr::괜찮아요"
+    assert local_request.unlabeled_rows[0]["aug_0"] == "de::우울해요"
+    assert local_request.unlabeled_rows[1]["aug_1"] == "fr::괜찮아요"
 
 
 def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
@@ -518,7 +518,7 @@ def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
         },
     )
 
-    query_ssl_config = captured["local_session_request"]["query_ssl_config"]
+    query_ssl_config = captured["local_session_request"].query_ssl_config
     assert query_ssl_config.algorithm_name == "comatch"
     assert query_ssl_config.parameters["proj_size"] == 2
     assert query_ssl_config.parameters["require_weak_strong_pair"] is True
@@ -635,10 +635,10 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
     )
 
     assert outputs["output_dir"] == "runs/fake_pseudolabel"
-    query_ssl_config = captured["local_session_request"]["query_ssl_config"]
+    query_ssl_config = captured["local_session_request"].query_ssl_config
     assert query_ssl_config.algorithm_name == "pseudolabel"
     assert query_ssl_config.parameters["unsup_warm_up"] == 0.4
-    assert "aug_0" not in captured["local_session_request"]["unlabeled_rows"][0]
+    assert "aug_0" not in captured["local_session_request"].unlabeled_rows[0]
     assert (
         captured["extra_manifest"]["query_ssl_method"]["preset_name"]
         == "pseudolabel_usb_v1"

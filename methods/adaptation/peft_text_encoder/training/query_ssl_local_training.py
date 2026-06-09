@@ -18,6 +18,7 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
 
+from .local_training_surface import QuerySslPeftEncoderUpdateRequest
 from .query_ssl_federated_update import (
     QuerySslPeftEncoderClientTrainingResult,
     QuerySslPeftEncoderDeltaMaterialization,  # noqa: F401
@@ -80,4 +81,31 @@ def run_query_ssl_peft_encoder_training_core(
         delta_materializer=delta_materializer,
         local_ssl_result=local_ssl_result,
         timing_recorder=timing_recorder,
+    )
+
+
+def run_query_ssl_peft_encoder_update(
+    request: QuerySslPeftEncoderUpdateRequest,
+) -> QuerySslPeftEncoderClientTrainingResult:
+    """공통 update request surface로 Query SSL PEFT encoder update를 생성한다."""
+
+    session = request.local_session
+    return run_query_ssl_peft_encoder_training_core(
+        client_id=request.client_id,
+        seed=session.seed,
+        labeled_rows=session.labeled_rows,
+        unlabeled_rows=session.unlabeled_rows,
+        diagnostic_unlabeled_rows=session.diagnostic_unlabeled_rows,
+        labels=session.labels,
+        base_parameters=session.base_parameters,
+        training_task=session.training_task,
+        model_manifest=request.model_manifest,
+        query_ssl_config=session.query_ssl_config,
+        peft_config=session.peft_config,
+        trainer_runtime_config=session.trainer_runtime_config,
+        created_at=request.created_at,
+        delta_materializer=request.delta_materializer,
+        runtime_resource_cache=session.runtime_resource_cache,
+        timing_recorder=session.timing_recorder,
+        initial_query_ssl_algorithm_state=session.initial_query_ssl_algorithm_state,
     )

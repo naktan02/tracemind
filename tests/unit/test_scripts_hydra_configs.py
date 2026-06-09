@@ -1045,7 +1045,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "load_peft_encoder_base_parameters_with_timing"
     )
     assert cfg.round_runtime.client_round_runtime.query_ssl_training_runner == (
-        "agent.src.services.training_runtime.query_ssl_peft.local_training_service."
+        "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
         "run_query_ssl_peft_encoder_local_training"
     )
     assert (
@@ -1304,7 +1304,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     )
     assert cfg.round_runtime.release_transient_model_cache_after_client is True
     assert cfg.round_runtime.client_round_runtime.query_ssl_training_runner == (
-        "agent.src.services.training_runtime.query_ssl_peft.local_training_service."
+        "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
         "run_query_ssl_peft_encoder_local_training"
     )
     assert (

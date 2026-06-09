@@ -178,6 +178,28 @@ def test_server_step_policy_leaf_does_not_own_update_family_executor() -> None:
     )
 
 
+def test_peft_update_family_runtime_callables_use_simulation_bridge() -> None:
+    update_family_path = (
+        CONF_SRC
+        / "strategy_axes"
+        / "model_architecture"
+        / "update_family"
+        / "peft_text_encoder.yaml"
+    )
+    source = update_family_path.read_text(encoding="utf-8")
+
+    assert "agent.src.services.training_runtime.query_ssl_peft" not in source, (
+        "FL simulation은 agent skeleton을 재사용하더라도 update_family config에서 "
+        "agent.src를 직접 가리키지 않는다. agent runtime 연결은 "
+        "scripts/runtime_adapters/federated_agent bridge가 소유한다.\n"
+        f"path={_relative_repo_path(update_family_path)}"
+    )
+    assert (
+        "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
+        "build_query_ssl_peft_encoder_local_training_request" in source
+    )
+
+
 def test_generic_runtime_bridges_do_not_derive_update_family_modules() -> None:
     checked_paths = (
         SCRIPTS_RUNTIME_ADAPTER_SRC

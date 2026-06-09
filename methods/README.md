@@ -94,7 +94,9 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   primitive와 `classifier_head.v1(head_kind=linear)` payload projection. 새 MLP나
   projection head는 `linear_head` 아래에 넣지 않고 별도 classification owner를 연다
 - `methods/adaptation/peft_text_encoder/`: PEFT text encoder + classifier head
-  update family와 text-specific training/update core
+  update family와 text-specific training/update core. 중앙 SSL, FL simulation,
+  live agent는 `training/local_training_surface.py`의 methods-owned request
+  surface를 통해 같은 local training core를 호출한다
 - `methods/adaptation/query_text_views/`: query-domain text view row 해석,
   unlabeled view preparation, tokenizer batch glue
 - `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP

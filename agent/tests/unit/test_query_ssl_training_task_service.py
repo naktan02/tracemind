@@ -54,6 +54,7 @@ QuerySslPeftEncoderClientTrainingResult = (
 
 class _QuerySslPeftBackend:
     backend_name = "peft_classifier_trainer"
+    config = peft_config.PeftEncoderTrainingBackendConfig()
 
     def __init__(self, update_payload: PeftClassifierDelta) -> None:
         self.update_payload = update_payload
@@ -65,11 +66,16 @@ class _QuerySslPeftBackend:
 
     def build_query_ssl_update(
         self,
-        **kwargs: object,
+        request: object,
     ) -> QuerySslPeftEncoderClientTrainingResult:
-        self.captured_kwargs = dict(kwargs)
-        training_task = kwargs["training_task"]
-        model_manifest = kwargs["model_manifest"]
+        local_session = request.local_session
+        self.captured_kwargs = {
+            "labels": tuple(local_session.labels),
+            "labeled_rows": tuple(local_session.labeled_rows),
+            "unlabeled_rows": tuple(local_session.unlabeled_rows),
+        }
+        training_task = local_session.training_task
+        model_manifest = request.model_manifest
         update_envelope = make_training_update_envelope(
             update_id="update_query_ssl_test",
             round_id=training_task.round_id,

@@ -15,6 +15,9 @@ from methods.adaptation.peft_text_encoder.config import (
 from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     extract_peft_encoder_materialized_state,
 )
+from methods.adaptation.peft_text_encoder.training.local_training_surface import (
+    QuerySslPeftEncoderLocalSessionRequest,
+)
 from methods.adaptation.peft_text_encoder.training.query_ssl_training_session import (
     QuerySslPeftEncoderLocalSslResult,
     QuerySslPeftEncoderLocalTrainerOptions,
@@ -79,7 +82,10 @@ class _CentralSslSurfaceRuntime:
 
     surface_name: str
     model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]]
-    local_session_runner: Callable[..., QuerySslPeftEncoderLocalSslResult]
+    local_session_runner: Callable[
+        [QuerySslPeftEncoderLocalSessionRequest],
+        QuerySslPeftEncoderLocalSslResult,
+    ]
     trainer_version_prefix: str
 
 
@@ -266,9 +272,7 @@ def _train_query_ssl_context(
         max_train_steps=max_train_steps,
     )
     local_ssl_result, runtime_metrics = run_with_training_runtime_metrics(
-        lambda: surface_runtime.local_session_runner(
-            **local_session_request,
-        ),
+        lambda: surface_runtime.local_session_runner(local_session_request),
         training_example_count=_estimate_query_ssl_training_example_count(
             cfg=cfg,
             algorithm=algorithm,
@@ -287,32 +291,32 @@ def _build_central_local_session_request(
     cfg: Any,
     context: QuerySslRunContext,
     max_train_steps: int | None,
-) -> dict[str, Any]:
+) -> QuerySslPeftEncoderLocalSessionRequest:
     """중앙 pooled SSL cfg/context를 공통 local session 입력으로 변환한다."""
 
-    return {
-        "seed": int(cfg.seed),
-        "labeled_rows": list(context.effective_train_rows),
-        "unlabeled_rows": list(context.effective_unlabeled_rows),
-        "diagnostic_unlabeled_rows": list(context.effective_unlabeled_rows),
-        "selection_rows": _load_selection_rows(context),
-        "labels": list(context.categories),
-        "base_parameters": _extract_central_base_parameters(context),
-        "training_task": _build_central_training_task(
+    return QuerySslPeftEncoderLocalSessionRequest(
+        seed=int(cfg.seed),
+        labeled_rows=list(context.effective_train_rows),
+        unlabeled_rows=list(context.effective_unlabeled_rows),
+        diagnostic_unlabeled_rows=list(context.effective_unlabeled_rows),
+        selection_rows=_load_selection_rows(context),
+        labels=list(context.categories),
+        base_parameters=_extract_central_base_parameters(context),
+        training_task=_build_central_training_task(
             cfg=cfg,
             context=context,
             max_train_steps=max_train_steps,
         ),
-        "query_ssl_config": _build_central_query_ssl_config(cfg),
-        "peft_config": _build_central_peft_config(
+        query_ssl_config=_build_central_query_ssl_config(cfg),
+        peft_config=_build_central_peft_config(
             cfg=context.cfg,
             labels=context.categories,
         ),
-        "trainer_runtime_config": _build_central_trainer_runtime_config(
+        trainer_runtime_config=_build_central_trainer_runtime_config(
             cfg=context.cfg,
             device=context.training_device,
         ),
-        "trainer_options": QuerySslPeftEncoderLocalTrainerOptions(
+        trainer_options=QuerySslPeftEncoderLocalTrainerOptions(
             classifier_learning_rate=float(cfg.classifier_learning_rate),
             weight_decay=float(cfg.weight_decay),
             log_every_steps=int(cfg.log_every_steps),
@@ -326,7 +330,7 @@ def _build_central_local_session_request(
                 getattr(cfg, "resume_checkpoint_every_epochs", 0)
             ),
         ),
-    }
+    )
 
 
 def _extract_central_base_parameters(
@@ -380,9 +384,7 @@ def _build_central_query_ssl_config(cfg: Any) -> SimpleNamespace:
         parameters=build_query_ssl_method_parameters(cfg),
         strong_view_policy=_resolve_strong_view_policy(cfg),
         unlabeled_batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
-        drop_last_train_batches=bool(
-            getattr(cfg, "drop_last_train_batches", False)
-        ),
+        drop_last_train_batches=bool(getattr(cfg, "drop_last_train_batches", False)),
         drop_last_unlabeled_batches=bool(
             getattr(cfg, "drop_last_unlabeled_batches", False)
         ),

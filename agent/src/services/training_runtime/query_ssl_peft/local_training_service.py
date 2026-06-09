@@ -14,8 +14,15 @@ from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
 )
+from methods.adaptation.peft_text_encoder.config import (
+    PeftEncoderTrainingBackendConfig,
+)
 from methods.adaptation.peft_text_encoder.training import (
     query_ssl_local_training as qssl_training,
+)
+from methods.adaptation.peft_text_encoder.training.local_training_surface import (
+    QuerySslPeftEncoderLocalSessionRequest,
+    QuerySslPeftEncoderUpdateRequest,
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
@@ -66,6 +73,38 @@ class QuerySslPeftEncoderLocalTrainingRequest:
     persist_update_artifact: bool = True
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None
 
+    def to_update_request(
+        self,
+        *,
+        created_at: datetime,
+        peft_config: PeftEncoderTrainingBackendConfig,
+    ) -> QuerySslPeftEncoderUpdateRequest:
+        """agent/runtime 입력을 methods-owned update request로 정규화한다."""
+
+        return QuerySslPeftEncoderUpdateRequest(
+            client_id=self.client_id,
+            local_session=QuerySslPeftEncoderLocalSessionRequest(
+                seed=self.seed,
+                labeled_rows=self.labeled_rows,
+                unlabeled_rows=self.unlabeled_rows,
+                diagnostic_unlabeled_rows=self.diagnostic_unlabeled_rows,
+                labels=self.labels,
+                base_parameters=self.base_parameters,
+                training_task=self.training_task,
+                query_ssl_config=self.query_ssl_config,
+                peft_config=peft_config,
+                trainer_runtime_config=self.trainer_runtime_config,
+                runtime_resource_cache=self.runtime_resource_cache,
+                timing_recorder=self.timing_recorder,
+                initial_query_ssl_algorithm_state=(
+                    self.initial_query_ssl_algorithm_state
+                ),
+            ),
+            model_manifest=self.model_manifest,
+            created_at=created_at,
+            delta_materializer=self.delta_materializer,
+        )
+
 
 class QuerySslPeftEncoderTrainingBackend(Protocol):
     """Query SSL PEFT encoder raw-row local training capability."""
@@ -77,23 +116,7 @@ class QuerySslPeftEncoderTrainingBackend(Protocol):
 
     def build_query_ssl_update(
         self,
-        *,
-        client_id: str,
-        seed: int,
-        labeled_rows: Sequence[LabeledQueryRow],
-        unlabeled_rows: Sequence[LabeledQueryRow],
-        diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None,
-        labels: Sequence[str],
-        base_parameters: PeftEncoderMaterializedState,
-        training_task: TrainingTask,
-        model_manifest: ModelManifest,
-        query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig,
-        trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
-        created_at: datetime,
-        delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
-        runtime_resource_cache: RuntimeResourceCache | None = None,
-        timing_recorder: TimingRecorder | None = None,
-        initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
+        request: QuerySslPeftEncoderUpdateRequest,
     ) -> QuerySslPeftEncoderClientTrainingResult:
         """Query SSL raw rows를 학습해 local update payload를 만든다."""
 
@@ -127,26 +150,11 @@ class QuerySslLocalTrainingService:
             training_task=request.training_task
         )
         effective_created_at = request.created_at or self.clock.now()
-        result = backend.build_query_ssl_update(
-            client_id=request.client_id,
-            seed=request.seed,
-            labeled_rows=request.labeled_rows,
-            unlabeled_rows=request.unlabeled_rows,
-            diagnostic_unlabeled_rows=request.diagnostic_unlabeled_rows,
-            labels=request.labels,
-            base_parameters=request.base_parameters,
-            training_task=request.training_task,
-            model_manifest=request.model_manifest,
-            query_ssl_config=request.query_ssl_config,
-            trainer_runtime_config=request.trainer_runtime_config,
+        update_request = request.to_update_request(
             created_at=effective_created_at,
-            delta_materializer=request.delta_materializer,
-            runtime_resource_cache=request.runtime_resource_cache,
-            timing_recorder=request.timing_recorder,
-            initial_query_ssl_algorithm_state=(
-                request.initial_query_ssl_algorithm_state
-            ),
+            peft_config=_require_backend_peft_config(backend),
         )
+        result = backend.build_query_ssl_update(update_request)
         if request.persist_update_artifact:
             if request.timing_recorder is None:
                 self.repository.save_shared_adapter_update(
@@ -206,3 +214,15 @@ def run_query_ssl_peft_encoder_local_training(
     """config-declared bridge가 PEFT encoder Query SSL service를 실행하는 entrypoint."""
 
     return local_training_service.run_peft_encoder(request)
+
+
+def _require_backend_peft_config(
+    backend: QuerySslPeftEncoderTrainingBackend,
+) -> PeftEncoderTrainingBackendConfig:
+    config = getattr(backend, "config", None)
+    if not isinstance(config, PeftEncoderTrainingBackendConfig):
+        raise TypeError(
+            "Query SSL PEFT encoder backend must expose "
+            "PeftEncoderTrainingBackendConfig as .config."
+        )
+    return config
