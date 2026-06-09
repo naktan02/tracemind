@@ -396,14 +396,17 @@ function handleLiveInput(event) {
   }
   if (input.dataset.flRunAliasRunId) {
     updateAlias(state.fl.runAliases, "fl_runs", input.dataset.flRunAliasRunId, input.value);
+    render();
     return;
   }
   if (input.dataset.flRoundAliasRunId) {
     updateAlias(state.fl.roundRunAliases, "fl_round", input.dataset.flRoundAliasRunId, input.value);
+    render();
     return;
   }
   if (input.dataset.chartAxisLabelScope) {
     updateAxisLabel(input.dataset.chartAxisLabelScope, input.value);
+    render();
     return;
   }
   if (input.dataset.seriesColorScope && input.dataset.seriesColorKey) {
