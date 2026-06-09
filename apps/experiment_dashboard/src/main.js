@@ -6,6 +6,9 @@ import {
   applyCentralFilters,
   centralEvalSets,
   centralMetricRows,
+  isAllComparisonTrack,
+  isCentralResultTrack,
+  isCentralSupervisedTrack,
   pruneCentralFilters,
 } from "./features/central_ssl/index.js";
 import { applyFlFilters, flFilterAxes, flSslRows, pruneFlFilters, sortedFlRows } from "./features/fl_ssl/index.js";
@@ -47,7 +50,7 @@ async function init() {
 }
 
 function hydrateEvalFilters() {
-  const centralEvalValues = centralEvalSets(state.bundle);
+  const centralEvalValues = centralEvalSets(state.bundle, resolveCentralTrackPredicate());
   const defaultCentralEval = centralEvalValues.includes("validation")
     ? "validation"
     : centralEvalValues[0] ?? "validation";
@@ -89,7 +92,10 @@ function bindEvents() {
   elements.trackButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.activeTrack = button.dataset.track;
-      renderShell();
+      resetCentralTrackState();
+      hydrateEvalFilters();
+      resetCentralSelections();
+      render();
     });
   });
   elements.tabButtons.forEach((button) => {
@@ -404,18 +410,38 @@ function render() {
   renderFl();
 }
 
+function resetCentralTrackState() {
+  state.central.filterAxisIds = [];
+  state.central.filterValues = {};
+  state.central.overviewMetricIds = [];
+}
+
 function renderShell() {
+  const showCentralPanel = isCentralPanelTrackMode();
   elements.trackButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.track === state.activeTrack);
   });
   elements.trackPanels.forEach((panel) => {
+    if (panel.dataset.trackPanel === "central_ssl") {
+      panel.classList.toggle("active", showCentralPanel);
+      return;
+    }
     panel.classList.toggle("active", panel.dataset.trackPanel === state.activeTrack);
   });
   elements.tabButtons.forEach((button) => {
-    button.classList.toggle("active", button.dataset.tab === state.activeCentralTab);
+    const tab = button.dataset.tab;
+    const isAllowed = isAllowedCentralTab(tab);
+    button.hidden = !isAllowed;
+    if (!isAllowed && state.activeCentralTab === tab) {
+      state.activeCentralTab = "overview";
+    }
+    button.classList.toggle("active", isAllowed && tab === state.activeCentralTab);
   });
   elements.tabPanels.forEach((panel) => {
-    panel.classList.toggle("active", panel.dataset.panel === state.activeCentralTab);
+    const panelTab = panel.dataset.panel;
+    const isAllowed = isAllowedCentralTab(panelTab);
+    panel.hidden = !isAllowed;
+    panel.classList.toggle("active", isAllowed && panelTab === state.activeCentralTab);
   });
   elements.flTabButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.flTab === state.activeFlTab);
@@ -435,24 +461,47 @@ function renderFilterVisibility() {
   elements.flFilterToggle.setAttribute("aria-expanded", String(state.fl.filterPanelOpen));
 }
 
+function isCentralPanelTrackMode() {
+  return state.activeTrack === "central_ssl" || state.activeTrack === "supervised" || state.activeTrack === "all";
+}
+
+function isAllowedCentralTab(tab) {
+  if (state.activeTrack === "all") {
+    return tab === "overview" || tab === "compare";
+  }
+  return tab === "overview" || tab === "compare" || tab === "class" || tab === "projection";
+}
+
+function resolveCentralTrackPredicate() {
+  if (state.activeTrack === "supervised") {
+    return isCentralSupervisedTrack;
+  }
+  if (state.activeTrack === "all") {
+    return isAllComparisonTrack;
+  }
+  return isCentralResultTrack;
+}
+
 function renderCentral() {
+  const trackPredicate = resolveCentralTrackPredicate();
   const overviewRowsAll = centralMetricRows(
     state.bundle,
     state.central.overviewEvalSet,
     state.central.overviewMetricIds[0] ?? "macro_f1",
+    trackPredicate,
   );
   pruneCentralFilters(overviewRowsAll, state.central);
   const overviewRows = applyCentralFilters(overviewRowsAll, state.central);
   const compareRows = applyCentralFilters(
-    centralMetricRows(state.bundle, state.central.compareEvalSet),
+    centralMetricRows(state.bundle, state.central.compareEvalSet, "macro_f1", trackPredicate),
     state.central,
   );
   const classRows = applyCentralFilters(
-    centralMetricRows(state.bundle, state.central.classEvalSet),
+    centralMetricRows(state.bundle, state.central.classEvalSet, "macro_f1", trackPredicate),
     state.central,
   );
   const projectionRows = applyCentralFilters(
-    centralMetricRows(state.bundle, state.central.projectionEvalSet),
+    centralMetricRows(state.bundle, state.central.projectionEvalSet, "macro_f1", trackPredicate),
     state.central,
   );
   renderFilterPanel({

@@ -23,6 +23,14 @@
             <span>Central SSL</span>
             <small>pooled/offline control</small>
           </button>
+          <button type="button" data-track="supervised">
+            <span>Supervised</span>
+            <small>central supervised baseline</small>
+          </button>
+          <button type="button" data-track="all">
+            <span>전체</span>
+            <small>central + FL merged</small>
+          </button>
           <button type="button" data-track="fl_ssl">
             <span>FL SSL</span>
             <small>non-IID main comparison</small>
@@ -52,11 +60,11 @@
               Filters
             </button>
             <article id="central-filter-card" class="card fl-filter-card open">
-              <div class="card-header">
-                <div>
-                  <p class="eyebrow">Run Filters</p>
-                  <h3>중앙 run 필터</h3>
-                </div>
+                <div class="card-header">
+                  <div>
+                    <p class="eyebrow">Run Filters</p>
+                    <h3>Track run 필터</h3>
+                  </div>
                 <button id="central-filter-reset" class="text-button" type="button">
                   Reset
                 </button>
@@ -96,11 +104,11 @@
                       <select id="overview-eval-filter"></select>
                     </label>
                   </div>
-                </div>
-                <p class="filter-hint dark">
-                  중앙 SSL 현재 artifact는 validation accuracy 기준 best checkpoint를
-                  export한다. 표의 metric은 해당 checkpoint를 eval set별로 평가한 값이다.
-                </p>
+              </div>
+              <p class="filter-hint dark">
+                중앙/지도학습/전체 track는 각 track별 기본 기준 checkpoint를
+                export해 표의 metric을 eval set별로 비교합니다.
+              </p>
                 <div class="overview-picker-grid">
                   <section>
                     <h4>지표</h4>

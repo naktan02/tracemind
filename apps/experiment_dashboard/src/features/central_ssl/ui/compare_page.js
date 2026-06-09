@@ -55,7 +55,7 @@ function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.compareRunIds);
   elements.comparisonRunCheckboxes.innerHTML =
     rows.length === 0
-      ? `<p class="empty">현재 중앙 필터에 해당하는 run이 없습니다.</p>`
+      ? `<p class="empty">현재 필터에 해당하는 run이 없습니다.</p>`
       : rows
           .map(
             (row) => `

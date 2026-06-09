@@ -3,6 +3,7 @@ import { applyFacetedFilters, optionsForAxis } from "../../../shared/filters/fac
 import { algorithmName, centralDataLabel, peftAdapterLabel } from "./labels.js";
 
 export const CENTRAL_FILTER_AXES = [
+  axis("track", "Track", (row) => row.track ?? "-"),
   axis("algorithm", "Algorithm", algorithmName),
   axis("method_family", "Family", (row) => row.method_family ?? "-"),
   axis("data_pair", "Labeled / Unlabeled", centralDataLabel),

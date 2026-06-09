@@ -105,7 +105,7 @@ function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.overviewRunIds);
   elements.overviewRunCheckboxes.innerHTML =
     rows.length === 0
-      ? `<p class="empty">선택 가능한 중앙 SSL run이 없습니다.</p>`
+      ? `<p class="empty">선택 가능한 run이 없습니다.</p>`
       : rows
           .map((row) => {
             const label = overviewDisplayLabel(row, state.overviewRunAliases);
@@ -133,7 +133,7 @@ function renderSelectedRunCards(elements, rows, state) {
     .filter(Boolean);
   if (selectedRows.length === 0) {
     elements.overviewSelectedRunCards.innerHTML =
-      `<p class="empty">선택된 중앙 SSL run이 없습니다.</p>`;
+      `<p class="empty">선택된 run이 없습니다.</p>`;
     return;
   }
   elements.overviewSelectedRunCards.innerHTML = selectedRows
