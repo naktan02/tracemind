@@ -10,13 +10,23 @@ export function centralInitialPoint(bundle, row, metric, evalSet) {
 export function centralInitialMetricValue(bundle, row, metric, evalSet) {
   const initialRun = centralInitialRunFor(bundle, row);
   if (!initialRun) return null;
-  const evalMetric = (bundle.eval_metrics ?? []).find(
-    (candidate) =>
-      candidate.run_id === initialRun.run_id && candidate.eval_set === evalSet,
-  );
+  const evalSetCandidates = buildInitialEvalSetCandidates(evalSet);
+  const evalMetric = evalSetCandidates
+    .map((candidateEvalSet) =>
+      (bundle.eval_metrics ?? []).find(
+        (candidate) =>
+          candidate.run_id === initialRun.run_id && candidate.eval_set === candidateEvalSet,
+      ),
+    )
+    .find(Boolean);
   if (!evalMetric) return null;
   const initialMetric = CENTRAL_INITIAL_METRIC_MAP[metric];
   return initialMetric ? numberOrNull(evalMetric[initialMetric]) : null;
+}
+
+function buildInitialEvalSetCandidates(evalSet) {
+  const candidates = [evalSet, "validation", "test", "final_validation", "initial_validation"];
+  return Array.from(new Set(candidates.filter((candidate) => Boolean(candidate))));
 }
 
 export function centralInitialRunFor(bundle, row) {

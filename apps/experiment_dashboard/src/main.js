@@ -164,7 +164,6 @@ function bindCentralEvents() {
   });
   elements.overviewEvalFilter.addEventListener("change", (event) => {
     state.central.overviewEvalSet = event.target.value;
-    state.central.overviewRunIds = [];
     render();
   });
   elements.overviewColumnTabButtons.forEach((button) => {
@@ -199,7 +198,6 @@ function bindCentralEvents() {
   });
   elements.comparisonEvalFilter.addEventListener("change", (event) => {
     state.central.compareEvalSet = event.target.value;
-    state.central.compareRunIds = [];
     render();
   });
   elements.comparisonChartType.addEventListener("change", (event) => {
@@ -231,7 +229,6 @@ function bindCentralEvents() {
   });
   elements.classEvalFilter.addEventListener("change", (event) => {
     state.central.classEvalSet = event.target.value;
-    state.central.detailRunId = null;
     render();
   });
   elements.detailMethodFilter.addEventListener("change", (event) => {
@@ -249,7 +246,6 @@ function bindCentralEvents() {
   });
   elements.projectionEvalFilter.addEventListener("change", (event) => {
     state.central.projectionEvalSet = event.target.value;
-    state.central.projectionRunIds = [];
     render();
   });
   elements.projectionMethodFilter.addEventListener("change", (event) => {
