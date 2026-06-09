@@ -111,7 +111,7 @@ function bindEvents() {
   elements.tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.activeCentralTab = button.dataset.tab;
-      renderShell();
+      render();
     });
   });
   elements.flTabButtons.forEach((button) => {
@@ -184,16 +184,16 @@ function bindCentralEvents() {
     render();
   });
   elements.overviewRunCheckboxes.addEventListener("change", () => {
-    state.central.overviewRunIds = checkedValues(
-      elements.overviewRunCheckboxes,
-      "overviewRunId",
+    syncCentralRunSelection(
+      checkedValues(elements.overviewRunCheckboxes, "overviewRunId"),
     );
     render();
   });
   elements.overviewSelectedRunCards.addEventListener("click", (event) => {
     const runId = event.target.dataset.removeOverviewRunId;
     if (!runId) return;
-    state.central.overviewRunIds = state.central.overviewRunIds.filter((id) => id !== runId);
+    const nextRunIds = state.central.overviewRunIds.filter((id) => id !== runId);
+    syncCentralRunSelection(nextRunIds);
     render();
   });
   elements.comparisonEvalFilter.addEventListener("change", (event) => {
@@ -215,16 +215,16 @@ function bindCentralEvents() {
     render();
   });
   elements.comparisonRunCheckboxes.addEventListener("change", () => {
-    state.central.compareRunIds = checkedValues(
-      elements.comparisonRunCheckboxes,
-      "runId",
+    syncCentralRunSelection(
+      checkedValues(elements.comparisonRunCheckboxes, "runId"),
     );
     render();
   });
   elements.selectedRunCards.addEventListener("click", (event) => {
     const runId = event.target.dataset.removeRunId;
     if (!runId) return;
-    state.central.compareRunIds = state.central.compareRunIds.filter((id) => id !== runId);
+    const nextRunIds = state.central.compareRunIds.filter((id) => id !== runId);
+    syncCentralRunSelection(nextRunIds);
     render();
   });
   elements.classEvalFilter.addEventListener("change", (event) => {
@@ -385,11 +385,13 @@ function handleLiveInput(event) {
   if (!(event.target instanceof HTMLInputElement)) return;
   const input = event.target;
   if (input.dataset.overviewAliasRunId) {
-    updateAlias(state.central.overviewRunAliases, "central_overview", input.dataset.overviewAliasRunId, input.value);
+    updateCentralRunAlias(input.dataset.overviewAliasRunId, input.value);
+    render();
     return;
   }
   if (input.dataset.comparisonAliasRunId) {
-    updateAlias(state.central.compareRunAliases, "central_compare", input.dataset.comparisonAliasRunId, input.value);
+    updateCentralRunAlias(input.dataset.comparisonAliasRunId, input.value);
+    render();
     return;
   }
   if (input.dataset.flRunAliasRunId) {
@@ -661,6 +663,17 @@ function updateAlias(aliasMap, scope, runId, value) {
   if (alias) aliasMap[runId] = alias;
   else delete aliasMap[runId];
   storeRunAliases(scope, aliasMap);
+}
+
+function updateCentralRunAlias(runId, value) {
+  updateAlias(state.central.overviewRunAliases, "central_overview", runId, value);
+  updateAlias(state.central.compareRunAliases, "central_compare", runId, value);
+}
+
+function syncCentralRunSelection(runIds = []) {
+  const uniqueRunIds = Array.from(new Set(runIds));
+  state.central.overviewRunIds = uniqueRunIds;
+  state.central.compareRunIds = uniqueRunIds;
 }
 
 function updateAxisLabel(scope, value) {
