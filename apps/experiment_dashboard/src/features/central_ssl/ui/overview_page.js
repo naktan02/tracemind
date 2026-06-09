@@ -13,7 +13,6 @@ import { CENTRAL_FILTER_AXES } from "../logic/filters.js";
 import { centralOverviewMetricKeys } from "../logic/metrics.js";
 import {
   algorithmName,
-  overviewDisplayLabel,
   overviewRunLabel,
   overviewRunSubLabel,
   runDetail,
@@ -26,13 +25,14 @@ const OVERVIEW_AXIS_COLUMNS = [
     id: "axis:algorithm",
     label: "algorithm",
     group: "axis",
-    render: (row) => escapeHtml(algorithmName(row)),
+    render: (row, state) =>
+      escapeHtml(state.overviewRunAliases[row.run_id] || algorithmName(row)),
   },
   {
     id: "axis:run",
     label: "run",
     group: "axis",
-    render: (row, state) => escapeHtml(overviewDisplayLabel(row, state.overviewRunAliases)),
+    render: (row) => escapeHtml(overviewRunLabel(row)),
   },
   {
     id: "axis:pc",
@@ -108,7 +108,7 @@ function renderRunPicker(elements, rows, state) {
       ? `<p class="empty">선택 가능한 run이 없습니다.</p>`
       : rows
           .map((row) => {
-            const label = overviewDisplayLabel(row, state.overviewRunAliases);
+            const label = overviewRunLabel(row);
             return `
               <label class="run-option" title="${escapeHtml(runDetail(row))}">
                 <input
@@ -138,7 +138,7 @@ function renderSelectedRunCards(elements, rows, state) {
   }
   elements.overviewSelectedRunCards.innerHTML = selectedRows
     .map((row) => {
-      const label = overviewDisplayLabel(row, state.overviewRunAliases);
+      const label = overviewRunLabel(row);
       return `
         <article class="selected-run-card alias-run-card">
           <strong>${escapeHtml(label)}</strong>

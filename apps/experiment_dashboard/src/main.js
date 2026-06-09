@@ -385,12 +385,12 @@ function handleLiveInput(event) {
   if (!(event.target instanceof HTMLInputElement)) return;
   const input = event.target;
   if (input.dataset.overviewAliasRunId) {
-    updateCentralRunAlias(input.dataset.overviewAliasRunId, input.value);
+    updateAlias(state.central.overviewRunAliases, "central_overview", input.dataset.overviewAliasRunId, input.value);
     render();
     return;
   }
   if (input.dataset.comparisonAliasRunId) {
-    updateCentralRunAlias(input.dataset.comparisonAliasRunId, input.value);
+    updateAlias(state.central.compareRunAliases, "central_compare", input.dataset.comparisonAliasRunId, input.value);
     render();
     return;
   }
@@ -666,11 +666,6 @@ function updateAlias(aliasMap, scope, runId, value) {
   if (alias) aliasMap[runId] = alias;
   else delete aliasMap[runId];
   storeRunAliases(scope, aliasMap);
-}
-
-function updateCentralRunAlias(runId, value) {
-  updateAlias(state.central.overviewRunAliases, "central_overview", runId, value);
-  updateAlias(state.central.compareRunAliases, "central_compare", runId, value);
 }
 
 function syncCentralRunSelection(runIds = []) {

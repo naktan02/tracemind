@@ -66,7 +66,7 @@ function renderRunPicker(elements, rows, state) {
                   ${selectedRunIds.has(row.run_id) ? "checked" : ""}
                 />
                 <span>
-                  <strong>${escapeHtml(compareDisplayLabel(row, state.compareRunAliases))}</strong>
+                  <strong>${escapeHtml(algorithmName(row))}</strong>
                   <small>${escapeHtml(runDescriptor(row))}</small>
                 </span>
               </label>
@@ -87,7 +87,7 @@ function renderSelectedRunCards(elements, rows, state) {
   }
   elements.selectedRunCards.innerHTML = selectedRows
     .map((row) => {
-      const label = compareDisplayLabel(row, state.compareRunAliases);
+      const label = algorithmName(row);
       const detail = [algorithmName(row), runDescriptor(row)].join(" · ");
       return `
         <article class="selected-run-card alias-run-card">
