@@ -51,17 +51,16 @@ async function init() {
 
 function hydrateEvalFilters() {
   const centralEvalValues = centralEvalSets(state.bundle, resolveCentralTrackPredicate());
-  const defaultCentralEval = centralEvalValues.includes("validation")
-    ? "validation"
-    : centralEvalValues[0] ?? "validation";
+  const centralEvalDefault = resolveCentralDefaultEvalSet(centralEvalValues, state.activeTrack);
+  const forceTrackDefaults = state.previousActiveTrack !== state.activeTrack;
   for (const key of [
     "overviewEvalSet",
     "compareEvalSet",
     "classEvalSet",
     "projectionEvalSet",
   ]) {
-    if (!centralEvalValues.includes(state.central[key])) {
-      state.central[key] = defaultCentralEval;
+    if (forceTrackDefaults || !centralEvalValues.includes(state.central[key])) {
+      state.central[key] = centralEvalDefault;
     }
   }
   for (const select of [
@@ -78,6 +77,17 @@ function hydrateEvalFilters() {
       centralEvalSetLabel,
     );
   }
+  state.previousActiveTrack = state.activeTrack;
+}
+
+function resolveCentralDefaultEvalSet(centralEvalValues, activeTrack) {
+  const ordered = activeTrack === "supervised"
+    ? ["validation", "best", "final", "final_validation", "initial_validation"]
+    : ["best", "final", "validation", "final_validation", "initial_validation"];
+  for (const evalSet of ordered) {
+    if (centralEvalValues.includes(evalSet)) return evalSet;
+  }
+  return centralEvalValues[0] ?? "validation";
 }
 
 function selectDefault(id) {

@@ -5,6 +5,7 @@ export function createDashboardState() {
   return {
     bundle: null,
     activeTrack: "central_ssl",
+    previousActiveTrack: null,
     activeCentralTab: "overview",
     activeFlTab: "runs",
     central: createCentralSslState(),
