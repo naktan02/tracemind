@@ -5,13 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Sequence
 
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
 )
 from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_ORIGINAL_METHOD_DEFAULTS,
 )
-from methods.federated_ssl.peer_context import (
+from methods.federated_ssl.hooks.peer_context import (
     NearestPeerClientIndex,
     select_nearest_peer_client_ids,
     should_refresh_peer_context,

@@ -72,7 +72,7 @@ v1 원칙:
 
 1. raw text
 2. 개별 pseudo-label 목록
-3. `PersonalizationState` 본문
+3. agent-local runtime 해석 상태 본문
 4. `AssessmentResult` 본문
 
 ---
@@ -121,5 +121,5 @@ v1 원칙:
 
 ## 7. 관련 가이드
 
-- [aggregation_algorithm_transition_guide.md](algorithm_extension_guide.md#7-aggregation-backend-main_server)
-  — q-합의 등 aggregation 알고리즘 추가 시 교체 지점과 체크리스트
+- aggregation backend 추가 시 계산 core는 `methods/federated/aggregation/`,
+  실행 조합은 `conf/README.md`와 관련 `conf/strategy_axes/**` leaf를 기준으로 한다.

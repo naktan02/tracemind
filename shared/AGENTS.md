@@ -9,7 +9,7 @@ domain entity의 source of truth다.
 
 1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`
 2. `shared/src/contracts/README.md`
-3. `docs/contracts/algorithm_extension_guide.md`
+3. 관련 producer와 consumer
 4. 필요한 경우만 `docs/contracts/*`
 
 ## 변경 규칙

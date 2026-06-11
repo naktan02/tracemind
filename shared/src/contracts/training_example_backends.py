@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-PROTOTYPE_RESCORE_EXAMPLE_BACKEND = "prototype_rescore"
 WEAK_STRONG_PAIR_EXAMPLE_BACKEND = "weak_strong_pair"
 
 EXAMPLE_BACKENDS_REQUIRING_WEAK_STRONG_SOURCE_ROWS = frozenset(

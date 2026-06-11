@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from agent.src.services.wellbeing.family_access_service import FamilyAccessService
-from shared.src.contracts.family_access_contracts import FamilyAccessRole
-from shared.src.contracts.wellbeing_signal_contracts import (
+from agent.src.contracts.family_access_contracts import FamilyAccessRole
+from agent.src.contracts.wellbeing_signal_contracts import (
     ParentUnlockResponsePayload,
 )
+from agent.src.services.wellbeing.family_access_service import FamilyAccessService
 
 
 @dataclass(slots=True)

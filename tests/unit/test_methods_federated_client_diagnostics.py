@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
-from methods.federated_ssl.client_diagnostics import (
+from methods.federated_ssl.diagnostics.client import (
     client_method_diagnostics_summary_payload,
     known_client_diagnostic_metric_names,
 )
-from methods.federated_ssl.fedmatch.client_diagnostics import FEDMATCH_HELPER_COUNT
+from methods.federated_ssl.fedmatch.client_diagnostics import (
+    FEDMATCH_HELPER_COUNT,
+    FEDMATCH_HELPER_MODEL_MATERIALIZATION_SECONDS,
+)
 
 
 def test_client_diagnostics_discovers_method_local_metric_contracts() -> None:
     names = known_client_diagnostic_metric_names()
 
     assert FEDMATCH_HELPER_COUNT in names
+    assert FEDMATCH_HELPER_MODEL_MATERIALIZATION_SECONDS in names
 
 
 def test_client_diagnostics_summary_uses_discovered_method_builder() -> None:

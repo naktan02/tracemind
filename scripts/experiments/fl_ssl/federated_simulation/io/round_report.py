@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from methods.federated_ssl.client_diagnostics import (
+from methods.federated_ssl.diagnostics.client import (
     client_method_diagnostics_payload,
 )
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import safe_ratio

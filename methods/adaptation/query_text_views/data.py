@@ -46,12 +46,26 @@ class TextLabelDataset(Dataset[dict[str, Any]]):
     def __len__(self) -> int:
         return len(self._rows)
 
+    def label_histogram(self, *, num_classes: int) -> torch.Tensor:
+        """labeled dataset 전체의 class 분포 계산용 label count를 반환한다."""
+
+        if num_classes <= 0:
+            raise ValueError("num_classes must be positive.")
+        counts = torch.zeros((num_classes,), dtype=torch.float32)
+        for row in self._rows:
+            label = self._label_to_index[str(row["mapped_label_4"])]
+            if label < 0 or label >= num_classes:
+                raise ValueError("label index is outside num_classes.")
+            counts[label] += 1.0
+        return counts
+
     def __getitem__(self, index: int) -> dict[str, Any]:
         row = self._rows[index]
         text = str(row["text"])
         if self._task_prefix:
             text = f"{self._task_prefix}{text}"
         return {
+            "row_index": int(index),
             "text": text,
             "label": self._label_to_index[str(row["mapped_label_4"])],
         }
@@ -108,6 +122,46 @@ class TextMultiviewDataset(Dataset[dict[str, Any]]):
         }
 
 
+class TextWeakStrongPairDataset(Dataset[dict[str, Any]]):
+    """weak view와 USB strong 후보 2개를 모두 배치용으로 노출한다."""
+
+    def __init__(
+        self,
+        *,
+        rows: list[LabeledQueryRow],
+        task_prefix: str,
+    ) -> None:
+        self._rows = rows
+        self._task_prefix = task_prefix
+
+    def __len__(self) -> int:
+        return len(self._rows)
+
+    def __getitem__(self, index: int) -> dict[str, Any]:
+        row = self._rows[index]
+        aug_0 = row.get("aug_0")
+        aug_1 = row.get("aug_1")
+        if aug_0 is None or aug_1 is None:
+            raise ValueError(
+                "Weak/strong-pair Query SSL rows require strict USB "
+                "text/aug_0/aug_1 fields."
+            )
+        weak_text = str(row["text"])
+        strong_0_text = str(aug_0)
+        strong_1_text = str(aug_1)
+        if self._task_prefix:
+            weak_text = f"{self._task_prefix}{weak_text}"
+            strong_0_text = f"{self._task_prefix}{strong_0_text}"
+            strong_1_text = f"{self._task_prefix}{strong_1_text}"
+        return {
+            "query_id": str(row["query_id"]),
+            "row_index": int(index),
+            "weak_text": weak_text,
+            "strong_0_text": strong_0_text,
+            "strong_1_text": strong_1_text,
+        }
+
+
 class TextWeakDataset(Dataset[dict[str, Any]]):
     """USB PseudoLabel처럼 weak/original unlabeled view만 배치로 노출한다."""
 
@@ -155,6 +209,7 @@ def build_dataloader(
     shuffle: bool,
     tokenization_cache: TextTokenizationCache | None = None,
     tokenization_cache_namespace: str | None = None,
+    drop_last: bool = False,
 ) -> DataLoader[dict[str, torch.Tensor]]:
     """Labeled row를 baseline trainer 입력 DataLoader로 변환한다."""
 
@@ -175,6 +230,10 @@ def build_dataloader(
             tokenization_cache_namespace=tokenization_cache_namespace,
         )
         encoded["labels"] = torch.tensor(labels, dtype=torch.long)
+        encoded["row_indices"] = torch.tensor(
+            [int(item["row_index"]) for item in batch],
+            dtype=torch.long,
+        )
         return encoded
 
     return DataLoader(
@@ -183,6 +242,7 @@ def build_dataloader(
         shuffle=shuffle,
         collate_fn=collate,
         pin_memory=_should_pin_memory(),
+        drop_last=drop_last,
     )
 
 
@@ -196,6 +256,7 @@ def build_weak_dataloader(
     shuffle: bool,
     tokenization_cache: TextTokenizationCache | None = None,
     tokenization_cache_namespace: str | None = None,
+    drop_last: bool = False,
 ) -> DataLoader[dict[str, Any]]:
     """weak/original unlabeled row를 Query SSL 입력 DataLoader로 변환한다."""
 
@@ -228,6 +289,7 @@ def build_weak_dataloader(
         shuffle=shuffle,
         collate_fn=collate,
         pin_memory=_should_pin_memory(),
+        drop_last=drop_last,
     )
 
 
@@ -242,6 +304,7 @@ def build_multiview_dataloader(
     strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY,
     tokenization_cache: TextTokenizationCache | None = None,
     tokenization_cache_namespace: str | None = None,
+    drop_last: bool = False,
 ) -> DataLoader[dict[str, Any]]:
     """weak/strong unlabeled row를 Query SSL 입력 DataLoader로 변환한다."""
 
@@ -285,6 +348,74 @@ def build_multiview_dataloader(
         shuffle=shuffle,
         collate_fn=collate,
         pin_memory=_should_pin_memory(),
+        drop_last=drop_last,
+    )
+
+
+def build_weak_strong_pair_dataloader(
+    *,
+    rows: list[LabeledQueryRow],
+    tokenizer: Any,
+    batch_size: int,
+    max_length: int,
+    task_prefix: str,
+    shuffle: bool,
+    tokenization_cache: TextTokenizationCache | None = None,
+    tokenization_cache_namespace: str | None = None,
+    drop_last: bool = False,
+) -> DataLoader[dict[str, Any]]:
+    """weak/strong_0/strong_1 row를 Query SSL 입력 DataLoader로 변환한다."""
+
+    dataset = TextWeakStrongPairDataset(
+        rows=rows,
+        task_prefix=task_prefix,
+    )
+
+    def collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
+        weak_texts = [str(item["weak_text"]) for item in batch]
+        strong_0_texts = [str(item["strong_0_text"]) for item in batch]
+        strong_1_texts = [str(item["strong_1_text"]) for item in batch]
+        weak_encoded = encode_texts(
+            weak_texts,
+            tokenizer=tokenizer,
+            max_length=max_length,
+            tokenization_cache=tokenization_cache,
+            tokenization_cache_namespace=tokenization_cache_namespace,
+        )
+        strong_0_encoded = encode_texts(
+            strong_0_texts,
+            tokenizer=tokenizer,
+            max_length=max_length,
+            tokenization_cache=tokenization_cache,
+            tokenization_cache_namespace=tokenization_cache_namespace,
+        )
+        strong_1_encoded = encode_texts(
+            strong_1_texts,
+            tokenizer=tokenizer,
+            max_length=max_length,
+            tokenization_cache=tokenization_cache,
+            tokenization_cache_namespace=tokenization_cache_namespace,
+        )
+        return {
+            "query_ids": [str(item["query_id"]) for item in batch],
+            "row_indices": torch.tensor(
+                [int(item["row_index"]) for item in batch], dtype=torch.long
+            ),
+            "weak_input_ids": weak_encoded["input_ids"],
+            "weak_attention_mask": weak_encoded["attention_mask"],
+            "strong_0_input_ids": strong_0_encoded["input_ids"],
+            "strong_0_attention_mask": strong_0_encoded["attention_mask"],
+            "strong_1_input_ids": strong_1_encoded["input_ids"],
+            "strong_1_attention_mask": strong_1_encoded["attention_mask"],
+        }
+
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=collate,
+        pin_memory=_should_pin_memory(),
+        drop_last=drop_last,
     )
 
 

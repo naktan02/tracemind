@@ -193,7 +193,7 @@ class PartitionedTrainableTextEncoderHeadModules(nn.Module):
     ) -> Tensor:
         """Forward with trainable parameters composed before model execution.
 
-        FedMatch decomposed layers evaluate with `sigma + psi` parameters, not by
+        Partitioned methods evaluate with composed trainable parameters, not by
         adding separate model logits. Frozen/base parameters stay owned by the
         reference partition and are not duplicated in the sum.
         """
@@ -253,9 +253,9 @@ class PartitionedTrainableTextEncoderHeadModules(nn.Module):
 class PartitionedTrainableAdapterLinearHead(nn.Module):
     """Frozen backbone plus physical adapter/head partitions.
 
-    이 primitive는 FedMatch의 `sigma/psi` 의미를 알지 않는다. caller가 넘긴
-    partition 이름에 대해 별도 trainable adapter/head set을 보관하고, composition
-    policy에 따라 evaluation용 logits를 만든다.
+    이 primitive는 partition 이름의 method 의미를 알지 않는다. caller가 넘긴
+    partition 이름에 대해 별도 trainable adapter/head set을 보관하고,
+    composition policy에 따라 evaluation용 logits를 만든다.
     """
 
     def __init__(

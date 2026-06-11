@@ -46,14 +46,14 @@ query가 충분히 쌓인 뒤 그 query 분포에 맞춰 표현과 경계를 함
 ## teacher source 경계
 
 고정 임베딩 classifier는 더 이상 독립 실행 stage나 중앙 SSL의 숨은 선행 단계가
-아니다. unlabeled pool에 pseudo-label 후보를 만들 필요가 있을 때만
-`teacher_bootstrap` input mode의 source 설정으로 선택한다.
+아니다. unlabeled pool에 pseudo-label 후보를 만들 필요가 있으면 method recipe의
+teacher hook이나 명시된 checkpoint artifact로 연결한다.
 
 1. label order, category, classifier head provenance는 teacher output manifest와
    student run manifest에 남긴다.
-2. PEFT text encoder checkpoint가 아직 없을 때 `checkpoint_artifact` source와
-   `fixed_embedding_classifier` artifact kind를 써서 pseudo-label 후보를 만들 수 있다.
-   이후 같은 표면에 prototype, PEFT checkpoint, EMA teacher를 추가할 수 있어야 한다.
+2. PEFT text encoder checkpoint가 아직 없으면 먼저 supervised seed/control
+   artifact를 명시하거나, 새 teacher source를 `methods` owner의 hook으로 추가한다.
+   `scripts`는 fixed embedding classifier fallback을 소유하지 않는다.
 3. warm-start ablation은 특정 seed entrypoint가 아니라 initial checkpoint manifest를
    명시해 재현한다.
 4. PEFT adaptation이 단순 fixed embedding classifier보다 나아졌는지 비교하는 reference
@@ -61,6 +61,10 @@ query가 충분히 쌓인 뒤 그 query 분포에 맞춰 표현과 경계를 함
 
 따라서 central SSL method 비교의 기본 initial checkpoint는 `none`이고, teacher는
 bootstrap/pseudo-label source를 명시할 때만 연결한다.
+
+`fixed_embedding_classifier`는 canonical central SSL method나 별도 active stage가
+아니다. 기존 scripts teacher bootstrap compatibility workflow와 offline pseudo-label
+replay/self-training workflow는 중앙 online SSL canonical surface에서 제거했다.
 
 ## canonical scaffold
 
@@ -98,7 +102,7 @@ Query Buffer (raw text)
 같은 PEFT text encoder adaptation scaffold 위에서 아래를 우선 비교한다.
 
 1. `supervised adaptation`
-2. `pseudo-label self-training`
+2. USB `PseudoLabel`
 3. `FixMatch`
 4. `R-Drop`
 5. `MixText`
@@ -125,14 +129,17 @@ Query Buffer (raw text)
   `aug_0` 또는 `aug_1` 후보를 사용한다. 기본값은 기존 동작 보존을 위해
   `first_aug`다.
   `aug_0`, `aug_1` 생성/caching은 `execution_context/query_view`의 view
-  materialization config가 담당한다. 학습의
-  `strategy_axes/ssl_objective/augmentation_source`는 이미 저장된
-  `text + aug_0 + aug_1` row를 읽을지, 실행 중 생성할지를 고른다.
+  materialization config가 담당한다. 중앙 SSL 학습 entrypoint는 현재
+  `query_ssl_augmenter` 고정 설정으로 이미 저장된 `text + aug_0 + aug_1`
+  row를 읽는다. 실행 중 augmentation 생성은 public strategy axis가 아니라
+  별도 materialization/runtime workflow가 필요할 때 다시 연다.
 - 중앙 SSL 알고리즘 비교용 canonical query source는
   `ourafla_ssl_labeled1024_per_class_seed42_v1`이다.
   `data/datasets/ourafla_mental_health/splits/ourafla_train_split.v1.train.jsonl`에서 각 class별
   1024개를 labeled train으로 뽑고, 나머지 train row 전체를 unlabeled pool로
-  둔다. validation/test는 합치지 않고 기존 validation/test split을 유지한다.
+  둔다. 중앙/FL 비교의 epoch/round selection 평가와 final 평가에는 기존
+  validation/test pool을 합친 뒤 class별 최소 수로 맞춘
+  `test_balanced_validation_test_seed42.jsonl`을 단일 `test` eval set으로 쓴다.
   unlabeled artifact에는 audit과 stratified metric을 위해 원 라벨 필드를 보존하지만,
   중앙 SSL unlabeled loader와 algorithm core는 이 라벨을 소비하지 않는다.
 - backtranslation strong view는 split과 분리된 artifact로 materialize한다.
@@ -144,8 +151,8 @@ Query Buffer (raw text)
   strong candidate로 읽고, 알고리즘별 실행 중 backtranslation을 다시 수행하지 않는다.
 - 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
   newly accepted query-derived rows only로 `PEFT text encoder` same-family continual adaptation을 연다.
-- `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL-specific 제약이 핵심이므로
-  central query-domain control family에는 넣지 않고, FL SSL non-IID 메인 비교선으로 둔다.
+- FedMatch 같은 FL-specific 방법론은 central query-domain control family에는
+  넣지 않고, FL SSL non-IID 비교선에서만 다룬다.
 
 ## 고정해야 할 입력 조건
 

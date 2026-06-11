@@ -40,7 +40,10 @@ from methods.adaptation.peft_text_encoder.update.partitioned_delta import (
     PeftEncoderPartitionDelta,
     normalize_partition_deltas,
 )
-from methods.federated.aggregation.base import FederatedAggregationContext
+from methods.federated.aggregation.base import (
+    FederatedAggregationContext,
+    safetensors_aggregated_artifact_parts,
+)
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_delta_payload,
     make_peft_classifier_state_payload,
@@ -74,6 +77,26 @@ class InMemoryTensorArtifactLoader(InMemoryJsonArtifactLoader):
         artifact_ref: str,
     ) -> tuple[Mapping[str, object], Mapping[str, str]]:
         return self._tensor_artifacts[artifact_ref]
+
+
+def _parse_peft_state_projection_artifact(
+    artifact: Mapping[str, object],
+) -> dict[str, list[float]]:
+    tensors, metadata = safetensors_aggregated_artifact_parts(artifact)
+    return merged_artifacts.parse_peft_adapter_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _parse_applied_peft_delta_projection_artifact(
+    artifact: Mapping[str, object],
+) -> dict[str, list[float]]:
+    tensors, metadata = safetensors_aggregated_artifact_parts(artifact)
+    return merged_artifacts.parse_applied_peft_parameter_deltas_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
 
 
 def test_materialize_peft_encoder_update_uses_inline_deltas_without_loader() -> None:
@@ -332,6 +355,47 @@ def test_materialize_base_peft_encoder_state_reads_global_snapshot_artifacts() -
     )
 
 
+def test_materialize_base_peft_encoder_state_prefers_safetensors_snapshot() -> None:
+    tensors, metadata = merged_artifacts.build_peft_adapter_state_tensor_artifact(
+        peft_parameters={
+            "encoder.q_proj.lora_A": [1.0, 2.0],
+        },
+        applied_peft_parameter_deltas={
+            "encoder.q_proj.lora_A": [0.1, 0.2],
+        },
+    )
+    loader = InMemoryTensorArtifactLoader(
+        {
+            "server-aggregate://rev_000/classifier_head": {
+                "classifier_head_weights": {
+                    "anxiety": [0.1, 0.2],
+                    "normal": [-0.1, -0.2],
+                },
+                "classifier_head_biases": {
+                    "anxiety": 0.3,
+                    "normal": -0.3,
+                },
+            },
+        },
+        {
+            "server-aggregate://rev_000/peft_adapter": (tensors, metadata),
+        },
+    )
+
+    materialized = materialize_base_peft_encoder_state(
+        base_state=_peft_state(
+            peft_adapter_artifact_ref="server-aggregate://rev_000/peft_adapter",
+            classifier_head_artifact_ref="server-aggregate://rev_000/classifier_head",
+        ),
+        context=_aggregation_context(loader=loader),
+    )
+
+    assert materialized.peft_parameters["encoder.q_proj.lora_A"] == pytest.approx(
+        [1.0, 2.0]
+    )
+    assert materialized.classifier_head_weights["anxiety"] == pytest.approx([0.1, 0.2])
+
+
 def test_materialize_base_peft_classifier_state_reads_v2_artifacts() -> None:
     loader = InMemoryJsonArtifactLoader(
         {
@@ -404,12 +468,11 @@ def test_peft_encoder_state_projection_applies_delta_to_base_snapshot() -> None:
     assert projection.next_state.peft_adapter_artifact_ref == (
         "server-aggregate://rev_001/peft_adapter"
     )
-    assert projection.artifacts["server-aggregate://rev_001/peft_adapter"][
-        "peft_parameters"
-    ]["encoder.q_proj.lora_A"] == pytest.approx([1.2, 1.6])
-    assert projection.artifacts["server-aggregate://rev_001/peft_adapter"][
-        "peft_parameters"
-    ]["encoder.q_proj.lora_B"] == pytest.approx([0.7])
+    peft_artifact = _parse_peft_state_projection_artifact(
+        projection.artifacts["server-aggregate://rev_001/peft_adapter"]
+    )
+    assert peft_artifact["encoder.q_proj.lora_A"] == pytest.approx([1.2, 1.6])
+    assert peft_artifact["encoder.q_proj.lora_B"] == pytest.approx([0.7])
     assert projection.artifacts["server-aggregate://rev_001/classifier_head"][
         "classifier_head_weights"
     ]["normal"] == pytest.approx([-0.6, -0.1])
@@ -446,12 +509,13 @@ def test_peft_classifier_state_projection_uses_v2_state_and_artifact_keys() -> N
     assert projection.next_state.peft_adapter_artifact_ref == (
         "server-aggregate://rev_001/peft_adapter"
     )
-    assert projection.artifacts["server-aggregate://rev_001/peft_adapter"][
-        PEFT_STATE_PARAMETERS_KEY
-    ]["encoder.q_proj.lora_A"] == pytest.approx([1.2, 1.6])
-    assert (
-        "applied_peft_parameter_deltas"
-        in projection.artifacts["server-aggregate://rev_001/peft_adapter"]
+    peft_artifact = projection.artifacts["server-aggregate://rev_001/peft_adapter"]
+    peft_parameters = _parse_peft_state_projection_artifact(peft_artifact)
+    applied_deltas = _parse_applied_peft_delta_projection_artifact(peft_artifact)
+    assert peft_parameters["encoder.q_proj.lora_A"] == pytest.approx([1.2, 1.6])
+    assert applied_deltas["encoder.q_proj.lora_A"] == pytest.approx([0.2, -0.4])
+    assert "lora_parameters" not in str(
+        safetensors_aggregated_artifact_parts(peft_artifact)[1]
     )
 
 
@@ -946,6 +1010,7 @@ def test_peft_encoder_partitioned_delta_average_merges_partitions_per_client() -
                 delta_l2_norm=0.2,
             ),
         ),
+        weight_policy_name="example_count",
     )
 
     assert result.peft_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(

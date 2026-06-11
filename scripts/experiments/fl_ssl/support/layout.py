@@ -1,0 +1,397 @@
+"""FL SSL 실행 산출물 경로 규칙."""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Mapping
+from pathlib import Path
+
+from omegaconf import DictConfig, OmegaConf
+
+from methods.federated.client_split import (
+    LABELED_EXPOSURE_POLICY_NAMES,
+    compact_labeled_exposure_policy_slug,
+)
+from methods.federated_ssl.method_config_surface import (
+    default_method_server_update_policy_name,
+)
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from scripts.support.configured_callable import load_configured_callable
+
+_DATA_SOURCE_SLUG_ALIASES = {
+    "szegeelim_general4": "sz4",
+    "ourafla_reddit": "ourafla",
+}
+
+
+def build_fl_ssl_run_dir(
+    base_dir: str | Path,
+    *,
+    cfg: DictConfig,
+    run_id: str,
+    run_kind: str = "single",
+) -> Path:
+    """FL SSL run을 split/condition/method 비교 축 아래에 배치한다."""
+
+    base_path = (
+        Path(str(base_dir))
+        / resolve_fl_ssl_split_slug(cfg)
+        / resolve_fl_ssl_run_condition_slug(cfg)
+        / resolve_fl_ssl_surface_slug(cfg)
+        / resolve_fl_ssl_method_composition_slug(cfg)
+    )
+    if run_kind == "single":
+        return base_path / _slugify(run_id)
+    if run_kind == "client_count_sweep":
+        round_budget = int(_select(cfg, "federated_run_budget.rounds", default=0))
+        return (
+            base_path
+            / "sweeps"
+            / f"client_count_r{round_budget}"
+            / _slugify(run_id)
+        )
+    if run_kind == "seed_sweep":
+        client_count = int(_select(cfg, "federated_run_budget.client_count", default=0))
+        round_budget = int(_select(cfg, "federated_run_budget.rounds", default=0))
+        return (
+            base_path
+            / "sweeps"
+            / f"seed_c{client_count}_r{round_budget}"
+            / _slugify(run_id)
+        )
+    raise ValueError(f"Unsupported FL SSL run_kind: {run_kind!r}.")
+
+
+def build_fl_ssl_client_count_sweep_member_dir(
+    sweep_output_dir: str | Path,
+    *,
+    client_count: int,
+) -> Path:
+    """client-count sweep 내부의 client_count별 sub-run 위치를 만든다."""
+
+    return Path(str(sweep_output_dir)) / f"clients_{int(client_count):02d}"
+
+
+def build_fl_ssl_seed_sweep_member_dir(
+    sweep_output_dir: str | Path,
+    *,
+    seed: int,
+) -> Path:
+    """seed sweep 내부의 seed별 sub-run 위치를 만든다."""
+
+    return Path(str(sweep_output_dir)) / f"seed_{int(seed)}"
+
+
+def resolve_fl_ssl_method_family_slug(cfg: DictConfig) -> str:
+    """상위 method family archive 축을 만든다."""
+
+    if _is_manual_fl_composition(cfg):
+        return "manual_baselines"
+    method_name = _select(cfg, "ssl_method.name", default=None)
+    return _slugify(method_name or "method_owned")
+
+
+def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
+    """output path에서 비교 대상 method 축을 표현하는 slug를 만든다."""
+
+    if not _is_manual_fl_composition(cfg):
+        method_name = _select(cfg, "ssl_method.name", default=None) or "method_owned"
+        scenario = _select(cfg, "ssl_method.scenario", default=None)
+        parts = [_compact_method_name(method_name)]
+        if scenario is not None and str(scenario).strip():
+            parts.append(str(scenario))
+        return "_".join(_slugify(part) for part in parts)
+
+    query_ssl_method = (
+        _select(cfg, "query_ssl_method.name", default=None)
+        or _select(cfg, "ssl_method.name", default=None)
+        or "unknown_ssl"
+    )
+    aggregation_backend = (
+        _select(cfg, "round_runtime.aggregation_backend_name", default=None)
+        or _select(cfg, "ssl_method.server_step.aggregation_backend_name", default=None)
+        or "unknown_aggregation"
+    )
+    return "_".join(
+        _slugify(part)
+        for part in (_compact_method_name(query_ssl_method), aggregation_backend)
+    )
+
+
+def resolve_fl_ssl_surface_slug(cfg: DictConfig) -> str:
+    """output path에서 update surface/runtime 형식 축을 표현하는 slug를 만든다."""
+
+    return _slugify(_resolve_update_runtime_slug(cfg))
+
+
+def _resolve_method_owned_server_update_policy(
+    cfg: DictConfig,
+    *,
+    method_name: str,
+) -> str | None:
+    try:
+        descriptor = resolve_federated_ssl_method_descriptor(str(method_name))
+    except ValueError:
+        return _select(cfg, "server_update_policy.name", default=None)
+    return default_method_server_update_policy_name(descriptor) or _select(
+        cfg,
+        "server_update_policy.name",
+        default=None,
+    )
+
+
+def resolve_fl_ssl_split_slug(cfg: DictConfig) -> str:
+    """output path에서 data split 축을 짧은 비교용 slug로 표현한다."""
+
+    seed = _select(cfg, "seed", default=None)
+    parts: list[str] = []
+    data_source = _resolve_data_source_slug(cfg)
+    if data_source is not None:
+        parts.append(data_source)
+    else:
+        parts.append("split")
+    label_budget = _resolve_label_budget_slug(cfg)
+    if label_budget is not None:
+        parts.append(label_budget)
+    labeled_exposure = _resolve_labeled_exposure_slug(cfg)
+    if labeled_exposure is not None:
+        parts.append(labeled_exposure)
+    if seed is not None:
+        parts.append(f"s{int(seed)}")
+    return "_".join(_slugify(part) for part in parts if str(part).strip())
+
+
+def resolve_fl_ssl_run_condition_slug(cfg: DictConfig) -> str:
+    """client 수, round budget, local objective 숫자 조건을 slug로 표현한다."""
+
+    client_count = _select(cfg, "federated_run_budget.client_count", default=None)
+    round_budget = _select(cfg, "federated_run_budget.rounds", default=None)
+    parts: list[str] = []
+    if client_count is not None:
+        parts.append(f"c{int(client_count)}")
+    if round_budget is not None:
+        parts.append(f"r{int(round_budget)}")
+    local_epochs = _select(cfg, "training_task.local_epochs", default=None)
+    batch_size = _select(cfg, "training_task.batch_size", default=None)
+    max_steps = _select(cfg, "training_task.max_steps", default=None)
+    if local_epochs is not None:
+        parts.append(f"e{int(local_epochs)}")
+    if batch_size is not None:
+        parts.append(f"b{int(batch_size)}")
+    if max_steps is not None:
+        parts.append(f"s{int(max_steps)}")
+    local_regularizer = _resolve_local_regularizer_slug(cfg)
+    if local_regularizer is not None:
+        parts.append(local_regularizer)
+    return "_".join(_slugify(part) for part in parts)
+
+
+def _select(cfg: DictConfig, key: str, *, default: object) -> object:
+    return OmegaConf.select(cfg, key, default=default)
+
+
+def _is_manual_fl_composition(cfg: DictConfig) -> bool:
+    composition_mode = _select(cfg, "fl_method.composition_mode", default=None)
+    return str(composition_mode or "").strip().lower() == "manual"
+
+
+def _resolve_update_runtime_slug(cfg: DictConfig) -> str:
+    family = (
+        _select(cfg, "round_runtime.update_family_name", default=None)
+        or "unknown_family"
+    )
+    family = str(family).strip() or "unknown_family"
+    configured_slug = _build_configured_update_family_slug(cfg, family)
+    if configured_slug is not None:
+        return configured_slug
+    return family
+
+
+def _build_configured_update_family_slug(
+    cfg: DictConfig,
+    update_family_name: str,
+) -> str | None:
+    builder_path = _select(
+        cfg,
+        "round_runtime.composition_slug_builder",
+        default=None,
+    )
+    if builder_path is None:
+        return None
+    round_runtime = _select(cfg, "round_runtime", default=None)
+    if round_runtime is None:
+        return None
+    builder = load_configured_callable(
+        str(builder_path),
+        field_name="round_runtime.composition_slug_builder",
+    )
+    if OmegaConf.is_config(round_runtime):
+        runtime_mapping = OmegaConf.to_container(round_runtime, resolve=True)
+    else:
+        runtime_mapping = round_runtime
+    if not isinstance(runtime_mapping, Mapping):
+        return None
+    slug = builder(
+        round_runtime_mapping=runtime_mapping,
+        update_family_name=update_family_name,
+    )
+    normalized_slug = str(slug).strip()
+    if not normalized_slug:
+        raise ValueError("round_runtime.composition_slug_builder returned empty slug.")
+    return normalized_slug
+
+
+def _resolve_labeled_exposure_slug(cfg: DictConfig) -> str | None:
+    configured = _select(cfg, "labeled_exposure_policy.name", default=None)
+    if configured is not None:
+        normalized = str(configured).strip()
+        if normalized:
+            return _short_labeled_exposure_slug(
+                compact_labeled_exposure_policy_slug(normalized)
+            )
+    manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
+    for policy_name in sorted(LABELED_EXPOSURE_POLICY_NAMES):
+        if policy_name in manifest:
+            return _short_labeled_exposure_slug(
+                compact_labeled_exposure_policy_slug(policy_name)
+            )
+    return None
+
+
+def _resolve_data_source_slug(cfg: DictConfig) -> str | None:
+    labeled = _select(cfg, "query_data_selection.labeled", default=None)
+    unlabeled = _select(cfg, "query_data_selection.unlabeled", default=None)
+    if labeled is None or unlabeled is None:
+        manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
+        labeled = labeled or _extract_manifest_component(manifest, prefix="labeled")
+        unlabeled = unlabeled or _extract_manifest_component(
+            manifest,
+            prefix="unlabeled",
+        )
+    if labeled is None and unlabeled is None:
+        return None
+    return "_".join(
+        _slugify(part)
+        for part in (
+            _short_data_source_slug(labeled or "unknown"),
+            _short_data_source_slug(unlabeled or "unknown"),
+        )
+    )
+
+
+def _resolve_label_budget_slug(cfg: DictConfig) -> str | None:
+    count_per_class = _select(
+        cfg,
+        "fl_client_split_materialization.labeled_policy.count_per_class",
+        default=None,
+    )
+    if count_per_class is not None:
+        return f"lp{int(count_per_class)}"
+    fl_client_split_name = _select(cfg, "fl_client_split.name", default=None)
+    manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
+    for source in (fl_client_split_name, manifest):
+        match = re.search(r"(?:^|_)labels_pc(\d+)(?:_|$)", str(source or ""))
+        if match:
+            return f"lp{match.group(1)}"
+    return None
+
+
+def _resolve_local_regularizer_slug(cfg: DictConfig) -> str | None:
+    proximal_mu = _select_objective_parameter(cfg, "proximal_mu")
+    if proximal_mu is None:
+        return None
+    normalized_mu = float(proximal_mu)
+    if normalized_mu <= 0.0:
+        return None
+    return f"fedprox_mu{normalized_mu:g}"
+
+
+def _select_objective_parameter(cfg: DictConfig, key: str) -> object | None:
+    objective = _select(cfg, "training_task.objective", default=None)
+    if objective is None:
+        return None
+    if OmegaConf.is_config(objective):
+        objective_mapping = OmegaConf.to_container(objective, resolve=True)
+    else:
+        objective_mapping = objective
+    if not isinstance(objective_mapping, Mapping):
+        return None
+
+    values = _collect_objective_parameter_values(objective_mapping, key)
+    normalized_values = {str(value) for value in values if value is not None}
+    if not normalized_values:
+        return None
+    if len(normalized_values) > 1:
+        raise ValueError(
+            f"training_task.objective has conflicting {key!r} values: "
+            f"{sorted(normalized_values)}"
+        )
+    return values[0]
+
+
+def _compact_method_name(method_name: object) -> str:
+    normalized = str(method_name).strip()
+    for suffix in ("_usb_v1", "_v1"):
+        if normalized.endswith(suffix):
+            return normalized[: -len(suffix)]
+    return normalized
+
+
+def _short_data_source_slug(source_name: object) -> str:
+    normalized = str(source_name).strip()
+    return _DATA_SOURCE_SLUG_ALIASES.get(normalized, normalized)
+
+
+def _short_labeled_exposure_slug(exposure_slug: str) -> str:
+    if exposure_slug == "shared_client":
+        return "shared"
+    if exposure_slug == "client_local":
+        return "local"
+    if exposure_slug == "server_only":
+        return "server"
+    return exposure_slug
+
+
+def _collect_objective_parameter_values(
+    objective: Mapping[object, object],
+    key: str,
+) -> list[object]:
+    values: list[object] = []
+    dotted_suffix = f".{key}"
+    for raw_key, value in objective.items():
+        normalized_key = str(raw_key)
+        if normalized_key == key or normalized_key.endswith(dotted_suffix):
+            values.append(value)
+        if isinstance(value, Mapping):
+            values.extend(_collect_objective_parameter_values(value, key))
+    return values
+
+
+def _extract_manifest_component(manifest: str, *, prefix: str) -> str | None:
+    if not manifest:
+        return None
+    next_components = {
+        "labeled": ("unlabeled",),
+        "unlabeled": ("validation", "test"),
+        "validation": ("test",),
+    }.get(prefix, ())
+    for next_component in next_components:
+        match = re.search(
+            rf"(?:^|[/_]){re.escape(prefix)}-(.+?)_"
+            rf"{re.escape(next_component)}-",
+            manifest,
+        )
+        if match:
+            return match.group(1)
+    match = re.search(rf"(?:^|[/_]){re.escape(prefix)}-([^/]+)", manifest)
+    if match:
+        return match.group(1).split("_", 1)[0]
+    return None
+
+
+def _slugify(value: object) -> str:
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(value).strip())
+    slug = re.sub(r"_+", "_", slug).strip("._-")
+    if not slug or slug in {".", ".."}:
+        return "unknown"
+    return slug

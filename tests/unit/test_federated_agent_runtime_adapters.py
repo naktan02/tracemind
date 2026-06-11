@@ -21,7 +21,10 @@ from methods.adaptation.peft_text_encoder.federated_ssl import (
     helper_provider,
 )
 from methods.adaptation.peft_text_encoder.training import (
-    query_ssl_local_training as qcore,
+    query_ssl_federated_update as qfed_update,
+)
+from methods.adaptation.peft_text_encoder.training import (
+    query_ssl_training_session as qsession,
 )
 from methods.adaptation.peft_text_encoder.training_backend import (
     PeftEncoderTrainingBackend,
@@ -47,12 +50,9 @@ from methods.adaptation.query_text_views.view_rows import (
 )
 from methods.common.timing import TimingRecorder
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
-from methods.federated_ssl.capability_axes import (
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
-)
-from methods.federated_ssl.runtime_fallbacks import (
-    RUNTIME_FALLBACK_TRAINING_PROFILE,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,
@@ -61,13 +61,12 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
     RoundBaseSnapshotCache,
 )
-from scripts.runtime_adapters.federated_agent import base_state_materialization
-from scripts.runtime_adapters.federated_agent import generic_client_runtime_bridge
+from scripts.runtime_adapters.federated_agent import (
+    base_state_materialization,
+    generic_client_runtime_bridge,
+)
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
-)
-from scripts.runtime_adapters.federated_agent.backend_resolver import (
-    resolve_example_generation_backend_name,
 )
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
     load_peft_encoder_base_parameters,
@@ -86,6 +85,51 @@ from shared.src.contracts.training_contracts import (
 build_peft_encoder_helper_provider_for_local_ssl_policy = (
     helper_provider.build_peft_encoder_helper_provider_for_local_ssl_policy
 )
+
+
+def _peft_client_round_runtime_callables() -> dict[str, str]:
+    return {
+        "base_state_materializer": (
+            "scripts.runtime_adapters.federated_agent.base_state_materialization."
+            "load_peft_encoder_base_parameters_with_timing"
+        ),
+        "base_partition_state_materializer": (
+            "scripts.runtime_adapters.federated_agent.base_state_materialization."
+            "load_peft_encoder_base_partition_parameters_with_timing"
+        ),
+        "delta_materializer_factory": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "PeftEncoderDeltaMaterializer"
+        ),
+        "method_owned_local_training_core": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
+            "run_method_owned_peft_encoder_local_training_core"
+        ),
+        "transient_model_cache_releaser": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
+            "release_transient_model_cache"
+        ),
+        "update_artifact_byte_counter": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "server_owned_peft_encoder_update_artifact_byte_count"
+        ),
+        "update_uploader": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "upload_agent_local_peft_encoder_update"
+        ),
+        "query_ssl_training_backend_factory": (
+            "methods.adaptation.peft_text_encoder.update_family_runtime."
+            "build_training_backend_for_peft_encoder_state"
+        ),
+        "query_ssl_request_factory": (
+            "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
+            "build_query_ssl_peft_encoder_local_training_request"
+        ),
+        "query_ssl_training_runner": (
+            "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
+            "run_query_ssl_peft_encoder_local_training"
+        ),
+    }
 
 
 def test_peft_training_backend_owns_simulation_inline_executor_wiring() -> None:
@@ -117,29 +161,6 @@ def prepare_delta_materialization(*, output_dir, **kwargs):
     return PeftEncoderDeltaMaterializer(
         artifact_store=SimulationClientArtifactStore(output_dir=output_dir)
     ).prepare(**kwargs)
-
-
-def test_resolve_example_generation_backend_name_uses_runtime_fallback() -> None:
-    assert resolve_example_generation_backend_name(objective_config=None) == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    )
-    assert (
-        resolve_example_generation_backend_name(
-            objective_config=SimpleNamespace(example_generation_backend_name=None),
-        )
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
-    )
-
-
-def test_resolve_example_generation_backend_name_prefers_objective_config() -> None:
-    assert (
-        resolve_example_generation_backend_name(
-            objective_config=SimpleNamespace(
-                example_generation_backend_name="weak_strong_pair",
-            ),
-        )
-        == "weak_strong_pair"
-    )
 
 
 def test_query_text_view_requirement_rejects_missing_weak_strong_views() -> None:
@@ -181,7 +202,7 @@ def test_query_text_view_requirement_rejects_partial_usb_augmentation_fields() -
 def test_query_text_view_requirement_accepts_single_view_backend() -> None:
     require_rows_supported_by_example_backend(
         rows=[{"query_id": "q1", "text": "panic"}],
-        backend_name="prototype_rescore",
+        backend_name="peft_classifier_raw_rows",
     )
 
 
@@ -403,24 +424,25 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         return object(), object()
 
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "_build_peft_encoder_model",
         _fake_build_peft_encoder_model,
     )
     from scripts.runtime_adapters.federated_agent import base_state_materialization
+
     monkeypatch.setattr(
         base_state_materialization,
         "load_peft_encoder_base_parameters_with_timing",
         lambda **_kwargs: object(),
     )
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "load_peft_encoder_base_parameters_into_model",
         lambda **_kwargs: None,
     )
-    monkeypatch.setattr(qcore, "build_dataloader", lambda **_kwargs: [object()])
+    monkeypatch.setattr(qsession, "build_dataloader", lambda **_kwargs: [object()])
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "_build_unlabeled_loader",
         lambda **_kwargs: [object()],
     )
@@ -430,17 +452,17 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         return kwargs["model"], [{"train_loss": 0.1}], {}
 
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "train_query_ssl_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        qcore,
+        qfed_update,
         "extract_peft_encoder_parameter_deltas",
         lambda **_kwargs: ({}, {}, {}),
     )
     monkeypatch.setattr(
-        qcore,
+        qfed_update,
         "build_query_ssl_peft_encoder_update_payload",
         lambda **_kwargs: SimpleNamespace(
             update_payload=update_payload,
@@ -449,7 +471,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         ),
     )
     monkeypatch.setattr(
-        qcore,
+        qsession,
         "build_final_snapshot_pseudo_label_quality",
         lambda **_kwargs: PseudoLabelQualitySummary(
             pseudo_label_confidence_mean=0.97,
@@ -476,6 +498,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         round_runtime_config=SimpleNamespace(
             update_family_name="peft_text_encoder",
             runtime_payload_for_update_family=lambda: object(),
+            client_round_runtime=_peft_client_round_runtime_callables(),
         ),
         local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
             device="cpu",

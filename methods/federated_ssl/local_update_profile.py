@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from methods.common.config_reading import (
-    read_float,
     read_optional_positive_int,
     read_str,
     set_normalized_str,
@@ -25,33 +24,17 @@ class LocalUpdateProfile:
     algorithm_profile_name: str
     training_scope: str
     training_backend_name: str
-    confidence_threshold: float
-    margin_threshold: float
-    example_generation_backend_name: str
-    evidence_backend_name: str
-    scorer_backend_name: str
-    score_policy_name: str
-    score_top_k: int | None
     validation_scorer_backend_name: str
     validation_score_policy_name: str | None
     validation_score_top_k: int | None
-    pseudo_label_algorithm_name: str
-    acceptance_policy_name: str
     privacy_guard_name: str
-    evidence_backend_temperature: float
 
     def __post_init__(self) -> None:
         for field_name in (
             "algorithm_profile_name",
             "training_scope",
             "training_backend_name",
-            "example_generation_backend_name",
-            "evidence_backend_name",
-            "scorer_backend_name",
-            "score_policy_name",
             "validation_scorer_backend_name",
-            "pseudo_label_algorithm_name",
-            "acceptance_policy_name",
             "privacy_guard_name",
         ):
             set_normalized_str(
@@ -69,19 +52,9 @@ class LocalUpdateProfile:
                     field_name="validation_score_policy_name",
                 ),
             )
-        if not 0.0 <= self.confidence_threshold <= 1.0:
-            raise ValueError("local_update_profile.confidence_threshold invalid.")
-        if self.margin_threshold < 0.0:
-            raise ValueError("local_update_profile.margin_threshold invalid.")
-        if self.score_top_k is not None and self.score_top_k <= 0:
-            raise ValueError("local_update_profile.score_top_k must be positive.")
         if self.validation_score_top_k is not None and self.validation_score_top_k <= 0:
             raise ValueError(
                 "local_update_profile.validation_score_top_k must be positive."
-            )
-        if self.evidence_backend_temperature <= 0.0:
-            raise ValueError(
-                "local_update_profile.evidence_backend_temperature must be positive."
             )
 
     @classmethod
@@ -112,41 +85,6 @@ class LocalUpdateProfile:
                 "training_backend_name",
                 field_prefix="local_update_profile",
             ),
-            confidence_threshold=read_float(
-                source,
-                "confidence_threshold",
-                field_prefix="local_update_profile",
-            ),
-            margin_threshold=read_float(
-                source,
-                "margin_threshold",
-                field_prefix="local_update_profile",
-            ),
-            example_generation_backend_name=read_str(
-                source,
-                "example_generation_backend_name",
-                field_prefix="local_update_profile",
-            ),
-            evidence_backend_name=read_str(
-                source,
-                "evidence_backend_name",
-                field_prefix="local_update_profile",
-            ),
-            scorer_backend_name=read_str(
-                source,
-                "scorer_backend_name",
-                field_prefix="local_update_profile",
-            ),
-            score_policy_name=read_str(
-                source,
-                "score_policy_name",
-                field_prefix="local_update_profile",
-            ),
-            score_top_k=read_optional_positive_int(
-                source,
-                "score_top_k",
-                field_prefix="local_update_profile",
-            ),
             validation_scorer_backend_name=read_str(
                 source,
                 "validation_scorer_backend_name",
@@ -162,24 +100,9 @@ class LocalUpdateProfile:
                 "validation_score_top_k",
                 field_prefix="local_update_profile",
             ),
-            pseudo_label_algorithm_name=read_str(
-                source,
-                "pseudo_label_algorithm_name",
-                field_prefix="local_update_profile",
-            ),
-            acceptance_policy_name=read_str(
-                source,
-                "acceptance_policy_name",
-                field_prefix="local_update_profile",
-            ),
             privacy_guard_name=read_str(
                 source,
                 "privacy_guard_name",
-                field_prefix="local_update_profile",
-            ),
-            evidence_backend_temperature=read_float(
-                source,
-                "evidence_backend_temperature",
                 field_prefix="local_update_profile",
             ),
         )
@@ -190,19 +113,8 @@ class LocalUpdateProfile:
         result: dict[str, TrainingConfigScalar] = {
             "algorithm_profile_name": self.algorithm_profile_name,
             "training_backend_name": self.training_backend_name,
-            "confidence_threshold": self.confidence_threshold,
-            "margin_threshold": self.margin_threshold,
-            "example_generation_backend_name": self.example_generation_backend_name,
-            "evidence_backend_name": self.evidence_backend_name,
-            "scorer_backend_name": self.scorer_backend_name,
-            "score_policy_name": self.score_policy_name,
-            "pseudo_label_algorithm_name": self.pseudo_label_algorithm_name,
-            "acceptance_policy_name": self.acceptance_policy_name,
             "privacy_guard_name": self.privacy_guard_name,
-            "evidence_backend.temperature": self.evidence_backend_temperature,
         }
-        if self.score_top_k is not None:
-            result["score_top_k"] = self.score_top_k
         return result
 
 
@@ -233,20 +145,10 @@ _LOCAL_UPDATE_PROFILE_KEYS = frozenset(
         "algorithm_profile_name",
         "training_scope",
         "training_backend_name",
-        "confidence_threshold",
-        "margin_threshold",
-        "example_generation_backend_name",
-        "evidence_backend_name",
-        "scorer_backend_name",
-        "score_policy_name",
-        "score_top_k",
         "validation_scorer_backend_name",
         "validation_score_policy_name",
         "validation_score_top_k",
-        "pseudo_label_algorithm_name",
-        "acceptance_policy_name",
         "privacy_guard_name",
-        "evidence_backend_temperature",
     }
 )
 

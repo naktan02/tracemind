@@ -83,7 +83,7 @@ class ClientMetricKeys:
     MEAN_CONFIDENCE = "mean_confidence"
     # top1 접수와 top2 접수 차이의 평균
     MEAN_MARGIN = "mean_margin"
-    # 주어진 scored events 중 선택된 비율
+    # 주어진 analysis events 중 선택된 비율
     ACCEPTED_RATIO = "accepted_ratio"
     # privacy guard 적용 후 delta 벡터의 L2 norm
     DELTA_L2_NORM = "delta_l2_norm"
@@ -119,7 +119,7 @@ class TrainingTaskPayload(BaseModel):
     learning_rate: float = Field(gt=0.0, description="로컬 optimizer 학습률.")
     max_steps: int = Field(ge=1, description="로컬에서 허용되는 최대 update step 수.")
     objective_config: TrainingObjectiveConfigPayload = Field(
-        description="로컬 objective와 채택 threshold 설정."
+        description="로컬 objective/backend 선택과 family별 objective extra 설정."
     )
     selection_policy: TrainingSelectionPolicyPayload = Field(
         description="로컬 예시 선택 규칙."
@@ -141,6 +141,40 @@ class TrainingTaskPayload(BaseModel):
     secure_aggregation: SecureAggregationConfigPayload = Field(
         default_factory=SecureAggregationConfigPayload,
         description="중앙 업로드 시 요구되는 secure aggregation/encryption 설정.",
+    )
+    fssl_method: str | None = Field(
+        default=None,
+        description=(
+            "Full FL SSL method 이름. None이면 ssl_method 기반 composed 모드. "
+            "하위 호환 identity 필드이며, 새 runtime은 가능하면 "
+            "fssl_execution.method_name을 함께 읽는다."
+        ),
+    )
+    fssl_execution: dict[str, object] | None = Field(
+        default=None,
+        description=(
+            "FL SSL 실행 계획 snapshot. composition_mode, execution_role, method_name, "
+            "descriptor_name, security_policy 같은 method/runtime 선택 결과를 담는다. "
+            "허용 vocabulary와 기본값 해석은 methods/federated_ssl가 소유한다."
+        ),
+    )
+    fssl_capability_plan: dict[str, object] | None = Field(
+        default=None,
+        description=(
+            "FL SSL runtime capability snapshot. local_ssl_policy, "
+            "server_update_policy, peer_context_policy, update_partition_policy 등 "
+            "agent/main_server가 bootstrap 전에 검증할 실행 능력 조합을 담는다. "
+            "필드 의미의 실행 해석은 methods/federated_ssl capability plan이 "
+            "소유한다."
+        ),
+    )
+    fssl_context: dict[str, object] | None = Field(
+        default=None,
+        description=(
+            "fssl_method 실행에 필요한 서버 제공 context. 예: FedMatch "
+            "peer_context warmup/previous-round summary. None이면 context 없는 "
+            "일반 composed task다."
+        ),
     )
     notes: str | None = Field(
         default=None,
@@ -214,15 +248,17 @@ class TrainingUpdateEnvelopePayload(BaseModel):
     )
     example_count: int = Field(
         ge=0,
-        description="실제 update에 반영된 로컬 예시 수.",
+        description=(
+            "서버가 보는 update aggregation unit 수. Privacy-preserving runtime은 "
+            "실제 로컬 예시 수 대신 masked count를 기록할 수 있다."
+        ),
     )
     client_metrics: dict[str, float] = Field(
         description=(
             "로컬 측 학습 품질 요약 metric. "
-            "표준 키는 이 모듈의 ClientMetricKeys 참고. "
-            "기본 키: mean_confidence, mean_margin, accepted_ratio, "
-            "delta_l2_norm, selected_examples. "
-            "추가 키는 하위 호환성을 유지하며 자유롭게 확장 가능하다."
+            "표준 키는 이 모듈의 ClientMetricKeys 참고. Privacy-preserving "
+            "runtime은 per-client pseudo-label 품질/개수 metric을 서버에 보내지 "
+            "않고 빈 dict를 사용한다."
         )
     )
     created_at: datetime | None = Field(

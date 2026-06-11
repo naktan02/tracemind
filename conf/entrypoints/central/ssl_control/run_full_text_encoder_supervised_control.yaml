@@ -1,0 +1,41 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/runtime_env: gpu_online
+  - /strategy_axes/model_architecture/backbone: mxbai_encoder
+  - /strategy_axes/model_architecture/trainable_surface: full_text_encoder
+  - /run_controls/central_ssl/budget: main
+  - /execution_context/query_data_source: default
+  - /strategy_axes/model_architecture/initial_checkpoint: none
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+train_jsonl: ${query_source.train_jsonl}
+output_dir: ${central_ssl_budget.output_root}/central/supervised/full_text_encoder
+fixed_categories: ${dataset.label_categories}
+initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
+initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
+selection_set: test
+seed: 42
+train_batch_size: ${central_ssl_budget.train_batch_size}
+eval_batch_size: ${central_ssl_budget.eval_batch_size}
+epochs: ${central_ssl_budget.epochs}
+max_train_steps: ${central_ssl_budget.max_train_steps}
+learning_rate: 0.00002
+classifier_learning_rate: 0.0002
+weight_decay: 0.01
+max_grad_norm: 1.0
+log_every_steps: 100
+query_ssl_strong_view_policy: first_aug
+epoch_artifact_kind: none
+epoch_artifact_every_epochs: 0
+trainer_version: ""
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

@@ -11,10 +11,10 @@ adapter는 `agent/`와 `main_server/`가 소유한다.
 ## 경계
 
 - `scripts/workflows/datasets/`: dataset asset 생성 CLI.
-- `scripts/workflows/prototype_pack/`: prototype pack 생성, 평가, publication 보조 CLI.
 - `scripts/experiments/`: track별 실험 entrypoint와 실험 전용 runtime support.
 - `scripts/experiments/fl_ssl/`: FL SSL split, simulation, sweep entrypoint.
-- `scripts/support/query_ssl_peft/`: query-domain PEFT SSL runtime support와 IO.
+- `scripts/support/query_ssl_text_encoder/`: query-domain text encoder SSL runtime
+  support와 IO. PEFT-specific runner/artifact 이름은 PEFT leaf에만 남긴다.
 - `scripts/workflows/result_index/`: `runs` report를 index/dashboard JSON으로 정규화.
 - `scripts/runtime_adapters/`: scripts가 agent/main_server runtime을 재사용할 때 쓰는 bridge.
 - `scripts/support/reporting/`, `scripts/support/artifacts/`, `scripts/codegen/`: 보조 entrypoint/helper.

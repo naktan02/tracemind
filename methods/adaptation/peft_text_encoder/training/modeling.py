@@ -20,6 +20,16 @@ from methods.adaptation.peft_text_encoder.config import (
 from methods.adaptation.peft_text_encoder.resource_cache import (
     peft_encoder_resource_cache_key,
 )
+from methods.adaptation.text_encoder_classifier.modeling import (
+    TextEncoderWithLinearHead,
+    count_parameters,
+    load_classifier_head_state_if_configured,
+    load_transformer_backbone,
+    load_transformer_tokenizer,
+)
+from methods.adaptation.text_encoder_classifier.modeling import (
+    build_trainable_surface_manifest as build_text_encoder_trainable_surface_manifest,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 
 _SUPPORTED_TRAINABLE_SURFACES = frozenset({"peft_text_encoder"})
@@ -49,98 +59,17 @@ class PeftEncoderModelRuntimeConfig(Protocol):
     trust_remote_code: bool
 
 
-class PeftTextEncoderWithLinearHead(nn.Module):
+class PeftTextEncoderWithLinearHead(TextEncoderWithLinearHead):
     """Frozen backbone + PEFT adapter + linear head 묶음."""
-
-    def __init__(
-        self,
-        *,
-        backbone: nn.Module,
-        hidden_size: int,
-        num_labels: int,
-        classifier_dropout: float,
-    ) -> None:
-        super().__init__()
-        self.backbone = backbone
-        self.dropout = nn.Dropout(classifier_dropout)
-        self.classifier = nn.Linear(hidden_size, num_labels)
-
-    def forward(
-        self,
-        *,
-        input_ids,
-        attention_mask,
-    ):
-        pooled = self.extract_pooled_features(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-        )
-        pooled = self.dropout(pooled).to(self.classifier.weight.dtype)
-        return self.classifier(pooled)
-
-    def extract_pooled_features(
-        self,
-        *,
-        input_ids,
-        attention_mask,
-    ):
-        """분포 시각화용 dropout 전 pooled backbone representation을 반환한다."""
-
-        outputs = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
-        hidden = outputs.last_hidden_state
-        mask = attention_mask.unsqueeze(-1).to(hidden.dtype)
-        pooled = (hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
-        return pooled.to(self.classifier.weight.dtype)
-
-
-def count_parameters(model: nn.Module) -> dict[str, int]:
-    """총 파라미터와 학습 가능한 파라미터 수를 반환한다."""
-
-    total = 0
-    trainable = 0
-    for parameter in model.parameters():
-        size = parameter.numel()
-        total += size
-        if parameter.requires_grad:
-            trainable += size
-    return {"total": total, "trainable": trainable}
 
 
 def build_trainable_surface_manifest(cfg: Any) -> dict[str, object]:
     """Hydra trainable_surface 축을 중앙 trainer manifest로 정규화한다."""
 
-    surface_cfg = getattr(cfg, "trainable_surface", None)
-    if surface_cfg is None:
-        raise ValueError(
-            "trainable_surface config is required. Select "
-            "strategy_axes/model_architecture/trainable_surface=<surface>."
-        )
-    surface_name = _required_str(
-        getattr(surface_cfg, "name", ""),
-        field_name="trainable_surface.name",
+    return build_text_encoder_trainable_surface_manifest(
+        cfg,
+        supported_surface_names=_SUPPORTED_TRAINABLE_SURFACES,
     )
-    if surface_name not in _SUPPORTED_TRAINABLE_SURFACES:
-        raise ValueError(
-            "Unsupported trainable_surface.name for PEFT text encoder trainer: "
-            f"{surface_name!r}. Supported: {sorted(_SUPPORTED_TRAINABLE_SURFACES)}."
-        )
-    return {
-        "name": surface_name,
-        "model_artifact_kind": _required_str(
-            getattr(surface_cfg, "model_artifact_kind", ""),
-            field_name="trainable_surface.model_artifact_kind",
-        ),
-        "trainable_state": _required_str(
-            getattr(surface_cfg, "trainable_state", ""),
-            field_name="trainable_surface.trainable_state",
-        ),
-        "requires_peft_adapter": bool(
-            getattr(surface_cfg, "requires_peft_adapter", False)
-        ),
-        "supports_initial_adapter": bool(
-            getattr(surface_cfg, "supports_initial_adapter", False)
-        ),
-    }
 
 
 def build_peft_text_encoder_with_linear_head_from_config(
@@ -208,15 +137,14 @@ def _load_tokenizer(
         cached = runtime_resource_cache.get_resource(key)
         if cached is not None:
             return cached
-    tokenizer = tokenizer_cls.from_pretrained(
-        peft_config.tokenizer_model_id,
+    tokenizer = load_transformer_tokenizer(
+        tokenizer_cls=tokenizer_cls,
+        model_id=peft_config.tokenizer_model_id,
         revision=peft_config.tokenizer_revision,
         cache_dir=runtime_config.cache_dir,
         local_files_only=runtime_config.local_files_only,
         trust_remote_code=runtime_config.trust_remote_code,
     )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
     if runtime_resource_cache is not None:
         runtime_resource_cache.set_resource(key, tokenizer)
     return tokenizer
@@ -247,8 +175,9 @@ def _load_backbone_base(
                     "Cached PEFT text encoder/head backbone must be nn.Module."
                 )
             return copy.deepcopy(cached)
-    backbone_base = model_cls.from_pretrained(
-        peft_config.backbone_model_id,
+    backbone_base = load_transformer_backbone(
+        model_cls=model_cls,
+        model_id=peft_config.backbone_model_id,
         revision=peft_config.backbone_revision,
         cache_dir=runtime_config.cache_dir,
         local_files_only=runtime_config.local_files_only,
@@ -299,23 +228,23 @@ def build_model(
         require_transformer_stack()
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        str(cfg.paper_backbone.tokenizer_model_id),
+    tokenizer = load_transformer_tokenizer(
+        tokenizer_cls=AutoTokenizer,
+        model_id=str(cfg.paper_backbone.tokenizer_model_id),
         revision=str(cfg.paper_backbone.tokenizer_revision),
         cache_dir=str(cfg.paper_backbone.cache_dir),
         local_files_only=bool(cfg.runtime.local_files_only),
         trust_remote_code=bool(cfg.paper_backbone.trust_remote_code),
     )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
 
     initial_adapter_dir = str(getattr(cfg, "initial_adapter_dir", "") or "").strip()
     initial_classifier_path = str(
         getattr(cfg, "initial_classifier_path", "") or ""
     ).strip()
 
-    backbone_base = AutoModel.from_pretrained(
-        str(cfg.paper_backbone.model_id),
+    backbone_base = load_transformer_backbone(
+        model_cls=AutoModel,
+        model_id=str(cfg.paper_backbone.model_id),
         revision=str(cfg.paper_backbone.revision),
         cache_dir=str(cfg.paper_backbone.cache_dir),
         local_files_only=bool(cfg.runtime.local_files_only),
@@ -348,19 +277,11 @@ def build_model(
         num_labels=len(categories),
         classifier_dropout=float(cfg.paper_backbone.classifier_dropout),
     ).to(device)
-    if initial_classifier_path:
-        import torch
-
-        classifier_bundle = torch.load(initial_classifier_path, map_location="cpu")
-        checkpoint_categories = [
-            str(category) for category in classifier_bundle["categories"]
-        ]
-        if checkpoint_categories != categories:
-            raise ValueError(
-                "initial classifier categories do not match current categories: "
-                f"{checkpoint_categories} != {categories}"
-            )
-        model.classifier.load_state_dict(classifier_bundle["classifier_state_dict"])
+    load_classifier_head_state_if_configured(
+        model=model,
+        categories=categories,
+        classifier_path=initial_classifier_path,
+    )
 
     summary = {
         "backbone_model_id": str(cfg.paper_backbone.model_id),
@@ -385,13 +306,6 @@ def build_model(
         "parameter_counts": count_parameters(model),
     }
     return model, tokenizer, summary
-
-
-def _required_str(value: object, *, field_name: str) -> str:
-    normalized = str(value or "").strip()
-    if not normalized:
-        raise ValueError(f"{field_name} must not be empty.")
-    return normalized
 
 
 def _loaded_checkpoint_peft_adapter_summary(cfg: Any) -> dict[str, object]:

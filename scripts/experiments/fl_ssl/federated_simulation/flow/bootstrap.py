@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_plan import PEER_CONTEXT_NONE
+from methods.federated_ssl.capabilities.plan import PEER_CONTEXT_NONE
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )

@@ -9,7 +9,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Mapping, Protocol
 
-from shared.src.contracts.child_support_contracts import (
+from agent.src.contracts.child_support_contracts import (
     ChildSupportAssistantMode,
 )
 

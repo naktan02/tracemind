@@ -7,10 +7,10 @@ from torch import nn
 
 from methods.ssl.algorithms.adamatch.adamatch import (
     AdaMatchAlgorithm,
+    AdaMatchDistAlignHook,
     compute_adamatch_step,
 )
 from methods.ssl.hooks.adaptive_thresholding import RelativeConfidenceThresholdingHook
-from methods.ssl.hooks.distribution_alignment import AdaMatchDistAlignHook
 from methods.ssl.registry import (
     build_query_ssl_algorithm,
     resolve_query_ssl_algorithm_descriptor,

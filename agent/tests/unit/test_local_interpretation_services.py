@@ -8,27 +8,26 @@ from agent.src.services.inference.baseline_service import (
     BaselineConfig,
     BaselineService,
 )
+from agent.src.services.inference.decision_policy import RuleBasedDecisionPolicy
 from agent.src.services.inference.decision_service import DecisionService
+from agent.src.services.inference.state import (
+    BaselineProfile,
+)
 from agent.src.services.inference.time_series_service import (
     TimeSeriesAccumulator,
     TimeSeriesConfig,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
-from shared.src.domain.entities.inference.state import (
-    BaselineProfile,
-    PersonalizationState,
-)
-from shared.src.domain.policies.decision_policy import RuleBasedDecisionPolicy
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
-def _scored_event(
+def _analysis_event(
     *,
     query_id: str,
     occurred_at: datetime,
     depression: float,
     normal: float = 0.2,
-) -> ScoredEvent:
-    return ScoredEvent(
+) -> AnalysisEvent:
+    return AnalysisEvent(
         query_id=query_id,
         occurred_at=occurred_at,
         translated_text=None,
@@ -44,7 +43,7 @@ def _scored_event(
 def test_baseline_service_builds_profile_from_recent_history() -> None:
     base_time = datetime(2026, 3, 29, 9, 0, 0)
     history = [
-        _scored_event(
+        _analysis_event(
             query_id=f"q{i}",
             occurred_at=base_time - timedelta(days=3 - i),
             depression=value,
@@ -77,33 +76,25 @@ def test_time_series_accumulator_tracks_elevated_streaks() -> None:
         warmup_complete=True,
         category_means={"depression": 0.2},
     )
-    personalization_state = PersonalizationState(
-        schema_version="personalization_state.v1",
-        state_version="ps_001",
-        threshold_by_category={"depression": 0.15},
-        warmup_status="ready",
-    )
     accumulator = TimeSeriesAccumulator(
         config=TimeSeriesConfig(ewma_alpha=0.5, default_delta_threshold=0.15)
     )
 
     first_state = accumulator.update(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q1",
             occurred_at=base_time,
             depression=0.5,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
     )
     second_state = accumulator.update(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q2",
             occurred_at=base_time + timedelta(hours=1),
             depression=0.55,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
         previous_state=first_state,
     )
 
@@ -121,12 +112,6 @@ def test_decision_service_distinguishes_spike_from_persistent_change() -> None:
         category_means={"depression": 0.2},
         category_sigmas={"depression": 0.05},
     )
-    personalization_state = PersonalizationState(
-        schema_version="personalization_state.v1",
-        state_version="ps_001",
-        threshold_by_category={"depression": 0.2},
-        warmup_status="ready",
-    )
     service = DecisionService(
         accumulator=TimeSeriesAccumulator(
             config=TimeSeriesConfig(ewma_alpha=0.5, default_delta_threshold=0.2)
@@ -143,32 +128,29 @@ def test_decision_service_distinguishes_spike_from_persistent_change() -> None:
     )
 
     first = service.evaluate(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q1",
             occurred_at=base_time,
             depression=0.55,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
     )
     second = service.evaluate(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q2",
             occurred_at=base_time + timedelta(hours=1),
             depression=0.62,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
         previous_state=first.time_series_state,
     )
     third = service.evaluate(
-        scored_event=_scored_event(
+        analysis_event=_analysis_event(
             query_id="q3",
             occurred_at=base_time + timedelta(hours=2),
             depression=0.68,
         ),
         baseline_profile=profile,
-        personalization_state=personalization_state,
         previous_state=second.time_series_state,
     )
 

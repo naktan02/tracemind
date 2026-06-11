@@ -28,9 +28,6 @@ scaffold의 source of truth는
   `methods/adaptation/peft_text_encoder/`가 소유한다. 삭제된
   `methods/adaptation/lora_classifier/` direct import path는 repo 내부 compatibility
   표면이 아니다.
-- prototype 기반 query adaptation이 추가되더라도 이 패키지는 text view와
-  token-batch glue만 제공한다. prototype building/scoring/training 의미는
-  `methods/prototype/**` 계층이 소유하고, 이 패키지는 tokenizer/view 입력만 넘긴다.
 - agent API, local private state, query buffer repository 접근은 agent layer에
   남긴다.
 - shared update payload, artifact materialization, PEFT model composition은 이

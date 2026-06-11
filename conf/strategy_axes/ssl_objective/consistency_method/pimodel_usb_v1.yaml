@@ -1,0 +1,8 @@
+# @package query_ssl_method
+
+name: pimodel_usb_v1
+algorithm_name: pimodel
+unsup_warm_up: 0.4
+lambda_u: 1.0
+unlabeled_batch_size: ${train_batch_size}
+require_multiview: true

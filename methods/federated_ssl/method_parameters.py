@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from importlib import import_module
 from typing import Mapping
+
+from methods.federated_ssl.method_module_resolution import (
+    import_method_family_module,
+)
 
 ORIGINAL_PARAMETER_MAPPING_FUNCTION = "original_parameter_mapping"
 DEFAULT_ORIGINAL_SCENARIO_NAME = "DEFAULT_ORIGINAL_SCENARIO"
@@ -47,6 +50,7 @@ def build_federated_ssl_method_parameter_snapshot(
     scenario = _resolve_scenario(
         method_name=normalized_method_name,
         method_config=method_config,
+        use_original_parameters=use_original_parameters,
     )
     original_parameters = (
         _load_original_parameters(
@@ -105,11 +109,16 @@ def _resolve_scenario(
     *,
     method_name: str,
     method_config: Mapping[str, object],
+    use_original_parameters: bool,
 ) -> str:
     configured = _optional_str(method_config.get("scenario"))
     if configured is not None:
         return configured
-    module = _import_original_spec_module(method_name)
+    module = _import_optional_original_spec_module(method_name)
+    if module is None:
+        if not use_original_parameters:
+            return "default"
+        raise ValueError(f"method={method_name} does not expose original_spec.py.")
     default_scenario = _optional_str(
         getattr(module, DEFAULT_ORIGINAL_SCENARIO_NAME, "")
     )
@@ -119,15 +128,17 @@ def _resolve_scenario(
 
 
 def _import_original_spec_module(method_name: str) -> object:
-    module_name = f"methods.federated_ssl.{method_name}.original_spec"
-    try:
-        return import_module(module_name)
-    except ModuleNotFoundError as exc:
-        if exc.name == module_name:
-            raise ValueError(
-                f"method={method_name} does not expose original_spec.py."
-            ) from exc
-        raise
+    module = _import_optional_original_spec_module(method_name)
+    if module is None:
+        raise ValueError(f"method={method_name} does not expose original_spec.py.")
+    return module
+
+
+def _import_optional_original_spec_module(method_name: str) -> object | None:
+    return import_method_family_module(
+        method_name=method_name,
+        module_leaf="original_spec",
+    )
 
 
 def _validate_override_keys(

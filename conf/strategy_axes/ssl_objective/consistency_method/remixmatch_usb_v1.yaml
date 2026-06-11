@@ -1,0 +1,16 @@
+# @package query_ssl_method
+
+name: remixmatch_usb_v1
+algorithm_name: remixmatch
+T: 0.5
+unsup_warm_up: 0.015625
+mixup_alpha: 0.75
+mixup_manifold: true
+kl_loss_ratio: 0.5
+rot_loss_ratio: 0.0
+lambda_u: 1.0
+supervised_loss_weight: 1.0
+dist_align_momentum: 0.999
+unlabeled_batch_size: ${train_batch_size}
+require_multiview: true
+require_weak_strong_pair: true

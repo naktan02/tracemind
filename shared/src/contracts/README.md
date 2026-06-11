@@ -25,7 +25,6 @@
 - query-domain 적응 단계에서만 `PEFT text encoder + linear head`를 연다.
 - 시스템/FL 트랙의 우선 baseline은 `embedding -> shared scoring state -> local interpretation`이다.
 - 여기서 linear classifier head는 공통 class evidence를 만드는 shared scoring artifact 중 하나로 본다.
-- `PrototypePack`과 shared adapter 계열 계약은 제거 대상이 아니라 비교 실험/확장 축으로 유지한다.
 - 이 README의 계약은 현재 `시스템/FL runtime`의 source of truth다. 중앙집중형 PEFT text encoder 논문 trainer는 별도 실험 레일로 다루며, paper-track scaffold는 `docs/contracts/central_peft_text_encoder_trainer_contract.md`를 기준으로 본다.
 
 ## 주요 파일
@@ -37,11 +36,8 @@
 - `ModelManifest`
   - `model_id`, `model_revision`, `artifact_ref`, `training_scope`를 묶은 현재
     전역 shared artifact 설명
-  - `auxiliary_artifact_versions`는 prototype pack처럼 주 artifact에 부속되는
-    artifact version을 중립 이름으로 기록한다. prototype pack은
-    `auxiliary_artifact_versions["prototype_pack"]`로만 표현한다
-  - 구형 payload의 top-level `prototype_version`은 파싱 시 위 auxiliary map으로
-    승격하지만 canonical dump에는 다시 쓰지 않는다
+  - `auxiliary_artifact_versions`는 주 artifact에 부속되는 artifact version을
+    중립 이름으로 기록한다
   - main server가 revision별 manifest와 active pointer를 소유한다
   - `artifact_ref`는 server-owned opaque ref이며, 파일 경로 해석은
     main server repository 내부 compatibility로만 처리한다
@@ -69,7 +65,9 @@ runtime과 test는 family별 direct import를 사용한다.
 - `SharedAdapterStatePayload`
   - 서버가 현재 배포하는 전역 shared adapter 상태 공통 필드
 - `ClassifierHeadAdapterStatePayload`
-  - classifier-head concrete 구현
+  - classifier-head v1 concrete 구현
+  - `head_kind="linear"`를 사용한다. `classifier_head.v1`은 generic
+    classifier head family 전체가 아니라 category별 linear head payload다
   - `label_weights`, `label_biases`는 category별 linear head 파라미터다
 - `PeftClassifierAdapterStatePayload`
   - PEFT-classifier v2 concrete 구현
@@ -88,8 +86,14 @@ runtime과 test는 family별 direct import를 사용한다.
     inline `state`를 로컬 캐시에 저장해 사용한다
 - `SharedAdapterUpdatePayload`
   - agent가 서버로 올리는 shared adapter update 공통 필드
+  - per-agent pseudo-label 분포(`label_counts`)는 서버 전송 payload에 넣지 않고
+    필요하면 agent-local diagnostics에만 남긴다
+  - 서버 전송 payload의 `example_count`는 집계 가능 update 존재 여부에 가까운
+    server-visible 단위이며, 실제 로컬 표본 수와 pseudo-label 품질 metric은
+    agent-local diagnostics에만 남긴다
 - `ClassifierHeadAdapterUpdatePayload`
-  - classifier-head concrete 구현
+  - classifier-head v1 concrete 구현
+  - `head_kind="linear"`를 사용한다
   - `label_weight_deltas`, `label_bias_deltas`는 category별 head 변화량이다
 - `PeftClassifierAdapterUpdatePayload`
   - PEFT-classifier v2 update concrete 구현
@@ -112,6 +116,11 @@ runtime과 test는 family별 direct import를 사용한다.
 - `TrainingSelectionPolicyPayload`
   - 한 라운드에서 사용할 로컬 예시 선택 제한과 selection policy별 확장값을 담는다
 
+### `scoring_contracts.py`
+
+추론/검증에서 category score를 계산할 backend와 score policy를 정의한다.
+training objective에는 scorer field를 두지 않는다.
+
 ### `training_example_backends.py`
 
 agent training example backend 이름 중 여러 계층이 함께 읽는 canonical 값을 정의한다.
@@ -119,8 +128,6 @@ agent training example backend 이름 중 여러 계층이 함께 읽는 canonic
 - `WEAK_STRONG_PAIR_EXAMPLE_BACKEND`
   - source row가 weak/strong view pair를 제공해야 하는 backend 이름
   - 실제 row shape 검증은 text view owner인 `methods/adaptation/query_text_views`가 맡는다
-- `PROTOTYPE_RESCORE_EXAMPLE_BACKEND`
-  - prototype 기반 single-view rescore backend 이름
 
 ### `secure_aggregation_contracts.py`
 
@@ -146,7 +153,17 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 
 - `TrainingTaskPayload`
   - 서버가 agent에 내려주는 학습 task
-  - 로컬 학습 하이퍼파라미터, threshold, selection policy 포함
+  - 로컬 학습 하이퍼파라미터와 selection policy 포함
+  - `fssl_method`/`fssl_context`는 full FL SSL method-owned 실행을 위한 하위 호환
+    identity/context다
+  - `fssl_execution`은 method-owned/composed 실행 역할, descriptor 선택 결과,
+    `runtime_surface.update_family_name`/`payload_adapter_kind`/`aggregation_backend_name`
+    같은 live runtime surface를 담는 snapshot이다
+  - `fssl_capability_plan`은 local SSL policy, server update policy, peer context,
+    update partition 같은 runtime capability 조합 snapshot이다. 허용 vocabulary와
+    기본값 해석은 `methods/federated_ssl`가 소유한다
+  - cutoff/threshold류 값은 공통 task 기본값이 아니라 method-owned objective extras
+    또는 method descriptor/profile에서 해석한다
   - 구버전 `secure_aggregation_required` 입력/property는
     `secure_aggregation.required`로 수렴시키는 compatibility 표면이다. 유지 이유와
     제거 조건은 `docs/contracts/legacy_contract_ledger.md`를 따른다
@@ -165,80 +182,9 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 - `DecisionFeedbackSignalPayload`
   - pseudo-label, 사용자 피드백, 후속 결과 등 로컬 학습용 signal 단위 계약
 
-### `wellbeing_signal_contracts.py`
-
-가족용 확장 프로그램이 읽는 wellbeing signal 출력 계약을 정의한다.
-
-- `WellbeingSignalSummaryPayload`
-  - 아이용/부모용 현재 상태 카드 source of truth
-- `WellbeingSignalTimeseriesPayload`
-  - 부모용 전체 추이 그래프 source of truth
-- `ParentUnlockRequestPayload`
-  - 부모용 상세 화면 진입용 PIN 요청
-- `ParentUnlockResponsePayload`
-  - 부모용 상세 화면 접근 결과와 세션 메타데이터
-
-### `family_access_contracts.py`
-
-가족용 확장 프로그램의 app-level setup/auth 경계를 정의한다.
-
-- `FamilySetupStatusPayload`
-  - 최초 setup 완료 여부와 현재 로컬 access mode
-- `FamilySetupRequestPayload`
-  - child/parent PIN 최초 설정 요청
-- `FamilyUnlockRequestPayload`
-  - role별 잠금 해제 요청
-- `FamilyUnlockResponsePayload`
-  - role별 세션 메타데이터와 남은 시도 횟수
-
-### `child_support_contracts.py`
-
-가족용 확장 프로그램의 아이용 지원 대화 API 경계를 정의한다.
-
-- `ChildSupportConversationRequestPayload`
-  - child UI가 로컬 agent에 보내는 단일 turn 입력
-  - raw message는 로컬 agent API에만 전달되며 서버 공유 artifact가 아니다
-- `ChildSupportConversationResponsePayload`
-  - agent가 반환하는 단일 turn 응답
-  - `conversation_id`는 agent-local 대화 저장소의 conversation key다
-  - `assistant_mode`는 현재 응답 생성 backend가 `local_guarded`, `local_llm`, future `llm` 중 무엇인지 나타낸다
-  - `safety_level`은 child UI가 과도한 내부 점수 없이 표시할 수 있는 지원 단계다
-  - `scope_status`는 마음 도움 범위 안에서 답했는지, 별도 질문을 redirect했는지 나타낸다
-- `ChildSupportProactivePromptPayload`
-  - 아이 화면 진입 시 agent가 먼저 말을 꺼낼지 여부
-  - 실제 관측 summary가 없거나 low-data이면 `should_prompt=false`로 둔다
-- `ChildSupportSuggestionPayload`
-  - 후속 입력 suggestion
-
-중요:
-
-- 대화 원문, conversation 저장, LLM provider, prompt, safety policy,
-  response plan/validation 실행 방식은 agent runtime이 소유한다.
-- UI는 응답을 표시하고 다음 입력을 보낼 뿐, wellbeing이나 safety 의미를 재정의하지 않는다.
-
-### `prototype_contracts.py`
-
-Prototype runtime이 직접 읽는 semantic artifact 계약을 정의한다.
-
-- `PrototypePackPayload`
-  - category마다 하나 이상의 prototype을 가진다
-  - single prototype도 길이 1 리스트로 정규화해서 해석한다
-  - v1 classifier-first baseline에서는 bootstrap/comparison artifact로도 쓴다
-- `CategoryPrototypePayload`
-  - `prototype_id`, `centroid`, `sample_count`를 담는다
-- `extract_category_prototypes(...)`
-  - runtime scoring용 `category -> prototype vectors` 변환 helper
-- `extract_category_centroids(...)`
-  - single-prototype pack에서만 쓰는 legacy helper
-
-### `prototype_build_state_contracts.py`
-
-Prototype exact incremental merge용 build-state 계약을 정의한다.
-
-- `PrototypeBuildStatePayload`
-  - 현재 v1은 category별 `embedding_sum`, `sample_count`만 담는다
-  - 따라서 exact incremental merge는 single mean-centroid builder 전용이다
-  - multi-prototype builder는 build-state 없이 pack만 생성할 수 있다
+Agent-local API/UI 계약은 `agent/src/contracts/`가 소유한다. captured text,
+typing segment, child support, family access, wellbeing signal처럼 main_server나
+FL envelope이 해석하지 않는 payload는 shared 계약으로 두지 않는다.
 
 ## 해석 규칙
 
@@ -265,6 +211,8 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 추가 원칙:
 
 - `classifier_head` family는 전역 class evidence를 제공하는 shared head로 해석한다.
+  현재 v1 payload shape는 `linear` head만 표현하므로, MLP/projection head처럼
+  다른 shape가 필요하면 `classifier_head.v2` 또는 별도 payload family를 연다.
 - `peft_classifier` family는 기존 `classifier_head`의 옵션이 아니라, PEFT
   adapter state와 classifier head state를 함께 배포/집계하는 별도 family다.
 - 로컬 개인화와 최종 판단은 이 계약 파일이 아니라 agent 로컬 runtime 계층이 소유한다.

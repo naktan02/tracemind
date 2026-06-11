@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from main_server.src.infrastructure.repositories import (  # noqa: E402
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
@@ -16,6 +18,7 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
 )
 from main_server.src.services.federation.rounds.boundary.models import (  # noqa: E402
     RoundOpenRequest,
+    RoundStrategyConfig,
 )
 from main_server.src.services.federation.rounds.payload_adapters.registry import (  # noqa: E402
     build_shared_adapter_round_payload_adapter,
@@ -25,7 +28,9 @@ from main_server.src.services.federation.rounds.round_manager_service import (  
     RoundPublicationRequest,
 )
 from methods.federated_ssl.runtime_fallbacks import (
-    RUNTIME_FALLBACK_TRAINING_PROFILE,
+    build_runtime_fallback_secure_aggregation_config,
+    build_runtime_fallback_training_objective_config,
+    build_runtime_fallback_training_selection_policy,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_delta_payload,
@@ -163,6 +168,38 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
     service = RoundManagerService(
         payload_adapter=_build_peft_classifier_round_payload_adapter()
     )
+    expected_objective = build_runtime_fallback_training_objective_config()
+
+    request = RoundOpenRequest(
+        active_manifest=ModelManifest(
+            schema_version="model_manifest.v1",
+            model_id="tracemind-embed",
+            model_revision="rev_000",
+            published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+            artifact_kind="shared_adapter_state",
+            artifact_ref="/tmp/rev_000.json",
+            auxiliary_artifact_versions={"calibration_set": "calib_000"},
+            training_scope="adapter_only",
+            training_enabled=True,
+            compatible_task_types=("pseudo_label_self_training",),
+        ),
+        round_id="round_0001",
+    )
+    task = service.create_training_task(request)
+
+    assert task.local_epochs == request.local_epochs
+    assert task.batch_size == request.batch_size
+    assert task.learning_rate == request.learning_rate
+    assert task.max_steps == request.max_steps
+    assert task.objective_config == expected_objective
+    assert task.selection_policy == build_runtime_fallback_training_selection_policy()
+    assert task.secure_aggregation == build_runtime_fallback_secure_aggregation_config()
+
+
+def test_round_manager_builds_objective_from_round_strategy() -> None:
+    service = RoundManagerService(
+        payload_adapter=_build_peft_classifier_round_payload_adapter()
+    )
 
     task = service.create_training_task(
         RoundOpenRequest(
@@ -173,53 +210,112 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
                 artifact_ref="/tmp/rev_000.json",
-                auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+                auxiliary_artifact_versions={},
                 training_scope="adapter_only",
                 training_enabled=True,
                 compatible_task_types=("pseudo_label_self_training",),
             ),
             round_id="round_0001",
+            batch_size=8,
+            strategy=RoundStrategyConfig(
+                local_update_profile="peft_classifier_update_v1",
+                ssl_method="flexmatch_usb_v1",
+                server_update_policy="fedavg_merged_delta",
+                aggregation_backend="fedavg",
+                parameter_overrides={"p_cutoff": 0.9},
+            ),
         )
     )
 
-    assert task.local_epochs == RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs
-    assert task.batch_size == RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size
-    assert task.learning_rate == RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate
-    assert task.max_steps == RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps
+    assert task.objective_config.algorithm_profile_name == ("peft_classifier_update_v1")
+    assert task.objective_config.extras["query_ssl.method_name"] == ("flexmatch_usb_v1")
+    assert task.objective_config.extras["query_ssl.algorithm_name"] == "flexmatch"
+    assert task.objective_config.extras["query_ssl.unlabeled_batch_size"] == 8
+    assert task.objective_config.extras["query_ssl.thresh_warmup"] is True
+    assert task.objective_config.extras["query_ssl.p_cutoff"] == 0.9
+    assert "p_cutoff" not in task.objective_config.extras
+
+
+def test_round_manager_adds_fssl_runtime_snapshots_for_method_owned_task() -> None:
+    service = RoundManagerService(
+        payload_adapter=_build_peft_classifier_round_payload_adapter()
+    )
+
+    task = service.create_training_task(
+        RoundOpenRequest(
+            active_manifest=ModelManifest(
+                schema_version="model_manifest.v1",
+                model_id="tracemind-embed",
+                model_revision="rev_000",
+                published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+                artifact_kind="shared_adapter_state",
+                artifact_ref="/tmp/rev_000.json",
+                auxiliary_artifact_versions={},
+                training_scope="adapter_only",
+                training_enabled=True,
+                compatible_task_types=("pseudo_label_self_training",),
+            ),
+            round_id="round_fedmatch",
+            strategy=RoundStrategyConfig(
+                mode="method_owned",
+                fssl_method="fedmatch",
+                scenario="labels-at-client",
+            ),
+        )
+    )
+
+    assert task.fssl_method == "fedmatch"
+    assert task.fssl_execution is not None
+    assert task.fssl_execution["execution_role"] == "method_owned"
+    assert task.fssl_execution["method_name"] == "fedmatch"
+    assert task.fssl_execution["runtime_surface"] == {
+        "payload_adapter_kind": "peft_classifier",
+        "update_family_name": "peft_text_encoder",
+        "aggregation_backend_name": "fedavg",
+    }
+    assert task.fssl_capability_plan is not None
     assert (
-        task.objective_config.training_backend_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.training_backend_name
-    )
-    assert task.objective_config.algorithm_profile_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.algorithm_profile_name
+        task.fssl_capability_plan["server_update_policy"]["name"]
+        == "fedmatch_partitioned"
     )
     assert (
-        task.objective_config.example_generation_backend_name
-        == RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
+        task.fssl_capability_plan["local_ssl_policy"]["name"]
+        == "fedmatch_agreement"
     )
-    assert task.objective_config.evidence_backend_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.evidence_backend_name
+
+
+def test_round_manager_rejects_method_owned_runtime_surface_drift() -> None:
+    service = RoundManagerService(
+        payload_adapter=_build_peft_classifier_round_payload_adapter()
     )
-    assert task.objective_config.scorer_backend_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-    )
-    assert task.objective_config.score_policy_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.score_policy_name
-    )
-    assert task.objective_config.acceptance_policy_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
-    )
-    assert task.objective_config.privacy_guard_name == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name
-    )
-    assert task.objective_config.confidence_threshold == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.confidence_threshold
-    )
-    assert task.objective_config.margin_threshold == (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.margin_threshold
-    )
-    assert task.objective_config.extras == {}
-    assert task.secure_aggregation.required is False
+
+    with pytest.raises(ValueError, match="method recipe does not support"):
+        service.create_training_task(
+            RoundOpenRequest(
+                active_manifest=ModelManifest(
+                    schema_version="model_manifest.v1",
+                    model_id="tracemind-embed",
+                    model_revision="rev_000",
+                    published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+                    artifact_kind="shared_adapter_state",
+                    artifact_ref="/tmp/rev_000.json",
+                    auxiliary_artifact_versions={},
+                    training_scope="adapter_only",
+                    training_enabled=True,
+                    compatible_task_types=("pseudo_label_self_training",),
+                ),
+                round_id="round_fedmatch",
+                strategy=RoundStrategyConfig(
+                    mode="method_owned",
+                    fssl_method="fedmatch",
+                ),
+            ),
+            runtime_surface={
+                "payload_adapter_kind": "linear_head",
+                "update_family_name": "linear_head",
+                "aggregation_backend_name": "fedavg",
+            },
+        )
 
 
 def test_round_manager_accepts_secure_aggregation_config_on_training_task() -> None:
@@ -236,7 +332,7 @@ def test_round_manager_accepts_secure_aggregation_config_on_training_task() -> N
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
                 artifact_ref="/tmp/rev_000.json",
-                auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+                auxiliary_artifact_versions={"calibration_set": "calib_000"},
                 training_scope="adapter_only",
                 training_enabled=True,
                 compatible_task_types=("pseudo_label_self_training",),
@@ -326,7 +422,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
                 artifact_ref=repository.ref_for_revision("rev_000"),
-                auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+                auxiliary_artifact_versions={"calibration_set": "calib_000"},
                 training_scope="adapter_only",
                 training_enabled=True,
                 compatible_task_types=("pseudo_label_self_training",),
@@ -347,7 +443,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
                 )
             ],
             next_model_revision="rev_001",
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            next_auxiliary_artifact_versions={"calibration_set": "calib_001"},
         )
     )
 

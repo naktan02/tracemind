@@ -13,7 +13,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationResult,
     SimulationRoundSummary,
 )
-from scripts.experiments.fl_ssl.run_federated_client_count_sweep import (
+from scripts.experiments.fl_ssl.federated_simulation.sweep import (
     ClientCountSweepRunResult,
     _copy_config_with_client_count,
     build_client_count_sweep_summary_payload,
@@ -50,10 +50,12 @@ def _cfg(
                 "labeled_ratio": 0.1,
                 "unlabeled_ratio": 0.9,
             },
-            "client_count_sweep": {
+            "sweep": {
                 "output_dir": "runs/test_client_count_sweep",
-                "client_counts": client_counts,
-                "split_manifest_by_client_count": split_manifest_by_client_count,
+                "client_count": {
+                    "members": client_counts,
+                    "split_manifest_by_client_count": split_manifest_by_client_count,
+                },
             },
         }
     )
@@ -157,7 +159,10 @@ def test_materialized_manifest_mapping_is_required_before_sweep_runs() -> None:
     )
 
     with pytest.raises(ValueError, match="split_manifest_by_client_count"):
-        run_client_count_sweep_from_config(cfg)
+        run_client_count_sweep_from_config(
+            cfg,
+            line_renderer=lambda **_: [],
+        )
 
 
 def test_materialized_manifest_mapping_requires_every_client_count_key() -> None:

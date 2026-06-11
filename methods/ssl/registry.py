@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import pkgutil
 from collections.abc import Callable, Mapping
 from typing import Any
@@ -14,6 +15,7 @@ from .base import (
     QuerySslAlgorithmDescriptor,
     QuerySslAlgorithmFactory,
     QuerySslRequiredViews,
+    QuerySslRuntimeRequirements,
 )
 
 _QUERY_SSL_ALGORITHM_REGISTRY = MethodRegistry[QuerySslAlgorithmDescriptor](
@@ -34,6 +36,7 @@ def register_query_ssl_algorithm(
     required_views: QuerySslRequiredViews,
     display_name: str | None = None,
     default_uses_labeled_batches: bool = True,
+    runtime_requirements: QuerySslRuntimeRequirements | None = None,
 ) -> Callable[[QuerySslAlgorithmFactory], QuerySslAlgorithmFactory]:
     """algorithm_name으로 Query SSL algorithm factory를 등록하는 decorator."""
 
@@ -48,6 +51,9 @@ def register_query_ssl_algorithm(
             required_views=required_views,
             algorithm_factory=factory,
             default_uses_labeled_batches=default_uses_labeled_batches,
+            runtime_requirements=(
+                runtime_requirements or QuerySslRuntimeRequirements()
+            ),
         )
         _QUERY_SSL_ALGORITHM_REGISTRY.register(*names, item=descriptor)
         return factory
@@ -70,9 +76,12 @@ def load_builtin_query_ssl_algorithms() -> None:
                 continue
             if not module_info.ispkg:
                 continue
-            importlib.import_module(
+            entrypoint_module = (
                 f"{_QUERY_SSL_ALGORITHMS_PACKAGE}.{module_info.name}.{module_info.name}"
             )
+            if importlib.util.find_spec(entrypoint_module) is None:
+                continue
+            importlib.import_module(entrypoint_module)
 
     _BUILTIN_QUERY_SSL_ALGORITHMS_LOADED = True
 

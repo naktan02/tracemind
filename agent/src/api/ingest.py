@@ -115,10 +115,10 @@ def ingest_event(
             detail=f"파이프라인 실행 오류: {exc}",
         ) from exc
 
-    scores = result.scored_event.category_scores
+    scores = result.analysis_event.category_scores
     top_category, top_score = _top_score(scores)
     return IngestEventResponse(
-        query_id=result.scored_event.query_id,
+        query_id=result.analysis_event.query_id,
         was_translated=result.was_translated,
         top_category=top_category,
         top_score=top_score,
@@ -156,11 +156,11 @@ def ingest_batch(
 
     responses = []
     for result in results:
-        scores = result.scored_event.category_scores
+        scores = result.analysis_event.category_scores
         top_category, top_score = _top_score(scores)
         responses.append(
             IngestEventResponse(
-                query_id=result.scored_event.query_id,
+                query_id=result.analysis_event.query_id,
                 was_translated=result.was_translated,
                 top_category=top_category,
                 top_score=top_score,

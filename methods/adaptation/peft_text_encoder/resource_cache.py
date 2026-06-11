@@ -30,6 +30,19 @@ def peft_encoder_resource_cache_prefix(kind: str) -> str:
     return f"{PEFT_ENCODER_RESOURCE_CACHE_NAMESPACE}:{kind}:"
 
 
+def clear_peft_encoder_helper_model_cache(runtime_resource_cache: object) -> int:
+    """client 경계에서 FedMatch helper model cache만 비운다."""
+
+    clear_resources = getattr(runtime_resource_cache, "clear_resources", None)
+    if not callable(clear_resources):
+        return 0
+    return int(
+        clear_resources(
+            key_prefix=peft_encoder_resource_cache_prefix("helper_model")
+        )
+    )
+
+
 def clear_peft_encoder_transient_resource_cache(runtime_resource_cache: object) -> int:
     """round 뒤 버려도 되는 무거운 PEFT text encoder/head cache를 비운다."""
 

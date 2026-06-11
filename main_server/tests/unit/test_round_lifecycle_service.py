@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,39 +13,12 @@ from main_server.src.infrastructure.repositories import (
     model_manifest_repository as model_manifest_repository_module,
 )
 from main_server.src.infrastructure.repositories import (
-    prototype_build_state_repository as prototype_build_state_repository_module,
-)
-from main_server.src.infrastructure.repositories import (
-    prototype_pack_repository as prototype_pack_repository_module,
-)
-from main_server.src.infrastructure.repositories import (
-    prototype_rebuild_input_repository as prototype_rebuild_input_repository_module,
-)
-from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
 from main_server.src.infrastructure.repositories import (
     shared_adapter_update_repository as shared_adapter_update_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.federation.prototypes import (
-    models as prototype_models,
-)
-from main_server.src.services.federation.prototypes import (
-    prototype_build_state_service as build_state_service_module,
-)
-from main_server.src.services.federation.prototypes import (
-    prototype_pack_service as pack_service_module,
-)
-from main_server.src.services.federation.prototypes import (
-    prototype_rebuild_service as rebuild_service_module,
-)
-from main_server.src.services.federation.prototypes import (
-    publication_strategies as publication_strategy_module,
-)
-from main_server.src.services.federation.prototypes import (
-    stored_input_rebuild_service as stored_rebuild_service_module,
-)
 from main_server.src.services.federation.rounds.acceptance.policies import (
     IdempotentRoundUpdateAcceptancePolicy,
     StrictRoundUpdateAcceptancePolicy,
@@ -67,6 +41,7 @@ from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
     RoundOpenDraftRequest,
     RoundStatus,
+    RoundStrategyConfig,
 )
 from main_server.src.services.federation.rounds.payload_adapters.models import (
     SharedAdapterRoundPayloadAdapter,
@@ -103,7 +78,6 @@ from methods.federated_ssl.base import (
     FederatedSslServerStepSpec,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
-from methods.prototype.building.single import SinglePrototypeBuildStrategy
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
@@ -127,22 +101,14 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 from shared.src.domain.services.clock import FixedClock
-from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
-PrototypeBuildStateService = build_state_service_module.PrototypeBuildStateService
-PrototypePackService = pack_service_module.PrototypePackService
-PrototypeRebuildInputRecord = prototype_models.PrototypeRebuildInputRecord
-PrototypeRebuildService = rebuild_service_module.PrototypeRebuildService
-ServerReferencePrototypeSourceRow = prototype_models.ServerReferencePrototypeSourceRow
-ReferenceRebuildPrototypePublicationStrategy = (
-    publication_strategy_module.ReferenceRebuildPrototypePublicationStrategy
-)
-StoredReferencePrototypeRebuildService = (
-    stored_rebuild_service_module.StoredReferencePrototypeRebuildService
-)
 ModelManifestRepository = model_manifest_repository_module.ModelManifestRepository
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
+)
+peft_encoder_partitioned_projection = importlib.import_module(
+    "methods.adaptation.peft_text_encoder.aggregation."
+    "peft_encoder_partitioned_projection"
 )
 TEST_METHOD_DESCRIPTOR = FederatedSslMethodDescriptor(
     name="test_round_runtime_method",
@@ -167,23 +133,6 @@ TEST_METHOD_DESCRIPTOR = FederatedSslMethodDescriptor(
         live_server_supported=True,
     ),
 )
-
-
-class _StaticEmbeddingAdapter:
-    def __init__(self, vectors: dict[str, list[float]]) -> None:
-        self._vectors = vectors
-
-    def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        return [list(self._vectors[text]) for text in texts]
-
-
-class _StaticEmbeddingAdapterFactory:
-    _vectors: dict[str, list[float]] = {}
-
-    @classmethod
-    def create(cls, spec: EmbeddingAdapterSpec) -> _StaticEmbeddingAdapter:
-        del spec
-        return _StaticEmbeddingAdapter(cls._vectors)
 
 
 @dataclass(slots=True)
@@ -399,7 +348,7 @@ def _build_service(
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
-        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+        auxiliary_artifact_versions={"calibration_set": "calib_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -460,7 +409,7 @@ def _build_peft_service(
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
-        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+        auxiliary_artifact_versions={"calibration_set": "calib_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -608,6 +557,32 @@ def test_round_lifecycle_rejects_duplicate_update_id(tmp_path: Path) -> None:
         service.accept_update_submission(record.round_id, update)
 
 
+def test_round_lifecycle_uses_partitioned_backend_for_fedmatch_finalize(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    service, _active_manifest, _round_repository = _build_peft_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    record = service.open_round(
+        RoundOpenDraftRequest(
+            round_id="round_fedmatch",
+            strategy=RoundStrategyConfig(
+                mode="method_owned",
+                fssl_method="fedmatch",
+            ),
+        )
+    )
+
+    round_manager = service._round_manager_for_finalize(record)
+
+    assert (
+        round_manager.payload_adapter.aggregation_backend.strategy.method_name
+        == peft_encoder_partitioned_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME
+    )
+
+
 def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
     tmp_path: Path,
 ) -> None:
@@ -643,9 +618,7 @@ def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
         },
         label_schema=["anxiety", "normal"],
         example_count=2,
-        peft_adapter_delta_artifact_ref=(
-            "agent-local://agent_001/peft_adapter_delta"
-        ),
+        peft_adapter_delta_artifact_ref=("agent-local://agent_001/peft_adapter_delta"),
         classifier_head_delta_artifact_ref=(
             "agent-local://agent_001/classifier_head_delta"
         ),
@@ -895,7 +868,7 @@ def test_round_lifecycle_finalizes_round_and_activates_next_manifest(
     finalized = service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            next_auxiliary_artifact_versions={"calibration_set": "calib_001"},
             next_model_revision="rev_001",
         ),
     )
@@ -909,7 +882,7 @@ def test_round_lifecycle_finalizes_round_and_activates_next_manifest(
         == service.round_manager_service.artifact_repository.ref_for_revision("rev_001")
     )
     assert finalized.publication.next_manifest.auxiliary_artifact_versions == {
-        "prototype_pack": "proto_001"
+        "calibration_set": "calib_001"
     }
     assert round_repository.load_active_pointer() is None
     assert (
@@ -942,7 +915,7 @@ def test_round_lifecycle_runs_method_server_policy_before_finalize(
     service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            next_auxiliary_artifact_versions={"calibration_set": "calib_001"},
             next_model_revision="rev_001",
         ),
     )
@@ -973,7 +946,7 @@ def test_round_lifecycle_stores_round_state_exchange_summary(
     finalized = service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            next_auxiliary_artifact_versions={"calibration_set": "calib_001"},
             next_model_revision="rev_001",
         ),
     )
@@ -1000,168 +973,13 @@ def test_round_lifecycle_rejects_update_after_finalize(tmp_path: Path) -> None:
     service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            next_auxiliary_artifact_versions={"calibration_set": "calib_001"},
             next_model_revision="rev_001",
         ),
     )
 
     with pytest.raises(RoundConflictError):
         service.accept_update_submission(record.round_id, update)
-
-
-def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
-    tmp_path: Path,
-) -> None:
-    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    round_repository = RoundRepository(state_root=tmp_path / "rounds")
-    state_repository = (
-        shared_adapter_state_repository_module.SharedAdapterStateRepository(
-            state_root=tmp_path / "shared_states"
-        )
-    )
-    state_repository.save_shared_adapter_state(
-        _TestShiftStatePayload(
-            schema_version="test_shift_state.v1",
-            adapter_kind=TEST_SHIFT_ADAPTER_KIND,
-            model_id="test-shift-model",
-            model_revision="rev_000",
-            training_scope="adapter_only",
-            shift_bias=0.0,
-            updated_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
-        )
-    )
-    input_repository = (
-        prototype_rebuild_input_repository_module.PrototypeRebuildInputRepository(
-            state_root=tmp_path / "prototype_rebuild_inputs"
-        )
-    )
-    input_repository.save_input(
-        PrototypeRebuildInputRecord(
-            input_id="bootstrap_v1",
-            embedding_spec=EmbeddingAdapterSpec(
-                backend="hash_debug",
-                model_id="hash_debug",
-                revision="seed",
-                hash_dim=8,
-            ),
-            rows=(
-                ServerReferencePrototypeSourceRow(
-                    text="cluster_a_1",
-                    category="anxiety",
-                ),
-                ServerReferencePrototypeSourceRow(
-                    text="cluster_a_2",
-                    category="anxiety",
-                ),
-                ServerReferencePrototypeSourceRow(text="normal_1", category="normal"),
-            ),
-            mapping_version="ourafla_to_4cat.v1",
-        )
-    )
-    input_repository.set_active(
-        "bootstrap_v1",
-        activated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-    prototype_pack_repository = (
-        prototype_pack_repository_module.PrototypePackRepository(
-            state_root=tmp_path / "prototype_packs"
-        )
-    )
-    prototype_build_state_repository = (
-        prototype_build_state_repository_module.PrototypeBuildStateRepository(
-            state_root=tmp_path / "prototype_build_states"
-        )
-    )
-    _StaticEmbeddingAdapterFactory._vectors = {
-        "cluster_a_1": [1.0],
-        "cluster_a_2": [1.1],
-        "normal_1": [0.0],
-    }
-    prototype_rebuild_runtime_service = StoredReferencePrototypeRebuildService(
-        input_repository=input_repository,
-        prototype_rebuild_service=PrototypeRebuildService(
-            build_strategy=SinglePrototypeBuildStrategy(),
-            publication_strategy=ReferenceRebuildPrototypePublicationStrategy(
-                prototype_pack_service=PrototypePackService(
-                    repository=prototype_pack_repository
-                ),
-                prototype_build_state_service=PrototypeBuildStateService(
-                    repository=prototype_build_state_repository
-                ),
-            ),
-            clock=FixedClock(fixed_time),
-        ),
-        adapter_factory=_StaticEmbeddingAdapterFactory,
-    )
-    active_manifest = ModelManifest(
-        schema_version="model_manifest.v1",
-        model_id="test-shift-model",
-        model_revision="rev_000",
-        published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
-        artifact_kind="shared_adapter_state",
-        artifact_ref=state_repository.ref_for_revision("rev_000"),
-        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
-        training_scope="adapter_only",
-        training_enabled=True,
-        compatible_task_types=("pseudo_label_self_training",),
-    )
-    service = RoundLifecycleService(
-        round_repository=round_repository,
-        update_payload_repository=SharedAdapterUpdateRepository(
-            state_root=tmp_path / "server_updates"
-        ),
-        active_manifest_service=ActiveModelManifestService(
-            manifest_repository=ModelManifestRepository(
-                state_root=tmp_path / "model_manifests"
-            ),
-            clock=FixedClock(fixed_time),
-        ),
-        round_manager_service=RoundManagerService(
-            payload_adapter=build_shared_adapter_round_payload_adapter(
-                TEST_SHIFT_PAYLOAD_ADAPTER_KIND,
-                aggregation_backend_name=TEST_SHIFT_BACKEND_NAME,
-            ),
-            artifact_repository=state_repository,
-            clock=FixedClock(fixed_time),
-        ),
-        prototype_rebuild_runtime_service=prototype_rebuild_runtime_service,
-        clock=FixedClock(fixed_time),
-    )
-    service.active_manifest_service.save_and_activate(
-        active_manifest,
-        activated_at=fixed_time,
-    )
-    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
-    update = _build_update(
-        tmp_path=tmp_path,
-        round_id=record.round_id,
-        task_id=record.training_task.task_id,
-    )
-    service.accept_update_submission(record.round_id, update)
-
-    finalized = service.finalize_round(
-        record.round_id,
-        RoundFinalizeRequest(
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
-            next_model_revision="rev_001",
-        ),
-    )
-
-    assert finalized.publication is not None
-    assert (
-        finalized.publication.auxiliary_artifact_metadata["prototype_rebuild_input_id"]
-        == "bootstrap_v1"
-    )
-    prototype_pack_ref = finalized.publication.auxiliary_artifact_refs.get(
-        "prototype_pack"
-    )
-    assert prototype_pack_ref is not None
-    assert Path(prototype_pack_ref).exists()
-    prototype_build_state_ref = finalized.publication.auxiliary_artifact_refs.get(
-        "prototype_build_state"
-    )
-    assert prototype_build_state_ref is not None
-    assert Path(prototype_build_state_ref).exists()
 
 
 def test_round_lifecycle_finalizes_registered_custom_payload_adapter(
@@ -1192,7 +1010,7 @@ def test_round_lifecycle_finalizes_registered_custom_payload_adapter(
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
-        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+        auxiliary_artifact_versions={"calibration_set": "calib_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -1256,7 +1074,7 @@ def test_round_lifecycle_finalizes_registered_custom_payload_adapter(
     finalized = service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            next_auxiliary_artifact_versions={"calibration_set": "calib_001"},
             next_model_revision="rev_001",
         ),
     )

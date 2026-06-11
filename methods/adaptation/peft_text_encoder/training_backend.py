@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
 
 from methods.adaptation.local_update_backend import AcceptedTrainingExample
 from methods.adaptation.local_update_registry import (
@@ -14,11 +12,6 @@ from methods.adaptation.local_update_registry import (
 from methods.adaptation.peft_text_encoder.update.local_update import (
     PeftEncoderTrainExecutor,
 )
-from methods.adaptation.peft_text_encoder.update.materialization import (
-    PeftEncoderMaterializedState,
-)
-from methods.common.runtime_resources import RuntimeResourceCache
-from methods.common.timing import TimingRecorder
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
 )
@@ -27,7 +20,6 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     PeftClassifierDelta,
 )
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -46,12 +38,13 @@ from .config import (
     PeftEncoderTrainingBackendConfig,
     build_peft_encoder_training_backend_config,
 )
+from .training.local_training_surface import (
+    QuerySslPeftEncoderLocalSessionRequest,
+    QuerySslPeftEncoderUpdateRequest,
+)
 from .training.query_ssl_local_training import (
-    PeftEncoderTrainerRuntimeConfig,
     QuerySslPeftEncoderClientTrainingResult,
-    QuerySslPeftEncoderDeltaMaterializer,
-    QuerySslPeftEncoderObjectiveRuntimeConfig,
-    run_query_ssl_peft_encoder_training_core,
+    run_query_ssl_peft_encoder_update,
 )
 from .update.payload_builder import build_peft_encoder_delta_update
 
@@ -131,44 +124,37 @@ class PeftEncoderTrainingBackend:
 
     def build_query_ssl_update(
         self,
-        *,
-        client_id: str,
-        seed: int,
-        labeled_rows: Sequence[LabeledQueryRow],
-        unlabeled_rows: Sequence[LabeledQueryRow],
-        diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None,
-        labels: Sequence[str],
-        base_parameters: PeftEncoderMaterializedState,
-        training_task: TrainingTask,
-        model_manifest: ModelManifest,
-        query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig,
-        trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
-        created_at: datetime,
-        delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
-        runtime_resource_cache: RuntimeResourceCache | None = None,
-        timing_recorder: TimingRecorder | None = None,
-        initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
+        request: QuerySslPeftEncoderUpdateRequest,
     ) -> QuerySslPeftEncoderClientTrainingResult:
         """Query SSL raw rows를 methods-owned PEFT encoder local core로 학습한다."""
 
-        return run_query_ssl_peft_encoder_training_core(
-            client_id=client_id,
-            seed=seed,
-            labeled_rows=labeled_rows,
-            unlabeled_rows=unlabeled_rows,
-            diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
-            labels=labels,
-            base_parameters=base_parameters,
-            training_task=training_task,
-            model_manifest=model_manifest,
-            query_ssl_config=query_ssl_config,
-            peft_config=self.config,
-            trainer_runtime_config=trainer_runtime_config,
-            created_at=created_at,
-            delta_materializer=delta_materializer,
-            runtime_resource_cache=runtime_resource_cache,
-            timing_recorder=timing_recorder,
-            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
+        session = request.local_session
+        return run_query_ssl_peft_encoder_update(
+            QuerySslPeftEncoderUpdateRequest(
+                client_id=request.client_id,
+                local_session=QuerySslPeftEncoderLocalSessionRequest(
+                    seed=session.seed,
+                    labeled_rows=session.labeled_rows,
+                    unlabeled_rows=session.unlabeled_rows,
+                    diagnostic_unlabeled_rows=session.diagnostic_unlabeled_rows,
+                    selection_rows=session.selection_rows,
+                    labels=session.labels,
+                    base_parameters=session.base_parameters,
+                    training_task=session.training_task,
+                    query_ssl_config=session.query_ssl_config,
+                    peft_config=self.config,
+                    trainer_runtime_config=session.trainer_runtime_config,
+                    runtime_resource_cache=session.runtime_resource_cache,
+                    timing_recorder=session.timing_recorder,
+                    initial_query_ssl_algorithm_state=(
+                        session.initial_query_ssl_algorithm_state
+                    ),
+                    trainer_options=session.trainer_options,
+                ),
+                model_manifest=request.model_manifest,
+                created_at=request.created_at,
+                delta_materializer=request.delta_materializer,
+            )
         )
 
     def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload:

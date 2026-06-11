@@ -9,6 +9,7 @@ import torch
 
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
+    compact_peft_encoder_materialized_state,
 )
 
 from .modeling import PeftTextEncoderWithLinearHead
@@ -95,6 +96,45 @@ def extract_peft_encoder_parameter_deltas(
         base_biases=base_parameters.classifier_head_biases,
     )
     return peft_parameter_deltas, head_weight_deltas, head_bias_deltas
+
+
+def extract_peft_encoder_materialized_state(
+    *,
+    model: PeftTextEncoderWithLinearHead,
+    labels: Sequence[str],
+) -> PeftEncoderMaterializedState:
+    """현재 PEFT text encoder/head trainable state를 materialize한다."""
+
+    peft_parameters: dict[str, list[float]] = {}
+    for name, parameter in model.named_parameters():
+        if not parameter.requires_grad or name.startswith("classifier."):
+            continue
+        peft_parameters[name] = [
+            float(value) for value in parameter.detach().cpu().reshape(-1).tolist()
+        ]
+    if not peft_parameters:
+        raise ValueError(
+            "PEFT materialized state requires trainable adapter parameters."
+        )
+
+    weight = model.classifier.weight.detach().cpu()
+    bias = model.classifier.bias.detach().cpu()
+    classifier_head_weights: dict[str, list[float]] = {}
+    classifier_head_biases: dict[str, float] = {}
+    for label_index, label in enumerate(labels):
+        key = str(label)
+        classifier_head_weights[key] = [
+            float(value) for value in weight[label_index].reshape(-1).tolist()
+        ]
+        classifier_head_biases[key] = float(bias[label_index].item())
+
+    return compact_peft_encoder_materialized_state(
+        PeftEncoderMaterializedState(
+            peft_parameters=peft_parameters,
+            classifier_head_weights=classifier_head_weights,
+            classifier_head_biases=classifier_head_biases,
+        )
+    )
 
 
 def extract_peft_parameter_deltas(

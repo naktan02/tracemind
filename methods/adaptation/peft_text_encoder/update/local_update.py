@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -112,14 +111,12 @@ def build_peft_encoder_delta_from_rows(
     if not rows:
         raise ValueError("rows must not be empty.")
 
-    label_counts = Counter(row.label for row in rows)
     return build_peft_encoder_delta_payload_from_artifacts(
         training_task=training_task,
         model_manifest=model_manifest,
         config=config,
         label_schema=label_schema,
         example_count=len(rows),
-        label_counts=label_counts,
         artifacts=artifacts,
         delta_format=config.delta_format,
         mean_confidence=sum(row.confidence for row in rows) / len(rows),
@@ -135,7 +132,6 @@ def build_peft_encoder_delta_payload_from_artifacts(
     config: PeftEncoderUpdateConfig,
     label_schema: Sequence[str],
     example_count: int,
-    label_counts: Mapping[str, int],
     artifacts: PeftEncoderTrainArtifacts,
     delta_format: str,
     mean_confidence: float | None,
@@ -180,9 +176,6 @@ def build_peft_encoder_delta_payload_from_artifacts(
         delta_format=delta_format,
         mean_confidence=mean_confidence,
         mean_margin=mean_margin,
-        label_counts={
-            str(label): int(count) for label, count in sorted(label_counts.items())
-        },
         delta_l2_norm=artifacts.delta_l2_norm,
         created_at=created_at,
     )

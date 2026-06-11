@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TraceMind Experiment Dashboard</title>
-    <link rel="stylesheet" href="./src/styles.css" />
+    <link rel="stylesheet" href="./src/styles/index.css" />
   </head>
   <body>
     <div class="shell">
@@ -23,42 +23,72 @@
             <span>Central SSL</span>
             <small>pooled/offline control</small>
           </button>
+          <button type="button" data-track="supervised">
+            <span>Supervised</span>
+            <small>central supervised baseline</small>
+          </button>
+          <button type="button" data-track="all">
+            <span>전체</span>
+            <small>central + FL merged</small>
+          </button>
           <button type="button" data-track="fl_ssl">
             <span>FL SSL</span>
             <small>non-IID main comparison</small>
           </button>
         </nav>
 
-        <section class="sidebar-note">
-          <p>
-            중앙 SSL과 FL SSL은 같은 ranking 표면으로 합치지 않는다. 각 track의
-            metric 의미와 비교 축은 오른쪽 패널이 따로 소유한다.
-          </p>
-        </section>
       </aside>
 
       <main class="content">
         <section id="load-state" class="notice">dashboard data를 읽는 중</section>
 
         <section class="track-panel active" data-track-panel="central_ssl">
-          <section class="hero">
-            <div>
-              <p class="eyebrow">Central SSL</p>
-              <h2>중앙 SSL control 결과 비교</h2>
-              <p>
-                pooled/offline control track이다. FL SSL main comparison과 같은
-                ranking으로 합치지 않는다.
-              </p>
-            </div>
-            <div class="metric-cards" id="metric-cards"></div>
-          </section>
-
           <nav class="tab-nav" aria-label="central ssl result views">
             <button class="active" type="button" data-tab="overview">Overview</button>
             <button type="button" data-tab="compare">Graph Compare</button>
             <button type="button" data-tab="class">Per-Class / Matrix</button>
             <button type="button" data-tab="projection">UMAP / Projection</button>
           </nav>
+
+          <section class="fl-filter-shell central-filter-shell">
+            <button
+              id="central-filter-toggle"
+              class="fl-filter-toggle"
+              type="button"
+              aria-expanded="true"
+            >
+              Filters
+            </button>
+            <article id="central-filter-card" class="card fl-filter-card open">
+                <div class="card-header">
+                  <div>
+                    <p class="eyebrow">Run Filters</p>
+                    <h3>Track run 필터</h3>
+                  </div>
+                <button id="central-filter-reset" class="text-button" type="button">
+                  Reset
+                </button>
+              </div>
+              <p class="filter-hint dark">
+                값이 2개 이상인 메타만 자동으로 표시한다. 선택한 값은 Overview,
+                Graph Compare, Per-Class, Projection의 run 후보에 같이 적용된다.
+              </p>
+              <div class="fl-filter-layout central-filter-layout">
+                <section>
+                  <h4>Filter Axes</h4>
+                  <div
+                    id="central-filter-axis-picker"
+                    class="filter-axis-picker"
+                  ></div>
+                </section>
+                <section>
+                  <h4>Active Filters</h4>
+                  <div id="central-active-filters" class="active-filter-grid"></div>
+                </section>
+              </div>
+              <p id="central-filter-summary" class="detail-summary"></p>
+            </article>
+          </section>
 
           <section class="tab-panel active" data-panel="overview">
             <section class="grid single">
@@ -73,20 +103,34 @@
                       Eval Set
                       <select id="overview-eval-filter"></select>
                     </label>
-                    <label>
-                      Method
-                      <select id="overview-method-filter"></select>
-                    </label>
                   </div>
-                </div>
-                <p class="filter-hint dark">
-                  중앙 SSL 현재 artifact는 validation accuracy 기준 best checkpoint를
-                  export한다. 표의 metric은 해당 checkpoint를 eval set별로 평가한 값이다.
-                </p>
+              </div>
+              <p class="filter-hint dark">
+                중앙/지도학습/전체 track는 각 track별 기본 기준 checkpoint를
+                export해 표의 metric을 eval set별로 비교합니다.
+              </p>
                 <div class="overview-picker-grid">
                   <section>
-                    <h4>Metrics</h4>
+                    <h4>지표</h4>
+                    <div class="table-column-tabs metric-tabs" role="tablist">
+                      <button
+                        type="button"
+                        data-overview-column-tab="metric"
+                        class="active"
+                        aria-selected="true"
+                      >
+                        Metric
+                      </button>
+                      <button
+                        type="button"
+                        data-overview-column-tab="axis"
+                        aria-selected="false"
+                      >
+                        메타
+                      </button>
+                    </div>
                     <div id="overview-metric-picker" class="filter-value-list"></div>
+                    <div id="overview-axis-picker" class="filter-value-list" hidden></div>
                   </section>
                   <section>
                     <h4>Runs</h4>
@@ -97,7 +141,6 @@
                   id="overview-selected-run-cards"
                   class="selected-run-cards alias-run-cards"
                 ></div>
-                <p id="overview-selection-summary" class="detail-summary"></p>
                 <div class="table-wrap">
                   <table>
                     <thead id="run-table-head"></thead>
@@ -113,7 +156,7 @@
               <div class="card-header">
                 <div>
                   <p class="eyebrow">Graph Compare</p>
-                  <h3>선택한 run의 epoch 지표를 그래프로 비교</h3>
+                  <h3>선택한 run의 step 지표를 그래프로 비교</h3>
                 </div>
               </div>
               <div class="compare-controls">
@@ -124,9 +167,9 @@
                 <label>
                   Chart Type
                   <select id="comparison-chart-type">
+                    <option value="line">Line</option>
                     <option value="grouped_bar">Grouped Horizontal Bar</option>
                     <option value="vertical_bar">Vertical Bar</option>
-                    <option value="line">Line</option>
                   </select>
                 </label>
                 <label class="checkbox-field">
@@ -135,29 +178,20 @@
                 </label>
               </div>
               <p class="filter-hint dark">
-                Line은 가로축을 epoch로 두고 학습 history를 비교한다. Bar 계열은
-                선택 metric의 마지막 epoch 값을 run별로 비교한다.
+                Line은 가로축을 optimizer step으로 두고 학습 history를 비교한다.
+                Bar 계열은 선택 metric의 마지막 기록 값을 run별로 비교한다.
               </p>
               <div class="comparison-picker-grid">
-                <section>
-                  <h4>Epoch Metric</h4>
-                  <div id="metric-picker" class="metric-tabs"></div>
+                <section class="comparison-picker-column">
+                  <h4>지표</h4>
+                  <div id="metric-picker" class="filter-value-list comparison-metric-list"></div>
                 </section>
-                <section>
+                <section class="comparison-picker-column">
                   <h4>Run Selection</h4>
-                  <div class="selection-controls">
-                    <label>
-                      Method
-                      <select id="comparison-method-filter"></select>
-                    </label>
-                    <div>
-                      <p class="control-label">Detail Runs</p>
-                      <div
-                        id="comparison-run-checkboxes"
-                        class="run-checkbox-list"
-                      ></div>
-                    </div>
-                  </div>
+                  <div
+                    id="comparison-run-checkboxes"
+                    class="run-checkbox-list table-run-picker"
+                  ></div>
                 </section>
               </div>
               <div id="selected-run-cards" class="selected-run-cards"></div>
@@ -176,10 +210,6 @@
                   <label>
                     Eval Set
                     <select id="class-eval-filter"></select>
-                  </label>
-                  <label>
-                    Detail Method
-                    <select id="detail-method-filter"></select>
                   </label>
                   <label>
                     Detail Run
@@ -205,18 +235,7 @@
               <div id="class-chart" class="bar-chart class-bars"></div>
               <div class="table-wrap compact">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>category</th>
-                      <th>support</th>
-                      <th>precision</th>
-                      <th>recall</th>
-                      <th>f1</th>
-                      <th>true prob</th>
-                      <th>top1 prob</th>
-                      <th>margin</th>
-                    </tr>
-                  </thead>
+                  <thead id="class-table-head"></thead>
                   <tbody id="class-table"></tbody>
                 </table>
               </div>
@@ -247,7 +266,7 @@
                   <select id="projection-eval-filter"></select>
                 </section>
                 <section>
-                  <h4>Method</h4>
+                  <h4>Algorithm</h4>
                   <select id="projection-method-filter"></select>
                 </section>
                 <section>
@@ -264,19 +283,6 @@
         </section>
 
         <section class="track-panel" data-track-panel="fl_ssl">
-          <section class="hero fl-hero">
-            <div>
-              <p class="eyebrow">FL SSL</p>
-              <h2>Federated non-IID main comparison</h2>
-              <p>
-                FL SSL은 round/client 관측값이 핵심이다. 중앙 SSL의 per-class
-                ranking 화면과 분리해서 worst-client, round curve, communication
-                cost를 본다.
-              </p>
-            </div>
-            <div class="metric-cards" id="fl-metric-cards"></div>
-          </section>
-
           <nav class="tab-nav" aria-label="fl ssl result views">
             <button class="active" type="button" data-fl-tab="runs">Runs</button>
             <button type="button" data-fl-tab="rounds">Rounds</button>
@@ -303,16 +309,16 @@
               <div class="card-header">
                 <div>
                   <p class="eyebrow">Run Filters</p>
-                  <h3>필터 축 선택</h3>
+                <h3>필터 메타 선택</h3>
                 </div>
                 <button id="fl-filter-reset" class="text-button" type="button">
                   Reset
                 </button>
               </div>
-              <p class="filter-hint dark">
-                먼저 사용할 필터 축을 고른 뒤, 선택된 축에서만 세부 값을 좁힌다.
-                label budget은 별도 축으로 노출하지 않는다.
-              </p>
+                <p class="filter-hint dark">
+                먼저 사용할 필터 메타를 고른 뒤, 선택된 메타에서만 세부 값을 좁힌다.
+                label budget은 별도 메타로 노출하지 않는다.
+                </p>
               <div class="fl-filter-layout">
                 <section>
                   <h4>Filter Axes</h4>
@@ -341,19 +347,36 @@
               </p>
               <div class="overview-picker-grid">
                 <section>
-                  <h4>Metrics</h4>
+                  <h4>지표</h4>
+                  <div class="table-column-tabs metric-tabs" role="tablist">
+                    <button
+                      type="button"
+                      data-fl-run-column-tab="metric"
+                      class="active"
+                      aria-selected="true"
+                    >
+                      Metric
+                    </button>
+                    <button
+                      type="button"
+                      data-fl-run-column-tab="axis"
+                      aria-selected="false"
+                    >
+                        메타
+                    </button>
+                  </div>
                   <div id="fl-run-metric-picker" class="filter-value-list"></div>
+                  <div id="fl-run-axis-picker" class="filter-value-list" hidden></div>
                 </section>
                 <section>
-                  <h4>Filtered Runs</h4>
+                  <h4>Run Selection</h4>
                   <div id="fl-run-checkboxes" class="run-checkbox-list table-run-picker"></div>
                 </section>
               </div>
-              <div
-                id="fl-run-selected-run-cards"
-                class="selected-run-cards alias-run-cards"
-              ></div>
-              <p id="fl-run-selection-summary" class="detail-summary"></p>
+                <div
+                  id="fl-run-selected-run-cards"
+                  class="selected-run-cards alias-run-cards"
+                ></div>
               <div class="table-wrap">
                 <table>
                   <thead id="fl-run-table-head"></thead>
@@ -371,13 +394,19 @@
                   <h3>선택한 run의 라운드 곡선</h3>
                 </div>
               </div>
-              <section class="fl-round-run-picker">
-                <p class="control-label">Filtered Runs</p>
-                <div
-                  id="fl-round-run-checkboxes"
-                  class="run-checkbox-list compact"
-                ></div>
-              </section>
+              <div class="overview-picker-grid">
+                <section>
+                  <h4>지표</h4>
+                  <div id="fl-round-table-metric-picker" class="filter-value-list"></div>
+                </section>
+                <section>
+                  <h4>Run Selection</h4>
+                  <div
+                    id="fl-round-run-checkboxes"
+                    class="run-checkbox-list table-run-picker"
+                  ></div>
+                </section>
+              </div>
               <div
                 id="fl-round-selected-run-cards"
                 class="selected-run-cards alias-run-cards"
@@ -391,31 +420,10 @@
                 <input id="fl-round-include-initial" type="checkbox" checked />
                 <span>Init 포함</span>
               </label>
-              <div
-                id="fl-round-metric-picker"
-                class="metric-tabs"
-                aria-label="FL round metric tabs"
-              ></div>
               <div id="fl-round-chart" class="line-chart"></div>
               <div class="table-wrap compact">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>round</th>
-                      <th>macro_f1</th>
-                      <th>accuracy</th>
-                      <th>loss</th>
-                      <th>ece</th>
-                      <th>accepted</th>
-                      <th>updates</th>
-                      <th>payload</th>
-                      <th>seconds</th>
-                      <th>gpu</th>
-                      <th>delta l2 mean</th>
-                      <th>delta l2 max</th>
-                      <th>cos mean</th>
-                    </tr>
-                  </thead>
+                  <thead id="fl-round-table-head"></thead>
                   <tbody id="fl-round-table"></tbody>
                 </table>
               </div>
@@ -438,20 +446,7 @@
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>client</th>
-                      <th>labeled</th>
-                      <th>unlabeled</th>
-                      <th>macro_f1</th>
-                      <th>accuracy</th>
-                      <th>loss</th>
-                      <th>ece</th>
-                      <th>accepted</th>
-                      <th>update rounds</th>
-                      <th>delta norm</th>
-                    </tr>
-                  </thead>
+                  <thead id="fl-client-validation-table-head"></thead>
                   <tbody id="fl-client-validation-table"></tbody>
                 </table>
               </div>
@@ -480,20 +475,7 @@
               </p>
               <div class="table-wrap">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>client</th>
-                      <th>candidate</th>
-                      <th>accepted</th>
-                      <th>ratio</th>
-                      <th>update</th>
-                      <th>delta norm</th>
-                      <th>cos mean</th>
-                      <th>payload</th>
-                      <th>seconds</th>
-                      <th>pseudo acc</th>
-                    </tr>
-                  </thead>
+                  <thead id="fl-client-round-table-head"></thead>
                   <tbody id="fl-client-round-table"></tbody>
                 </table>
               </div>
@@ -516,16 +498,7 @@
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>client</th>
-                      <th>labeled</th>
-                      <th>unlabeled</th>
-                      <th>labeled dist</th>
-                      <th>unlabeled dist</th>
-                      <th>combined dist</th>
-                    </tr>
-                  </thead>
+                  <thead id="fl-split-table-head"></thead>
                   <tbody id="fl-split-table"></tbody>
                 </table>
               </div>
@@ -542,7 +515,7 @@
               </div>
               <p class="fl-tab-note">
                 선택한 FL run의 최종 global LoRA representation projection artifact를
-                보여준다. 왼쪽 FL run filter로 method/data/round 조건을 좁힌 뒤 eval
+                보여준다. 왼쪽 FL run filter로 algorithm/data/round 조건을 좁힌 뒤 eval
                 set과 run을 선택한다.
               </p>
               <div class="projection-controls fl-projection-controls">
@@ -551,7 +524,7 @@
                   <select id="fl-projection-eval-filter"></select>
                 </section>
                 <section class="fl-projection-run-picker">
-                  <h4>Filtered Runs</h4>
+                  <h4>Run Selection</h4>
                   <div
                     id="fl-projection-run-checkboxes"
                     class="run-checkbox-list compact"
@@ -565,6 +538,6 @@
       </main>
     </div>
 
-    <script src="./src/app.js?v=20260526-method-alias-table" type="module"></script>
+    <script src="./src/main.js?v=20260609-modular-dashboard" type="module"></script>
   </body>
 </html>

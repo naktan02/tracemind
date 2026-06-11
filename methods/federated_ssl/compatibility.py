@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from importlib import import_module
 from types import ModuleType
 
 from methods.common.config_reading import normalize_non_empty_str
 from methods.federated.client_split import LABELED_EXPOSURE_SERVER_ONLY_SEED
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_axes import (
-    LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
+    QUERY_SSL_LOCAL_OBJECTIVE_POLICY_NAMES,
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,
+    is_query_ssl_local_objective_policy,
 )
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
     LOCAL_SUPERVISION_SERVER_LABELED_ONLY,
     SERVER_STEP_NONE,
@@ -23,6 +23,9 @@ from methods.federated_ssl.capability_plan import (
 )
 from methods.federated_ssl.execution_plan import COMPOSITION_MODE_MANUAL
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
+from methods.federated_ssl.method_module_resolution import (
+    import_method_family_module,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,23 +105,50 @@ def validate_federated_ssl_profile_compatibility(
                 f"{profile_name} for method={context.method_descriptor.name}."
             )
 
-    if not recipe.supports_runtime_pair(
+    validate_federated_ssl_runtime_surface_compatibility(
+        method_descriptor=context.method_descriptor,
         update_family_name=context.round_update_family_name,
         aggregation_backend_name=context.round_aggregation_backend_name,
-    ):
-        raise ValueError(
-            "FL SSL compatibility failed: method recipe does not support "
-            "round runtime pair: "
-            f"method={context.method_descriptor.name}, "
-            f"update_family={context.round_update_family_name}, "
-            f"aggregation_backend={context.round_aggregation_backend_name}."
-        )
+    )
 
     if context.capability_plan is not None:
         validate_federated_ssl_capability_compatibility(
             method_descriptor=context.method_descriptor,
             capability_plan=context.capability_plan,
         )
+
+
+def validate_federated_ssl_runtime_surface_compatibility(
+    *,
+    method_descriptor: FederatedSslMethodDescriptor,
+    update_family_name: str,
+    aggregation_backend_name: str,
+) -> None:
+    """method recipe가 live/simulation runtime surface를 지원하는지 검증한다."""
+
+    recipe = method_descriptor.recipe
+    if recipe is None:
+        return
+    normalized_update_family = normalize_non_empty_str(
+        update_family_name,
+        field_name="update_family_name",
+    )
+    normalized_aggregation = normalize_non_empty_str(
+        aggregation_backend_name,
+        field_name="aggregation_backend_name",
+    )
+    if recipe.supports_runtime_pair(
+        update_family_name=normalized_update_family,
+        aggregation_backend_name=normalized_aggregation,
+    ):
+        return
+    raise ValueError(
+        "FL SSL compatibility failed: method recipe does not support "
+        "runtime surface: "
+        f"method={method_descriptor.name}, "
+        f"update_family={normalized_update_family}, "
+        f"aggregation_backend={normalized_aggregation}."
+    )
 
 
 def validate_federated_ssl_payload_adapter_compatibility(
@@ -245,7 +275,7 @@ def _validate_manual_capability_plan(
         )
     if capability_plan.local_ssl_policy_name not in {
         LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
-        *LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
+        *QUERY_SSL_LOCAL_OBJECTIVE_POLICY_NAMES,
     }:
         raise ValueError(
             "manual FL SSL baseline cannot use a method-local local_ssl_policy; "
@@ -261,7 +291,7 @@ def validate_federated_ssl_local_ssl_policy_alignment(
     """local_ssl_policy가 query_ssl_method와 같은 algorithm을 가리키는지 검증한다."""
 
     local_ssl_policy_name = capability_plan.local_ssl_policy_name
-    if local_ssl_policy_name not in LOCAL_SSL_POLICIES_FROM_QUERY_SSL:
+    if not is_query_ssl_local_objective_policy(local_ssl_policy_name):
         return
     actual = None if query_ssl_algorithm_name is None else query_ssl_algorithm_name
     if actual is None:
@@ -362,16 +392,10 @@ def _validate_method_owned_capability_semantics(
 
 
 def _import_method_compatibility_module(method_name: str) -> ModuleType | None:
-    module_name = (
-        f"methods.federated_ssl.{method_name.strip().lower().replace('-', '_')}"
-        ".compatibility"
+    return import_method_family_module(
+        method_name=method_name,
+        module_leaf="compatibility",
     )
-    try:
-        return import_module(module_name)
-    except ModuleNotFoundError as exc:
-        if exc.name == module_name:
-            return None
-        raise
 
 
 def _require_supported_capability(

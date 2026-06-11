@@ -25,15 +25,16 @@ from methods.federated.participation import (
     select_participating_clients,
     select_participating_indices,
 )
-from methods.federated_ssl.capability_axes import (
+from methods.federated_ssl.capabilities.axes import (
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
     LOCAL_SSL_POLICY_FLEXMATCH,
     LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,
     SERVER_UPDATE_FEDMATCH_PARTITIONED,
+    is_query_ssl_local_objective_policy,
 )
-from methods.federated_ssl.capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
     PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
@@ -48,17 +49,17 @@ from methods.federated_ssl.execution_plan import (
     COMPOSITION_MODE_MANUAL,
     COMPOSITION_MODE_METHOD_OWNED,
 )
-from methods.federated_ssl.local_objective import (
+from methods.federated_ssl.hooks.local_objective import (
     requires_method_helper_probability_provider,
+)
+from methods.federated_ssl.hooks.server_step import (
+    resolve_method_supervised_seed_step_parameters,
 )
 from methods.federated_ssl.local_supervision import (
     require_rows_match_local_supervision_regime,
     resolve_local_supervision_regime,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
-from methods.federated_ssl.server_step import (
-    resolve_method_supervised_seed_step_parameters,
-)
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
 )
@@ -189,18 +190,27 @@ def test_aggregation_diagnostics_weight_helpers_follow_policy_meaning() -> None:
 
     assert aggregation_example_count_for_diagnostics(client) == 5
     assert aggregation_example_count_for_diagnostics(fallback_client) == 3
-    assert aggregation_weight_for_diagnostics(
-        client,
-        policy=AggregationWeightPolicy(name="example_count"),
-    ) == 5.0
-    assert aggregation_weight_for_diagnostics(
-        client,
-        policy=AggregationWeightPolicy(name="accepted_count"),
-    ) == 3.0
-    assert aggregation_weight_for_diagnostics(
-        client,
-        policy=AggregationWeightPolicy(name="uniform"),
-    ) == 1.0
+    assert (
+        aggregation_weight_for_diagnostics(
+            client,
+            policy=AggregationWeightPolicy(name="example_count"),
+        )
+        == 5.0
+    )
+    assert (
+        aggregation_weight_for_diagnostics(
+            client,
+            policy=AggregationWeightPolicy(name="accepted_count"),
+        )
+        == 3.0
+    )
+    assert (
+        aggregation_weight_for_diagnostics(
+            client,
+            policy=AggregationWeightPolicy(name="uniform"),
+        )
+        == 1.0
+    )
     assert (
         aggregation_weight_basis_label(AggregationWeightPolicy(name="example_count"))
         == "update_envelope.example_count"
@@ -227,7 +237,7 @@ def test_capability_plan_defaults_to_shared_client_seed() -> None:
 
     assert plan.labeled_exposure_policy_name == "shared_client_seed"
     assert plan.client_participation_policy.name == "all_clients"
-    assert plan.aggregation_weight_policy.name == "example_count"
+    assert plan.aggregation_weight_policy.name == "uniform"
     assert plan.server_step_policy_name == "none"
     assert plan.server_update_policy_name == SERVER_UPDATE_FEDAVG_MERGED_DELTA
     assert plan.peer_context_policy_name == "none"
@@ -430,6 +440,23 @@ def test_fedmatch_server_seed_parameters_resolve_by_method_convention() -> None:
     assert first_round.batch_size == 3
 
 
+def test_fedmatch_server_seed_parameters_use_method_family() -> None:
+    first_round = resolve_method_supervised_seed_step_parameters(
+        method_name="fedmatch",
+        effective_parameters={
+            "server_pretrain_epochs": 2,
+            "server_epochs": 1,
+            "server_batch_size": 3,
+        },
+        default_epochs=9,
+        default_batch_size=8,
+        round_index=1,
+    )
+
+    assert first_round.epochs == 2
+    assert first_round.batch_size == 3
+
+
 def test_fedmatch_helper_provider_requirement_resolves_by_method_convention() -> None:
     assert requires_method_helper_probability_provider(
         method_name="fedmatch",
@@ -439,6 +466,35 @@ def test_fedmatch_helper_provider_requirement_resolves_by_method_convention() ->
         method_name="fedmatch",
         local_ssl_policy_name=LOCAL_SSL_POLICY_FIXMATCH,
     )
+
+
+def test_fedmatch_server_seed_parameters_support_original_values() -> None:
+    first_round = resolve_method_supervised_seed_step_parameters(
+        method_name="fedmatch",
+        effective_parameters={
+            "server_pretrain_epochs": 2,
+            "server_epochs": 1,
+            "server_batch_size": 3,
+        },
+        default_epochs=9,
+        default_batch_size=8,
+        round_index=1,
+    )
+    later_round = resolve_method_supervised_seed_step_parameters(
+        method_name="fedmatch",
+        effective_parameters={
+            "server_pretrain_epochs": 2,
+            "server_epochs": 1,
+            "server_batch_size": 3,
+        },
+        default_epochs=9,
+        default_batch_size=8,
+        round_index=2,
+    )
+
+    assert first_round.epochs == 2
+    assert later_round.epochs == 1
+    assert first_round.batch_size == 3
 
 
 def test_manual_partitioned_server_update_waits_for_partition_producer() -> None:
@@ -507,3 +563,11 @@ def test_local_ssl_policy_must_match_query_ssl_algorithm_when_query_ssl_owned() 
             capability_plan=plan,
             query_ssl_algorithm_name=LOCAL_SSL_POLICY_FLEXMATCH,
         )
+
+
+def test_query_ssl_local_objective_policy_predicate_normalizes_names() -> None:
+    assert is_query_ssl_local_objective_policy("fixmatch")
+    assert is_query_ssl_local_objective_policy("FLEXMATCH")
+    assert not is_query_ssl_local_objective_policy(
+        LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
+    )

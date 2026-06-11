@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import importlib
 
-import pytest
-from omegaconf import OmegaConf
-
 
 def test_run_peft_supervised_control_entrypoint_imports_direct_runner() -> None:
     entrypoint = importlib.import_module(
         "scripts.experiments.central.ssl_control.run_peft_supervised_control"
     )
     runner = importlib.import_module(
-        "scripts.support.query_ssl_peft.runners.supervised"
+        "scripts.support.query_ssl_text_encoder.runners.supervised"
     )
 
     assert (
@@ -19,67 +16,19 @@ def test_run_peft_supervised_control_entrypoint_imports_direct_runner() -> None:
     )
 
 
-def test_run_peft_ssl_control_entrypoint_imports_mode_router() -> None:
+def test_run_peft_ssl_control_entrypoint_imports_consistency_runner() -> None:
     entrypoint = importlib.import_module(
         "scripts.experiments.central.ssl_control.run_peft_ssl_control"
     )
-    router = importlib.import_module(
-        "scripts.experiments.central.ssl_control.ssl_mode_router"
+    runner = importlib.import_module(
+        "scripts.support.query_ssl_text_encoder.runners.consistency"
     )
 
-    assert entrypoint.run_central_ssl_mode is router.run_central_ssl_mode
-
-
-def test_central_ssl_mode_router_uses_config_declared_runner(monkeypatch) -> None:
-    router = importlib.import_module(
-        "scripts.experiments.central.ssl_control.ssl_mode_router"
-    )
-
-    captured: dict[str, object] = {}
-
-    def _fake_runner(*, cfg):
-        captured["cfg"] = cfg
-
-    monkeypatch.setattr(
-        router,
-        "load_configured_callable",
-        lambda _path, *, field_name: _fake_runner,
-    )
-    cfg = OmegaConf.create(
-        {
-            "ssl_input_mode": "consistency",
-            "central_ssl_runner": {
-                "mode": "consistency",
-                "callable_path": "tests.fixtures.central_ssl_runner",
-            },
-        }
-    )
-
-    router.run_central_ssl_mode(cfg)
-
-    assert captured["cfg"] is cfg
-
-
-def test_central_ssl_mode_router_rejects_scalar_mode_override_without_group() -> None:
-    router = importlib.import_module(
-        "scripts.experiments.central.ssl_control.ssl_mode_router"
-    )
-    cfg = OmegaConf.create(
-        {
-            "ssl_input_mode": "pseudo_label_replay",
-            "central_ssl_runner": {
-                "mode": "consistency",
-                "callable_path": "tests.fixtures.central_ssl_runner",
-            },
-        }
-    )
-
-    with pytest.raises(ValueError, match="strategy_axes/ssl_objective/input_mode"):
-        router.run_central_ssl_mode(cfg)
+    assert entrypoint.run_query_ssl_peft_baseline is runner.run_query_ssl_peft_baseline
 
 
 def test_query_peft_package_keeps_concrete_helpers_out_of_package_surface() -> None:
-    package = importlib.import_module("scripts.support.query_ssl_peft")
+    package = importlib.import_module("scripts.support.query_ssl_text_encoder")
 
     assert not hasattr(package, "run_supervised_peft_baseline")
     assert not hasattr(package, "run_query_adaptation_supervised_baseline")

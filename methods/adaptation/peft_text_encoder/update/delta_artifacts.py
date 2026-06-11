@@ -16,7 +16,9 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 )
 from shared.src.contracts.training_contracts import TrainingTask
 
-from ..training.query_ssl_local_training import QuerySslPeftEncoderDeltaMaterialization
+from ..training.query_ssl_federated_update import (
+    QuerySslPeftEncoderDeltaMaterialization,
+)
 from .json_delta_artifact import (
     build_classifier_head_delta_json_artifact_payload,
     build_partitioned_delta_json_artifact_payload,

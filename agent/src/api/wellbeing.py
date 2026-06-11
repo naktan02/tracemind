@@ -7,16 +7,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict
 
-from agent.src.services.wellbeing.auth_service import ParentAuthService
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
-from shared.src.contracts.wellbeing_signal_contracts import (
+from agent.src.contracts.wellbeing_signal_contracts import (
     ParentUnlockRequestPayload,
     ParentUnlockResponsePayload,
     WellbeingSignalRange,
     WellbeingSignalSummaryPayload,
     WellbeingSignalTimeseriesPayload,
 )
+from agent.src.services.wellbeing.auth_service import ParentAuthService
+from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
+from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
 
 router = APIRouter(prefix="/api/v1", tags=["wellbeing"])
 

@@ -40,13 +40,12 @@ from main_server.src.services.federation.rounds.runtime.config import (
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 
-from ...prototypes.stored_input_rebuild_service import (
-    StoredReferencePrototypeRebuildService,
-)
-
 if TYPE_CHECKING:
     from main_server.src.infrastructure.repositories.round_repository import (
         RoundRepository,
+    )
+    from main_server.src.services.federation.strategy.active_strategy_service import (
+        ActiveStrategyService,
     )
 
 SharedAdapterUpdateRepository = (
@@ -93,11 +92,9 @@ def build_round_lifecycle_service_from_config(
     update_payload_repository: SharedAdapterUpdateRepository | None = None,
     model_manifest_repository: ModelManifestRepository | None = None,
     active_manifest_service: ActiveModelManifestService | None = None,
+    active_strategy_service: "ActiveStrategyService | None" = None,
     artifact_repository: (
         shared_adapter_state_repository_module.SharedAdapterStateRepository | None
-    ) = None,
-    prototype_rebuild_runtime_service: (
-        StoredReferencePrototypeRebuildService | None
     ) = None,
     update_acceptance_policy: RoundUpdateAcceptancePolicy | None = None,
     clock: Clock | None = None,
@@ -106,6 +103,9 @@ def build_round_lifecycle_service_from_config(
 
     from main_server.src.infrastructure.repositories.round_repository import (
         RoundRepository,
+    )
+    from main_server.src.services.federation.strategy.active_strategy_service import (
+        ActiveStrategyService,
     )
 
     effective_clock = clock or SystemUtcClock()
@@ -132,16 +132,17 @@ def build_round_lifecycle_service_from_config(
                 clock=effective_clock,
             )
         ),
+        active_strategy_service=active_strategy_service or ActiveStrategyService(),
         round_manager_service=build_round_manager_service_from_config(
             config,
             artifact_repository=artifact_repository,
             update_payload_repository=effective_update_payload_repository,
             clock=effective_clock,
         ),
-        prototype_rebuild_runtime_service=prototype_rebuild_runtime_service,
         update_acceptance_policy=(
             update_acceptance_policy or StrictRoundUpdateAcceptancePolicy()
         ),
         method_descriptor=method_descriptor,
+        round_runtime_config=config,
         clock=effective_clock,
     )

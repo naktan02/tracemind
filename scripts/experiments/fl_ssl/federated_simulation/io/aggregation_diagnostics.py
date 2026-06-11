@@ -8,8 +8,8 @@ from methods.federated.aggregation_weighting import (
     aggregation_weight_basis_label,
     aggregation_weight_for_diagnostics,
 )
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
-from methods.federated_ssl.client_diagnostics import (
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.diagnostics.client import (
     client_method_diagnostics_summary_payload,
 )
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (

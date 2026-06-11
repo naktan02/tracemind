@@ -54,7 +54,6 @@ def evaluation_to_payload(evaluation: SimulationEvaluation) -> dict[str, object]
                 evaluation.mean_incorrect_top_1_probability
             ),
             "score_distribution_kind": evaluation.score_distribution_kind,
-            "selection_confidence_kind": evaluation.selection_confidence_kind,
             "mean_selection_confidence": evaluation.mean_selection_confidence,
             "mean_selection_margin": evaluation.mean_selection_margin,
             "per_label": evaluation.per_label,

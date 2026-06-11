@@ -11,6 +11,7 @@ import pytest
 from scripts.workflows.result_index.dashboard_export import write_dashboard_bundle
 from scripts.workflows.result_index.ingest import ingest_reports
 from scripts.workflows.result_index.report_loader import (
+    discover_candidate_report_paths,
     discover_report_paths,
     load_result_index_records,
 )
@@ -27,17 +28,22 @@ PEFT_ADAPTER_PARAMETERS_JSON = (
 
 def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> None:
     report_path = _write_report(tmp_path)
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    manifest = payload["manifest"]
 
     records = load_result_index_records(report_path)
 
+    assert "ssl_input_mode" not in manifest
+    assert "pseudo_label_algorithm" not in manifest
+    assert "teacher_provider" not in manifest
     assert records.run.run_id == "peft_fixmatch_2026_05_13_143419"
     assert records.run.track == "central_peft_ssl"
     assert records.run.method_family == "peft_classifier"
-    assert records.run.method_name == "fixmatch_usb_v1"
+    assert records.run.method_name == "fixmatch"
     assert records.run.algorithm_name == "fixmatch"
     assert records.run.labeled_dataset_name == "ourafla_reddit"
     assert records.run.unlabeled_dataset_name == "szegeelim_general4"
-    assert records.run.validation_dataset_name == "ourafla_reddit"
+    assert records.run.validation_dataset_name is None
     assert records.run.test_dataset_name == "ourafla_reddit"
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs"
@@ -51,6 +57,7 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.eval_metrics[0].macro_f1 == 0.78
     assert records.per_class_metrics[0].category == "anxiety"
     assert records.confusion_matrix_cells[0].actual_category == "anxiety"
+    assert records.epoch_metrics[0].step == 2000
     assert records.epoch_metrics[0].selection_macro_f1 == 0.74
     normal_epoch_metric = next(
         metric
@@ -72,7 +79,7 @@ def test_load_result_index_records_keeps_peft_track(
 
     assert records.run.track == "central_peft_ssl"
     assert records.run.method_family == "peft_classifier"
-    assert records.run.method_name == "fixmatch_usb_v1"
+    assert records.run.method_name == "fixmatch"
 
 
 def test_load_result_index_records_keeps_legacy_peft_entrypoint_track(
@@ -119,12 +126,11 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
     bundle = write_dashboard_bundle(db_path=db_path, output_path=dashboard_path)
 
     assert dashboard_path.exists()
-    assert bundle["filters"]["methods"] == ["fixmatch_usb_v1"]
+    assert bundle["filters"]["methods"] == ["fixmatch"]
     assert bundle["filters"]["run_control_budget_names"] == ["main"]
     assert bundle["filters"]["run_control_output_dirs"] == ["runs"]
     assert bundle["runs"][0]["selection_slug"] == (
-        "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
-        "validation-ourafla_reddit_test-ourafla_reddit"
+        "labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit"
     )
     assert bundle["projection_images"][0]["image_src"].startswith(
         "data/artifacts/peft_fixmatch_2026_05_13_143419/"
@@ -193,11 +199,11 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     )
     assert records.run.track == "fl_ssl_main_comparison"
     assert records.run.method_family == "manual_baselines"
-    assert records.run.method_name == "fixmatch_usb_v1"
+    assert records.run.method_name == "fixmatch"
     assert records.run.algorithm_name == "fixmatch"
     assert records.run.selection_slug == (
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit_"
+        "test-ourafla_reddit_"
         "dirichlet_label_skew_clients10_seed42"
     )
     assert records.run.labeled_dataset_name == "ourafla_reddit"
@@ -282,6 +288,18 @@ def test_fl_ssl_result_index_reads_payload_adapter_kind(
     assert records.run.payload_adapter_kind == "peft_classifier"
 
 
+def test_fl_ssl_result_index_uses_method_owned_descriptor_as_method_name(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_method_owned_fl_ssl_report(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.method_family == "fedmatch"
+    assert records.run.method_name == "fedmatch"
+    assert records.run.algorithm_name == "fixmatch"
+
+
 def test_result_index_discovers_fl_ssl_report_artifacts(tmp_path: Path) -> None:
     central_report = _write_report(tmp_path)
     fl_report = _write_fl_ssl_report(tmp_path)
@@ -302,6 +320,11 @@ def test_result_index_excludes_smoke_reports_from_default_runs_ingest(
         tmp_path / "runs" / "_smoke" / "run_peft_ssl_control"
     ) == [smoke_report]
     assert metadata_smoke_report not in discover_report_paths(tmp_path / "runs")
+    assert set(discover_candidate_report_paths(tmp_path / "runs")) == {
+        central_report,
+        smoke_report,
+        metadata_smoke_report,
+    }
 
 
 def test_result_index_default_ingest_keeps_smoke_out_of_dashboard(
@@ -336,10 +359,10 @@ def test_result_index_prefers_canonical_fl_ssl_hardlink_path(
         tmp_path
         / "runs"
         / "fl_ssl"
-        / "manual_baselines"
-        / "fixmatch_usb_v1__peft_text_encoder_lora__fedavg"
-        / "alpha03_seed42"
-        / "clients10_rounds50"
+        / "ourafla_ourafla_shared_s42"
+        / "c10_r50_e1_b16_s50"
+        / "peft_text_encoder_lora"
+        / "fixmatch_fedavg"
         / "20260517T150549Z"
         / "reports"
         / "fl_ssl_main_comparison.report.json"
@@ -370,8 +393,8 @@ def test_load_result_index_records_keeps_new_fl_ssl_layout_parts(
     records = load_result_index_records(report_path)
 
     assert records.run.run_id == (
-        "manual_baselines__fixmatch_usb_v1__peft_text_encoder_lora__fedavg__"
-        "alpha03_seed42__clients10_rounds50__20260518T010203Z"
+        "ourafla_ourafla_shared_s42__c10_r50_e1_b16_s50__"
+        "peft_text_encoder_lora__fixmatch_fedavg__20260518T010203Z"
     )
 
 
@@ -387,7 +410,7 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     bundle = write_dashboard_bundle(db_path=db_path, output_path=dashboard_path)
 
     assert bundle["filters"]["tracks"] == ["fl_ssl_main_comparison"]
-    assert bundle["filters"]["methods"] == ["fixmatch_usb_v1"]
+    assert bundle["filters"]["methods"] == ["fixmatch"]
     assert bundle["filters"]["algorithms"] == ["fixmatch"]
     assert bundle["filters"]["method_families"] == ["manual_baselines"]
     assert bundle["filters"]["fl_composition_modes"] == ["manual"]
@@ -483,10 +506,7 @@ def _write_report(tmp_path: Path) -> Path:
         / "runs"
         / "run_peft_ssl_control"
         / "consistency"
-        / (
-            "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
-            "validation-ourafla_reddit_test-ourafla_reddit"
-        )
+        / ("labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit")
         / "fixmatch_usb_v1"
         / "peft_fixmatch_2026_05_13_143419"
         / "reports"
@@ -511,10 +531,7 @@ def _write_peft_report(tmp_path: Path) -> Path:
         / "runs"
         / "run_peft_ssl_control"
         / "consistency"
-        / (
-            "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
-            "validation-ourafla_reddit_test-ourafla_reddit"
-        )
+        / ("labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit")
         / "fixmatch_usb_v1"
         / "peft_fixmatch_2026_05_13_143419"
         / "reports"
@@ -596,6 +613,48 @@ def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
     return report_path
 
 
+def _write_method_owned_fl_ssl_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "fl_ssl"
+        / "sz4_ourafla_lp100_shared_s42"
+        / "c10_r30_e1_b12_s20"
+        / "peft_text_encoder_lora"
+        / "fedmatch_labels-at-client"
+        / "20260526T195137Z"
+        / "reports"
+        / "fl_ssl_main_comparison.report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = _sample_fl_ssl_report()
+    protocol = payload["protocol"]
+    protocol["fl_method"] = {
+        "name": "fedmatch",
+        "descriptor_name": "fedmatch",
+        "composition_mode": "method_owned",
+        "execution_role": "method_owned",
+        "manual_axes": {
+            "client_ssl_objective": None,
+            "server_aggregation": None,
+            "update_family": None,
+        },
+    }
+    protocol["ssl_method"] = {
+        "name": "fedmatch",
+        "scenario": "labels-at-client",
+    }
+    protocol["objective"] = {
+        "query_ssl.method_name": "fixmatch_usb_v1",
+        "query_ssl.algorithm_name": "fixmatch",
+    }
+    report_path.write_text(
+        json.dumps(payload, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
 def _write_legacy_entrypoint_report(tmp_path: Path) -> Path:
     report_path = (
         tmp_path
@@ -628,7 +687,15 @@ def _write_smoke_report(tmp_path: Path) -> Path:
         / "report.json"
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text("{}\n", encoding="utf-8")
+    payload = _sample_report(report_path.parent.parent)
+    payload["trainer_version"] = "peft_fixmatch_smoke"
+    payload["manifest"]["trainer_version"] = "peft_fixmatch_smoke"
+    payload["manifest"]["run_control"] = {
+        "track": "central_ssl",
+        "budget_name": "smoke",
+        "output_root": "runs/_smoke",
+    }
+    report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return report_path
 
 
@@ -686,10 +753,10 @@ def _write_new_layout_fl_ssl_report(tmp_path: Path) -> Path:
         tmp_path
         / "runs"
         / "fl_ssl"
-        / "manual_baselines"
-        / "fixmatch_usb_v1__peft_text_encoder_lora__fedavg"
-        / "alpha03_seed42"
-        / "clients10_rounds50"
+        / "ourafla_ourafla_shared_s42"
+        / "c10_r50_e1_b16_s50"
+        / "peft_text_encoder_lora"
+        / "fixmatch_fedavg"
         / "20260518T010203Z"
         / "reports"
         / "fl_ssl_main_comparison.report.json"
@@ -740,6 +807,7 @@ def _sample_report(projection_dir: Path) -> dict:
             "history": [
                 {
                     "epoch": 1,
+                    "step": 2000,
                     "train_loss": 0.5,
                     "train_sup_loss": 0.4,
                     "train_unsup_loss": 0.1,
@@ -945,7 +1013,7 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
             "fl_data_source": {
                 "split_id": (
                     "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-                    "validation-ourafla_reddit_test-ourafla_reddit_"
+                    "test-ourafla_reddit_"
                     "dirichlet_label_skew_clients10_seed42"
                 ),
                 "split_manifest_path": (

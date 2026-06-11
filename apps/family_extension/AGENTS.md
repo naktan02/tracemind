@@ -8,7 +8,7 @@
 중요:
 
 - 이 앱은 wellbeing 계산 owner가 아니다.
-- 출력 의미는 `shared/src/contracts/wellbeing_signal_contracts.py`와
+- 출력 의미는 `agent/src/contracts/wellbeing_signal_contracts.py`와
   `agent`의 `/api/v1/wellbeing/*`가 소유한다.
 - 확장 프로그램은 로컬 프로그램 결과를 소비하고 보여주는 역할만 맡는다.
 

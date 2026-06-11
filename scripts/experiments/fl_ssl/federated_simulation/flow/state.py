@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from methods.common.runtime_resources import RuntimeResourceCache
-from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
+from methods.federated_ssl.hooks.peer_context import FederatedSslPeerClientSnapshot
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientRoundSummary,
     FederatedClientShard,

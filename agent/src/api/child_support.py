@@ -6,13 +6,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 
-from agent.src.services.wellbeing.child_support_service import (
-    ChildSupportCoachService,
-)
-from shared.src.contracts.child_support_contracts import (
+from agent.src.contracts.child_support_contracts import (
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,
     ChildSupportProactivePromptPayload,
+)
+from agent.src.services.wellbeing.child_support_service import (
+    ChildSupportCoachService,
 )
 
 router = APIRouter(prefix="/api/v1/child-support", tags=["child-support"])

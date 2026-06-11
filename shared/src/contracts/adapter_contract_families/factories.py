@@ -56,7 +56,7 @@ def make_classifier_head_delta_payload(
     base_model_revision: str,
     label_weight_deltas: dict[str, list[float]],
     example_count: int,
-    mean_confidence: float,
+    mean_confidence: float | None = None,
     training_scope: TrainingScope = TrainingScope.HEAD_ONLY,
     label_bias_deltas: dict[str, float] | None = None,
     mean_margin: float | None = None,
@@ -64,6 +64,7 @@ def make_classifier_head_delta_payload(
     created_at: datetime | None = None,
 ) -> ClassifierHeadAdapterUpdatePayload:
     """classifier head update payload를 만드는 표준 factory."""
+    del label_counts
     return ClassifierHeadAdapterUpdatePayload(
         schema_version=CLASSIFIER_HEAD_DELTA_V1,
         adapter_kind=AdapterKind.CLASSIFIER_HEAD.value,
@@ -76,7 +77,6 @@ def make_classifier_head_delta_payload(
         label_bias_deltas=label_bias_deltas or {},
         mean_confidence=mean_confidence,
         mean_margin=mean_margin,
-        label_counts=label_counts or {},
     )
 
 
@@ -136,6 +136,7 @@ def make_peft_classifier_delta_payload(
     created_at: datetime | None = None,
 ) -> PeftClassifierAdapterUpdatePayload:
     """PEFT-classifier update payload를 만드는 표준 factory."""
+    del label_counts
     return PeftClassifierAdapterUpdatePayload(
         schema_version=PEFT_CLASSIFIER_DELTA_V2,
         adapter_kind=AdapterKind.PEFT_CLASSIFIER.value,
@@ -157,7 +158,6 @@ def make_peft_classifier_delta_payload(
         delta_format=delta_format,
         mean_confidence=mean_confidence,
         mean_margin=mean_margin,
-        label_counts=label_counts or {},
         delta_l2_norm=delta_l2_norm,
     )
 

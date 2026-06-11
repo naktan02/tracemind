@@ -1,6 +1,7 @@
 {
   "schema_version": "classifier_head_state.v1",
   "adapter_kind": "classifier_head",
+  "head_kind": "linear",
   "model_id": "tracemind-embed",
   "model_revision": "rev_head_001",
   "training_scope": "head_only",

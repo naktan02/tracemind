@@ -19,6 +19,9 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.infrastructure.repositories import (
     shared_adapter_update_repository as shared_adapter_update_repository_module,
 )
+from main_server.src.infrastructure.repositories.active_strategy_repository import (
+    ActiveStrategyRepository,
+)
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.federation.rounds.active_manifest_service import (
     ActiveModelManifestService,
@@ -35,6 +38,9 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 )
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
+)
+from main_server.src.services.federation.strategy.active_strategy_service import (
+    ActiveStrategyService,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.adapter_contract_families.classifier_head import (
@@ -59,6 +65,7 @@ def _build_service(
     *,
     tmp_path: Path,
     fixed_time: datetime,
+    active_strategy_service: ActiveStrategyService | None = None,
 ) -> tuple[RoundLifecycleService, ModelManifest]:
     round_repository = RoundRepository(state_root=tmp_path / "rounds")
     state_repository = (
@@ -85,7 +92,7 @@ def _build_service(
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
-        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+        auxiliary_artifact_versions={"calibration_set": "calib_000"},
         training_scope="head_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -100,6 +107,15 @@ def _build_service(
                 state_root=tmp_path / "model_manifests"
             ),
             clock=FixedClock(fixed_time),
+        ),
+        active_strategy_service=(
+            active_strategy_service
+            or ActiveStrategyService(
+                repository=ActiveStrategyRepository(
+                    state_root=tmp_path / "active_strategy"
+                ),
+                clock=FixedClock(fixed_time),
+            )
         ),
         round_manager_service=RoundManagerService(
             payload_adapter=build_shared_adapter_round_payload_adapter(
@@ -116,6 +132,17 @@ def _build_service(
         activated_at=fixed_time,
     )
     return service, active_manifest
+
+
+def _build_active_strategy_service(
+    *,
+    tmp_path: Path,
+    fixed_time: datetime,
+) -> ActiveStrategyService:
+    return ActiveStrategyService(
+        repository=ActiveStrategyRepository(state_root=tmp_path / "active_strategy"),
+        clock=FixedClock(fixed_time),
+    )
 
 
 def _build_update(
@@ -137,7 +164,6 @@ def _build_update(
         example_count=3,
         mean_confidence=0.8,
         mean_margin=0.15,
-        label_counts={"anxiety": 2, "normal": 1},
     )
     envelope = TrainingUpdateEnvelope(
         schema_version="training_update_envelope.v1",
@@ -196,6 +222,14 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
         accepted_update.payload_ref
         == service.update_payload_repository.ref_for_update("update_001")
     )
+    assert accepted_update.example_count == 1
+    assert accepted_update.client_metrics == {}
+    stored_payload = service.update_payload_repository.load_shared_adapter_update(
+        "update_001"
+    )
+    assert stored_payload.example_count == 1
+    assert stored_payload.mean_confidence is None
+    assert stored_payload.mean_margin is None
 
     current_response = fl_rounds_api.get_current_round(service=service)
     assert current_response.round_id == "round_0001"
@@ -203,7 +237,7 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     finalize_response = fl_rounds_api.finalize_round(
         "round_0001",
         RoundFinalizeRequestPayload(
-            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+            next_auxiliary_artifact_versions={"calibration_set": "calib_001"},
             next_model_revision="rev_001",
         ),
         service=service,
@@ -213,7 +247,7 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     assert finalize_response.publication is not None
     assert finalize_response.publication.next_manifest.model_revision == "rev_001"
     assert finalize_response.publication.next_manifest.auxiliary_artifact_versions == {
-        "prototype_pack": "proto_001"
+        "calibration_set": "calib_001"
     }
     active_manifest_response = fl_rounds_api.get_active_model_manifest(service=service)
     assert active_manifest_response.model_revision == "rev_001"
@@ -221,6 +255,109 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     with pytest.raises(HTTPException) as error_info:
         fl_rounds_api.get_current_round(service=service)
     assert error_info.value.status_code == 404
+
+
+def test_fl_round_open_uses_active_strategy_ssl_method(tmp_path: Path) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    strategy_service = _build_active_strategy_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    strategy_service.switch(
+        ssl_method="flexmatch_usb_v1",
+        notes="unit-test switch",
+    )
+    service, _active_manifest = _build_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+        active_strategy_service=strategy_service,
+    )
+
+    open_response = fl_rounds_api.open_round(
+        RoundOpenRequestPayload(round_id="round_flex"),
+        service=service,
+    )
+
+    assert (
+        open_response.training_task.objective_config.extras["query_ssl.method_name"]
+        == "flexmatch_usb_v1"
+    )
+    assert (
+        open_response.training_task.objective_config.extras["query_ssl.algorithm_name"]
+        == "flexmatch"
+    )
+
+
+def test_fl_round_open_embeds_fssl_peer_context_from_previous_round(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    strategy_service = _build_active_strategy_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    service, _active_manifest = _build_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+        active_strategy_service=strategy_service,
+    )
+    first_round = fl_rounds_api.open_round(
+        RoundOpenRequestPayload(round_id="round_0001"),
+        service=service,
+    )
+    update = _build_update(
+        tmp_path=tmp_path,
+        round_id="round_0001",
+        task_id=first_round.training_task.task_id,
+    )
+    fl_rounds_api.accept_update("round_0001", update, service=service)
+    fl_rounds_api.finalize_round(
+        "round_0001",
+        RoundFinalizeRequestPayload(next_model_revision="rev_001"),
+        service=service,
+    )
+
+    strategy_service.switch(fssl_method="fedmatch")
+    second_round = fl_rounds_api.open_round(
+        RoundOpenRequestPayload(round_id="round_0002"),
+        service=service,
+    )
+
+    assert second_round.training_task.fssl_method == "fedmatch"
+    assert second_round.training_task.fssl_execution is not None
+    assert second_round.training_task.fssl_execution["method_name"] == "fedmatch"
+    assert second_round.training_task.fssl_execution["runtime_surface"] == {
+        "payload_adapter_kind": "classifier_head",
+        "update_family_name": "peft_text_encoder",
+        "aggregation_backend_name": "fedavg",
+    }
+    assert second_round.training_task.fssl_capability_plan is not None
+    assert (
+        second_round.training_task.fssl_capability_plan["server_update_policy"]["name"]
+        == "fedmatch_partitioned"
+    )
+    assert (
+        second_round.training_task.objective_config.extras["query_ssl.method_name"]
+        == "fixmatch_usb_v1"
+    )
+    context = second_round.training_task.fssl_context
+    assert context is not None
+    assert context["method_name"] == "fedmatch"
+    peer_context = context["peer_context"]
+    assert isinstance(peer_context, dict)
+    assert peer_context["source_round_id"] == "round_0001"
+    assert peer_context["warmup"] is False
+    assert peer_context["summary_metrics"]["fedmatch.update_count"] == 1.0
+    assert peer_context["summary_metrics"]["fedmatch.example_count"] == 1.0
+    assert peer_context["client_contexts"] == [
+        {
+            "client_id": "update_001",
+            "update_id": "update_001",
+            "example_count": 1,
+            "metrics": {},
+            "helper_client_ids": [],
+        }
+    ]
 
 
 def test_fl_rounds_api_rejects_duplicate_update_id(

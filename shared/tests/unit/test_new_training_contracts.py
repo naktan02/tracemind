@@ -7,9 +7,7 @@ from shared.src.contracts.common_types import (
     TrainingTaskType,
 )
 from shared.src.contracts.model_contracts import ArtifactKind
-from shared.src.contracts.personalization_contracts import (
-    PersonalizationWarmupStatus,
-)
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.contracts.training_contracts import (
     FeedbackSignalType,
     SecureAggregationConfig,
@@ -35,34 +33,16 @@ def test_model_manifest_payload_accepts_active_fields(
 
     assert payload.training_enabled is True
     assert payload.training_scope == TrainingScope.ADAPTER_ONLY
-    assert "prototype_version" not in payload.model_dump(mode="json")
 
 
-def test_model_manifest_payload_keeps_prototype_only_as_auxiliary(
+def test_model_manifest_payload_keeps_auxiliary_artifact_versions(
     make_model_manifest_payload,
 ) -> None:
     payload = make_model_manifest_payload(
-        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+        auxiliary_artifact_versions={"calibration_set": "calib_001"},
     )
 
-    assert payload.auxiliary_artifact_versions == {"prototype_pack": "proto_001"}
-    assert "prototype_version" not in payload.model_dump(mode="json")
-
-
-def test_model_manifest_payload_migrates_legacy_prototype_version(
-    make_model_manifest_payload,
-) -> None:
-    payload = make_model_manifest_payload(
-        prototype_version="proto_001",
-        translation_model_id="legacy-translator",
-        translation_model_revision="legacy-rev",
-    )
-
-    assert payload.auxiliary_artifact_versions == {"prototype_pack": "proto_001"}
-    dumped = payload.model_dump(mode="json")
-    assert "prototype_version" not in dumped
-    assert "translation_model_id" not in dumped
-    assert "translation_model_revision" not in dumped
+    assert payload.auxiliary_artifact_versions == {"calibration_set": "calib_001"}
 
 
 def test_training_payloads_capture_round_and_revision(
@@ -123,6 +103,34 @@ def test_federated_ssl_method_local_step_is_canonical_training_task_type(
     )
 
 
+def test_training_task_payload_carries_fssl_runtime_snapshots(
+    make_training_task_payload,
+) -> None:
+    payload = make_training_task_payload(
+        fssl_method="fedmatch",
+        fssl_execution={
+            "composition_mode": "method_owned",
+            "execution_role": "method_owned",
+            "method_name": "fedmatch",
+            "descriptor_name": "fedmatch",
+        },
+        fssl_capability_plan={
+            "local_ssl_policy": {"name": "fedmatch_agreement"},
+            "server_update_policy": {"name": "fedmatch_partitioned"},
+            "peer_context_policy": {"name": "fixed_probe_output_knn"},
+        },
+    )
+
+    dumped = payload.model_dump(mode="json")
+
+    assert dumped["fssl_method"] == "fedmatch"
+    assert dumped["fssl_execution"]["method_name"] == "fedmatch"
+    assert (
+        dumped["fssl_capability_plan"]["server_update_policy"]["name"]
+        == "fedmatch_partitioned"
+    )
+
+
 def test_training_task_payload_migrates_legacy_fedmatch_task_type(
     make_training_task_payload,
 ) -> None:
@@ -143,100 +151,84 @@ def test_training_update_envelope_accepts_custom_payload_format(
     assert payload.payload_format == "lora_update"
 
 
-def test_feedback_and_personalization_payloads_are_local_friendly(
+def test_feedback_signal_payload_is_local_friendly(
     make_feedback_signal_payload,
-    make_personalization_state_payload,
 ) -> None:
     signal = make_feedback_signal_payload(
         signal_type=FeedbackSignalType.PSEUDO_LABEL,
         label="depression_rising",
     )
-    state = make_personalization_state_payload(
-        warmup_status=PersonalizationWarmupStatus.READY,
-    )
 
     assert signal.signal_type == FeedbackSignalType.PSEUDO_LABEL
-    assert state.threshold_by_category["depression"] == 0.6
+    assert signal.label == "depression_rising"
 
 
-def test_training_objective_config_payload_accepts_policy_fields() -> None:
+def test_training_objective_config_payload_accepts_current_objective_fields() -> None:
     payload = TrainingObjectiveConfigPayload(
         training_backend_name="contrastive",
-        algorithm_profile_name="prototype_pseudo_label_v1",
-        loss_name="cross_entropy",
-        confidence_threshold=0.7,
-        margin_threshold=0.05,
-        example_generation_backend_name="prototype_rescore",
-        evidence_backend_name="prototype_similarity_evidence",
-        scorer_backend_name="prototype_similarity",
-        score_policy_name="topk_mean_cosine",
-        score_top_k=3,
-        pseudo_label_algorithm_name="top1_margin_threshold",
-        acceptance_policy_name="top1_margin_threshold",
+        algorithm_profile_name="peft_classifier_update_v1",
         privacy_guard_name="clip_only",
     )
 
     assert payload.training_backend_name == "contrastive"
-    assert payload.algorithm_profile_name == "prototype_pseudo_label_v1"
-    assert payload.loss_name == "cross_entropy"
-    assert payload.example_generation_backend_name == "prototype_rescore"
-    assert payload.evidence_backend_name == "prototype_similarity_evidence"
-    assert payload.scorer_backend_name == "prototype_similarity"
-    assert payload.score_policy_name == "topk_mean_cosine"
-    assert payload.score_top_k == 3
-    assert payload.pseudo_label_algorithm_name == "top1_margin_threshold"
-    assert payload.acceptance_policy_name == "top1_margin_threshold"
+    assert payload.algorithm_profile_name == "peft_classifier_update_v1"
     assert payload.privacy_guard_name == "clip_only"
 
 
-def test_training_objective_config_round_trips_policy_fields() -> None:
+def test_training_objective_config_round_trips_current_objective_fields() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {
             "training_backend_name": "peft_classifier_trainer",
-            "algorithm_profile_name": "prototype_pseudo_label_v1",
-            "loss_name": "cross_entropy",
-            "confidence_threshold": 0.65,
-            "margin_threshold": 0.03,
-            "example_generation_backend_name": "prototype_rescore",
-            "evidence_backend_name": "prototype_similarity_evidence",
-            "scorer_backend_name": "prototype_similarity",
-            "score_policy_name": "topk_mean_cosine",
-            "score_top_k": 2,
-            "pseudo_label_algorithm_name": "top1_confidence_only",
-            "acceptance_policy_name": "top1_confidence_only",
+            "algorithm_profile_name": "peft_classifier_update_v1",
+            "query_ssl.p_cutoff": 0.65,
             "privacy_guard_name": "noop",
-            "temperature": 0.8,
+            "query_ssl.temperature": 0.8,
         }
     )
 
     assert config.training_backend_name == "peft_classifier_trainer"
-    assert config.algorithm_profile_name == "prototype_pseudo_label_v1"
-    assert config.loss_name == "cross_entropy"
-    assert config.example_generation_backend_name == "prototype_rescore"
-    assert config.evidence_backend_name == "prototype_similarity_evidence"
-    assert config.scorer_backend_name == "prototype_similarity"
-    assert config.score_policy_name == "topk_mean_cosine"
-    assert config.score_top_k == 2
-    assert config.pseudo_label_algorithm_name == "top1_confidence_only"
-    assert config.acceptance_policy_name == "top1_confidence_only"
+    assert config.algorithm_profile_name == "peft_classifier_update_v1"
     assert config.privacy_guard_name == "noop"
-    assert config.extras == {"temperature": 0.8}
+    assert config.extras == {
+        "query_ssl.p_cutoff": 0.65,
+        "query_ssl.temperature": 0.8,
+    }
     assert config.to_mapping() == {
         "training_backend_name": "peft_classifier_trainer",
-        "algorithm_profile_name": "prototype_pseudo_label_v1",
-        "loss_name": "cross_entropy",
-        "confidence_threshold": 0.65,
-        "margin_threshold": 0.03,
-        "example_generation_backend_name": "prototype_rescore",
-        "evidence_backend_name": "prototype_similarity_evidence",
-        "scorer_backend_name": "prototype_similarity",
-        "score_policy_name": "topk_mean_cosine",
-        "score_top_k": 2,
-        "pseudo_label_algorithm_name": "top1_confidence_only",
-        "acceptance_policy_name": "top1_confidence_only",
+        "algorithm_profile_name": "peft_classifier_update_v1",
+        "query_ssl.p_cutoff": 0.65,
         "privacy_guard_name": "noop",
-        "temperature": 0.8,
+        "query_ssl.temperature": 0.8,
     }
+
+
+def test_scoring_config_round_trips_scoring_fields() -> None:
+    config = ScoringConfigPayload.from_mapping(
+        {
+            "scorer_backend_name": "classifier_head_logits",
+            "score_policy_name": "topk_mean_cosine",
+            "score_top_k": 3,
+        }
+    )
+
+    assert config.scorer_backend_name == "classifier_head_logits"
+    assert config.score_policy_name == "topk_mean_cosine"
+    assert config.score_top_k == 3
+    assert config.to_mapping() == {
+        "scorer_backend_name": "classifier_head_logits",
+        "score_policy_name": "topk_mean_cosine",
+        "score_top_k": 3,
+    }
+
+
+def test_training_objective_config_rejects_unscoped_objective_extras() -> None:
+    with pytest.raises(ValueError, match="extras must be scoped"):
+        TrainingObjectiveConfig.from_mapping(
+            {
+                "training_backend_name": "peft_classifier_trainer",
+                "unscoped_objective_parameter": "not_allowed",
+            }
+        )
 
 
 def test_training_objective_config_normalizes_nested_component_extras() -> None:
@@ -278,17 +270,13 @@ def test_training_objective_config_preserves_algorithm_profile_without_expansion
     config = TrainingObjectiveConfig.from_mapping(
         {
             "training_backend_name": "peft_classifier_trainer",
-            "algorithm_profile_name": "prototype_top1_confidence_v1",
+            "algorithm_profile_name": "peft_classifier_update_v1",
         }
     )
 
-    assert config.algorithm_profile_name == "prototype_top1_confidence_v1"
+    assert config.algorithm_profile_name == "peft_classifier_update_v1"
     assert config.training_backend_name == "peft_classifier_trainer"
-    assert config.example_generation_backend_name is None
-    assert config.evidence_backend_name is None
-    assert config.pseudo_label_algorithm_name is None
-    assert config.acceptance_policy_name is None
-    assert config.margin_threshold is None
+    assert config.extras == {}
 
 
 def test_training_objective_config_does_not_expand_unknown_algorithm_profile() -> None:
@@ -301,38 +289,14 @@ def test_training_objective_config_does_not_expand_unknown_algorithm_profile() -
 
     assert config.algorithm_profile_name == "custom_pseudo_label_v1"
     assert config.training_backend_name == "peft_classifier_trainer"
-    assert config.example_generation_backend_name is None
-    assert config.scorer_backend_name is None
-    assert config.pseudo_label_algorithm_name is None
     assert config.privacy_guard_name is None
 
 
 def test_training_objective_config_requires_training_backend_name() -> None:
     with pytest.raises(ValueError, match="training_backend_name is required"):
         TrainingObjectiveConfig.from_mapping(
-            {"algorithm_profile_name": "prototype_top1_confidence_v1"}
+            {"algorithm_profile_name": "peft_classifier_update_v1"}
         )
-
-
-def test_training_objective_config_from_mapping_keeps_legacy_algorithm_fallback() -> (
-    None
-):
-    config = TrainingObjectiveConfig.from_mapping(
-        {
-            "training_backend_name": "peft_classifier_trainer",
-            "acceptance_policy_name": "top1_margin_threshold",
-        }
-    )
-
-    assert config.pseudo_label_algorithm_name == "top1_margin_threshold"
-    assert config.acceptance_policy_name == "top1_margin_threshold"
-
-
-def test_training_objective_config_accepts_legacy_loss_alias() -> None:
-    payload = TrainingObjectiveConfigPayload(loss="legacy_backend")
-
-    assert payload.training_backend_name == "legacy_backend"
-    assert payload.loss == "legacy_backend"
 
 
 def test_training_task_payload_accepts_legacy_secure_aggregation_required(

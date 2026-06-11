@@ -23,3 +23,11 @@ materialization, FL SSL execution primitive를 맡는다.
 
 LoRA/DoRA mechanism 구현은 `methods/adaptation/peft_adapters/`에 두고, FedMatch
 method semantics는 `methods/federated_ssl/fedmatch/`에서 callable/config로 주입한다.
+
+## Query SSL Training
+
+- `training/query_ssl_local_training.py`: 기존 호출부가 들어오는 orchestration 표면.
+- `training/query_ssl_training_session.py`: 중앙 pooled SSL과 FL client가 공유하는
+  local Query SSL 학습 session.
+- `training/query_ssl_federated_update.py`: 학습 session 결과를 federated client update
+  contract와 delta artifact payload로 변환.

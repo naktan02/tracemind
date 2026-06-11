@@ -1,0 +1,10 @@
+# @package query_ssl_method
+
+name: pseudolabel_classic_v1
+algorithm_name: pseudolabel
+p_cutoff: 0.0
+unsup_warm_up: 0.4
+lambda_u: 1.0
+supervised_loss_weight: 1.0
+unlabeled_batch_size: ${train_batch_size}
+require_multiview: false

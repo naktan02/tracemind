@@ -56,11 +56,7 @@ def _training_task() -> TrainingTask:
         learning_rate=1e-4,
         max_steps=3,
         objective_config=TrainingObjectiveConfig.from_mapping(
-            {
-                "training_backend_name": "peft_classifier_trainer",
-                "confidence_threshold": 0.0,
-                "margin_threshold": 0.0,
-            }
+            {"training_backend_name": "peft_classifier_trainer"}
         ),
         selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 4}),
         gradient_clip_norm=1.0,
@@ -76,7 +72,7 @@ def test_query_ssl_peft_encoder_update_payload_uses_server_refs_without_inline()
         model_manifest=make_embedding_manifest(
             model_id="mxbai-peft-classifier",
             model_revision="sim_rev_0000",
-            auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
+            auxiliary_artifact_versions={"calibration_set": "calib_v0"},
             artifact_ref="shared_adapter_state::sim_rev_0000",
         ),
         peft_config=PeftEncoderTrainingBackendConfig(
@@ -138,7 +134,7 @@ def test_query_ssl_peft_encoder_update_payload_requires_refs_for_artifact_mode()
             model_manifest=make_embedding_manifest(
                 model_id="mxbai-peft-classifier",
                 model_revision="sim_rev_0000",
-                auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
+                auxiliary_artifact_versions={"calibration_set": "calib_v0"},
                 artifact_ref="shared_adapter_state::sim_rev_0000",
             ),
             peft_config=PeftEncoderTrainingBackendConfig(),

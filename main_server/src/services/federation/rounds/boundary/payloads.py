@@ -5,20 +5,41 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from main_server.src.services.federation.rounds.boundary.models import RoundStatus
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
-from shared.src.contracts.common_types import TrainingTaskType
+from shared.src.contracts.common_types import TrainingScope, TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifestPayload
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfigPayload,
+    TrainingConfigScalar,
     TrainingObjectiveConfigPayload,
     TrainingSelectionPolicyPayload,
     TrainingTaskPayload,
     TrainingUpdateEnvelopePayload,
 )
+
+
+class RoundStrategyPayload(BaseModel):
+    """운영 round strategy 선택 payload.
+
+    raw objective_config 대신 method/profile 이름을 받아 서버가 canonical task
+    objective를 조립한다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["composed", "method_owned"] = "composed"
+    local_update_profile: str | None = None
+    ssl_method: str | None = None
+    fssl_method: str | None = None
+    scenario: str | None = None
+    server_update_policy: str | None = None
+    aggregation_backend: str | None = None
+    parameter_overrides: dict[str, TrainingConfigScalar] = Field(default_factory=dict)
 
 
 class RoundPublicationPayload(BaseModel):
@@ -33,35 +54,6 @@ class RoundPublicationPayload(BaseModel):
     round_state_summary_metrics: dict[str, float] = Field(default_factory=dict)
     auxiliary_artifact_refs: dict[str, str] = Field(default_factory=dict)
     auxiliary_artifact_metadata: dict[str, str] = Field(default_factory=dict)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _migrate_legacy_prototype_publication_fields(cls, data: object) -> object:
-        """구형 prototype-specific publication 필드를 auxiliary map으로 승격한다."""
-
-        if not isinstance(data, dict):
-            return data
-        migrated = dict(data)
-        artifact_refs = dict(migrated.get("auxiliary_artifact_refs") or {})
-        metadata = dict(migrated.get("auxiliary_artifact_metadata") or {})
-        prototype_pack_ref = migrated.pop("prototype_pack_ref", None)
-        if prototype_pack_ref:
-            artifact_refs.setdefault("prototype_pack", str(prototype_pack_ref))
-        prototype_build_state_ref = migrated.pop("prototype_build_state_ref", None)
-        if prototype_build_state_ref:
-            artifact_refs.setdefault(
-                "prototype_build_state",
-                str(prototype_build_state_ref),
-            )
-        prototype_rebuild_input_id = migrated.pop("prototype_rebuild_input_id", None)
-        if prototype_rebuild_input_id:
-            metadata.setdefault(
-                "prototype_rebuild_input_id",
-                str(prototype_rebuild_input_id),
-            )
-        migrated["auxiliary_artifact_refs"] = artifact_refs
-        migrated["auxiliary_artifact_metadata"] = metadata
-        return migrated
 
 
 class RoundRecordPayload(BaseModel):
@@ -99,6 +91,22 @@ class ActiveModelManifestPointerPayload(BaseModel):
     activated_at: datetime
 
 
+class InitialSharedArtifactPublicationRequestPayload(BaseModel):
+    """첫 active shared artifact publication API payload."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model_id: str
+    label_schema: list[str] = Field(min_length=1)
+    model_revision: str | None = None
+    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY
+    embedding_dim: int | None = Field(default=None, ge=1)
+    compatible_task_types: list[TrainingTaskType] = Field(
+        default_factory=lambda: [TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING]
+    )
+    notes: str | None = None
+
+
 class RoundTaskConfigPayload(BaseModel):
     """round task template API payload."""
 
@@ -114,6 +122,7 @@ class RoundTaskConfigPayload(BaseModel):
         gt=0.0,
     )
     max_steps: int = Field(default=RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps, ge=1)
+    strategy: RoundStrategyPayload | None = None
     objective_config: TrainingObjectiveConfigPayload | None = None
     selection_policy: TrainingSelectionPolicyPayload | None = None
     secure_aggregation: SecureAggregationConfigPayload | None = None

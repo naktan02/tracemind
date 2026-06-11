@@ -5,17 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
 from agent.src.services.wellbeing.projection_service import (
     WellbeingSignalProjectionService,
-)
-from shared.src.contracts.wellbeing_signal_contracts import (
-    WellbeingSignalConfidence,
-    WellbeingSignalLevel,
-    WellbeingSignalSummaryPayload,
-    WellbeingSignalTrend,
 )
 
 
@@ -23,8 +23,8 @@ from shared.src.contracts.wellbeing_signal_contracts import (
 class WellbeingSummaryService:
     """현재 wellbeing signal 한 건을 제공한다.
 
-    현재 단계에서는 snapshot repository를 우선 source of truth로 사용하고,
-    저장된 값이 없을 때만 deterministic mock을 fallback으로 반환한다.
+    snapshot repository를 source of truth로 사용한다. 저장된 값이 없으면
+    관측 데이터가 없다는 low-data payload를 반환한다.
     """
 
     repository: WellbeingSnapshotRepository | None = None
@@ -42,12 +42,12 @@ class WellbeingSummaryService:
             return self._mock_payload
         return WellbeingSignalSummaryPayload(
             computed_at=datetime.now(tz=timezone.utc),
-            signal_score=61.0,
-            signal_level=WellbeingSignalLevel.HIGH,
-            signal_label="주의 필요",
-            trend=WellbeingSignalTrend.RISING,
-            summary="최근 전체 상태가 평소보다 높게 관찰되었습니다.",
-            action_tip="오늘은 짧게 안부를 묻고 저녁 대화 시간을 확보해 보세요.",
-            confidence=WellbeingSignalConfidence.MEDIUM,
-            low_data=False,
+            signal_score=0.0,
+            signal_level=WellbeingSignalLevel.LOW,
+            signal_label="데이터 없음",
+            trend=WellbeingSignalTrend.UNKNOWN,
+            summary="아직 분석된 최근 입력이 없어 현재 상태를 판단하지 않습니다.",
+            action_tip="입력 데이터가 쌓이면 최근 상태를 다시 확인하세요.",
+            confidence=WellbeingSignalConfidence.LOW,
+            low_data=True,
         )

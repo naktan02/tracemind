@@ -8,6 +8,7 @@
 2. agent update를 수집하고 검증한다.
 3. aggregation으로 다음 shared adapter state를 만든다.
 4. 다음 `ModelManifest`와 필요한 optional auxiliary artifact 발행까지 연결한다.
+5. 첫 round 전에 선택된 adapter family의 initial shared adapter state를 publish한다.
 
 ## 먼저 읽을 파일
 
@@ -53,7 +54,12 @@
   - `artifact_ref`/`payload_ref`는 파일 경로가 아니라 server-owned ref로 다루고,
     실제 저장소 해석은 infrastructure repository에 위임
 - `round_lifecycle_service.py`
-  - open/update/finalize orchestration
+  - initial publication, open/update/finalize orchestration
+- `initial_publication_service.py`
+  - selected payload adapter/update family의 initial state builder를 호출하고
+    server-owned state repository와 active manifest pointer에 publish
+  - family 내부 payload 의미는 `methods/adaptation/<family>/`
+    initial state builder가 소유한다
 - `active_manifest_service.py`
   - 서버 current `ModelManifest` 저장/활성화
 - `payload_adapters/`
@@ -98,11 +104,10 @@
 
 새 FL SSL method가 round별 state exchange, client weighting, pseudo-label statistics,
 server-side calibration을 요구하면 먼저
-`methods/federated_ssl/<method>/server_policy.py` 또는 `round_policy.py`에 의미를
-둔다. `main_server`에는 그 policy를 실행하기 위한 generic runtime capability만
+`methods/federated_ssl/<method>/method_surface.py`에 의미를 둔다.
+`main_server`에는 그 policy를 실행하기 위한 generic runtime capability만
 추가한다. method 이름을 가진 server 파일이 늘어나면 runtime adapter가 method
 framework 역할을 흡수하고 있다는 신호다.
 
-새 payload adapter나 backend를 추가할 때는
-`docs/contracts/algorithm_extension_guide.md`와
-`docs/contracts/strategy_addition_playbook.md`를 먼저 읽는 편이 빠르다.
+새 payload adapter나 backend를 추가할 때는 `methods/README.md`,
+`conf/README.md`, 관련 shared contract를 먼저 읽는 편이 빠르다.

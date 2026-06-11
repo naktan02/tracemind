@@ -1,0 +1,2 @@
+"""Typing segment ingest services."""
+

@@ -60,6 +60,8 @@ import하고, 해당 module의 decorator registration이 실행된다.
 4. 필요하면 lifecycle hook을 사용한다.
    - 전체 step 수가 필요하면 `configure_training(num_train_iter=...)`.
    - class 수나 unlabeled row 수가 필요하면 `configure_dataset(...)`.
+   - batch-size 의미가 있는 state나 queue가 필요하면
+     `configure_batching(labeled_batch_size=..., unlabeled_batch_size=...)`.
    - 이 둘로 부족하면 먼저 seam 확장을 검토한다.
 5. module 하단에서 `@register_query_ssl_algorithm(...)`로 factory를 등록한다.
 6. Hydra config를 추가한다.

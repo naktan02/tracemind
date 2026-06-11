@@ -38,8 +38,8 @@ _PEFT_TEXT_ENCODER_REPORT_RULES = UpdateFamilyReportArtifactRules(
     ),
     aggregate_snapshot_specs=(
         AggregateSnapshotSpec(
-            artifact_family_name=PEFT_CLASSIFIER_ADAPTER_KIND,
-            artifact_names=("peft_adapter.json", "classifier_head.json"),
+            artifact_family_name=PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME,
+            artifact_names=("peft_adapter.safetensors", "classifier_head.json"),
         ),
     ),
 )
@@ -87,10 +87,7 @@ def aggregate_snapshot_candidates(
     rules = _rules_for_update_family(update_family_name)
     return tuple(
         tuple(
-            artifact_root
-            / spec.artifact_family_name
-            / model_revision
-            / artifact_name
+            artifact_root / spec.artifact_family_name / model_revision / artifact_name
             for artifact_name in spec.artifact_names
         )
         for spec in rules.aggregate_snapshot_specs

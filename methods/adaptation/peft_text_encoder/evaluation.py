@@ -20,11 +20,17 @@ from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftEncoderModelRuntimeConfig,
     build_peft_text_encoder_with_linear_head_from_config,
 )
+from methods.adaptation.peft_text_encoder.training.pseudo_label_diagnostics import (
+    tokenization_cache_namespace,
+)
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
     materialize_base_peft_encoder_state,
 )
 from methods.adaptation.query_text_views.data import build_dataloader
+from methods.adaptation.query_text_views.tokenization import (
+    resolve_text_tokenization_cache,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.evaluation.classification_payload import (
     build_classification_evaluation_payload,
@@ -41,7 +47,6 @@ PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES = (
     PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
 )
 PEFT_ENCODER_CLASSIFIER_DISTRIBUTION_KIND = "peft_classifier_logits_softmax"
-PEFT_ENCODER_CLASSIFIER_CONFIDENCE_KIND = "peft_classifier_top1_probability"
 
 
 def evaluate_peft_encoder_state(
@@ -77,6 +82,7 @@ def evaluate_peft_encoder_state(
         device=runtime_config.device,
     )
     label_to_index = {label: index for index, label in enumerate(effective_labels)}
+    tokenization_cache = resolve_text_tokenization_cache(runtime_resource_cache)
     dataloader = build_dataloader(
         rows=list(rows),
         label_to_index=label_to_index,
@@ -85,6 +91,8 @@ def evaluate_peft_encoder_state(
         max_length=int(peft_config.max_length),
         task_prefix=peft_config.task_prefix,
         shuffle=False,
+        tokenization_cache=tokenization_cache,
+        tokenization_cache_namespace=tokenization_cache_namespace(peft_config),
     )
     return evaluate_classifier(
         model=model,
@@ -106,7 +114,6 @@ def evaluate_peft_encoder_state_payload(
     runtime_resource_cache: RuntimeResourceCache | None = None,
     loss_kind: str = "cross_entropy_from_peft_classifier_logits",
     score_distribution_kind: str = PEFT_ENCODER_CLASSIFIER_DISTRIBUTION_KIND,
-    selection_confidence_kind: str = PEFT_ENCODER_CLASSIFIER_CONFIDENCE_KIND,
 ) -> dict[str, object]:
     """PEFT encoder global state 평가 결과를 canonical payload로 반환한다."""
 
@@ -127,7 +134,6 @@ def evaluate_peft_encoder_state_payload(
         accepted_ratio=1.0 if row_count > 0 else 0.0,
         loss_kind=loss_kind,
         score_distribution_kind=score_distribution_kind,
-        selection_confidence_kind=selection_confidence_kind,
         mean_selection_confidence=float(report["mean_top_1_probability"]),
         mean_selection_margin=float(report["mean_margin_top1_top2"]),
     )
@@ -165,7 +171,6 @@ def evaluate_peft_encoder_validation_payload(
         runtime_resource_cache=runtime_resource_cache,
         loss_kind="cross_entropy_from_peft_classifier_logits",
         score_distribution_kind=PEFT_ENCODER_CLASSIFIER_DISTRIBUTION_KIND,
-        selection_confidence_kind=PEFT_ENCODER_CLASSIFIER_CONFIDENCE_KIND,
     )
 
 
@@ -209,9 +214,9 @@ def require_peft_encoder_validation_backend(
     *,
     adapter_state: object,
     scorer_backend_name: str,
-    prototype_scorer_backend_name: str,
+    selection_only_scorer_backend_name: str,
 ) -> None:
-    """PEFT encoder state에 prototype scorer validation이 붙는 drift를 막는다."""
+    """PEFT encoder state에 selection-only scorer validation이 붙는 drift를 막는다."""
 
     if not isinstance(adapter_state, PeftClassifierState):
         return
@@ -220,7 +225,7 @@ def require_peft_encoder_validation_backend(
     raise ValueError(
         "PEFT text encoder/head validation must use one of "
         f"{PEFT_ENCODER_ACCEPTED_CLASSIFIER_EVALUATOR_NAMES!r}. "
-        f"{prototype_scorer_backend_name!r} is prototype/selection-only "
+        f"{selection_only_scorer_backend_name!r} is selection-only "
         "and does not read PEFT encoder/head global state."
     )
 

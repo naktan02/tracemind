@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from agent.src.services.federation.rounds.runtime_service import (
-    FederationRunResult,
-    FederationRunStatus,
-)
-from agent.src.services.training.execution.agent_training_task_runner_service import (
+from agent.src.services.training_runtime.current_task.agent_training_task_runner_service import (  # noqa: E501
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
+)
+from agent.src.services.training_runtime.current_task.result import (
+    TrainingTaskRunResult,
+    TrainingTaskRunStatus,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_state_payload,
 )
 from shared.src.contracts.model_contracts import make_embedding_manifest
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfigPayload,
     TrainingSelectionPolicyPayload,
@@ -25,13 +23,20 @@ from shared.src.contracts.training_contracts import (
 )
 
 
-def _build_task_payload() -> TrainingTaskPayload:
+def _build_query_ssl_task_payload(
+    *,
+    algorithm_profile_name: str | None = "peft_classifier_update_v1",
+    fssl_method: str | None = None,
+    fssl_execution: dict[str, object] | None = None,
+    fssl_capability_plan: dict[str, object] | None = None,
+    fssl_context: dict[str, object] | None = None,
+) -> TrainingTaskPayload:
     return TrainingTaskPayload(
         schema_version="training_task.v1",
-        task_id="task_multiview",
-        round_id="round_multiview",
+        task_id="task_query_ssl",
+        round_id="round_query_ssl",
         model_id="tracemind-embed",
-        model_revision="rev_multiview",
+        model_revision="rev_query_ssl",
         task_type="pseudo_label_self_training",
         training_scope="adapter_only",
         local_epochs=1,
@@ -39,101 +44,67 @@ def _build_task_payload() -> TrainingTaskPayload:
         learning_rate=1e-2,
         max_steps=4,
         objective_config=TrainingObjectiveConfigPayload(
-            algorithm_profile_name="prototype_pseudo_label_v1",
+            algorithm_profile_name=algorithm_profile_name,
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=0.6,
-            margin_threshold=0.02,
-            example_generation_backend_name="weak_strong_pair",
-            evidence_backend_name="prototype_similarity_evidence",
-            scorer_backend_name="prototype_similarity",
-            acceptance_policy_name="top1_margin_threshold",
             privacy_guard_name="noop",
-        ),
-        selection_policy=TrainingSelectionPolicyPayload(),
-    )
-
-
-def _build_supported_task_payload() -> TrainingTaskPayload:
-    return TrainingTaskPayload(
-        schema_version="training_task.v1",
-        task_id="task_001",
-        round_id="round_0001",
-        model_id="tracemind-embed",
-        model_revision="rev_001",
-        task_type="pseudo_label_self_training",
-        training_scope="adapter_only",
-        local_epochs=1,
-        batch_size=8,
-        learning_rate=1e-2,
-        max_steps=4,
-        objective_config=TrainingObjectiveConfigPayload(
-            training_backend_name="peft_classifier_trainer",
-            example_generation_backend_name="prototype_rescore",
-            evidence_backend_name="prototype_similarity_evidence",
-            scorer_backend_name="prototype_similarity",
-            acceptance_policy_name="top1_margin_threshold",
-            privacy_guard_name="noop",
-        ),
-        selection_policy=TrainingSelectionPolicyPayload(),
-    )
-
-
-def _build_prototype_pack() -> PrototypePackPayload:
-    return PrototypePackPayload.model_validate(
-        {
-            "schema_version": "prototype_pack.v1",
-            "prototype_version": "proto_001",
-            "embedding_model_id": "tracemind-embed",
-            "embedding_model_revision": "rev_001",
-            "mapping_version": "ourafla_to_4cat.v1",
-            "build_method": "mean_centroid_l2_normalized",
-            "distance_metric": "cosine",
-            "built_at": datetime(2026, 4, 2, tzinfo=timezone.utc),
-            "categories": {
-                "anxiety": [
-                    {
-                        "prototype_id": "anxiety:single",
-                        "centroid": [1.0, 0.0],
-                        "sample_count": 2,
-                    }
-                ]
+            extras={
+                "query_ssl.method_name": "fixmatch_usb_v1",
+                "query_ssl.algorithm_name": "fixmatch",
+                "query_ssl.strong_view_policy": "first_aug",
+                "query_ssl.unlabeled_batch_size": 8,
+                "query_ssl.temperature": 0.5,
+                "query_ssl.p_cutoff": 0.95,
+                "query_ssl.hard_label": True,
+                "query_ssl.lambda_u": 1.0,
+                "query_ssl.supervised_loss_weight": 1.0,
             },
-        }
+        ),
+        selection_policy=TrainingSelectionPolicyPayload(),
+        fssl_method=fssl_method,
+        fssl_execution=fssl_execution,
+        fssl_capability_plan=fssl_capability_plan,
+        fssl_context=fssl_context,
     )
 
 
-def _peft_backbone() -> dict[str, object]:
-    return {
-        "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
-        "backbone_revision": "main",
-        "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
-        "tokenizer_revision": "main",
-        "pooling": "mean",
-        "max_length": 256,
-        "task_prefix": "",
-    }
-
-
-def _peft_adapter_config() -> dict[str, object]:
-    return {
-        "peft_adapter_name": "lora",
-        "parameters": {
-            "rank": 8,
-            "alpha": 16,
-            "dropout": 0.1,
-            "bias": "none",
-            "target_modules": "all-linear",
-            "use_rslora": False,
-        },
-    }
+def _build_legacy_task_payload() -> TrainingTaskPayload:
+    return TrainingTaskPayload(
+        schema_version="training_task.v1",
+        task_id="task_legacy",
+        round_id="round_legacy",
+        model_id="tracemind-embed",
+        model_revision="rev_legacy",
+        task_type="pseudo_label_self_training",
+        training_scope="adapter_only",
+        local_epochs=1,
+        batch_size=8,
+        learning_rate=1e-2,
+        max_steps=4,
+        objective_config=TrainingObjectiveConfigPayload(
+            training_backend_name="peft_classifier_trainer",
+            privacy_guard_name="noop",
+        ),
+        selection_policy=TrainingSelectionPolicyPayload(),
+    )
 
 
 def _build_peft_state(*, model_revision: str):
     return make_peft_classifier_state_payload(
         model_id="tracemind-embed",
         model_revision=model_revision,
-        backbone=_peft_backbone(),
-        peft_adapter_config=_peft_adapter_config(),
+        backbone={
+            "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "tokenizer_revision": "main",
+            "pooling": "mean",
+            "max_length": 256,
+            "task_prefix": "",
+        },
+        peft_adapter_config={
+            "peft_adapter_name": "lora",
+            "parameters": {"rank": 8},
+        },
         label_schema=["anxiety", "normal"],
     )
 
@@ -141,154 +112,270 @@ def _build_peft_state(*, model_revision: str):
 def _build_service(
     *,
     repo: MagicMock,
-    proto_service: MagicMock,
-    proto_sync_service: MagicMock,
     shared_adapter_runtime_service: MagicMock,
     shared_adapter_sync_service: MagicMock,
     round_client_factory: MagicMock,
-    runtime_factory: MagicMock,
+    query_ssl_task_service: object | None = None,
 ) -> AgentTrainingTaskRunnerService:
+    kwargs = {}
+    if query_ssl_task_service is not None:
+        kwargs["query_ssl_task_service"] = query_ssl_task_service
     return AgentTrainingTaskRunnerService(
-        scored_event_repository=repo,
-        prototype_runtime_service=proto_service,
-        prototype_sync_service=proto_sync_service,
+        analysis_event_repository=repo,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
-        federation_runtime_service_factory=runtime_factory,
+        **kwargs,
     )
 
 
-def test_runner_returns_unsupported_runtime_for_multiview_live_path() -> None:
+def test_runner_routes_query_ssl_task_to_query_ssl_service() -> None:
     repo = MagicMock()
-    proto_service = MagicMock()
-    proto_sync_service = MagicMock()
-    shared_adapter_runtime_service = MagicMock()
-    shared_adapter_sync_service = MagicMock()
-    round_client = MagicMock()
-    round_client.fetch_current_task.return_value = _build_task_payload()
-    round_client_factory = MagicMock(return_value=round_client)
-    runtime_factory = MagicMock()
-    service = _build_service(
-        repo=repo,
-        proto_service=proto_service,
-        proto_sync_service=proto_sync_service,
-        shared_adapter_runtime_service=shared_adapter_runtime_service,
-        shared_adapter_sync_service=shared_adapter_sync_service,
-        round_client_factory=round_client_factory,
-        runtime_factory=runtime_factory,
-    )
-
-    response = service.run_current_task(
-        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
-    )
-
-    assert response.status == "unsupported_runtime"
-    assert response.round_id == "round_multiview"
-    assert response.task_id == "task_multiview"
-    assert "stored-event" in response.message
-    repo.get_recent_stored.assert_not_called()
-    proto_service.get_active_pack.assert_not_called()
-    proto_sync_service.pull_version.assert_not_called()
-    shared_adapter_sync_service.pull_current.assert_not_called()
-    runtime_factory.assert_not_called()
-
-
-def test_runner_syncs_shared_state_and_uses_matching_manifest() -> None:
-    repo = MagicMock()
-    repo.get_recent_stored.return_value = ()
-    proto_service = MagicMock()
-    proto_service.get_active_pack.return_value = _build_prototype_pack()
-    proto_sync_service = MagicMock()
     shared_adapter_sync_service = MagicMock()
     active_manifest = make_embedding_manifest(
         model_id="tracemind-embed",
-        model_revision="rev_001",
-        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
-        artifact_ref="/server/state/rev_001.json",
+        model_revision="rev_query_ssl",
+        artifact_ref="/server/state/rev_query_ssl.json",
     )
-    active_state = _build_peft_state(model_revision="rev_001")
+    active_state = _build_peft_state(model_revision="rev_query_ssl")
     shared_adapter_runtime_service = MagicMock()
     shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
     shared_adapter_runtime_service.get_active_state.return_value = active_state
     round_client = MagicMock()
-    round_client.fetch_current_task.return_value = _build_supported_task_payload()
-    round_client_factory = MagicMock(return_value=round_client)
-    federation_runtime = MagicMock()
-    federation_runtime.run_current_task.return_value = FederationRunResult(
-        status=FederationRunStatus.INSUFFICIENT_EXAMPLES,
-        round_id="round_0001",
-        task_id="task_001",
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        fssl_method="fedmatch",
+        fssl_context={
+            "schema_version": "fssl_context.v1",
+            "method_name": "fedmatch",
+            "context_kind": "peer_context",
+            "peer_context": {
+                "schema_version": "peer_context_task.v1",
+                "policy_name": "previous_round_metric_summary",
+            },
+        },
     )
-    runtime_factory = MagicMock(return_value=federation_runtime)
+    round_client_factory = MagicMock(return_value=round_client)
+    query_ssl_task_service = MagicMock()
+    query_ssl_task_service.run_current_task.return_value = TrainingTaskRunResult(
+        status=TrainingTaskRunStatus.UPLOADED,
+        round_id="round_query_ssl",
+        task_id="task_query_ssl",
+        update_id="update_query_ssl",
+        example_count=3,
+        accepted_count=2,
+        message="Query SSL update 업로드 완료.",
+    )
     service = _build_service(
         repo=repo,
-        proto_service=proto_service,
-        proto_sync_service=proto_sync_service,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
-        runtime_factory=runtime_factory,
+        query_ssl_task_service=query_ssl_task_service,
     )
 
     response = service.run_current_task(
         AgentTrainingTaskRunRequest(server_base_url="http://server.test")
     )
 
-    assert response.status == str(FederationRunStatus.INSUFFICIENT_EXAMPLES)
+    assert response.status == TrainingTaskRunStatus.UPLOADED
+    assert response.round_id == "round_query_ssl"
+    assert response.task_id == "task_query_ssl"
+    assert response.update_id == "update_query_ssl"
     shared_adapter_sync_service.pull_current.assert_called_once_with(
         server_base_url="http://server.test"
     )
-    proto_sync_service.pull_version.assert_called_once_with(
-        server_base_url="http://server.test",
-        prototype_version="proto_001",
-    )
-    call_kwargs = federation_runtime.run_current_task.call_args.kwargs
-    assert call_kwargs["model_manifest"].model_revision == "rev_001"
-    assert call_kwargs["task_payload"].model_revision == "rev_001"
+    query_ssl_request = query_ssl_task_service.run_current_task.call_args.args[0]
+    assert query_ssl_request.training_task.task_id == "task_query_ssl"
+    assert query_ssl_request.training_task.fssl_method == "fedmatch"
+    assert query_ssl_request.training_task.fssl_context["method_name"] == "fedmatch"
+    assert query_ssl_request.model_manifest is active_manifest
+    assert query_ssl_request.active_state is active_state
 
 
-def test_runner_does_not_pull_prototype_when_manifest_has_no_auxiliary_pack() -> None:
+def test_runner_validates_fssl_runtime_snapshot_before_local_training() -> None:
     repo = MagicMock()
-    repo.get_recent_stored.return_value = ()
-    proto_service = MagicMock()
-    proto_sync_service = MagicMock()
     shared_adapter_sync_service = MagicMock()
     active_manifest = make_embedding_manifest(
         model_id="tracemind-embed",
-        model_revision="rev_001",
-        artifact_ref="/server/state/rev_001.json",
+        model_revision="rev_query_ssl",
+        artifact_ref="/server/state/rev_query_ssl.json",
     )
-    active_state = _build_peft_state(model_revision="rev_001")
+    active_state = _build_peft_state(model_revision="rev_query_ssl")
     shared_adapter_runtime_service = MagicMock()
     shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
     shared_adapter_runtime_service.get_active_state.return_value = active_state
     round_client = MagicMock()
-    round_client.fetch_current_task.return_value = _build_supported_task_payload()
-    round_client_factory = MagicMock(return_value=round_client)
-    federation_runtime = MagicMock()
-    federation_runtime.run_current_task.return_value = FederationRunResult(
-        status=FederationRunStatus.INSUFFICIENT_EXAMPLES,
-        round_id="round_0001",
-        task_id="task_001",
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        fssl_method="fedmatch",
+        fssl_execution={
+            "composition_mode": "method_owned",
+            "execution_role": "method_owned",
+            "method_name": "fedmatch",
+            "descriptor_name": "fedmatch",
+        },
+        fssl_capability_plan=_fedmatch_capability_plan_payload(),
     )
-    runtime_factory = MagicMock(return_value=federation_runtime)
+    round_client_factory = MagicMock(return_value=round_client)
+    query_ssl_task_service = MagicMock()
+    query_ssl_task_service.run_current_task.return_value = TrainingTaskRunResult(
+        status=TrainingTaskRunStatus.UPLOADED,
+        round_id="round_query_ssl",
+        task_id="task_query_ssl",
+        update_id="update_query_ssl",
+        example_count=3,
+        accepted_count=2,
+        message="Query SSL update 업로드 완료.",
+    )
     service = _build_service(
         repo=repo,
-        proto_service=proto_service,
-        proto_sync_service=proto_sync_service,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
-        runtime_factory=runtime_factory,
+        query_ssl_task_service=query_ssl_task_service,
     )
 
     response = service.run_current_task(
         AgentTrainingTaskRunRequest(server_base_url="http://server.test")
     )
 
-    assert response.status == str(FederationRunStatus.INSUFFICIENT_EXAMPLES)
-    proto_sync_service.pull_version.assert_not_called()
-    proto_service.get_active_pack.assert_not_called()
-    call_kwargs = federation_runtime.run_current_task.call_args.kwargs
-    assert call_kwargs["training_examples"] == ()
+    assert response.status == TrainingTaskRunStatus.UPLOADED
+    query_ssl_task_service.run_current_task.assert_called_once()
+
+
+def test_runner_rejects_drifted_fssl_runtime_snapshot() -> None:
+    repo = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    shared_adapter_runtime_service = MagicMock()
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        fssl_method="fedmatch",
+        fssl_execution={
+            "composition_mode": "method_owned",
+            "execution_role": "method_owned",
+            "method_name": "other_method",
+            "descriptor_name": "other_method",
+        },
+        fssl_capability_plan=_fedmatch_capability_plan_payload(),
+    )
+    round_client_factory = MagicMock(return_value=round_client)
+    service = _build_service(
+        repo=repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
+    assert "fssl_method와 fssl_execution.method_name" in str(response.message)
+    shared_adapter_sync_service.pull_current.assert_not_called()
+
+
+def test_runner_rejects_unsupported_query_ssl_runtime_profile_before_sync() -> None:
+    repo = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    shared_adapter_runtime_service = MagicMock()
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        algorithm_profile_name="unsupported_profile"
+    )
+    round_client_factory = MagicMock(return_value=round_client)
+    service = _build_service(
+        repo=repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
+    assert "peft_classifier_update_v1" in str(response.message)
+    shared_adapter_sync_service.pull_current.assert_not_called()
+
+
+def test_runner_rejects_unsupported_update_family_before_sync() -> None:
+    repo = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    shared_adapter_runtime_service = MagicMock()
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload(
+        fssl_method="fedmatch",
+        fssl_execution={
+            "composition_mode": "method_owned",
+            "execution_role": "method_owned",
+            "method_name": "fedmatch",
+            "descriptor_name": "fedmatch",
+            "runtime_surface": {
+                "payload_adapter_kind": "linear_head",
+                "update_family_name": "linear_head",
+                "aggregation_backend_name": "fedavg",
+            },
+        },
+        fssl_capability_plan=_fedmatch_capability_plan_payload(),
+    )
+    round_client_factory = MagicMock(return_value=round_client)
+    service = _build_service(
+        repo=repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
+    assert "peft_text_encoder" in str(response.message)
+    shared_adapter_sync_service.pull_current.assert_not_called()
+
+
+def test_runner_rejects_legacy_non_query_ssl_task_without_runtime_contract() -> None:
+    repo = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    active_manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_legacy",
+        artifact_ref="/server/state/rev_legacy.json",
+    )
+    active_state = _build_peft_state(model_revision="rev_legacy")
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
+    shared_adapter_runtime_service.get_active_state.return_value = active_state
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_legacy_task_payload()
+    round_client_factory = MagicMock(return_value=round_client)
+    service = _build_service(
+        repo=repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
+    shared_adapter_sync_service.pull_current.assert_not_called()
+
+
+def _fedmatch_capability_plan_payload() -> dict[str, object]:
+    return {
+        "client_participation_policy": {"name": "all_clients"},
+        "aggregation_weight_policy": {"name": "uniform"},
+        "labeled_exposure_policy": {"name": "shared_client_seed"},
+        "local_supervision_regime": {"name": "client_labeled_and_unlabeled"},
+        "server_step_policy": {"name": "none"},
+        "server_update_policy": {"name": "fedmatch_partitioned"},
+        "peer_context_policy": {"name": "fixed_probe_output_knn"},
+        "update_partition_policy": {"name": "partitioned"},
+        "local_ssl_policy": {"name": "fedmatch_agreement"},
+        "query_multiview_source": {"name": "materialized_rows"},
+    }

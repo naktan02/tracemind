@@ -5,33 +5,29 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    ScoredEventRepository,
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
 from agent.src.services.inference.baseline_service import BaselineService
 from agent.src.services.inference.decision_service import DecisionService
-from shared.src.contracts.personalization_contracts import (
-    PersonalizationState,
-    PersonalizationWarmupStatus,
-)
-from shared.src.contracts.wellbeing_signal_contracts import (
-    WellbeingSignalConfidence,
-    WellbeingSignalLevel,
-    WellbeingSignalSummaryPayload,
-    WellbeingSignalTrend,
-)
-from shared.src.domain.entities.inference.result import AssessmentResult
-from shared.src.domain.entities.inference.state import BaselineProfile, TimeSeriesState
+from agent.src.services.inference.result import AssessmentResult
+from agent.src.services.inference.state import BaselineProfile, TimeSeriesState
 
 
 @dataclass(slots=True)
 class WellbeingSignalProjectionService:
     """기존 local inference rail을 wellbeing signal 출력으로 번역한다."""
 
-    scored_event_repository: ScoredEventRepository
+    analysis_event_repository: AnalysisEventRepository
     snapshot_repository: WellbeingSnapshotRepository
     baseline_service: BaselineService = field(default_factory=BaselineService)
     decision_service: DecisionService = field(default_factory=DecisionService)
@@ -39,63 +35,39 @@ class WellbeingSignalProjectionService:
     _last_refresh_at: datetime | None = field(default=None, init=False)
 
     def refresh_from_runtime(self) -> None:
-        """최근 scored event를 replay해 wellbeing snapshot을 갱신한다."""
+        """최근 analysis event를 replay해 wellbeing snapshot을 갱신한다."""
 
-        scored_events = sorted(
-            self.scored_event_repository.get_recent(days=self.lookback_days),
+        analysis_events = sorted(
+            self.analysis_event_repository.get_recent(days=self.lookback_days),
             key=lambda event: event.occurred_at,
         )
-        if not scored_events:
+        if not analysis_events:
             return
 
         previous_state: TimeSeriesState | None = None
         history: list = []
 
-        for scored_event in scored_events:
+        for analysis_event in analysis_events:
             baseline_profile = self.baseline_service.build_profile(
                 history,
-                as_of=scored_event.occurred_at,
-            )
-            personalization_state = _build_personalization_state(
-                baseline_profile=baseline_profile,
-                updated_at=scored_event.occurred_at,
+                as_of=analysis_event.occurred_at,
             )
             evaluation = self.decision_service.evaluate(
-                scored_event=scored_event,
+                analysis_event=analysis_event,
                 baseline_profile=baseline_profile,
-                personalization_state=personalization_state,
                 previous_state=previous_state,
-                assessment_id=scored_event.query_id,
+                assessment_id=analysis_event.query_id,
             )
             payload = _translate_to_wellbeing_summary(
                 assessment_result=evaluation.assessment_result,
                 baseline_profile=baseline_profile,
-                computed_at=scored_event.occurred_at,
+                computed_at=analysis_event.occurred_at,
             )
             self.snapshot_repository.save_summary(payload)
             previous_state = evaluation.time_series_state
-            history.append(scored_event)
+            history.append(analysis_event)
 
         self._last_refresh_at = datetime.now(tz=timezone.utc)
-
-
-def _build_personalization_state(
-    *,
-    baseline_profile: BaselineProfile,
-    updated_at: datetime,
-) -> PersonalizationState:
-    if baseline_profile.event_count == 0:
-        warmup_status = PersonalizationWarmupStatus.COLD_START
-    elif baseline_profile.warmup_complete:
-        warmup_status = PersonalizationWarmupStatus.READY
-    else:
-        warmup_status = PersonalizationWarmupStatus.WARMING_UP
-
-    return PersonalizationState(
-        state_version="personalization_state.v1",
-        warmup_status=warmup_status,
-        updated_at=updated_at,
-    )
 
 
 def _translate_to_wellbeing_summary(

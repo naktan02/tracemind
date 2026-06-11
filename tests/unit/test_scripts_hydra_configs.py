@@ -27,11 +27,15 @@ from scripts.experiments.fl_ssl.federated_simulation.config_request import (
     _build_capability_plan,
     _build_execution_plan,
     _build_ssl_method_config,
+    _resolve_labeled_exposure_policy_mapping,
+    _resolve_local_update_profile,
     _with_inferred_manual_axes,
+    build_simulation_request_from_config,
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_federated_training_backend_adapter_kind,
 )
+from scripts.support.configured_callable import load_configured_callable
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
@@ -62,6 +66,148 @@ def _assert_manual_fl_runtime_is_compatible(cfg: DictConfig) -> None:
     ) == str(cfg.round_runtime.payload_adapter_kind)
 
 
+def _central_supervised_contract_snapshot(cfg: DictConfig) -> dict[str, object]:
+    return {
+        "output_dir": str(cfg.output_dir),
+        "runtime": {
+            "name": str(cfg.runtime.name),
+            "device": str(cfg.runtime.device),
+            "local_files_only": bool(cfg.runtime.local_files_only),
+        },
+        "train_jsonl": str(cfg.train_jsonl),
+        "selection_set": str(cfg.selection_set),
+        "budget": {
+            "name": str(cfg.central_ssl_budget.name),
+            "train_batch_size": int(cfg.train_batch_size),
+            "eval_batch_size": int(cfg.eval_batch_size),
+            "epochs": int(cfg.epochs),
+            "max_train_steps": int(cfg.max_train_steps),
+        },
+        "trainable_surface": {
+            "name": str(cfg.trainable_surface.name),
+            "trainable_state": str(cfg.trainable_surface.trainable_state),
+        },
+        "initial_checkpoint": str(cfg.query_adaptation_initial_checkpoint.name),
+    }
+
+
+def _central_query_ssl_contract_snapshot(cfg: DictConfig) -> dict[str, object]:
+    return {
+        "output_dir": str(cfg.output_dir),
+        "runtime": {
+            "name": str(cfg.runtime.name),
+            "device": str(cfg.runtime.device),
+            "local_files_only": bool(cfg.runtime.local_files_only),
+        },
+        "data": {
+            "train_jsonl": str(cfg.train_jsonl),
+            "unlabeled_jsonl": str(cfg.unlabeled_jsonl),
+            "selection_set": str(cfg.selection_set),
+            "strong_view_policy": str(cfg.query_ssl_strong_view_policy),
+            "augmenter": str(cfg.query_ssl_augmenter.name),
+        },
+        "budget": {
+            "name": str(cfg.central_ssl_budget.name),
+            "train_batch_size": int(cfg.train_batch_size),
+            "eval_batch_size": int(cfg.eval_batch_size),
+            "epochs": int(cfg.epochs),
+            "max_train_steps": int(cfg.max_train_steps),
+            "drop_last_train_batches": bool(cfg.drop_last_train_batches),
+            "drop_last_unlabeled_batches": bool(cfg.drop_last_unlabeled_batches),
+        },
+        "query_ssl_method": {
+            "name": str(cfg.query_ssl_method.name),
+            "algorithm_name": str(cfg.query_ssl_method.algorithm_name),
+            "unlabeled_batch_size": int(cfg.query_ssl_method.unlabeled_batch_size),
+            "p_cutoff": float(cfg.query_ssl_method.p_cutoff),
+        },
+        "initial_checkpoint": str(cfg.query_adaptation_initial_checkpoint.name),
+    }
+
+
+def _federated_ssl_request_contract_snapshot(
+    cfg: DictConfig,
+    *,
+    output_dir: Path,
+) -> dict[str, object]:
+    request = build_simulation_request_from_config(cfg, output_dir=output_dir)
+    query_ssl_config = request.query_ssl_objective_config
+    if query_ssl_config is None:
+        query_ssl_snapshot = None
+    else:
+        query_ssl_snapshot = {
+            "method_name": query_ssl_config.method_name,
+            "algorithm_name": query_ssl_config.algorithm_name,
+            "strong_view_policy": query_ssl_config.strong_view_policy,
+            "unlabeled_batch_size": query_ssl_config.unlabeled_batch_size,
+        }
+    shard_count = (
+        None
+        if request.materialized_dataset_split is None
+        else len(request.materialized_dataset_split.client_shards)
+    )
+
+    return {
+        "run": {
+            "budget_name": request.run_budget_name,
+            "run_output_dir": request.run_output_dir,
+            "client_count": request.client_count,
+            "rounds": request.rounds,
+            "bootstrap_ratio": request.bootstrap_ratio,
+            "seed": request.seed,
+        },
+        "rows": {
+            "train": len(request.train_rows),
+            "validation": len(request.validation_rows),
+            "test": len(request.test_rows),
+            "client_shards": shard_count,
+        },
+        "training_task": {
+            "task_type": str(request.training_task_config.task_type),
+            "local_epochs": request.training_task_config.local_epochs,
+            "batch_size": request.training_task_config.batch_size,
+            "learning_rate": request.training_task_config.learning_rate,
+            "max_steps": request.training_task_config.max_steps,
+            "min_required_examples": (
+                request.training_task_config.min_required_examples
+            ),
+        },
+        "round_runtime": {
+            "payload_adapter_kind": (request.round_runtime_config.payload_adapter_kind),
+            "aggregation_backend_name": (
+                request.round_runtime_config.aggregation_backend_name
+            ),
+            "update_family_name": request.round_runtime_config.update_family_name,
+            "runtime_payload_key": request.round_runtime_config.runtime_payload_key,
+            "release_transient_model_cache_after_client": (
+                request.round_runtime_config.release_transient_model_cache_after_client
+            ),
+            "transient_resource_cleaner": (
+                request.round_runtime_config.transient_resource_cleaner
+            ),
+        },
+        "capability_plan": (
+            None
+            if request.capability_plan is None
+            else request.capability_plan.to_payload()
+        ),
+        "query_ssl_objective": query_ssl_snapshot,
+        "data_source": {
+            "source_mode": request.data_source_config.source_mode,
+            "split_manifest_path": request.data_source_config.split_manifest_path,
+        },
+        "diagnostic_view": {
+            "enabled": request.diagnostic_view_config.enabled,
+            "selection_policy": request.diagnostic_view_config.selection_policy,
+            "max_rows": request.diagnostic_view_config.max_rows,
+        },
+        "final_projection": {
+            "enabled": request.final_projection_config.enabled,
+            "dataset_names": list(request.final_projection_config.dataset_names),
+        },
+    }
+
+
 def test_trainable_state_update_family_leafs_are_executable_surfaces() -> None:
     update_family_dir = (
         REPO_ROOT / "conf" / "strategy_axes" / "model_architecture" / "update_family"
@@ -78,19 +224,50 @@ def test_trainable_state_update_family_leafs_are_executable_surfaces() -> None:
         assert cfg.get("initial_state_builder"), path
 
 
+def test_central_ssl_trainable_surface_leafs_declare_runtime_callables() -> None:
+    trainable_surface_dir = (
+        REPO_ROOT
+        / "conf"
+        / "strategy_axes"
+        / "model_architecture"
+        / "trainable_surface"
+    )
+    leaf_paths = sorted(
+        path
+        for path in trainable_surface_dir.glob("*.yaml")
+        if path.name != "__init__.py"
+    )
+
+    central_ssl_leaf_count = 0
+    for path in leaf_paths:
+        cfg = OmegaConf.load(path)
+        central_ssl = cfg.get("central_ssl")
+        if central_ssl is None:
+            continue
+        central_ssl_leaf_count += 1
+        assert cfg.get("name"), path
+        assert central_ssl.get("trainer_version_prefix"), path
+        for field_name in ("model_builder", "local_session_runner"):
+            callable_path = central_ssl.get(field_name)
+            assert callable_path, path
+            load_configured_callable(
+                str(callable_path),
+                field_name=f"trainable_surface.central_ssl.{field_name}",
+            )
+
+    assert central_ssl_leaf_count >= 1
+
+
 @pytest.mark.parametrize(
     "config_name",
     [
         "entrypoints/dataset_pipeline/run_dataset_pipeline",
         "entrypoints/dataset_pipeline/materialize_query_ssl_split",
         "entrypoints/dataset_pipeline/materialize_query_ssl_views",
-        "entrypoints/prototype_pack/seed_prototypes",
-        "entrypoints/prototype_pack/evaluate_prototype_pack",
-        "entrypoints/prototype_analysis/prototype_strategy",
-        "entrypoints/prototype_analysis/prototype_threshold_sweep",
         "entrypoints/fl_ssl/materialize_fl_client_split",
         "entrypoints/fl_ssl/run_federated_simulation",
         "entrypoints/central/ssl_control/run_peft_supervised_control",
+        "entrypoints/central/ssl_control/run_full_text_encoder_supervised_control",
         "entrypoints/central/ssl_control/run_peft_ssl_control",
     ],
 )
@@ -160,23 +337,6 @@ def test_query_ssl_split_materialization_entrypoint_uses_dataset_scoped_root() -
     assert cfg.query_ssl_split_materialization.seed == 42
 
 
-def test_seed_prototypes_default_runtime_is_gpu_online() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(config_name="entrypoints/prototype_pack/seed_prototypes")
-
-    assert cfg.dataset.name == "ourafla"
-    assert cfg.embedding.backend == "transformers_mxbai"
-    assert cfg.runtime.name == "gpu_online"
-    assert cfg.runtime.device == "cuda"
-    assert cfg.runtime.local_files_only is False
-    assert cfg.prototype_builder.name == "single"
-    assert (
-        cfg.dataset.sources.train.download.callable_path
-        == "scripts.workflows.datasets.lib.download_sources.download_huggingface_source"
-    )
-    assert cfg.dataset.prototype.input_ref.kind == "split_train"
-
-
 @pytest.mark.parametrize(
     ("embedding_override", "expected_backend"),
     [
@@ -202,61 +362,6 @@ def test_embedding_adapter_spec_config_instantiates(
     assert isinstance(embedding_spec, EmbeddingAdapterSpec)
     assert embedding_spec.backend == expected_backend
     assert embedding_spec.device == "cpu"
-
-
-def test_seed_prototypes_supports_short_builder_override() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/prototype_pack/seed_prototypes",
-            overrides=[
-                "strategy_axes/prototype/build_strategy=kmeans",
-                "prototype_builder.candidate_ks=[2]",
-            ],
-        )
-
-    assert cfg.prototype_builder.name == "kmeans"
-    assert list(cfg.prototype_builder.candidate_ks) == [2]
-
-
-def test_seed_prototypes_supports_dbscan_builder_override() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/prototype_pack/seed_prototypes",
-            overrides=[
-                "strategy_axes/prototype/build_strategy=dbscan",
-                "prototype_builder.eps_values=[0.1]",
-                "prototype_builder.min_samples_values=[2]",
-            ],
-        )
-
-    assert cfg.prototype_builder.name == "dbscan"
-    assert list(cfg.prototype_builder.eps_values) == [0.1]
-    assert list(cfg.prototype_builder.min_samples_values) == [2]
-
-
-def test_prototype_strategy_supports_short_group_override() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/prototype_analysis/prototype_strategy",
-            overrides=[
-                "execution_context/runtime_env=gpu_local",
-                "execution_context/embedding_adapter=hash_debug",
-                "strategy.name=kmeans",
-                "strategy.kmeans_candidate_ks=[2]",
-                "runner.score_policy_name=topk_mean_cosine",
-                "runner.score_top_k=2",
-            ],
-        )
-
-    assert cfg.runtime.name == "gpu_local"
-    assert cfg.runtime.device == "cuda"
-    assert cfg.runtime.local_files_only is True
-    assert cfg.embedding.backend == "hash_debug"
-    assert cfg.embedding.model_id == "hash_debug"
-    assert cfg.strategy.name == "kmeans"
-    assert list(cfg.strategy.kmeans_candidate_ks) == [2]
-    assert cfg.runner.score_policy_name == "topk_mean_cosine"
-    assert cfg.runner.score_top_k == 2
 
 
 def test_run_peft_supervised_control_supports_auto_local_runtime_override() -> None:
@@ -287,11 +392,12 @@ def test_run_peft_supervised_control_supports_source_and_budget_overrides() -> N
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
     )
-    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
+    assert cfg.selection_set == "test"
     assert cfg.central_ssl_budget.name == "smoke"
     assert cfg.central_ssl_budget.output_root == "runs/_smoke"
-    assert cfg.output_dir == "runs/_smoke/run_peft_supervised_control"
+    assert cfg.output_dir == "runs/_smoke/central/supervised/peft_classifier"
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
@@ -300,10 +406,52 @@ def test_run_peft_supervised_control_supports_source_and_budget_overrides() -> N
     assert cfg.classifier_learning_rate == 0.0002
     assert cfg.weight_decay == 0.01
     assert cfg.log_every_steps == 100
-    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert list(cfg.fixed_categories) == list(cfg.dataset.label_categories)
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
+    assert cfg.epoch_artifact_kind == "peft_adapter_classifier"
+    assert cfg.epoch_artifact_every_epochs == 1
+
+
+def test_run_full_text_encoder_supervised_control_supports_transfer_overrides() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/ssl_control/"
+                "run_full_text_encoder_supervised_control"
+            ),
+            overrides=[
+                "query_data_selection.labeled=szegeelim_general4",
+                "query_data_selection.validation=ourafla_reddit",
+                "query_data_selection.test=ourafla_reddit",
+                "run_controls/central_ssl/budget=smoke",
+            ],
+        )
+
+    assert cfg.trainable_surface.name == "full_text_encoder"
+    assert cfg.trainable_surface.trainable_state == "full_encoder_and_classifier_head"
+    assert cfg.trainable_surface.requires_peft_adapter is False
+    assert "peft_adapter" not in cfg
+    assert cfg.query_data_selection.labeled == "szegeelim_general4"
+    assert cfg.query_data_selection.validation == "ourafla_reddit"
+    assert cfg.query_data_selection.test == "ourafla_reddit"
+    assert cfg.train_jsonl.endswith(
+        "data/datasets/szegeelim_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+    )
+    assert "validation" not in cfg.eval_sets
+    assert cfg.eval_sets.test.endswith(
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
+    )
+    assert cfg.selection_set == "test"
+    assert cfg.output_dir == "runs/_smoke/central/supervised/full_text_encoder"
+    assert "model_output_dir" not in cfg
+    assert "classifier_output_dir" not in cfg
+    assert cfg.learning_rate == 0.00002
+    assert cfg.classifier_learning_rate == 0.0002
 
 
 def test_run_peft_ssl_control_supports_auto_local_runtime_override() -> None:
@@ -342,11 +490,12 @@ def test_run_peft_ssl_control_supports_source_budget_and_leaf_overrides() -> Non
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
-    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
+    assert cfg.selection_set == "test"
     assert cfg.central_ssl_budget.name == "smoke"
     assert cfg.central_ssl_budget.output_root == "runs/_smoke"
-    assert cfg.output_dir.startswith("runs/_smoke/run_peft_ssl_control/")
+    assert cfg.output_dir.startswith("runs/_smoke/central/ssl/peft_classifier/")
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
@@ -355,7 +504,7 @@ def test_run_peft_ssl_control_supports_source_budget_and_leaf_overrides() -> Non
     assert cfg.classifier_learning_rate == 0.0002
     assert cfg.weight_decay == 0.01
     assert cfg.log_every_steps == 20
-    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert list(cfg.fixed_categories) == list(cfg.dataset.label_categories)
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
@@ -417,6 +566,26 @@ def test_run_peft_ssl_control_supports_flexmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
+def test_run_peft_ssl_control_supports_refixmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=refixmatch_usb_v1",
+                "query_ssl_method.p_cutoff=0.9",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "refixmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "refixmatch"
+    assert cfg.query_ssl_method.temperature == 0.5
+    assert cfg.query_ssl_method.p_cutoff == 0.9
+    assert cfg.query_ssl_method.hard_label is True
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
 def test_run_peft_ssl_control_supports_freematch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
@@ -459,14 +628,205 @@ def test_run_peft_ssl_control_supports_adamatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_uses_precomputed_query_views() -> None:
+def test_run_peft_ssl_control_supports_dash_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
             overrides=[
-                "strategy_axes/ssl_objective/augmentation_source=precomputed_usb_candidates_v1",
-                "query_ssl_strong_view_policy=first_aug",
+                "strategy_axes/ssl_objective/consistency_method=dash_usb_v1",
+                "query_ssl_method.gamma=1.5",
+                "query_ssl_method.C=1.1",
+                "query_ssl_method.rho_min=0.1",
+                "query_ssl_method.num_wu_iter=128",
+                "query_ssl_method.unlabeled_batch_size=8",
             ],
+        )
+
+    assert cfg.query_ssl_method.name == "dash_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "dash"
+    assert cfg.query_ssl_method.gamma == 1.5
+    assert cfg.query_ssl_method.C == 1.1
+    assert cfg.query_ssl_method.rho_min == 0.1
+    assert cfg.query_ssl_method.num_wu_iter == 128
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
+def test_run_peft_ssl_control_supports_uda_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=uda_usb_v1",
+                "query_ssl_method.p_cutoff=0.9",
+                "query_ssl_method.tsa_schedule=linear",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "uda_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "uda"
+    assert cfg.query_ssl_method.T == 0.4
+    assert cfg.query_ssl_method.p_cutoff == 0.9
+    assert cfg.query_ssl_method.tsa_schedule == "linear"
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
+def test_run_peft_ssl_control_supports_pimodel_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=pimodel_usb_v1",
+                "query_ssl_method.unsup_warm_up=0.2",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "pimodel_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "pimodel"
+    assert cfg.query_ssl_method.unsup_warm_up == 0.2
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
+def test_run_peft_ssl_control_supports_meanteacher_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=meanteacher_usb_v1",
+                "query_ssl_method.ema_m=0.9",
+                "query_ssl_method.unsup_warm_up=0.2",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "meanteacher_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "meanteacher"
+    assert cfg.query_ssl_method.ema_m == 0.9
+    assert cfg.query_ssl_method.unsup_warm_up == 0.2
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
+def test_run_peft_ssl_control_supports_comatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=comatch_usb_v1",
+                "query_ssl_method.queue_batch=4",
+                "query_ssl_method.proj_size=2",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "comatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "comatch"
+    assert cfg.query_ssl_method.queue_batch == 4
+    assert cfg.query_ssl_method.proj_size == 2
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+    assert cfg.query_ssl_method.require_weak_strong_pair is True
+
+
+def test_run_peft_ssl_control_supports_simmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=simmatch_usb_v1",
+                "query_ssl_method.proj_size=4",
+                "query_ssl_method.da_len=8",
+                "query_ssl_method.in_loss_ratio=0.5",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "simmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "simmatch"
+    assert cfg.query_ssl_method.proj_size == 4
+    assert cfg.query_ssl_method.da_len == 8
+    assert cfg.query_ssl_method.in_loss_ratio == 0.5
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
+def test_run_peft_ssl_control_supports_mixmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=mixmatch_usb_v1",
+                "query_ssl_method.unsup_warm_up=0.2",
+                "query_ssl_method.mixup_alpha=0.7",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "mixmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "mixmatch"
+    assert cfg.query_ssl_method.T == 0.5
+    assert cfg.query_ssl_method.unsup_warm_up == 0.2
+    assert cfg.query_ssl_method.mixup_alpha == 0.7
+    assert cfg.query_ssl_method.mixup_manifold is True
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
+def test_run_peft_ssl_control_supports_remixmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=remixmatch_usb_v1",
+                "query_ssl_method.mixup_alpha=0.7",
+                "query_ssl_method.kl_loss_ratio=0.25",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "remixmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "remixmatch"
+    assert cfg.query_ssl_method.T == 0.5
+    assert cfg.query_ssl_method.mixup_alpha == 0.7
+    assert cfg.query_ssl_method.kl_loss_ratio == 0.25
+    assert cfg.query_ssl_method.rot_loss_ratio == 0.0
+    assert cfg.query_ssl_method.mixup_manifold is True
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+    assert cfg.query_ssl_method.require_weak_strong_pair is True
+
+
+def test_run_peft_ssl_control_supports_softmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=[
+                "strategy_axes/ssl_objective/consistency_method=softmatch_usb_v1",
+                "query_ssl_method.ema_p=0.9",
+                "query_ssl_method.n_sigma=3.0",
+                "query_ssl_method.per_class=true",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "softmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "softmatch"
+    assert cfg.query_ssl_method.ema_p == 0.9
+    assert cfg.query_ssl_method.n_sigma == 3.0
+    assert cfg.query_ssl_method.per_class is True
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
+def test_run_peft_ssl_control_uses_entrypoint_precomputed_query_views() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            overrides=["query_ssl_strong_view_policy=first_aug"],
         )
 
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
@@ -475,83 +835,178 @@ def test_run_peft_ssl_control_uses_precomputed_query_views() -> None:
     assert cfg.query_ssl_strong_view_policy == "first_aug"
 
 
-def test_run_peft_ssl_control_supports_pseudo_label_replay_mode() -> None:
+def test_central_supervised_smoke_orchestration_contract_snapshot() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_peft_supervised_control",
+            overrides=["run_controls/central_ssl/budget=smoke"],
+        )
+
+    assert _central_supervised_contract_snapshot(cfg) == {
+        "output_dir": "runs/_smoke/central/supervised/peft_classifier",
+        "runtime": {
+            "name": "gpu_online",
+            "device": "cuda",
+            "local_files_only": False,
+        },
+        "train_jsonl": (
+            "data/datasets/szegeelim_mental_health/views/"
+            "labeled1024_per_class_seed42_v1/"
+            "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+        ),
+        "selection_set": "test",
+        "budget": {
+            "name": "smoke",
+            "train_batch_size": 8,
+            "eval_batch_size": 32,
+            "epochs": 1,
+            "max_train_steps": 100,
+        },
+        "trainable_surface": {
+            "name": "peft_text_encoder",
+            "trainable_state": "peft_adapter_and_classifier_head",
+        },
+        "initial_checkpoint": "none",
+    }
+
+
+def test_central_query_ssl_smoke_orchestration_contract_snapshot() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
-            overrides=[
-                "strategy_axes/ssl_objective/input_mode=pseudo_label_replay",
-                "pseudo_label_jsonl=data/artifacts/query_peft_pseudo_label/run/pseudo_label_train.jsonl",
-                "include_seed_train_rows=true",
-            ],
+            overrides=["run_controls/central_ssl/budget=smoke"],
         )
 
-    assert cfg.ssl_input_mode == "pseudo_label_replay"
-    assert cfg.central_ssl_runner.mode == "pseudo_label_replay"
-    assert (
-        cfg.central_ssl_runner.callable_path
-        == "scripts.support.query_ssl_peft.runners.pseudo_label."
-        "run_pseudo_label_self_training"
-    )
-    assert cfg.pseudo_label_jsonl.endswith("pseudo_label_train.jsonl")
-    assert cfg.include_seed_train_rows is True
-    assert cfg.pseudo_label_export_root == "data/artifacts/query_peft_pseudo_label"
-    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
-    assert cfg.query_adaptation_initial_checkpoint.name == "none"
-    assert cfg.initial_adapter_dir == ""
-    assert cfg.initial_classifier_path == ""
+    assert _central_query_ssl_contract_snapshot(cfg) == {
+        "output_dir": (
+            "runs/_smoke/central/ssl/peft_classifier/"
+            "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+            "test-ourafla_reddit"
+        ),
+        "runtime": {
+            "name": "gpu_local",
+            "device": "cuda",
+            "local_files_only": True,
+        },
+        "data": {
+            "train_jsonl": (
+                "data/datasets/szegeelim_mental_health/views/"
+                "labeled1024_per_class_seed42_v1/"
+                "backtranslation_nllb_en_de_fr_usb_v1/"
+                "labeled_train.with_views.jsonl"
+            ),
+            "unlabeled_jsonl": (
+                "data/datasets/ourafla_mental_health/views/"
+                "labeled1024_per_class_seed42_v1/"
+                "backtranslation_nllb_en_de_fr_usb_v1/"
+                "unlabeled_pool.with_views.jsonl"
+            ),
+            "selection_set": "test",
+            "strong_view_policy": "first_aug",
+            "augmenter": "precomputed_usb_candidates_v1",
+        },
+        "budget": {
+            "name": "smoke",
+            "train_batch_size": 8,
+            "eval_batch_size": 32,
+            "epochs": 1,
+            "max_train_steps": 100,
+            "drop_last_train_batches": True,
+            "drop_last_unlabeled_batches": True,
+        },
+        "query_ssl_method": {
+            "name": "fixmatch_usb_v1",
+            "algorithm_name": "fixmatch",
+            "unlabeled_batch_size": 8,
+            "p_cutoff": 0.95,
+        },
+        "initial_checkpoint": "none",
+    }
 
 
-def test_run_peft_ssl_control_supports_teacher_bootstrap_mode() -> None:
+def test_federated_ssl_smoke_orchestration_contract_snapshot(
+    tmp_path: Path,
+) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
-            overrides=[
-                "strategy_axes/ssl_objective/input_mode=teacher_bootstrap",
-                "strategy_axes/ssl_objective/pseudo_label_selection=fixed_confidence_095",
-                "query_data_selection.labeled=szegeelim_general4",
-                "query_data_selection.unlabeled=ourafla_reddit",
-            ],
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=["run_controls/fl_ssl/budget=smoke"],
         )
 
-    assert cfg.ssl_input_mode == "teacher_bootstrap"
-    assert cfg.central_ssl_runner.mode == "teacher_bootstrap"
-    assert (
-        cfg.central_ssl_runner.callable_path
-        == "scripts.support.query_ssl_peft.runners.bootstrap_teacher."
-        "run_teacher_bootstrap_peft_student"
-    )
-    assert "teacher_bootstrap_source_kind" not in cfg
-    assert "teacher_artifact_kind" not in cfg
-    assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
-    assert cfg.teacher_train_jsonl == cfg.query_source.train_jsonl
-    assert cfg.teacher_unlabeled_jsonl == cfg.query_source.unlabeled_jsonl
-    assert cfg.query_data_selection.labeled == "szegeelim_general4"
-    assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
-
-
-def test_threshold_sweep_supports_short_leaf_override() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/prototype_analysis/prototype_threshold_sweep",
-            overrides=[
-                "strategy.name=single",
-                "runner.score_policy_name=topk_mean_cosine",
-                "runner.score_top_k=2",
-            ],
-        )
-
-    assert cfg.strategy.name == "single"
-    assert cfg.runtime.name == "gpu_online"
-    assert cfg.runner.score_policy_name == "topk_mean_cosine"
-    assert cfg.runner.score_top_k == 2
-    assert len(cfg.threshold_policies) == 3
-    assert cfg.threshold_policies[0]._target_ == (
-        "methods.prototype.thresholding.policies.FixMatchFixedConfidencePolicy"
-    )
-    assert cfg.threshold_policies[2]._target_ == (
-        "methods.prototype.thresholding.policies.ClasswiseStaticConfidencePolicy"
-    )
+    assert _federated_ssl_request_contract_snapshot(
+        cfg,
+        output_dir=tmp_path,
+    ) == {
+        "run": {
+            "budget_name": "smoke",
+            "run_output_dir": "runs/_smoke/fl_ssl",
+            "client_count": 4,
+            "rounds": 3,
+            "bootstrap_ratio": 0.2,
+            "seed": 42,
+        },
+        "rows": {
+            "train": 57759,
+            "validation": 3192,
+            "test": 3192,
+            "client_shards": 4,
+        },
+        "training_task": {
+            "task_type": "pseudo_label_self_training",
+            "local_epochs": 1,
+            "batch_size": 8,
+            "learning_rate": 0.0001,
+            "max_steps": 50,
+            "min_required_examples": 4,
+        },
+        "round_runtime": {
+            "payload_adapter_kind": "peft_classifier",
+            "aggregation_backend_name": "fedavg",
+            "update_family_name": "peft_text_encoder",
+            "runtime_payload_key": "peft_text_encoder",
+            "release_transient_model_cache_after_client": True,
+            "transient_resource_cleaner": (
+                "methods.adaptation.peft_text_encoder.resource_cache."
+                "clear_peft_encoder_transient_resource_cache"
+            ),
+        },
+        "capability_plan": {
+            "client_participation_policy": {
+                "name": "all_clients",
+                "fraction": None,
+                "count": None,
+                "min_clients": 1,
+            },
+            "labeled_exposure_policy": {"name": "shared_client_seed"},
+            "local_supervision_regime": {"name": "client_labeled_and_unlabeled"},
+            "server_step_policy": {"name": "none"},
+            "server_update_policy": {"name": "fedavg_merged_delta"},
+            "peer_context_policy": {"name": "none"},
+            "update_partition_policy": {"name": "unified"},
+            "local_ssl_policy": {"name": "fixmatch"},
+            "aggregation_weight_policy": {"name": "uniform"},
+            "query_multiview_source": {"name": "materialized_rows"},
+        },
+        "query_ssl_objective": {
+            "method_name": "fixmatch_usb_v1",
+            "algorithm_name": "fixmatch",
+            "strong_view_policy": "first_aug",
+            "unlabeled_batch_size": 8,
+        },
+        "data_source": {
+            "source_mode": "runtime_split_from_train",
+            "split_manifest_path": None,
+        },
+        "diagnostic_view": {
+            "enabled": True,
+            "selection_policy": "deterministic_random",
+            "max_rows": 512,
+        },
+        "final_projection": {
+            "enabled": True,
+            "dataset_names": ["validation", "test"],
+        },
+    }
 
 
 def test_federated_simulation_uses_smoke_preset_by_default() -> None:
@@ -559,11 +1014,14 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
     assert cfg.federated_run_budget.name == "smoke"
-    assert cfg.local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
+    assert cfg.local_update_profile.algorithm_profile_name == (
+        "peft_classifier_update_v1"
+    )
     assert "fl_profile" not in cfg
     assert "round_runtime_profile" not in cfg
     assert cfg.round_runtime.update_family_name == "peft_text_encoder"
     assert cfg.round_runtime.runtime_payload_key == "peft_text_encoder"
+    assert cfg.round_runtime.release_transient_model_cache_after_client is True
     assert "peft_classifier" not in cfg.round_runtime
     assert "peft_text_encoder" in cfg.round_runtime.runtime_payloads
     assert cfg.round_runtime.composition_slug_builder == (
@@ -582,6 +1040,21 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "generic_client_runtime_bridge."
         "run_query_ssl_client_round_if_supported",
     ]
+    assert cfg.round_runtime.client_round_runtime.base_state_materializer == (
+        "scripts.runtime_adapters.federated_agent.base_state_materialization."
+        "load_peft_encoder_base_parameters_with_timing"
+    )
+    assert cfg.round_runtime.client_round_runtime.query_ssl_training_runner == (
+        "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
+        "run_query_ssl_peft_encoder_local_training"
+    )
+    assert (
+        cfg.round_runtime.server_round_runtime.final_projection_artifacts_builder
+        == (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "final_projection.build_peft_encoder_final_projection_artifacts_from_state"
+        )
+    )
     assert cfg.round_runtime.initial_state_builder == (
         "methods.adaptation.peft_text_encoder.update_family_runtime."
         "build_initial_peft_encoder_state"
@@ -604,23 +1077,22 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.peft_adapter.name == "default"
     assert cfg.training_task.objective.algorithm_profile_name == (
-        "peft_pseudo_label_v1"
+        "peft_classifier_update_v1"
     )
     assert cfg.training_task.objective.training_backend_name == (
         "peft_classifier_trainer"
     )
-    assert cfg.training_task.objective.example_generation_backend_name == (
-        "peft_classifier_raw_rows"
-    )
-    assert cfg.training_task.objective.evidence_backend_name == (
-        "peft_classifier_logits"
-    )
-    assert cfg.training_task.objective.scorer_backend_name == "peft_classifier_logits"
+    assert "example_generation_backend_name" not in cfg.training_task.objective
+    assert "evidence_backend_name" not in cfg.training_task.objective
+    assert "scorer_backend_name" not in cfg.training_task.objective
+    assert "score_policy_name" not in cfg.training_task.objective
     assert cfg.training_task.objective.privacy_guard_name == "noop"
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
-    assert cfg.training_task.batch_size == 12
-    assert cfg.train_batch_size == 12
+    assert cfg.training_task.batch_size == 8
+    assert cfg.train_batch_size == 8
+    assert cfg.train_jsonl == cfg.query_source.train_jsonl
+    assert cfg.train_jsonl != cfg.dataset.train_jsonl
     assert cfg.query_ssl_method.unlabeled_batch_size == cfg.training_task.batch_size
     assert cfg.query_ssl_strong_view_policy == "first_aug"
     assert cfg.training_task.objective.query_ssl.method_name == "fixmatch_usb_v1"
@@ -632,8 +1104,9 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.validation.scorer_backend_name == "peft_classifier_eval"
     assert cfg.validation.score_policy_name is None
     assert cfg.validation.score_top_k is None
-    assert cfg.validation.confidence_threshold == 0.6
-    assert cfg.validation.margin_threshold == 0.02
+    assert "selection" not in cfg.training_task.objective
+    assert "pseudo_label_algorithm_name" not in cfg.training_task.objective
+    assert "acceptance_policy_name" not in cfg.training_task.objective
     assert cfg.federated_run_budget.output_dir == "runs/_smoke/fl_ssl"
     assert cfg.federated_run_budget.client_count == 4
     assert cfg.federated_run_budget.rounds == 3
@@ -641,17 +1114,18 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.runtime.local_files_only is True
     assert cfg.fl_data.source_mode == "runtime_split_from_train"
     assert cfg.fl_data.split_manifest is None
-    assert cfg.seed_sweep.output_dir == "runs/_smoke/fl_ssl"
-    assert list(cfg.seed_sweep.seeds) == [42, 43, 44]
-    assert cfg.client_count_sweep.output_dir == "runs/_smoke/fl_ssl"
-    assert list(cfg.client_count_sweep.client_counts) == list(range(1, 11))
-    assert cfg.client_count_sweep.split_manifest_by_client_count is None
+    assert cfg.sweep.axis == "none"
+    assert cfg.sweep.output_dir == "runs/_smoke/fl_ssl"
+    assert list(cfg.sweep.seed.members) == [42, 43, 44]
+    assert list(cfg.sweep.client_count.members) == list(range(1, 11))
+    assert cfg.sweep.client_count.split_manifest_by_client_count is None
     assert cfg.run_safety.max_total_rounds_without_ack == 30
     assert cfg.run_safety.allow_long_run is False
     assert cfg.run_safety.long_run_ack is None
     assert cfg.run_safety.required_long_run_ack == "ALLOW_FL_SSL_LONG_RUN"
-    assert cfg.shard_policy.name == "label_dominant"
-    assert cfg.shard_policy.dominant_ratio == 0.75
+    assert cfg.shard_policy.name == "dirichlet_label_skew"
+    assert cfg.shard_policy.alpha == 0.3
+    assert cfg.shard_policy.dominant_ratio is None
     assert "ssl_method" not in cfg
     assert cfg.fl_method.composition_mode == "manual"
     assert "manual_axes" not in cfg.fl_method
@@ -672,10 +1146,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.labeled_exposure_policy.name == "shared_client_seed"
     assert cfg.client_participation_policy.name == "all_clients"
     assert cfg.local_supervision_regime.name == "client_labeled_and_unlabeled"
-    assert cfg.server_step_policy.name == "none"
-    assert cfg.peer_context_policy.name == "none"
-    assert cfg.update_partition_policy.name == "unified"
-    assert cfg.aggregation_weight_policy.name == "example_count"
+    assert "server_step_policy" not in cfg
+    assert "peer_context_policy" not in cfg
+    assert "update_partition_policy" not in cfg
+    assert "aggregation_weight_policy" not in cfg
     assert cfg.query_multiview_source.name == "materialized_rows"
 
 
@@ -704,7 +1178,11 @@ def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> 
     )
     assert cfg.fl_client_split_materialization.source_validation_jsonl.endswith(
         "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/validation.jsonl"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
+    )
+    assert cfg.fl_client_split_materialization.source_test_jsonl.endswith(
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
     )
     assert cfg.fl_client_split_materialization.client_count == 8
     assert cfg.fl_client_split_materialization.bootstrap_ratio == (
@@ -777,7 +1255,7 @@ def test_fl_client_split_materialization_shared_seed_main_split_id_matches_docs(
     assert cfg.federated_run_budget.client_count == 10
     assert cfg.fl_client_split_materialization.split_id == (
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit_"
+        "test-ourafla_reddit_"
         "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
         "clients10_seed42"
     )
@@ -820,6 +1298,22 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "generic_client_runtime_bridge."
         "run_query_ssl_client_round_if_supported",
     ]
+    assert cfg.round_runtime.client_round_runtime.base_state_materializer == (
+        "scripts.runtime_adapters.federated_agent.base_state_materialization."
+        "load_peft_encoder_base_parameters_with_timing"
+    )
+    assert cfg.round_runtime.release_transient_model_cache_after_client is True
+    assert cfg.round_runtime.client_round_runtime.query_ssl_training_runner == (
+        "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
+        "run_query_ssl_peft_encoder_local_training"
+    )
+    assert (
+        cfg.round_runtime.server_round_runtime.final_projection_artifacts_builder
+        == (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "final_projection.build_peft_encoder_final_projection_artifacts_from_state"
+        )
+    )
     assert cfg.round_runtime.initial_state_builder == (
         "methods.adaptation.peft_text_encoder.update_family_runtime."
         "build_initial_peft_encoder_state"
@@ -841,16 +1335,16 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.report.labeled_ratio == cfg.client_pool_split.labeled_ratio
     assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio
-    assert len(cfg.seed_sweep.seeds) == cfg.report.seed_count
+    assert len(cfg.sweep.seed.members) == cfg.report.seed_count
     assert cfg.report.seed_count == 3
 
 
-def test_federated_simulation_materialized_split_axis_selects_manifest() -> None:
+def test_federated_simulation_fl_client_split_context_selects_manifest() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl_topology/materialized_split=shared_general_reddit_pc100_alpha03_clients10",
+                "execution_context/fl_client_split=shared_general_reddit_pc100_alpha03_clients10",
             ],
         )
 
@@ -867,7 +1361,7 @@ def test_federated_simulation_materialized_split_axis_selects_manifest() -> None
     assert cfg.fl_data.split_manifest == (
         "data/datasets/fl_client_splits/shared_client_labeled/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit_labels_pc100_"
+        "test-ourafla_reddit_labels_pc100_"
         "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
         "clients10_seed42/manifest.json"
     )
@@ -890,7 +1384,7 @@ def test_federated_simulation_materialized_split_axis_selects_manifest() -> None
         ),
     ],
 )
-def test_federated_simulation_materialized_split_axis_covers_shared_budgets(
+def test_federated_simulation_fl_client_split_context_covers_shared_budgets(
     selector: str,
     labeled: str,
     budget: int,
@@ -898,7 +1392,7 @@ def test_federated_simulation_materialized_split_axis_covers_shared_budgets(
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
-            overrides=[f"strategy_axes/fl_topology/materialized_split={selector}"],
+            overrides=[f"execution_context/fl_client_split={selector}"],
         )
 
     assert cfg.fl_data.source_mode == "materialized_client_split"
@@ -955,6 +1449,25 @@ def test_federated_simulation_method_recipe_axes_are_composable(
             )
 
 
+def test_method_owned_fedmatch_keeps_single_local_profile() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fssl_method=fedmatch",
+                "fl_method.composition_mode=method_owned",
+            ],
+        )
+
+    execution_plan = _build_execution_plan(cfg)
+    local_update_profile = _resolve_local_update_profile(
+        cfg=cfg,
+        execution_plan=execution_plan,
+    )
+
+    assert local_update_profile.algorithm_profile_name == "peft_classifier_update_v1"
+
+
 def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
@@ -962,8 +1475,6 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
             overrides=[
                 "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
             ],
         )
 
@@ -975,7 +1486,7 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     assert ssl_method_config is not None
 
     assert cfg.ssl_method.local_budget_policy == "iteration_capped"
-    assert cfg.training_task.max_steps == 20
+    assert cfg.training_task.max_steps == 50
     assert "original_parameters" not in cfg.ssl_method
     assert "original_source" not in cfg.ssl_method
     assert "trace_mapping" not in cfg.ssl_method
@@ -1023,7 +1534,10 @@ def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm()
 
     capability_plan = _build_capability_plan(
         cfg=cfg,
-        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+        labeled_exposure_policy=_resolve_labeled_exposure_policy_mapping(
+            cfg=cfg,
+            execution_plan=_build_execution_plan(cfg),
+        ),
     )
 
     assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
@@ -1031,23 +1545,23 @@ def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm()
     assert capability_plan.server_update_policy_name == "fedavg_merged_delta"
 
 
-def test_federated_simulation_method_owned_fedmatch_uses_method_local_policy() -> None:
+def test_method_owned_fedmatch_labels_at_client_scenario_derives_capabilities() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
                 "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
-                "strategy_axes/fl_topology/peer_context=fixed_probe_output_knn",
                 "strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1",
             ],
         )
 
     capability_plan = _build_capability_plan(
         cfg=cfg,
-        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+        labeled_exposure_policy=_resolve_labeled_exposure_policy_mapping(
+            cfg=cfg,
+            execution_plan=_build_execution_plan(cfg),
+        ),
     )
 
     assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
@@ -1055,6 +1569,80 @@ def test_federated_simulation_method_owned_fedmatch_uses_method_local_policy() -
     assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
     assert capability_plan.update_partition_policy_name == "partitioned"
     assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
+    assert capability_plan.server_step_policy_name == "none"
+
+
+def test_method_owned_fedmatch_ignores_query_ssl_lower_axis_objective_payload(
+    tmp_path: Path,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fssl_method=fedmatch",
+                "fl_method.composition_mode=method_owned",
+                "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
+            ],
+        )
+
+    request = build_simulation_request_from_config(cfg, output_dir=tmp_path)
+
+    assert request.query_ssl_objective_config is None
+    assert request.capability_plan is not None
+    assert request.capability_plan.local_ssl_policy_name == "fedmatch_agreement"
+    objective = request.training_task_config.objective_config.to_mapping()
+    assert "query_ssl.algorithm_name" not in objective
+    assert "query_ssl.method_name" not in objective
+    assert objective["algorithm_profile_name"] == "peft_classifier_update_v1"
+
+
+def test_federated_simulation_main_default_gives_each_client_unlabeled_rows(
+    tmp_path: Path,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=["run_controls/fl_ssl/budget=main"],
+        )
+
+    request = build_simulation_request_from_config(cfg, output_dir=tmp_path)
+
+    assert request.client_count == 10
+    assert request.shard_policy.name == "dirichlet_label_skew"
+    assert request.shard_policy.alpha == 0.3
+    assert request.materialized_dataset_split is not None
+    assert all(
+        shard.unlabeled_rows
+        for shard in request.materialized_dataset_split.client_shards
+    )
+
+
+def test_method_owned_fedmatch_labels_at_server_derives_method_capabilities() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fssl_method=fedmatch",
+                "ssl_method.scenario=labels-at-server",
+                "fl_method.composition_mode=method_owned",
+            ],
+        )
+
+    capability_plan = _build_capability_plan(
+        cfg=cfg,
+        labeled_exposure_policy=_resolve_labeled_exposure_policy_mapping(
+            cfg=cfg,
+            execution_plan=_build_execution_plan(cfg),
+        ),
+    )
+
+    assert capability_plan.local_ssl_policy_name == "fedmatch_agreement"
+    assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
+    assert capability_plan.update_partition_policy_name == "partitioned"
+    assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
+    assert capability_plan.server_step_policy_name == "supervised_seed_step"
+    assert capability_plan.labeled_exposure_policy_name == "server_only_seed"
+    assert capability_plan.local_supervision_regime_name == "client_unlabeled_only"
 
 
 def test_federated_simulation_update_family_declares_server_step_executor() -> None:
@@ -1083,15 +1671,15 @@ def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> 
                 "run_controls/fl_ssl/budget=reduced",
                 "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
-                "strategy_axes/fl_topology/peer_context=fixed_probe_output_knn",
             ],
         )
 
     capability_plan = _build_capability_plan(
         cfg=cfg,
-        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+        labeled_exposure_policy=_resolve_labeled_exposure_policy_mapping(
+            cfg=cfg,
+            execution_plan=_build_execution_plan(cfg),
+        ),
     )
 
     assert cfg.federated_run_budget.name == "reduced"
@@ -1122,8 +1710,6 @@ def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> Non
             overrides=[
                 "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
                 "+ssl_method.parameter_overrides.confidence_threshold=0.85",
                 "+ssl_method.parameter_overrides.num_helpers=4",
             ],
@@ -1157,8 +1743,6 @@ def test_fedmatch_local_budget_policy_can_select_original_method() -> None:
             overrides=[
                 "strategy_axes/fssl_method=fedmatch",
                 "fl_method.composition_mode=method_owned",
-                "strategy_axes/fl_topology/update_partition=partitioned",
-                "strategy_axes/fl_topology/aggregation_weight=uniform",
                 "ssl_method.local_budget_policy=original_method",
             ],
         )
@@ -1173,10 +1757,29 @@ def test_fedmatch_local_budget_policy_can_select_original_method() -> None:
     assert ssl_method_config.parameter_override_status == "original"
 
 
+def test_fedmatch_leaf_is_public_method_identity_with_scenario_axis() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fssl_method=fedmatch",
+                "fl_method.composition_mode=method_owned",
+                "ssl_method.scenario=labels-at-server",
+            ],
+        )
+
+    execution_plan = _build_execution_plan(cfg)
+    ssl_method_config = _build_ssl_method_config(cfg, execution_plan=execution_plan)
+
+    assert execution_plan.descriptor_name == "fedmatch"
+    assert ssl_method_config is not None
+    assert ssl_method_config.scenario == "labels-at-server"
+
+
 @pytest.mark.parametrize(
     "profile_name",
     [
-        "peft_pseudo_label_v1",
+        "peft_classifier_update_v1",
     ],
 )
 def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
@@ -1247,12 +1850,11 @@ def test_federated_simulation_main_budget_fixes_main_comparison_budget() -> None
     assert cfg.federated_run_budget.client_count == 10
     assert cfg.federated_run_budget.rounds == 30
     assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
-    assert cfg.seed_sweep.output_dir == "runs/fl_ssl"
-    assert cfg.client_count_sweep.output_dir == "runs/fl_ssl"
+    assert cfg.sweep.output_dir == "runs/fl_ssl"
     assert cfg.training_task.local_epochs == 1
-    assert cfg.training_task.batch_size == 12
-    assert cfg.train_batch_size == 12
-    assert cfg.training_task.max_steps == 20
+    assert cfg.training_task.batch_size == 8
+    assert cfg.train_batch_size == 8
+    assert cfg.training_task.max_steps == 50
 
 
 def test_federated_simulation_reduced_budget_uses_5_rounds() -> None:
@@ -1266,10 +1868,9 @@ def test_federated_simulation_reduced_budget_uses_5_rounds() -> None:
     assert cfg.federated_run_budget.client_count == 10
     assert cfg.federated_run_budget.rounds == 5
     assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
-    assert cfg.seed_sweep.output_dir == "runs/fl_ssl"
-    assert cfg.client_count_sweep.output_dir == "runs/fl_ssl"
-    assert cfg.training_task.batch_size == 12
-    assert cfg.train_batch_size == 12
+    assert cfg.sweep.output_dir == "runs/fl_ssl"
+    assert cfg.training_task.batch_size == 8
+    assert cfg.train_batch_size == 8
 
 
 def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> None:
@@ -1277,7 +1878,7 @@ def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> N
         "data/datasets/fl_client_splits/"
         "shared_client_labeled/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit_"
+        "test-ourafla_reddit_"
         "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
         "clients10_seed42/manifest.json"
     )
@@ -1321,22 +1922,17 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.6",
-                "training_task.objective.confidence_threshold=0.7",
-                "training_task.objective.margin_threshold=0.1",
-                "diagnostics.dump_dir_name=custom_dumps",
             ],
         )
 
     assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.6
     assert cfg.training_task.objective.algorithm_profile_name == (
-        "peft_pseudo_label_v1"
+        "peft_classifier_update_v1"
     )
-    assert cfg.training_task.objective.confidence_threshold == 0.7
-    assert cfg.training_task.objective.margin_threshold == 0.1
     assert cfg.validation.scorer_backend_name == "peft_classifier_eval"
-    assert cfg.diagnostics.dump_dir_name == "custom_dumps"
 
 
 def test_federated_simulation_supports_dirichlet_shard_policy_override() -> None:
@@ -1409,7 +2005,9 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
         method_descriptor=None,
     )
 
-    assert cfg.local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
+    assert cfg.local_update_profile.algorithm_profile_name == (
+        "peft_classifier_update_v1"
+    )
     assert cfg.round_runtime.payload_adapter_kind == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert plan.method_name == "manual"
@@ -1467,13 +2065,33 @@ def test_run_peft_supervised_control_defaults_to_gpu_online_scaffold() -> None:
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert cfg.trainable_surface.name == "peft_text_encoder"
-    assert (
-        cfg.trainable_surface.trainable_state
-        == "peft_adapter_and_classifier_head"
-    )
+    assert cfg.trainable_surface.trainable_state == "peft_adapter_and_classifier_head"
     assert cfg.peft_adapter.target_modules == "all-linear"
-    assert cfg.selection_set == "validation"
-    assert cfg.output_dir == "runs/run_peft_supervised_control"
+    assert cfg.selection_set == "test"
+    assert cfg.output_dir == "runs/central/supervised/peft_classifier"
+    assert cfg.central_ssl_budget.output_root == "runs"
+    assert cfg.epoch_artifact_kind == "peft_adapter_classifier"
+    assert cfg.epoch_artifact_every_epochs == 1
+
+
+def test_run_full_text_encoder_supervised_control_defaults_to_gpu_online() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/ssl_control/"
+                "run_full_text_encoder_supervised_control"
+            )
+        )
+
+    assert cfg.dataset.name == "ourafla"
+    assert cfg.runtime.name == "gpu_online"
+    assert cfg.runtime.device == "cuda"
+    assert cfg.paper_backbone.name == "mxbai_encoder"
+    assert cfg.trainable_surface.name == "full_text_encoder"
+    assert cfg.trainable_surface.trainable_state == "full_encoder_and_classifier_head"
+    assert cfg.trainable_surface.supports_initial_adapter is False
+    assert cfg.selection_set == "test"
+    assert cfg.output_dir == "runs/central/supervised/full_text_encoder"
     assert cfg.central_ssl_budget.output_root == "runs"
 
 
@@ -1486,21 +2104,23 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.runtime.name == "gpu_local"
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is True
-    assert cfg.ssl_input_mode == "consistency"
     assert "teacher_provider" not in cfg
+    assert "pseudo_label_algorithm" not in cfg
+    assert "ssl_input_mode" not in cfg
     assert cfg.trainable_surface.name == "peft_text_encoder"
+    assert cfg.group_by_query_ssl_method is True
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
     assert (
-        cfg.query_source.name == "labeled_ourafla_reddit_unlabeled_ourafla_reddit_"
-        "validation_ourafla_reddit_test_ourafla_reddit"
+        cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
+        "test_ourafla_reddit"
     )
-    assert cfg.query_data_selection.labeled == "ourafla_reddit"
+    assert cfg.query_data_selection.labeled == "szegeelim_general4"
     assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
     assert cfg.query_data_selection.validation == "ourafla_reddit"
     assert cfg.query_data_selection.test == "ourafla_reddit"
     assert cfg.train_jsonl.endswith(
-        "data/datasets/ourafla_mental_health/views/"
+        "data/datasets/szegeelim_mental_health/views/"
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
     )
@@ -1511,20 +2131,11 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     )
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
     assert cfg.query_ssl_strong_view_policy == "first_aug"
-    assert cfg.train_batch_size == 12
+    assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
-    assert cfg.query_ssl_method.unlabeled_batch_size == 12
-    assert cfg.epochs == 5
-    assert cfg.max_train_steps == 3000
-    assert cfg.query_adaptation_initial_checkpoint.name == "none"
-    assert cfg.initial_adapter_dir == ""
-    assert cfg.initial_classifier_path == ""
-    assert cfg.output_dir == (
-        "runs/run_peft_ssl_control/consistency/"
-        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit"
-    )
-    assert cfg.central_ssl_budget.output_root == "runs"
+    assert cfg.drop_last_train_batches is True
+    assert cfg.drop_last_unlabeled_batches is True
+    assert cfg.resume_checkpoint_every_epochs == 0
 
 
 def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:
@@ -1541,8 +2152,8 @@ def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:
     assert cfg.query_ssl_method.algorithm_name == "pseudolabel"
     assert cfg.query_ssl_method.require_multiview is False
     assert (
-        cfg.query_source.name == "labeled_ourafla_reddit_unlabeled_ourafla_reddit_"
-        "validation_ourafla_reddit_test_ourafla_reddit"
+        cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
+        "test_ourafla_reddit"
     )
     assert cfg.output_dir == "runs/run_peft_ssl_control_pseudolabel"
 
@@ -1561,7 +2172,7 @@ def test_run_peft_ssl_control_supports_general_labeled_reddit_pool() -> None:
 
     assert (
         cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
-        "validation_ourafla_reddit_test_ourafla_reddit"
+        "test_ourafla_reddit"
     )
     assert cfg.train_jsonl.endswith(
         "data/datasets/szegeelim_mental_health/views/"
@@ -1573,17 +2184,13 @@ def test_run_peft_ssl_control_supports_general_labeled_reddit_pool() -> None:
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
-    assert cfg.eval_sets.validation.endswith(
-        "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/validation.jsonl"
-    )
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test.endswith(
         "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/test.jsonl"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
     )
     assert cfg.output_dir.endswith(
-        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
-        "validation-ourafla_reddit_test-ourafla_reddit"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit"
     )
 
 
@@ -1602,7 +2209,7 @@ def test_run_peft_ssl_control_supports_general_pool_with_reddit_eval() -> None:
     assert (
         cfg.query_source.name
         == "labeled_szegeelim_general4_unlabeled_szegeelim_general4_"
-        "validation_ourafla_reddit_test_ourafla_reddit"
+        "test_ourafla_reddit"
     )
     assert cfg.train_jsonl.endswith(
         "data/datasets/szegeelim_mental_health/views/"
@@ -1614,21 +2221,17 @@ def test_run_peft_ssl_control_supports_general_pool_with_reddit_eval() -> None:
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
-    assert cfg.eval_sets.validation.endswith(
-        "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/validation.jsonl"
-    )
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test.endswith(
         "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/test.jsonl"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
     )
     assert cfg.output_dir.endswith(
-        "labeled-szegeelim_general4_unlabeled-szegeelim_general4_"
-        "validation-ourafla_reddit_test-ourafla_reddit"
+        "labeled-szegeelim_general4_unlabeled-szegeelim_general4_test-ourafla_reddit"
     )
 
 
-def test_run_peft_ssl_control_can_select_validation_and_test_independently() -> None:
+def test_run_peft_ssl_control_uses_test_only_eval_set() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
@@ -1638,14 +2241,12 @@ def test_run_peft_ssl_control_can_select_validation_and_test_independently() -> 
             ],
         )
 
-    assert cfg.eval_sets.validation.endswith(
-        "data/datasets/szegeelim_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/validation.jsonl"
-    )
+    assert "validation" not in cfg.eval_sets
     assert cfg.eval_sets.test.endswith(
         "data/datasets/ourafla_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/test.jsonl"
+        "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
     )
+    assert cfg.selection_set == "test"
 
 
 def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:
@@ -1657,4 +2258,3 @@ def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:
     assert cfg.runtime.name == "gpu_online"
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is False
-    assert cfg.prototype_builder.name == "single"

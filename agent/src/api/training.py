@@ -6,13 +6,17 @@ from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from agent.src.infrastructure.repositories.scored_event_repository import (
-    ScoredEventRepository,
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
-from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
-from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
+from agent.src.infrastructure.repositories.captured_text_repository import (
+    CapturedTextRepository,
+)
+from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
+    TrainingUsageLedgerRepository,
+)
 from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
@@ -20,12 +24,12 @@ from agent.src.services.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.federation.rounds.runtime_service import (
-    FederationRuntimeService,
-)
-from agent.src.services.training.execution.agent_training_task_runner_service import (
+from agent.src.services.training_runtime.current_task.agent_training_task_runner_service import (  # noqa: E501
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
+)
+from agent.src.services.training_runtime.current_task.query_ssl_training_task_service import (  # noqa: E501
+    AgentQuerySslTrainingTaskService,
 )
 from shared.src.contracts.training_contracts import TrainingTaskPayload
 
@@ -35,12 +39,15 @@ class RunCurrentTaskRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    server_base_url: str
-    scored_event_days: int = Field(
+    server_base_url: str = Field(
+        validation_alias=AliasChoices("server_base_url", "serverBaseUrl"),
+        description="Main server base URL.",
+    )
+    analysis_event_days: int = Field(
         default=7,
         ge=1,
         le=90,
-        description="학습에 사용할 scored event 보관 기간 (일). 기본 7일.",
+        description="학습에 사용할 analysis event 보관 기간 (일). 기본 7일.",
     )
     agent_id: str | None = Field(
         default=None,
@@ -75,7 +82,6 @@ class TrainingStatusResponse(BaseModel):
 router = APIRouter(prefix="/api/v1/training", tags=["training"])
 
 RoundClientFactory = Callable[[str], RoundClient]
-FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
 
 
 # ------------------------------------------------------------------ #
@@ -83,37 +89,15 @@ FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
 # ------------------------------------------------------------------ #
 
 
-def get_scored_event_repository(request: Request) -> ScoredEventRepository:
-    """app.state에서 ScoredEventRepository를 읽는다."""
-    repo = getattr(request.app.state, "scored_event_repository", None)
+def get_analysis_event_repository(request: Request) -> AnalysisEventRepository:
+    """app.state에서 AnalysisEventRepository를 읽는다."""
+    repo = getattr(request.app.state, "analysis_event_repository", None)
     if repo is None:
         raise RuntimeError(
-            "ScoredEventRepository가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.scored_event_repository를 설정하세요."
+            "AnalysisEventRepository가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.analysis_event_repository를 설정하세요."
         )
     return repo
-
-
-def get_prototype_runtime_service(request: Request) -> PrototypeRuntimeService:
-    """app.state에서 PrototypeRuntimeService를 읽는다."""
-    service = getattr(request.app.state, "prototype_runtime_service", None)
-    if service is None:
-        raise RuntimeError(
-            "PrototypeRuntimeService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.prototype_runtime_service를 설정하세요."
-        )
-    return service
-
-
-def get_prototype_sync_service(request: Request) -> PrototypeSyncService:
-    """app.state에서 PrototypeSyncService를 읽는다."""
-    service = getattr(request.app.state, "prototype_sync_service", None)
-    if service is None:
-        raise RuntimeError(
-            "PrototypeSyncService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.prototype_sync_service를 설정하세요."
-        )
-    return service
 
 
 def get_shared_adapter_runtime_service(request: Request) -> SharedAdapterRuntimeService:
@@ -149,30 +133,22 @@ def get_round_client_factory(request: Request) -> RoundClientFactory:
     return factory
 
 
-def get_federation_runtime_service_factory(
+def get_training_usage_ledger_repository(
     request: Request,
-) -> FederationRuntimeServiceFactory:
-    """app.state에서 FederationRuntimeService factory를 읽는다."""
-    factory = getattr(request.app.state, "federation_runtime_service_factory", None)
-    if factory is None:
+) -> TrainingUsageLedgerRepository:
+    """app.state에서 TrainingUsageLedgerRepository를 읽는다."""
+    repository = getattr(request.app.state, "training_usage_ledger_repository", None)
+    if repository is None:
         raise RuntimeError(
-            "FederationRuntimeService factory가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.federation_runtime_service_factory를 설정하세요."
+            "TrainingUsageLedgerRepository가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.training_usage_ledger_repository를 설정하세요."
         )
-    return factory
+    return repository
 
 
-ScoredEventRepoDep = Annotated[
-    ScoredEventRepository,
-    Depends(get_scored_event_repository),
-]
-ProtoServiceDep = Annotated[
-    PrototypeRuntimeService,
-    Depends(get_prototype_runtime_service),
-]
-PrototypeSyncServiceDep = Annotated[
-    PrototypeSyncService,
-    Depends(get_prototype_sync_service),
+AnalysisEventRepoDep = Annotated[
+    AnalysisEventRepository,
+    Depends(get_analysis_event_repository),
 ]
 SharedAdapterRuntimeServiceDep = Annotated[
     SharedAdapterRuntimeService,
@@ -183,31 +159,31 @@ SharedAdapterSyncServiceDep = Annotated[
     Depends(get_shared_adapter_sync_service),
 ]
 RoundClientFactoryDep = Annotated[RoundClientFactory, Depends(get_round_client_factory)]
-FederationRuntimeFactoryDep = Annotated[
-    FederationRuntimeServiceFactory,
-    Depends(get_federation_runtime_service_factory),
+TrainingUsageLedgerRepoDep = Annotated[
+    TrainingUsageLedgerRepository,
+    Depends(get_training_usage_ledger_repository),
 ]
 
 
 def get_training_task_runner_service(
-    repo: ScoredEventRepoDep,
-    proto_service: ProtoServiceDep,
-    proto_sync_service: PrototypeSyncServiceDep,
+    request: Request,
+    repo: AnalysisEventRepoDep,
     shared_adapter_runtime_service: SharedAdapterRuntimeServiceDep,
     shared_adapter_sync_service: SharedAdapterSyncServiceDep,
     round_client_factory: RoundClientFactoryDep,
-    runtime_factory: FederationRuntimeFactoryDep,
+    training_usage_ledger_repository: TrainingUsageLedgerRepoDep,
 ) -> AgentTrainingTaskRunnerService:
     """run-current-task application service를 조립한다."""
 
     return AgentTrainingTaskRunnerService(
-        scored_event_repository=repo,
-        prototype_runtime_service=proto_service,
-        prototype_sync_service=proto_sync_service,
+        analysis_event_repository=repo,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
-        federation_runtime_service_factory=runtime_factory,
+        captured_text_repository=_get_optional_captured_text_repository(request),
+        query_ssl_task_service=AgentQuerySslTrainingTaskService(
+            usage_ledger_repository=training_usage_ledger_repository
+        ),
     )
 
 
@@ -241,7 +217,7 @@ def run_current_task(
         result = runner_service.run_current_task(
             AgentTrainingTaskRunRequest(
                 server_base_url=request.server_base_url,
-                scored_event_days=request.scored_event_days,
+                analysis_event_days=request.analysis_event_days,
                 agent_id=request.agent_id,
             )
         )
@@ -289,3 +265,12 @@ def get_training_status(
 # ------------------------------------------------------------------ #
 # 내부 헬퍼                                                             #
 # ------------------------------------------------------------------ #
+
+
+def _get_optional_captured_text_repository(
+    request: Request,
+) -> CapturedTextRepository | None:
+    repository = getattr(request.app.state, "captured_text_repository", None)
+    if repository is None:
+        return None
+    return repository

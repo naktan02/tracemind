@@ -11,11 +11,15 @@ from torch import Tensor
 MERGED_PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
     "peft_encoder_client_merged_adapter_delta_tensor_artifact.v1"
 )
+PEFT_ADAPTER_STATE_TENSOR_ARTIFACT_SCHEMA_VERSION = (
+    "peft_encoder_server_adapter_state_tensor_artifact.v1"
+)
 MERGED_HEAD_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
     "peft_encoder_client_merged_head_delta_tensor_artifact.v1"
 )
 MERGED_DELTA_TENSOR_ARTIFACT_FORMAT = "safetensors"
 PEFT_ADAPTER_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "peft_adapter_delta_index_json"
+PEFT_ADAPTER_STATE_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "peft_adapter_state_index_json"
 HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "head_delta_index_json"
 
 
@@ -64,6 +68,116 @@ def parse_peft_adapter_delta_tensor_artifact(
         tensors=tensors,
         source=index.get("peft_parameter_deltas", {}),
         artifact_name="PEFT adapter delta",
+    )
+
+
+def build_peft_adapter_state_tensor_artifact(
+    *,
+    peft_parameters: Mapping[str, Sequence[float]],
+    applied_peft_parameter_deltas: Mapping[str, Sequence[float]],
+    partitioned_peft_parameters: Mapping[str, Mapping[str, Sequence[float]]]
+    | None = None,
+) -> tuple[dict[str, Tensor], dict[str, str]]:
+    """server-published PEFT adapter state를 safetensors payload로 변환한다."""
+
+    if not peft_parameters:
+        raise ValueError("PEFT adapter state tensor artifact requires parameters.")
+    tensors: dict[str, Tensor] = {}
+    index: dict[str, object] = {
+        "schema_version": PEFT_ADAPTER_STATE_TENSOR_ARTIFACT_SCHEMA_VERSION,
+        "artifact_format": MERGED_DELTA_TENSOR_ARTIFACT_FORMAT,
+        "peft_parameters": {},
+        "applied_peft_parameter_deltas": {},
+        "partitioned_peft_parameters": {},
+    }
+    _add_vector_mapping_tensors(
+        tensors=tensors,
+        target=index["peft_parameters"],
+        prefix="peft_state",
+        values=peft_parameters,
+    )
+    if applied_peft_parameter_deltas:
+        _add_vector_mapping_tensors(
+            tensors=tensors,
+            target=index["applied_peft_parameter_deltas"],
+            prefix="peft_applied_delta",
+            values=applied_peft_parameter_deltas,
+        )
+    partition_index = index["partitioned_peft_parameters"]
+    if not isinstance(partition_index, dict):
+        raise AssertionError("partitioned_peft_parameters index must be a dict.")
+    for offset, (partition_name, partition_values) in enumerate(
+        sorted((partitioned_peft_parameters or {}).items())
+    ):
+        partition_index[str(partition_name)] = {}
+        _add_vector_mapping_tensors(
+            tensors=tensors,
+            target=partition_index[str(partition_name)],
+            prefix=f"peft_partition.{offset:04d}",
+            values=partition_values,
+        )
+    return tensors, {
+        PEFT_ADAPTER_STATE_TENSOR_ARTIFACT_INDEX_METADATA_KEY: json.dumps(
+            index,
+            ensure_ascii=True,
+            sort_keys=True,
+        )
+    }
+
+
+def parse_peft_adapter_state_tensor_artifact(
+    *,
+    tensors: Mapping[str, Tensor],
+    metadata: Mapping[str, str],
+) -> dict[str, list[float]]:
+    """safetensors payload와 index를 server PEFT adapter state로 복원한다."""
+
+    index = _load_peft_adapter_state_index(metadata)
+    return _read_vector_mapping(
+        tensors=tensors,
+        source=index.get("peft_parameters", {}),
+        artifact_name="PEFT adapter state",
+    )
+
+
+def parse_partitioned_peft_adapter_state_tensor_artifact(
+    *,
+    tensors: Mapping[str, Tensor],
+    metadata: Mapping[str, str],
+) -> dict[str, dict[str, list[float]]]:
+    """safetensors payload에서 partition별 server PEFT adapter state를 복원한다."""
+
+    index = _load_peft_adapter_state_index(metadata)
+    source = index.get("partitioned_peft_parameters", {})
+    if source == {}:
+        return {}
+    if not isinstance(source, dict):
+        raise ValueError("Partitioned PEFT adapter state index must be an object.")
+    return {
+        str(partition_name): _read_vector_mapping(
+            tensors=tensors,
+            source=partition_index,
+            artifact_name=f"Partitioned PEFT adapter state {partition_name}",
+        )
+        for partition_name, partition_index in sorted(source.items())
+    }
+
+
+def parse_applied_peft_parameter_deltas_tensor_artifact(
+    *,
+    tensors: Mapping[str, Tensor],
+    metadata: Mapping[str, str],
+) -> dict[str, list[float]]:
+    """safetensors payload에서 server-applied PEFT delta mapping을 복원한다."""
+
+    index = _load_peft_adapter_state_index(metadata)
+    source = index.get("applied_peft_parameter_deltas", {})
+    if source == {}:
+        return {}
+    return _read_vector_mapping(
+        tensors=tensors,
+        source=source,
+        artifact_name="Applied PEFT adapter delta",
     )
 
 
@@ -131,6 +245,15 @@ def parse_classifier_head_delta_tensor_artifact(
             source=index.get("classifier_head_bias_deltas", {}),
             artifact_name="Head bias delta",
         ),
+    )
+
+
+def _load_peft_adapter_state_index(metadata: Mapping[str, str]) -> dict[str, object]:
+    return _load_index(
+        metadata=metadata,
+        metadata_key=PEFT_ADAPTER_STATE_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
+        schema_version=PEFT_ADAPTER_STATE_TENSOR_ARTIFACT_SCHEMA_VERSION,
+        artifact_name="PEFT adapter state",
     )
 
 

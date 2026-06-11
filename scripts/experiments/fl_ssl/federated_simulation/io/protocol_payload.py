@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from scripts.experiments.fl_ssl.federated_simulation.io.split_diagnostics import (
     build_client_pool_split_payload,
@@ -48,6 +48,7 @@ def build_protocol_payload(
     validation_config: FederatedValidationConfig,
     round_runtime_config: FederatedRoundRuntimeConfig,
     execution_plan: FederatedSslExecutionPlan | None = None,
+    local_update_profile_name: str | None = None,
     capability_plan: FederatedSslCapabilityPlan | None = None,
     server_step_executor: str | None = None,
     data_source_config: FederatedDataSourceConfig | None = None,
@@ -98,11 +99,16 @@ def build_protocol_payload(
             "local_objective_executors": list(
                 round_runtime_config.local_objective_executors
             ),
+            "client_round_runtime": dict(round_runtime_config.client_round_runtime),
+            "server_round_runtime": dict(round_runtime_config.server_round_runtime),
             "initial_state_builder": round_runtime_config.initial_state_builder,
             "validation_evaluator": round_runtime_config.validation_evaluator,
             "final_projection_builder": (round_runtime_config.final_projection_builder),
             "transient_resource_cleaner": (
                 round_runtime_config.transient_resource_cleaner
+            ),
+            "release_transient_model_cache_after_client": (
+                round_runtime_config.release_transient_model_cache_after_client
             ),
             "aggregation_backend_name": (round_runtime_config.aggregation_backend_name),
         },
@@ -125,12 +131,13 @@ def build_protocol_payload(
             "scorer_backend_name": validation_config.scorer_backend_name,
             "score_policy_name": validation_config.score_policy_name,
             "score_top_k": validation_config.score_top_k,
-            "confidence_threshold": validation_config.confidence_threshold,
-            "margin_threshold": validation_config.margin_threshold,
         },
     }
     if execution_plan is not None:
         payload["fl_method"] = execution_plan.to_mapping()
+        payload["runtime_selection"] = execution_plan.runtime_selection(
+            local_update_profile_name=local_update_profile_name,
+        ).to_mapping()
     return payload
 
 

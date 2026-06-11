@@ -46,7 +46,7 @@ def test_shared_adapter_payloads_capture_revision_and_head_deltas(
     assert state.adapter_kind == "classifier_head"
     assert delta.base_model_revision == "rev_001"
     assert delta.adapter_kind == "classifier_head"
-    assert delta.label_counts["anxiety"] == 5
+    assert "label_counts" not in delta.model_dump(mode="json")
 
 
 def test_generic_shared_adapter_loader_dispatches_classifier_head_fixture_payloads(
@@ -183,6 +183,7 @@ def test_generic_shared_adapter_loader_dispatches_classifier_head_payloads(
     assert isinstance(loaded_update, ClassifierHeadAdapterUpdatePayload)
     assert loaded_state.embedding_dim == 2
     assert loaded_update.labels == ("anxiety", "normal")
+    assert "label_counts" not in loaded_update.model_dump(mode="json")
 
 
 def _lora_backbone_mapping() -> dict[str, object]:
@@ -268,6 +269,8 @@ def test_generic_shared_adapter_loader_dispatches_peft_classifier_payloads(
     loaded_update = load_shared_adapter_update_payload(update_path)
 
     assert isinstance(loaded_state, PeftClassifierAdapterStatePayload)
+    assert isinstance(loaded_update, PeftClassifierAdapterUpdatePayload)
+    assert "label_counts" not in loaded_update.model_dump(mode="json")
     assert isinstance(loaded_update, PeftClassifierAdapterUpdatePayload)
     assert loaded_state.adapter_kind == "peft_classifier"
     assert loaded_state.peft_adapter_name == "lora"

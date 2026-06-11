@@ -51,6 +51,7 @@ def resolve_fl_data_source(
     bootstrap_ratio: float,
     seed: int,
     shard_policy: FederatedShardPolicyConfig,
+    labeled_exposure_policy_mapping: dict[str, object] | None = None,
 ) -> ResolvedFlDataSource:
     fl_data_cfg = cfg.get("fl_data", {})
     source_mode = str(
@@ -65,7 +66,8 @@ def resolve_fl_data_source(
         )
         unlabeled_rows = load_jsonl_rows(Path(unlabeled_jsonl))
         labeled_exposure_policy = FederatedLabeledExposurePolicy.from_mapping(
-            optional_plain_dict(cfg, "labeled_exposure_policy")
+            labeled_exposure_policy_mapping
+            or optional_plain_dict(cfg, "labeled_exposure_policy")
         )
         dataset_split = _build_runtime_dataset_split(
             labeled_rows=labeled_rows,

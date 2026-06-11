@@ -8,7 +8,7 @@ from datetime import datetime
 
 @dataclass(slots=True)
 class LabeledQuery:
-    """prototype 생성과 평가에 쓰는 수동 라벨 query 하나."""
+    """학습/평가에 쓰는 수동 라벨 query 하나."""
 
     query_id: str
     text: str

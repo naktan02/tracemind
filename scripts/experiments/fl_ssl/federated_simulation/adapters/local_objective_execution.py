@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
-from methods.federated_ssl.peer_context import (
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.hooks.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )

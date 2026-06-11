@@ -11,6 +11,9 @@ from typing import Any
 
 import pytest
 
+from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
+    AggregationArtifactStore,
+)
 from methods.adaptation.peft_text_encoder import (
     evaluation as peft_encoder_evaluation,
 )
@@ -30,11 +33,20 @@ from methods.adaptation.peft_text_encoder.federated_ssl.peer_predictions import 
     PEFT_ENCODER_PEER_SNAPSHOT_KIND,
 )
 from methods.adaptation.peft_text_encoder.simulation_runtime import (
+    final_projection as peft_encoder_final_projection,
+)
+from methods.adaptation.peft_text_encoder.simulation_runtime import (
     supervised_seed as supervised_seed_runtime,
 )
 from methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime import (
     FederatedPeftEncoderRuntimeConfig,
     build_peft_encoder_round_runtime_payloads,
+)
+from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
+    QuerySslPeftEncoderClientTrainingResult,
+)
+from methods.adaptation.peft_text_encoder.update import (
+    merged_tensor_artifact as merged_artifacts,
 )
 from methods.adaptation.peft_text_encoder.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
@@ -54,13 +66,13 @@ from methods.evaluation.classification_report import (
 )
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capabilities.axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
 from methods.federated_ssl.fedmatch.original_spec import (
     fedmatch_original_parameter_mapping,
 )
-from methods.federated_ssl.peer_context import (
+from methods.federated_ssl.hooks.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )
@@ -79,6 +91,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
 from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
     _build_next_client_partition_sync_state,
     _build_next_query_ssl_algorithm_sync_state,
+    _release_transient_resources_at_round_boundary,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
@@ -101,7 +114,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedClientShard,
     FederatedDatasetSplit,
-    FederatedDiagnosticsConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
@@ -127,8 +139,8 @@ from scripts.runtime_adapters.federated_agent import (
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
-from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
-    QuerySslPeftEncoderClientTrainingResult,
+from scripts.runtime_adapters.federated_agent.client_update_flow import (
+    write_client_timing_snapshot,
 )
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
@@ -182,6 +194,154 @@ def _row(query_id: str, text: str, label: str) -> dict[str, str]:
     }
 
 
+def test_peft_encoder_validation_reuses_runtime_tokenization_cache(monkeypatch) -> None:
+    class _Tokenizer:
+        pad_token_id = 0
+        padding_side = "right"
+        name_or_path = "unit-tokenizer"
+
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def __call__(self, texts, **_kwargs):
+            self.calls.append(str(texts))
+            values = [ord(char) % 19 + 1 for char in str(texts)]
+            return {
+                "input_ids": values,
+                "attention_mask": [1 for _value in values],
+            }
+
+    tokenizer = _Tokenizer()
+
+    monkeypatch.setattr(
+        peft_encoder_evaluation,
+        "build_peft_text_encoder_with_linear_head_from_config",
+        lambda **_kwargs: (object(), tokenizer),
+    )
+    monkeypatch.setattr(
+        peft_encoder_evaluation,
+        "load_peft_encoder_base_parameters_into_model",
+        lambda **_kwargs: None,
+    )
+
+    def _evaluate_classifier(*, dataloader, **_kwargs):
+        list(dataloader)
+        return {"loss": 0.0}
+
+    monkeypatch.setattr(
+        peft_encoder_evaluation,
+        "evaluate_classifier",
+        _evaluate_classifier,
+    )
+    cache = InMemoryRuntimeResourceCache()
+    rows = [_row("q1", "same validation text", "anxiety")]
+    runtime_config = SimpleNamespace(
+        device="cpu",
+        classifier_dropout=0.0,
+        cache_dir=None,
+        local_files_only=True,
+        trust_remote_code=False,
+    )
+
+    for _index in range(2):
+        peft_encoder_evaluation.evaluate_peft_encoder_state(
+            rows=rows,
+            labels=("anxiety",),
+            base_parameters=PeftEncoderMaterializedState(
+                peft_parameters={},
+                classifier_head_weights={},
+                classifier_head_biases={},
+            ),
+            peft_config=PeftEncoderTrainingBackendConfig(),
+            runtime_config=runtime_config,
+            batch_size=1,
+            seed=42,
+            runtime_resource_cache=cache,
+        )
+
+    assert tokenizer.calls == ["same validation text"]
+
+
+def test_peft_encoder_final_projection_reuses_runtime_tokenization_cache() -> None:
+    class _Tokenizer:
+        pad_token_id = 0
+        padding_side = "right"
+        name_or_path = "unit-tokenizer"
+
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def __call__(self, texts, **_kwargs):
+            self.calls.append(str(texts))
+            values = [ord(char) % 19 + 1 for char in str(texts)]
+            return {
+                "input_ids": values,
+                "attention_mask": [1 for _value in values],
+            }
+
+    tokenizer = _Tokenizer()
+    cache = InMemoryRuntimeResourceCache()
+    rows_by_dataset = {"validation": [_row("q1", "same validation text", "anxiety")]}
+    common_kwargs = {
+        "rows_by_dataset_name": rows_by_dataset,
+        "tokenizer": tokenizer,
+        "labels": ["anxiety"],
+        "batch_size": 1,
+        "max_length": 256,
+        "task_prefix": "",
+    }
+
+    first_loaders = peft_encoder_final_projection._build_projection_eval_loaders(
+        **common_kwargs,
+        tokenization_cache=peft_encoder_final_projection.resolve_text_tokenization_cache(
+            cache
+        ),
+        tokenization_cache_namespace="unit",
+    )
+    second_loaders = peft_encoder_final_projection._build_projection_eval_loaders(
+        **common_kwargs,
+        tokenization_cache=peft_encoder_final_projection.resolve_text_tokenization_cache(
+            cache
+        ),
+        tokenization_cache_namespace="unit",
+    )
+
+    assert len(first_loaders["validation"].dataset) == 1
+    list(first_loaders["validation"])
+    list(second_loaders["validation"])
+
+    assert tokenizer.calls == ["same validation text"]
+
+
+def test_write_client_timing_snapshot_writes_round_scoped_json(tmp_path) -> None:
+    summary = ClientRoundSummary(
+        client_id="agent/01",
+        candidate_count=10,
+        diagnostic_candidate_count=3,
+        accepted_count=2,
+        update_generated=True,
+        delta_l2_norm=1.5,
+        aggregation_example_count=10,
+        client_train_time_seconds=4.25,
+        client_payload_bytes=128,
+        client_artifact_bytes=256,
+        timing_breakdown={"core_training_loop_seconds": 3.5},
+    )
+
+    path = write_client_timing_snapshot(
+        output_dir=tmp_path,
+        round_id="round_0001",
+        update_id="update-1",
+        summary=summary,
+    )
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert path == tmp_path / "diagnostics/client_timing/round_0001/agent_01.json"
+    assert payload["schema_version"] == "fl_client_timing_snapshot.v1"
+    assert payload["client_id"] == "agent/01"
+    assert payload["timing_breakdown"] == {"core_training_loop_seconds": 3.5}
+
+
 def test_round_task_mapper_accepts_federated_ssl_method_step_task_type() -> None:
     config = build_federated_training_task_config(
         task_type="federated_ssl_method_local_step",
@@ -228,15 +388,10 @@ def _default_shard_policy() -> FederatedShardPolicyConfig:
 
 def _default_training_task_config(
     *,
-    confidence_threshold: float,
-    margin_threshold: float,
     max_examples: int,
     gradient_clip_norm: float | None,
     training_backend_name: str = "peft_classifier_trainer",
     privacy_guard_name: str = "noop",
-    scorer_backend_name: str = "peft_classifier_logits",
-    score_policy_name: str = "top1_probability",
-    score_top_k: int | None = None,
     task_type: TrainingTaskType | str = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
     objective_extras: dict[str, str | int | float | bool] | None = None,
 ) -> object:
@@ -251,15 +406,6 @@ def _default_training_task_config(
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
                 "training_backend_name": training_backend_name,
-                "confidence_threshold": confidence_threshold,
-                "margin_threshold": margin_threshold,
-                "example_generation_backend_name": "peft_classifier_raw_rows",
-                "evidence_backend_name": "peft_classifier_logits",
-                "scorer_backend_name": scorer_backend_name,
-                "score_policy_name": score_policy_name,
-                **({} if score_top_k is None else {"score_top_k": score_top_k}),
-                "pseudo_label_algorithm_name": "top1_margin_threshold",
-                "acceptance_policy_name": "top1_margin_threshold",
                 "privacy_guard_name": privacy_guard_name,
                 **(objective_extras or {}),
             }
@@ -272,8 +418,6 @@ def _default_training_task_config(
 
 def _default_validation_config(
     *,
-    confidence_threshold: float,
-    margin_threshold: float,
     scorer_backend_name: str = PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
     score_policy_name: str | None = None,
     score_top_k: int | None = None,
@@ -283,19 +427,11 @@ def _default_validation_config(
         scorer_backend_name=scorer_backend_name,
         score_policy_name=score_policy_name,
         score_top_k=score_top_k,
-        confidence_threshold=confidence_threshold,
-        margin_threshold=margin_threshold,
     )
 
 
-def _default_peft_validation_config(
-    *,
-    confidence_threshold: float,
-    margin_threshold: float,
-) -> FederatedValidationConfig:
+def _default_peft_validation_config() -> FederatedValidationConfig:
     return _default_validation_config(
-        confidence_threshold=confidence_threshold,
-        margin_threshold=margin_threshold,
         scorer_backend_name=PEFT_ENCODER_CLASSIFIER_EVALUATOR_NAME,
         score_policy_name=None,
     )
@@ -324,7 +460,6 @@ def _patch_peft_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
             accepted_ratio=1.0,
             loss_kind="cross_entropy_from_peft_classifier_logits",
             score_distribution_kind="peft_classifier_logits_softmax",
-            selection_confidence_kind="peft_classifier_top1_probability",
             mean_selection_confidence=float(report["mean_top_1_probability"]),
             mean_selection_margin=float(report["mean_margin_top1_top2"]),
         )
@@ -337,7 +472,10 @@ def _patch_peft_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _fake_trainer(request_obj: Any = None, **kwargs: object) -> QuerySslPeftEncoderClientTrainingResult:
+    def _fake_trainer(
+        request_obj: Any = None,
+        **kwargs: object,
+    ) -> QuerySslPeftEncoderClientTrainingResult:
         if request_obj is not None:
             labels = list(request_obj.labels)
             active_state = build_initial_shared_state(
@@ -370,7 +508,9 @@ def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
                 "runtime_resource_cache": request_obj.runtime_resource_cache,
                 "timing_recorder": request_obj.timing_recorder,
                 "persist_update_artifact": request_obj.persist_update_artifact,
-                "initial_query_ssl_algorithm_state": request_obj.initial_query_ssl_algorithm_state,
+                "initial_query_ssl_algorithm_state": (
+                    request_obj.initial_query_ssl_algorithm_state
+                ),
                 "active_adapter_state": active_state,
             }
         training_task = kwargs["training_task"]
@@ -447,10 +587,6 @@ def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _default_diagnostics_config() -> FederatedDiagnosticsConfig:
-    return FederatedDiagnosticsConfig(dump_dir_name="selection_dumps")
-
-
 def _default_report_config() -> FederatedReportConfig:
     return FederatedReportConfig(
         schema_version="federated_simulation_report.v1",
@@ -490,6 +626,80 @@ def _legacy_manual_ssl_method_config() -> FederatedSslMethodConfig:
     )
 
 
+def _peft_client_round_runtime_callables() -> dict[str, str]:
+    return {
+        "base_state_materializer": (
+            "scripts.runtime_adapters.federated_agent.base_state_materialization."
+            "load_peft_encoder_base_parameters_with_timing"
+        ),
+        "base_partition_state_materializer": (
+            "scripts.runtime_adapters.federated_agent.base_state_materialization."
+            "load_peft_encoder_base_partition_parameters_with_timing"
+        ),
+        "delta_materializer_factory": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "PeftEncoderDeltaMaterializer"
+        ),
+        "method_owned_local_training_core": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
+            "run_method_owned_peft_encoder_local_training_core"
+        ),
+        "transient_model_cache_releaser": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime."
+            "release_transient_model_cache"
+        ),
+        "update_artifact_byte_counter": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "server_owned_peft_encoder_update_artifact_byte_count"
+        ),
+        "update_uploader": (
+            "methods.adaptation.peft_text_encoder.update.delta_artifacts."
+            "upload_agent_local_peft_encoder_update"
+        ),
+        "query_ssl_training_backend_factory": (
+            "methods.adaptation.peft_text_encoder.update_family_runtime."
+            "build_training_backend_for_peft_encoder_state"
+        ),
+        "query_ssl_request_factory": (
+            "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
+            "build_query_ssl_peft_encoder_local_training_request"
+        ),
+        "query_ssl_training_runner": (
+            "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
+            "run_query_ssl_peft_encoder_local_training"
+        ),
+    }
+
+
+def _peft_server_round_runtime_callables() -> dict[str, str]:
+    return {
+        "supervised_seed_artifact_names": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "supervised_seed.peft_encoder_supervised_seed_artifact_names"
+        ),
+        "supervised_seed_revision_builder": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "supervised_seed.build_peft_encoder_supervised_seed_revision"
+        ),
+        "supervised_seed_projection_builder": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "supervised_seed."
+            "build_peft_encoder_supervised_seed_projection_from_runtime_payload"
+        ),
+        "supervised_seed_seed": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "supervised_seed.peft_encoder_supervised_seed_step_seed"
+        ),
+        "final_projection_state_resolver": (
+            "methods.adaptation.peft_text_encoder.evaluation.require_peft_encoder_state"
+        ),
+        "final_projection_artifacts_builder": (
+            "methods.adaptation.peft_text_encoder.simulation_runtime."
+            "final_projection.build_peft_encoder_final_projection_artifacts_from_state"
+        ),
+    }
+
+
 def _default_round_runtime_config(
     *,
     payload_adapter_kind: str = "peft_classifier",
@@ -518,6 +728,7 @@ def _default_round_runtime_config(
     ),
     aggregation_backend_name: str = "fedavg",
     peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
+    release_transient_model_cache_after_client: bool = False,
 ) -> FederatedRoundRuntimeConfig:
     runtime_payload = (
         peft_classifier
@@ -540,7 +751,20 @@ def _default_round_runtime_config(
         validation_evaluator=validation_evaluator,
         final_projection_builder=final_projection_builder,
         transient_resource_cleaner=transient_resource_cleaner,
+        release_transient_model_cache_after_client=(
+            release_transient_model_cache_after_client
+        ),
         local_objective_executors=local_objective_executors,
+        client_round_runtime=(
+            _peft_client_round_runtime_callables()
+            if update_family_name == "peft_text_encoder"
+            else {}
+        ),
+        server_round_runtime=(
+            _peft_server_round_runtime_callables()
+            if update_family_name == "peft_text_encoder"
+            else {}
+        ),
     )
 
 
@@ -702,18 +926,11 @@ def _default_simulation_request(
         shard_policy=shard_policy or _default_shard_policy(),
         training_task_config=training_task_config
         or _default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=validation_config
-        or _default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
-        diagnostics_config=_default_diagnostics_config(),
+        validation_config=validation_config or _default_validation_config(),
         resume_config=resume_config or FederatedResumeConfig(),
         ssl_method_config=ssl_method_config,
         client_pool_split_config=(
@@ -1077,12 +1294,6 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
                 "training_backend_name": "peft_classifier_trainer",
-                "confidence_threshold": 0.0,
-                "margin_threshold": 0.0,
-                "example_generation_backend_name": "peft_classifier_raw_rows",
-                "evidence_backend_name": "peft_classifier_logits",
-                "scorer_backend_name": "peft_classifier_logits",
-                "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
                 **_peft_objective_extras(
                     delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
@@ -1209,7 +1420,9 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
                 "runtime_resource_cache": request_obj.runtime_resource_cache,
                 "timing_recorder": request_obj.timing_recorder,
                 "persist_update_artifact": request_obj.persist_update_artifact,
-                "initial_query_ssl_algorithm_state": request_obj.initial_query_ssl_algorithm_state,
+                "initial_query_ssl_algorithm_state": (
+                    request_obj.initial_query_ssl_algorithm_state
+                ),
                 "active_adapter_state": active_state,
             }
         trainer_calls.append(dict(kwargs))
@@ -1274,8 +1487,6 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -1284,10 +1495,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
                 delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
             ),
         ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_validation_config(),
         query_ssl_objective_config=FederatedQuerySslObjectiveConfig(
             method_name="fixmatch_usb_v1",
             algorithm_name="fixmatch",
@@ -1369,9 +1577,11 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
     assert "agent-local://" not in accepted_payload.model_dump_json()
 
 
+@pytest.mark.parametrize("release_after_client", [False, True])
 def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    release_after_client: bool,
 ) -> None:
     labeled_row = _row("l1", "labeled panic", "anxiety")
     unlabeled_row = _row("u1", "weak panic", "anxiety")
@@ -1398,12 +1608,6 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
                 "training_backend_name": "peft_classifier_trainer",
-                "confidence_threshold": 0.0,
-                "margin_threshold": 0.0,
-                "example_generation_backend_name": "peft_classifier_raw_rows",
-                "evidence_backend_name": "peft_classifier_logits",
-                "scorer_backend_name": "peft_classifier_logits",
-                "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
                 **_peft_objective_extras(delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE),
             }
@@ -1421,6 +1625,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
+            release_transient_model_cache_after_client=release_after_client,
         ),
         model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
@@ -1468,9 +1673,18 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
             "fedmatch_helper_provider_count": 1.0,
             "fedmatch_missing_helper_snapshot_count": 0.0,
             "fedmatch_materialized_helper_model_count": 1.0,
+            "fedmatch_helper_model_materialization_seconds": 0.12,
+            "fedmatch_helper_model_cache_hit_count": 0.0,
+            "fedmatch_helper_model_cache_miss_count": 1.0,
+            "fedmatch_helper_forward_seconds": 0.34,
+            "fedmatch_helper_forward_call_count": 2.0,
             "fedmatch_peer_context_refreshed": 1.0,
             "fedmatch_c2s_sparse_upload_value_count": 4.0,
             "fedmatch_s2c_sparse_download_value_count": 2.0,
+            "fedmatch_cuda_memory_allocated_mb": 100.0,
+            "fedmatch_cuda_memory_reserved_mb": 128.0,
+            "fedmatch_cuda_memory_max_allocated_mb": 110.0,
+            "fedmatch_cuda_memory_max_reserved_mb": 140.0,
         },
     )
     peer_snapshot = FederatedSslPeerClientSnapshot(
@@ -1565,7 +1779,10 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     def _unexpected_query_ssl_trainer(**_kwargs: object) -> None:
         raise AssertionError("manual Query SSL trainer must not run for method-owned.")
 
-    import methods.adaptation.peft_text_encoder.simulation_runtime.round_runtime as m_runtime
+    from methods.adaptation.peft_text_encoder.simulation_runtime import (
+        round_runtime as m_runtime,
+    )
+
     monkeypatch.setattr(
         m_runtime,
         "run_method_owned_peft_encoder_local_training_core",
@@ -1606,10 +1823,9 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
+            release_transient_model_cache_after_client=release_after_client,
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -1618,10 +1834,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
                 delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE
             ),
         ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_validation_config(),
         ssl_method_config=FederatedSslMethodConfig(
             schema_version="federated_ssl_method.v1",
             name="fedmatch",
@@ -1711,14 +1924,33 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["peer_probe_rows"] == (labeled_row,)
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
-    assert runtime_resource_cache.get_resource("peft_encoder:helper_model:test") is None
-    assert (
-        runtime_resource_cache.get_resource("peft_encoder:backbone_base:test") is None
-    )
+    if release_after_client:
+        assert (
+            runtime_resource_cache.get_resource("peft_encoder:helper_model:test")
+            is None
+        )
+        assert (
+            runtime_resource_cache.get_resource("peft_encoder:backbone_base:test")
+            is not None
+        )
+        assert "helper_model_cache_release_seconds" in (
+            execution.summary.timing_breakdown
+        )
+    else:
+        assert (
+            runtime_resource_cache.get_resource("peft_encoder:helper_model:test")
+            is not None
+        )
+        assert (
+            runtime_resource_cache.get_resource("peft_encoder:backbone_base:test")
+            is not None
+        )
+        assert "helper_model_cache_release_seconds" not in (
+            execution.summary.timing_breakdown
+        )
     assert (
         runtime_resource_cache.get_resource("peft_encoder:tokenizer:test") is not None
     )
-    assert "helper_model_cache_release_seconds" in execution.summary.timing_breakdown
     assert execution.summary.method_diagnostics["fedmatch_helper_count"] == (
         pytest.approx(1.0)
     )
@@ -1735,6 +1967,21 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         "fedmatch_materialized_helper_model_count"
     ] == pytest.approx(1.0)
     assert execution.summary.method_diagnostics[
+        "fedmatch_helper_model_materialization_seconds"
+    ] == pytest.approx(0.12)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_helper_model_cache_hit_count"
+    ] == pytest.approx(0.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_helper_model_cache_miss_count"
+    ] == pytest.approx(1.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_helper_forward_seconds"
+    ] == pytest.approx(0.34)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_helper_forward_call_count"
+    ] == pytest.approx(2.0)
+    assert execution.summary.method_diagnostics[
         "fedmatch_peer_context_refreshed"
     ] == pytest.approx(1.0)
     assert execution.summary.method_diagnostics[
@@ -1743,9 +1990,49 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     assert execution.summary.method_diagnostics[
         "fedmatch_s2c_sparse_download_value_count"
     ] == pytest.approx(2.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_cuda_memory_allocated_mb"
+    ] == pytest.approx(100.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_cuda_memory_reserved_mb"
+    ] == pytest.approx(128.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_cuda_memory_max_allocated_mb"
+    ] == pytest.approx(110.0)
+    assert execution.summary.method_diagnostics[
+        "fedmatch_cuda_memory_max_reserved_mb"
+    ] == pytest.approx(140.0)
     assert execution.peer_client_snapshot is returned_peer_snapshot
     assert execution.client_partition_snapshot is returned_client_partition_parameters
     assert execution.query_ssl_algorithm_state is returned_algorithm_state
+
+
+def test_round_boundary_releases_peft_transient_model_cache() -> None:
+    runtime_resource_cache = InMemoryRuntimeResourceCache()
+    runtime_resource_cache.set_resource("peft_encoder:helper_model:test", object())
+    runtime_resource_cache.set_resource("peft_encoder:backbone_base:test", object())
+    runtime_resource_cache.set_resource("peft_encoder:tokenizer:test", object())
+
+    removed_count = _release_transient_resources_at_round_boundary(
+        request=SimpleNamespace(
+            round_runtime_config=SimpleNamespace(
+                transient_resource_cleaner=(
+                    "methods.adaptation.peft_text_encoder.resource_cache."
+                    "clear_peft_encoder_transient_resource_cache"
+                )
+            )
+        ),
+        bootstrapped=SimpleNamespace(runtime_resource_cache=runtime_resource_cache),
+    )
+
+    assert removed_count == 2
+    assert runtime_resource_cache.get_resource("peft_encoder:helper_model:test") is None
+    assert (
+        runtime_resource_cache.get_resource("peft_encoder:backbone_base:test") is None
+    )
+    assert (
+        runtime_resource_cache.get_resource("peft_encoder:tokenizer:test") is not None
+    )
 
 
 def test_build_next_client_partition_sync_state_keeps_previous_snapshots() -> None:
@@ -1894,6 +2181,11 @@ def test_resume_checkpoint_preserves_fedmatch_helper_materialization_metrics(
                             "fedmatch_helper_provider_count": 1.0,
                             "fedmatch_missing_helper_snapshot_count": 1.0,
                             "fedmatch_materialized_helper_model_count": 1.0,
+                            "fedmatch_helper_model_materialization_seconds": 0.12,
+                            "fedmatch_helper_model_cache_hit_count": 0.0,
+                            "fedmatch_helper_model_cache_miss_count": 1.0,
+                            "fedmatch_helper_forward_seconds": 0.34,
+                            "fedmatch_helper_forward_call_count": 2.0,
                         },
                     ),
                 ),
@@ -1918,6 +2210,21 @@ def test_resume_checkpoint_preserves_fedmatch_helper_materialization_metrics(
     assert loaded_client.method_diagnostics[
         "fedmatch_materialized_helper_model_count"
     ] == pytest.approx(1.0)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_model_materialization_seconds"
+    ] == pytest.approx(0.12)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_model_cache_hit_count"
+    ] == pytest.approx(0.0)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_model_cache_miss_count"
+    ] == pytest.approx(1.0)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_forward_seconds"
+    ] == pytest.approx(0.34)
+    assert loaded_client.method_diagnostics[
+        "fedmatch_helper_forward_call_count"
+    ] == pytest.approx(2.0)
 
 
 def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() -> None:
@@ -2073,8 +2380,6 @@ def test_split_rows_into_client_shards_keeps_all_validation_rows() -> None:
 
 def test_federated_training_task_config_reuses_round_task_config() -> None:
     training_task_config = _default_training_task_config(
-        confidence_threshold=0.6,
-        margin_threshold=0.02,
         max_examples=8,
         gradient_clip_norm=0.5,
     )
@@ -2095,8 +2400,6 @@ def test_federated_training_task_config_reuses_round_task_config() -> None:
 
 def test_federated_training_task_config_accepts_method_task_type() -> None:
     training_task_config = _default_training_task_config(
-        confidence_threshold=0.6,
-        margin_threshold=0.02,
         max_examples=8,
         gradient_clip_norm=0.5,
         task_type="feedback_supervised",
@@ -2166,8 +2469,6 @@ def test_run_simulation_request_rejects_manual_partitioned_update_until_producer
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2238,8 +2539,6 @@ def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
         tmp_path,
         output_name="task_type_mismatch",
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             task_type=TrainingTaskType.FEEDBACK_SUPERVISED,
@@ -2265,8 +2564,6 @@ def test_run_simulation_request_rejects_local_update_round_family_drift(
             ),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2303,8 +2600,6 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
             aggregation_backend_name="fedavg",
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
         ),
@@ -2427,8 +2722,6 @@ def test_run_simulation_request_rejects_peft_runtime_objective_drift(
             peft_classifier=drifted_peft_runtime,
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2469,8 +2762,6 @@ def test_run_simulation_request_rejects_missing_peft_runtime_config(
             ),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2512,18 +2803,13 @@ def test_run_simulation_request_bootstraps_peft_classifier_profile(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_peft_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_peft_validation_config(),
     )
 
     result = run_simulation_request(request)
@@ -2533,18 +2819,16 @@ def test_run_simulation_request_bootstraps_peft_classifier_profile(
     assert result.final_validation == result.initial_validation
 
 
-def test_peft_classifier_validation_rejects_prototype_similarity(tmp_path) -> None:
+def test_peft_classifier_validation_rejects_unsupported_scorer(tmp_path) -> None:
     request = _default_simulation_request(
         tmp_path,
-        output_name="peft_prototype_validation_rejected",
+        output_name="peft_unsupported_validation_rejected",
         model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             payload_adapter_kind="peft_classifier",
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
@@ -2552,10 +2836,8 @@ def test_peft_classifier_validation_rejects_prototype_similarity(tmp_path) -> No
             objective_extras=_peft_objective_extras(),
         ),
         validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-            scorer_backend_name="prototype_similarity",
-            score_policy_name="max_cosine",
+            scorer_backend_name="unsupported_legacy_scorer",
+            score_policy_name="unsupported_legacy_policy",
         ),
     )
 
@@ -2604,18 +2886,13 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_peft_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_peft_validation_config(),
     )
 
     result = run_simulation_request(request)
@@ -2645,7 +2922,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "versions"
         / "peft_text_encoder"
         / "sim_rev_0001"
-        / "peft_adapter.json"
+        / "peft_adapter.safetensors"
     )
     head_aggregate_path = (
         output_dir
@@ -2658,9 +2935,10 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
     )
     assert peft_aggregate_path.exists()
     assert head_aggregate_path.exists()
-    assert json.loads(peft_aggregate_path.read_text(encoding="utf-8"))[
-        "peft_parameters"
-    ]
+    assert _load_peft_state_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0001/peft_adapter",
+    )
     assert json.loads(head_aggregate_path.read_text(encoding="utf-8"))[
         "classifier_head_weights"
     ]
@@ -2671,7 +2949,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "versions"
         / "peft_text_encoder"
         / "sim_rev_0002"
-        / "peft_adapter.json"
+        / "peft_adapter.safetensors"
     )
     second_head_aggregate_path = (
         output_dir
@@ -2684,19 +2962,32 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
     )
     assert second_peft_aggregate_path.exists()
     assert second_head_aggregate_path.exists()
-    first_peft_artifact = json.loads(peft_aggregate_path.read_text(encoding="utf-8"))
+    first_peft_artifact = _load_peft_state_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0001/peft_adapter",
+    )
+    first_applied_peft_deltas = _load_applied_peft_deltas_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0001/peft_adapter",
+    )
     first_head_artifact = json.loads(head_aggregate_path.read_text(encoding="utf-8"))
-    second_peft_artifact = json.loads(
-        second_peft_aggregate_path.read_text(encoding="utf-8")
+    second_peft_artifact = _load_peft_state_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0002/peft_adapter",
+    )
+    second_applied_peft_deltas = _load_applied_peft_deltas_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0002/peft_adapter",
     )
     second_head_artifact = json.loads(
         second_head_aggregate_path.read_text(encoding="utf-8")
     )
     assert second_peft_artifact != first_peft_artifact
+    assert first_applied_peft_deltas
     _assert_vector_mapping_accumulates(
-        before=first_peft_artifact["peft_parameters"],
-        delta=second_peft_artifact["applied_peft_parameter_deltas"],
-        after=second_peft_artifact["peft_parameters"],
+        before=first_peft_artifact,
+        delta=second_applied_peft_deltas,
+        after=second_peft_artifact,
     )
     _assert_vector_mapping_accumulates(
         before=first_head_artifact["classifier_head_weights"],
@@ -2742,18 +3033,13 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_peft_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_peft_validation_config(),
     )
 
     result = run_simulation_request(request)
@@ -2779,7 +3065,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
         / "versions"
         / "peft_text_encoder"
         / "sim_rev_0001"
-        / "peft_adapter.json"
+        / "peft_adapter.safetensors"
     )
     head_aggregate_path = (
         output_dir
@@ -2835,18 +3121,13 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_peft_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
+        validation_config=_default_peft_validation_config(),
     )
 
     first_result = run_simulation_request(base_request)
@@ -2902,13 +3183,10 @@ def test_run_simulation_request_rejects_unsupported_legacy_local_update_backend(
             peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
             training_backend_name="unsupported_legacy_backend",
             privacy_guard_name="unsupported_legacy_guard",
-            scorer_backend_name="unsupported_legacy_scorer",
             objective_extras={},
         ),
     )
@@ -2982,6 +3260,18 @@ def test_run_simulation_completes_one_round_with_small_fixture(
     assert report["protocol"]["ssl_method"]["reason"] == "manual_composition"
     assert report["protocol"]["fl_method"]["descriptor_name"] is None
     assert report["protocol"]["fl_method"]["execution_role"] == "manual_baseline"
+    assert report["protocol"]["runtime_selection"] == {
+        "composition_mode": "manual",
+        "execution_role": "manual_baseline",
+        "method_name": "manual",
+        "method_descriptor_name": None,
+        "local_ssl_algorithm_name": "fixmatch",
+        "local_update_profile_name": None,
+        "update_family_name": "peft_text_encoder",
+        "aggregation_backend_name": "fedavg",
+        "display_name": "fixmatch_fedavg",
+        "selection_key": "manual:fixmatch:none:peft_text_encoder:fedavg",
+    }
     assert report["protocol"]["labeled_unlabeled_split"]["status"] == (
         "enforced_by_client_pool_split"
     )
@@ -3026,9 +3316,7 @@ def test_run_simulation_completes_one_round_with_small_fixture(
         report["rounds"][0]["delta_from_previous_round"]["macro_f1_delta"]
         == report["rounds"][0]["delta_from_initial"]["macro_f1_delta"]
     )
-    assert report["diagnostics"]["aggregation"]["weight_basis"] == (
-        "update_envelope.example_count"
-    )
+    assert report["diagnostics"]["aggregation"]["weight_basis"] == "uniform"
     assert report["diagnostics"]["aggregation"]["rounds"][0]["update_count"] == (
         result.rounds[0].update_count
     )
@@ -3156,16 +3444,10 @@ def test_run_simulation_accepts_hydra_style_detail_configs(
                 client_id_prefix="agent",
             ),
             training_task_config=_default_training_task_config(
-                confidence_threshold=0.0,
-                margin_threshold=0.0,
                 max_examples=4,
                 gradient_clip_norm=1.0,
-                score_policy_name="topk_mean_cosine",
-                score_top_k=1,
             ),
             validation_config=_default_validation_config(
-                confidence_threshold=0.0,
-                margin_threshold=0.0,
                 score_policy_name="topk_mean_cosine",
                 score_top_k=1,
             ),
@@ -3174,6 +3456,34 @@ def test_run_simulation_accepts_hydra_style_detail_configs(
 
     assert result.rounds
     assert result.rounds[0].update_count > 0
+
+
+def _load_peft_state_safetensors_artifact(
+    output_dir: Path,
+    artifact_ref: str,
+) -> dict[str, list[float]]:
+    store = AggregationArtifactStore(
+        state_root=output_dir / "main_server" / "aggregation_artifacts"
+    )
+    tensors, metadata = store.load_safetensors_artifact(artifact_ref=artifact_ref)
+    return merged_artifacts.parse_peft_adapter_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _load_applied_peft_deltas_safetensors_artifact(
+    output_dir: Path,
+    artifact_ref: str,
+) -> dict[str, list[float]]:
+    store = AggregationArtifactStore(
+        state_root=output_dir / "main_server" / "aggregation_artifacts"
+    )
+    tensors, metadata = store.load_safetensors_artifact(artifact_ref=artifact_ref)
+    return merged_artifacts.parse_applied_peft_parameter_deltas_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
 
 
 def _assert_vector_mapping_accumulates(

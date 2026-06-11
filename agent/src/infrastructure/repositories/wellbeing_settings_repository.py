@@ -6,11 +6,11 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
+from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
 from agent.src.infrastructure.repositories.wellbeing_storage import (
     DEFAULT_WELLBEING_DB_PATH,
     connect_wellbeing_db,
 )
-from shared.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS wellbeing_settings (

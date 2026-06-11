@@ -2,7 +2,10 @@
 
 이 문서는 TraceMind의 현재 런타임, 코드 경계, 활성 연구/시스템 레일을 설명하는 canonical 개요다.
 
-세부 payload 필드의 source of truth는 문서가 아니라 `shared/src/contracts/*.py`와 `shared/src/domain/entities/*`다.
+세부 payload 필드의 source of truth는 문서가 아니라 `shared/src/contracts/*.py`,
+`shared/src/domain/entities/*`, agent-local API/UI payload의 경우
+`agent/src/contracts/*.py`, agent-local inference state/result의 경우
+`agent/src/services/inference/*`다.
 
 ## 1. 현재 목표
 
@@ -39,11 +42,11 @@ central fixed embedding + classifier seed
 | 구성요소 | 역할 | 주요 코드 |
 |---|---|---|
 | Shared contract/domain | agent, main_server, scripts가 함께 읽는 canonical payload와 domain entity | `shared/src/contracts/*`, `shared/src/domain/entities/*` |
-| Methods | SSL, adaptation, prototype, evaluation, FL aggregation의 교체 가능한 계산 core | `methods/*` |
+| Methods | SSL, adaptation, evaluation, FL aggregation의 교체 가능한 계산 core | `methods/*` |
 | Hydra config | 실행 조합, strategy axis, track preset | `conf/*` |
-| Agent API/runtime | 로컬 inference, query buffer, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
-| Main server API/runtime | FL round, aggregation, prototype publication | `main_server/src/api/*`, `main_server/src/services/*` |
-| Scripts | dataset/prototype/PEFT/FL simulation entrypoint와 thin wrapper | `scripts/experiments/*`, `scripts/workflows/prototype_pack/*` |
+| Agent API/runtime | 로컬 inference, captured text, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
+| Main server API/runtime | FL round, aggregation, publication | `main_server/src/api/*`, `main_server/src/services/*` |
+| Scripts | dataset/PEFT/FL simulation entrypoint와 thin wrapper | `scripts/experiments/*`, `scripts/workflows/*` |
 | Apps | family extension UI, experiment dashboard, future 제품 UI shell | `apps/family_extension/*`, `apps/experiment_dashboard/*` |
 | Tests | package unit, cross-boundary integration, architecture guard | `shared/tests`, `agent/tests`, `main_server/tests`, `tests/*` |
 
@@ -56,9 +59,8 @@ Raw Event
 -> Preprocess / Translation
 -> Embedding
 -> Global Classifier
--> PersonalizationState
 -> Time-Series Accumulator / Persistence
--> DecisionPolicy
+-> Agent-local Rule Decision
 -> AssessmentResult
 ```
 
@@ -68,8 +70,8 @@ Raw Event
 |---|---|
 | API 수집 | `agent/src/api/ingest.py` |
 | pipeline 조합 | `agent/src/services/inference/pipeline_service.py` |
-| prototype scoring core | `methods/prototype/scoring/*` |
 | scoring backend adapter | `agent/src/services/inference/scoring_backends/*` |
+| local baseline/time-series state | `agent/src/services/inference/state.py` |
 | final decision | `agent/src/services/inference/decision_service.py` |
 | wellbeing projection | `agent/src/services/wellbeing/*` |
 
@@ -126,7 +128,7 @@ Reddit Labeled Data
 -> Fixed Embedding
 -> Classifier Seed
 -> Local Deployment
--> Query Buffer
+-> Generated View Source or legacy Query Buffer
 -> Threshold / Policy Selection
 -> Accepted Query-derived Rows
 -> Continue PEFT text encoder + linear head adaptation
@@ -138,19 +140,18 @@ Reddit Labeled Data
 | 책임 | 파일 |
 |---|---|
 | PEFT supervised entrypoint | `scripts/experiments/central/ssl_control/run_peft_supervised_control.py` |
+| Full text encoder supervised entrypoint | `scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py` |
 | PEFT SSL entrypoint | `scripts/experiments/central/ssl_control/run_peft_ssl_control.py` |
-| 중앙/FL 공통 PEFT SSL runtime support | `scripts/support/query_ssl_peft/*` |
+| 중앙/FL 공통 text encoder SSL runtime support | `scripts/support/query_ssl_text_encoder/*` |
 | trainer core | `methods/adaptation/query_text_views/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | evaluation metric core | `methods/evaluation/*` |
-| query buffer repository | `agent/src/infrastructure/repositories/query_buffer_repository.py` |
-| query buffer selection | `agent/src/services/training/selection/query_buffer_selection_service.py` |
+| captured generated view source | `agent/src/services/training_runtime/training_sources/captured_text_source.py` |
+| training source usage ledger | `agent/src/infrastructure/repositories/training_usage_ledger_repository.py` |
 
 주의:
 
 - 이 레일의 중앙 SSL 비교는 pooled/offline control table이다.
-- prototype 기반 pseudo-label/SSL도 SSL 비교군 중 하나다.
-- `FedMatch`, `FedLGMatch`, `(FL)^2`처럼 non-IID client 제약이 핵심인 방법은
-  FL runtime rail에서 메인 논문 비교로 다룬다.
+- FedMatch처럼 non-IID client 제약이 핵심인 방법은 FL runtime rail에서 다룬다.
 
 ### 3.4 FL Runtime Rail
 
@@ -170,9 +171,8 @@ Raw Event / Local Signal
 |---|---|
 | round lifecycle | `main_server/src/services/federation/rounds/round_lifecycle_service.py` |
 | round manager | `main_server/src/services/federation/rounds/round_manager_service.py` |
-| shared adapter scoring core | `methods/prototype/scoring/*`, `methods/classification/linear_head/scoring.py` |
+| shared adapter scoring core | `methods/classification/linear_head/scoring.py` |
 | shared adapter privacy guard core | `methods/adaptation/privacy_guards/*` |
-| prototype training input core | `methods/prototype/training_inputs/*` |
 | FL shard policy core | `methods/federated/shard_policy/*` |
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg generic core | `methods/federated/aggregation/fedavg/*` |
@@ -183,17 +183,14 @@ Raw Event / Local Signal
 | FL report/evaluation payload | `methods/evaluation/*`, `scripts/experiments/fl_ssl/federated_simulation/io/*` |
 | payload adapter wiring | `main_server/src/services/federation/rounds/payload_adapters/registry.py`, `payload_adapters/models.py` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
-| agent current-task application flow | `agent/src/services/training/execution/agent_training_task_runner_service.py` |
-| server-owned prototype rebuild input | `main_server/src/infrastructure/repositories/prototype_rebuild_input_repository.py` |
-| prototype scoring core | `methods/prototype/scoring/*` |
-| prototype evidence core | `methods/prototype/evidence/*` |
+| agent current-task application flow | `agent/src/services/training_runtime/current_task/agent_training_task_runner_service.py` |
 
 ## 4. 코드 계층과 소유권
 
 | 경로 | 소유 책임 | 금지 사항 |
 |---|---|---|
 | `shared/` | 공통 contract, domain entity, canonical payload 해석 규칙 | 실험 편의 로직을 공통 계층으로 승격하지 않는다 |
-| `methods/` | 교체 가능한 SSL, adaptation, prototype, FL aggregation 계산 core와 method-local recipe metadata/policy | FastAPI, repository, Hydra entrypoint, runtime state를 소유하지 않는다 |
+| `methods/` | 교체 가능한 SSL, adaptation, FL aggregation 계산 core와 method-local recipe metadata/policy | FastAPI, repository, Hydra entrypoint, runtime state를 소유하지 않는다 |
 | `conf/` | Hydra 실행 조합과 파라미터 | Python 구현, 복잡한 계산 로직, runtime state를 소유하지 않는다 |
 | `agent/` | local inference, local training, private/local state, server participation | method identity/local objective와 서버 round orchestration/aggregation policy를 소유하지 않는다 |
 | `main_server/` | round lifecycle, aggregation, publication | method-specific server policy, raw text, 개인 threshold, 개인 해석 상태를 소유하지 않는다 |
@@ -206,7 +203,7 @@ Raw Event / Local Signal
 | 위치 | 의미 | Git 기준 |
 |---|---|---|
 | `data/datasets/` | 새 dataset별 raw/mapped/split/query_ssl/view artifact | ignore |
-| `data/artifacts/` | 새 model/prototype/adapter artifact | ignore |
+| `data/artifacts/` | 새 model/adapter artifact | ignore |
 | `data/cache/` | 새 model/translation/query cache | ignore |
 | `data/processed/` | legacy dataset/model artifact | ignore |
 | `runs/` | 실험 1회 실행 결과와 report. 신규 FL SSL은 `runs/fl_ssl/...` 계층을 쓴다 | ignore |
@@ -232,7 +229,6 @@ Raw Event / Local Signal
 |---|---|
 | `docs/execution_index.md` | 짧은 진입점과 문서 지도 |
 | `docs/project_execution_plan.md` | 활성 연구/시스템 계획과 현재 Phase |
-| `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 guard |
 | `shared/src/contracts/README.md` | contract 파일 가까운 payload 해석 |
 | `docs/api/api-surface.md` | 현재 FastAPI endpoint 표면 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke 절차 |

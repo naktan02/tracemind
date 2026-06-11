@@ -15,10 +15,10 @@ from methods.adaptation.peft_text_encoder.training import (
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
-from methods.federated_ssl.local_objective import (
+from methods.federated_ssl.hooks.local_objective import (
     requires_method_helper_probability_provider,
 )
-from methods.federated_ssl.peer_context import (
+from methods.federated_ssl.hooks.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )

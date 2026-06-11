@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
     validate_federated_ssl_capability_compatibility,
@@ -39,6 +39,7 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
     run_one_round,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
+    ActiveSimulationState,
     BootstrappedSimulation,
 )
 from scripts.experiments.fl_ssl.federated_simulation.io.resume_checkpoint import (
@@ -62,6 +63,25 @@ from scripts.runtime_adapters.federated_server.runtime import (
 def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
     """typed request 기반으로 FL SSL simulation을 실행한다."""
 
+    ssl_method_runtime, bootstrapped = _prepare_simulation_runtime(request)
+    active, round_summaries = _run_simulation_rounds(
+        request=request,
+        bootstrapped=bootstrapped,
+        ssl_method_runtime=ssl_method_runtime,
+    )
+    return build_simulation_result(
+        request=request,
+        bootstrapped=bootstrapped,
+        active=active,
+        round_summaries=round_summaries,
+    )
+
+
+def _prepare_simulation_runtime(
+    request: SimulationRunRequest,
+) -> tuple[FederatedSslSimulationRuntime, BootstrappedSimulation]:
+    """request의 실행 계획과 runtime compatibility를 확정한 뒤 bootstrap한다."""
+
     execution_plan = _resolve_execution_plan(request)
     request.capability_plan = _resolve_capability_plan(request)
     ssl_method_runtime = _build_validated_ssl_runtime(
@@ -82,6 +102,17 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
         request,
         ssl_method_descriptor=ssl_method_runtime.descriptor,
     )
+    return ssl_method_runtime, bootstrapped
+
+
+def _run_simulation_rounds(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    ssl_method_runtime: FederatedSslSimulationRuntime,
+) -> tuple[ActiveSimulationState, list[SimulationRoundSummary]]:
+    """bootstrap 이후 round loop를 실행하고 최종 active state를 반환한다."""
+
     active = bootstrapped.active
     peer_context_state = bootstrapped.peer_context_state
     client_partition_sync_state = bootstrapped.client_partition_sync_state
@@ -119,12 +150,7 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
                 round_summaries=round_summaries,
             )
 
-    return build_simulation_result(
-        request=request,
-        bootstrapped=bootstrapped,
-        active=active,
-        round_summaries=round_summaries,
-    )
+    return active, round_summaries
 
 
 def _write_round_resume_checkpoint(

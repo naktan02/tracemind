@@ -14,6 +14,10 @@ from methods.federated_ssl.base import (
     ROUND_STATE_EXCHANGE_NONE,
     FederatedSslMethodDescriptor,
 )
+from methods.federated_ssl.method_config_surface import (
+    is_public_method_owned_canonical,
+    recommended_method_owned_variants,
+)
 
 COMPOSITION_MODE_METHOD_OWNED = "method_owned"
 COMPOSITION_MODE_MANUAL = "manual"
@@ -150,6 +154,98 @@ class FederatedSslSecurityPolicy:
             "name": self.name,
             "update_payload_visibility": self.update_payload_visibility,
             "client_metric_visibility": self.client_metric_visibility,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class FederatedSslRuntimeSelection:
+    """FL SSL 실행에서 실제로 선택된 local/server 조합 요약."""
+
+    composition_mode: str
+    execution_role: str
+    method_name: str
+    method_descriptor_name: str | None
+    local_ssl_algorithm_name: str | None
+    local_update_profile_name: str | None
+    update_family_name: str | None
+    aggregation_backend_name: str | None
+    display_name: str
+    selection_key: str
+
+    @classmethod
+    def from_execution_plan(
+        cls,
+        execution_plan: "FederatedSslExecutionPlan",
+        *,
+        local_update_profile_name: str | None = None,
+    ) -> "FederatedSslRuntimeSelection":
+        """실행 계획을 app/report가 읽을 수 있는 selection summary로 정규화한다."""
+
+        normalized_profile_name = _normalize_selection_value(local_update_profile_name)
+        if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+            axes = execution_plan.manual_axes
+            local_ssl_algorithm_name = _require_selection_value(
+                axes.client_ssl_objective,
+                field_name="manual_axes.client_ssl_objective",
+            )
+            aggregation_backend_name = _require_selection_value(
+                axes.server_aggregation,
+                field_name="manual_axes.server_aggregation",
+            )
+            update_family_name = _require_selection_value(
+                axes.update_family,
+                field_name="manual_axes.update_family",
+            )
+            return cls(
+                composition_mode=execution_plan.composition_mode,
+                execution_role=execution_plan.execution_role,
+                method_name=execution_plan.method_name,
+                method_descriptor_name=None,
+                local_ssl_algorithm_name=local_ssl_algorithm_name,
+                local_update_profile_name=normalized_profile_name,
+                update_family_name=update_family_name,
+                aggregation_backend_name=aggregation_backend_name,
+                display_name=(f"{local_ssl_algorithm_name}_{aggregation_backend_name}"),
+                selection_key=(
+                    "manual:"
+                    f"{local_ssl_algorithm_name}:"
+                    f"{normalized_profile_name or 'none'}:"
+                    f"{update_family_name}:"
+                    f"{aggregation_backend_name}"
+                ),
+            )
+
+        method_descriptor_name = _require_selection_value(
+            execution_plan.descriptor_name,
+            field_name="descriptor_name",
+        )
+        return cls(
+            composition_mode=execution_plan.composition_mode,
+            execution_role=execution_plan.execution_role,
+            method_name=execution_plan.method_name,
+            method_descriptor_name=method_descriptor_name,
+            local_ssl_algorithm_name=None,
+            local_update_profile_name=normalized_profile_name,
+            update_family_name=None,
+            aggregation_backend_name=None,
+            display_name=execution_plan.method_name,
+            selection_key=f"method_owned:{method_descriptor_name}",
+        )
+
+    def to_mapping(self) -> dict[str, str | None]:
+        """report/debug payload에 넣기 쉬운 plain mapping을 만든다."""
+
+        return {
+            "composition_mode": self.composition_mode,
+            "execution_role": self.execution_role,
+            "method_name": self.method_name,
+            "method_descriptor_name": self.method_descriptor_name,
+            "local_ssl_algorithm_name": self.local_ssl_algorithm_name,
+            "local_update_profile_name": self.local_update_profile_name,
+            "update_family_name": self.update_family_name,
+            "aggregation_backend_name": self.aggregation_backend_name,
+            "display_name": self.display_name,
+            "selection_key": self.selection_key,
         }
 
 
@@ -317,6 +413,7 @@ class FederatedSslExecutionPlan:
 
         return {
             "name": self.method_name,
+            "method_name": self.method_name,
             "descriptor_name": self.descriptor_name,
             "composition_mode": self.composition_mode,
             "execution_role": self.execution_role,
@@ -336,6 +433,18 @@ class FederatedSslExecutionPlan:
             return EXECUTION_ROLE_MANUAL_BASELINE
         return EXECUTION_ROLE_METHOD_OWNED
 
+    def runtime_selection(
+        self,
+        *,
+        local_update_profile_name: str | None = None,
+    ) -> FederatedSslRuntimeSelection:
+        """실행 계획에서 canonical runtime selection summary를 만든다."""
+
+        return FederatedSslRuntimeSelection.from_execution_plan(
+            self,
+            local_update_profile_name=local_update_profile_name,
+        )
+
     def _require_method_owned_plan_matches_descriptor(
         self,
         method_descriptor: FederatedSslMethodDescriptor,
@@ -349,6 +458,19 @@ class FederatedSslExecutionPlan:
             raise ValueError(
                 "fl_method.manual_axes must stay empty when composition_mode is "
                 f"{COMPOSITION_MODE_METHOD_OWNED!r}."
+            )
+        if not is_public_method_owned_canonical(method_descriptor):
+            recommended_variants = recommended_method_owned_variants(method_descriptor)
+            recommendation_text = (
+                ""
+                if not recommended_variants
+                else " Use one of "
+                + ", ".join(repr(name) for name in recommended_variants)
+                + " instead."
+            )
+            raise ValueError(
+                "method-owned public surface no longer accepts generic method "
+                f"{method_descriptor.name!r}.{recommendation_text}"
             )
 
     def _require_manual_axes_are_explicit(self) -> None:
@@ -405,6 +527,24 @@ def _read_optional_str(
     normalized = str(value).strip()
     if not normalized:
         return None
+    return normalized
+
+
+def _normalize_selection_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _require_selection_value(
+    value: str | None,
+    *,
+    field_name: str,
+) -> str:
+    normalized = _normalize_selection_value(value)
+    if normalized is None:
+        raise ValueError(f"FL SSL runtime selection requires {field_name}.")
     return normalized
 
 

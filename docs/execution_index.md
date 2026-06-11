@@ -1,6 +1,6 @@
 # TraceMind Execution Index
 
-짧은 문서 지도다. task별 read order는 `docs/ai_context_manifest.yaml`을 우선한다.
+짧은 문서 지도다. 세부 계약 의미는 코드와 code-adjacent README를 우선한다.
 
 ```text
 central fixed embedding + classifier seed
@@ -16,99 +16,74 @@ central fixed embedding + classifier seed
 | `AGENTS.md` | repo-wide 작업 규칙과 소유 경계 |
 | `docs/ai_context_manifest.yaml` | task route와 source-of-truth 우선순위 |
 | `plan.md` | 연구 비전과 global/local 경계 |
-| `docs/project_execution_plan.md` | active decision, phase, next step |
+| `docs/project_execution_plan.md` | 현재 활성 판단과 다음 검증 |
 | `docs/architecture/system-overview.md` | 런타임 구성요소와 코드 경계 |
-| `docs/architecture/target-method-runtime-structure.md` | 최종 method/runtime 구조와 migration plan |
-| `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 guard |
-| `docs/architecture/pattern-integrity-refactor-backlog.md` | 패턴 경계 guard와 남은 후보 |
-| `docs/architecture/code-expression-guidelines.md` | 코드 표현 밀도와 읽기 난이도 기준 |
+| `docs/architecture/target-method-runtime-structure.md` | 최종 method/runtime 구조 |
+| `docs/architecture/live-fssl-runtime-translation.md` | FL SSL simulation 구조를 live runtime으로 여는 migration 지도 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
-| `docs/contracts/legacy_contract_ledger.md` | legacy/compatibility 표면의 소유자와 제거 조건 |
+| `methods/README.md` | 재사용 algorithm/method core 소유 경계 |
+| `conf/README.md` | Hydra config group과 실행 축 |
+| `scripts/README.md` | 실험 entrypoint와 workflow 경계 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |
 | `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
 | `docs/governance/document-governance.md` | 문서 class와 갱신 규칙 |
-| `methods/README.md` | 재사용 algorithm/method core 소유 경계 |
-| `methods/evaluation/README.md` | 중앙/FL 공통 evaluation metric helper 경계 |
-| `conf/README.md` | Hydra config group과 strategy/runtime 축 |
 
-## Research Docs
+## Contract And Product Docs
 
 | 문서 | 역할 |
 |---|---|
-| `docs/contracts/query_buffer_v1.md` | query retention과 selection boundary |
 | `docs/contracts/central_peft_text_encoder_trainer_contract.md` | 중앙 SSL control scaffold |
-| `docs/fl_runtime_implementation_checklist.md` | FL/runtime translation 작업표 |
-| `docs/strategy_surface_map.md` | 전략 축, 기본값, 구현 상태 |
-| `docs/contracts/strategy_addition_playbook.md` | 새 strategy 추가 절차 |
-| `docs/contracts/algorithm_extension_guide.md` | 새 protocol/전략 축 세부 |
-| `docs/contracts/fl_ssl_method_capability_matrix.md` | FedMatch/FedLGMatch/(FL)^2 선택 전 capability matrix |
-
-## Reference / Historical Docs
-
-| 문서 | 역할 |
-|---|---|
-| `docs/notes/decisions/2026-05-28-archived-text-classifier-adaptation-refactor-plan.md` | 완료된 text classifier migration 기록. legacy shim 변경 때만 읽는다 |
-| `docs/notes/decisions/2026-05-28-archived-lora-classifier-v1-terminology-audit.md` | 완료된 `lora_classifier` 용어 감사 기록. legacy migration 추적 때만 읽는다 |
-| `docs/notes/decisions/2026-05-28-archived-strategy-surface-map.md` | 긴 strategy surface 감사 기록. 현재 축 확인은 active `docs/strategy_surface_map.md`를 먼저 읽는다 |
-| `docs/notes/decisions/2026-05-28-archived-conf-readme.md` | 긴 Hydra config group 설명 기록. 현재 config 경계는 active `conf/README.md`를 먼저 읽는다 |
-| `docs/notes/decisions/2026-05-28-archived-scripts-guide.md` | 긴 scripts cookbook 기록. 현재 scripts 경계는 active `scripts/README.md`를 먼저 읽는다 |
-| `docs/notes/decisions/2026-05-28-archived-central-ssl-control-readme.md` | 긴 central SSL 실행 예시 기록. 현재 entrypoint 경계는 code-adjacent README와 `conf/`를 먼저 읽는다 |
-| `docs/notes/decisions/2026-05-28-archived-experiment-results.md` | 긴 과거 결과 표 기록. 현재 결과 지도는 active `docs/experiment_results.md`를 먼저 읽는다 |
-| `docs/notes/decisions/2026-05-28-archived-fl-ssl-runbook.md` | 긴 FL SSL 실행 예시 기록. 현재 실행 경계는 `scripts/experiments/fl_ssl/README.md`를 먼저 읽는다 |
-| `docs/notes/decisions/2026-05-28-archived-fl-simulation-package-readme.md` | 긴 FL simulation package 설명 기록. 현재 패키지 경계는 code-adjacent README를 먼저 읽는다 |
-| `docs/notes/decisions/2026-05-28-archived-project-execution-plan.md` | 긴 실행 계획 기록. 현재 우선순위는 active `docs/project_execution_plan.md`를 먼저 읽는다 |
-| `docs/notes/sessions/2026-05-28-archived-fl-ssl-execution-audit.md` | 특정 시점 FL SSL artifact 감사 기록 |
-| `docs/notes/sessions/2026-05-28-archived-fl-ssl-runtime-performance-audit.md` | FedMatch runtime 성능 개선 전후 수치 기록 |
-| `docs/staged_execution_roadmap.md` | phase 이름만 보는 축약 지도. 현재 우선순위는 project execution plan이 소유 |
+| `docs/contracts/legacy_contract_ledger.md` | legacy/compatibility 표면의 소유자와 제거 조건 |
+| `docs/api/api-surface.md` | FastAPI endpoint 표면과 owner |
+| `agent/src/contracts/README.md` | agent-local API/UI payload 계약 해석 |
+| `apps/family_extension/README.md` | family extension 현재 UI/runtime 표면 |
 
 ## Fast Code Paths
 
 Central SSL:
 
 1. relevant `conf/**`
-2. `docs/architecture/target-method-runtime-structure.md`
-3. `docs/contracts/query_buffer_v1.md`
-4. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
-5. `scripts/experiments/central/ssl_control/README.md`
-6. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
-7. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
-8. `scripts/support/query_ssl_peft/*`
-9. `methods/ssl/hooks/teacher.py` (teacher source hook 변경 시)
-10. `methods/adaptation/peft_text_encoder/*`
-11. `methods/evaluation/*`
-12. `methods/adaptation/query_text_views/*`
-13. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
-14. `methods/ssl/*`
-15. `methods/adaptation/*`
+2. `scripts/experiments/central/ssl_control/README.md`
+3. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
+4. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
+5. `scripts/support/query_ssl_text_encoder/runners/**`
+6. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
+7. `methods/ssl/**`, `methods/adaptation/{peft_text_encoder,full_text_encoder}/**`
+
+FL SSL:
+
+1. relevant `conf/**`
+2. `scripts/experiments/fl_ssl/README.md`
+3. `scripts/experiments/fl_ssl/run_federated_simulation.py`
+4. `scripts/experiments/fl_ssl/federated_simulation/**`
+5. `scripts/runtime_adapters/federated_{agent,server}/**`
+6. `methods/federated_ssl/**`
+7. `methods/adaptation/peft_text_encoder/**`
 
 Agent runtime:
 
-1. `agent/src/services/README.md`
-2. `docs/architecture/method-owned-runtime-refactor-plan.md`
-3. `agent/src/services/inference/pipeline_service.py`
-4. `agent/src/services/training/execution/agent_training_task_runner_service.py`
-5. `agent/src/services/training/execution/local_training_service.py`
-6. `agent/src/services/federation/rounds/runtime_service.py`
+1. `agent/AGENTS.md`
+2. `agent/src/services/README.md`
+3. `agent/src/services/inference/**`
+4. `agent/src/services/training_runtime/**`
+5. `agent/src/services/federation/**`
+6. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
 
 Main server FL:
 
-1. `main_server/src/services/README.md`
-2. `docs/architecture/method-owned-runtime-refactor-plan.md`
-3. `main_server/src/services/federation/rounds/round_lifecycle_service.py`
-4. `main_server/src/services/federation/rounds/round_manager_service.py`
-
-Apps:
-
-1. `apps/AGENTS.md`
-2. app-specific `AGENTS.md`
-3. `shared/src/contracts/README.md`
+1. `main_server/AGENTS.md`
+2. `main_server/src/services/README.md`
+3. `main_server/src/services/federation/rounds/README.md`
+4. `main_server/src/services/federation/aggregation/**`
+5. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
 
 ## Start Checklist
 
 1. 요청이 seed, central SSL control, FL SSL non-IID, runtime translation 중 어디인지 구분한다.
-2. 변경 소유 경계가 `shared`, `methods`, `conf`, `agent`, `main_server`, `scripts`, `apps`, `docs` 중 어디인지 정한다.
-3. 전략/알고리즘 추가라면 `docs/architecture/target-method-runtime-structure.md`를
-   먼저 보고, 현행 실행 표면은 `docs/strategy_surface_map.md`에서 확인한다.
+2. 변경 소유 경계가 `shared`, `methods`, `conf`, `agent`, `main_server`, `scripts`,
+   `apps`, `docs` 중 어디인지 정한다.
+3. 전략/알고리즘 추가라면 `methods/README.md`, 해당 `methods/**/NEW_METHOD.md`,
+   `conf/README.md`를 먼저 본다.
 4. SSL 논문 비교라면 중앙 control과 FL main comparison을 분리한다.
 5. `docs/notes/**`는 archive-only로 둔다.
 6. FL SSL smoke/main/sweep은 기본적으로 `gpu_local + mxbai`로 실행한다.

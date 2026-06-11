@@ -1,6 +1,6 @@
 # FL SSL 실행
 
-이 폴더는 FL SSL 실험 entrypoint와 sweep wrapper만 둔다. FL method identity와
+이 폴더는 FL SSL 실험 entrypoint와 support helper만 둔다. FL method identity와
 method-only 정책은 `methods/federated_ssl/`, SSL objective core는 `methods/ssl`,
 update-family 계산 core는 `methods/adaptation/*`, 실행 조합과 파라미터는 `conf/`
 Hydra config가 소유한다.
@@ -31,6 +31,40 @@ output_dir=runs/_smoke/fl_ssl
 
 `budget=reduced`는 `10 clients x 5 rounds`, `budget=main`은 `10 clients x 30
 rounds`다. 새 wiring은 smoke 또는 reduced로 먼저 확인한다.
+
+## 읽기 경로
+
+```text
+conf/entrypoints/fl_ssl/run_federated_simulation.yaml
+-> run_federated_simulation.py
+-> federated_simulation/config_request.py
+-> federated_simulation/simulation.py
+-> federated_simulation/flow/bootstrap.py
+-> federated_simulation/flow/round_loop.py
+-> federated_simulation/flow/result_builder.py
+```
+
+`run_federated_simulation.py`는 sweep 처리, output dir 결정, request 생성, runner
+호출, 결과 출력만 맡는다. `flow/round_loop.py`는 server step부터 summary assembly까지
+round lifecycle phase를 보여준다.
+
+## Output Layout
+
+새 FL SSL run은 같은 split과 숫자 조건 아래에서 방법론을 빠르게 비교하도록 아래
+구조로 저장한다.
+
+```text
+runs/fl_ssl/{split}/{condition}/{surface}/{method}/{run_id}/
+```
+
+예:
+
+```text
+runs/fl_ssl/sz4_ourafla_shared_s42/c10_r30_e1_b8_s50/peft_text_encoder_lora/fixmatch_fedavg/20260605T101139Z/
+```
+
+과거 run의 기존 경로는 이동하지 않는다. Report protocol에는 긴 source 이름과 실행
+metadata가 그대로 남으므로 folder slug는 비교용으로 짧게 유지한다.
 
 ## Client Split
 
@@ -72,42 +106,49 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=reduced \
   fl_method.composition_mode=method_owned \
   strategy_axes/fssl_method=fedmatch \
-  strategy_axes/fl_topology/update_partition=partitioned \
-  strategy_axes/fl_topology/aggregation_weight=uniform \
-  strategy_axes/fl_topology/peer_context=fixed_probe_output_knn
+  ssl_method.scenario=labels-at-client
+```
+
+manual 조합은 selector 축을 직접 고르는 baseline/debug 경로다.
+
+```bash
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
+  run_controls/fl_ssl/budget=smoke \
+  strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
 ```
 
 ## Sweep
 
 ```bash
-uv run python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=smoke \
-  strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
-```
-
-```bash
-uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
-  run_controls/fl_ssl/budget=smoke \
+  sweep.axis=seed \
   strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
 ```
 
 `materialized_client_split` 기반 client-count sweep은
-`client_count_sweep.split_manifest_by_client_count`에 count별 manifest를 명시한다.
+`sweep.client_count.split_manifest_by_client_count`에 count별 manifest를 명시한다.
 
 ## Report
 
-각 run의 canonical report는
-`reports/fl_ssl_main_comparison.report.json`이다. report verifier는
-`scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`를 사용한다.
-
-대시보드 cache 생성과 `--reset` 의미는
+각 run의 canonical report는 `reports/fl_ssl_main_comparison.report.json`이다. report
+verifier는 `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`를
+사용한다. 대시보드 cache 생성과 `--reset` 의미는
 `apps/experiment_dashboard/README.md`가 소유한다.
+
+## Final Projection Artifacts
+
+FL SSL는 run 종료 시 final projection이 `projections/`에 자동 생성된다.
+
+- `runs/<...>/projections/validation.projection.jsonl`
+- `runs/<...>/projections/validation.projection.png`
+- `runs/<...>/projections/projection_manifest.json`
+
+시험/논문 실행에서 같은 위치의 figure를 그대로 사용할 수 있다.
 
 ## 주의
 
 - scripts runner에 새 method core를 추가하지 않는다.
-- prototype 기반 방법론이 확정되면 scripts 분기가 아니라 update-family leaf와
-  `methods/` core/capability를 추가한다.
 - 논문용 산출물은 `report.protocol.embedding_adapter`와
   `local_trainer_runtime`으로 `gpu_local + mxbai` 여부를 확인한다.
 - smoke/test artifact는 `runs/_smoke` 아래에 둔다.

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
+from collections.abc import Mapping
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 TrainingConfigScalar = str | int | float | bool
 TrainingConfigInputValue = TrainingConfigScalar | None | Mapping[str, object]
@@ -12,17 +12,6 @@ TrainingConfigInputValue = TrainingConfigScalar | None | Mapping[str, object]
 _OBJECTIVE_CONFIG_KEYS = {
     "training_backend_name",
     "algorithm_profile_name",
-    "loss",
-    "loss_name",
-    "confidence_threshold",
-    "margin_threshold",
-    "example_generation_backend_name",
-    "evidence_backend_name",
-    "scorer_backend_name",
-    "score_policy_name",
-    "score_top_k",
-    "pseudo_label_algorithm_name",
-    "acceptance_policy_name",
     "privacy_guard_name",
 }
 
@@ -36,59 +25,10 @@ class TrainingObjectiveConfigPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    training_backend_name: str = Field(
-        validation_alias=AliasChoices("training_backend_name", "loss"),
-        serialization_alias="training_backend_name",
-        description="로컬 update backend 식별자.",
-    )
+    training_backend_name: str = Field(description="로컬 update backend 식별자.")
     algorithm_profile_name: str | None = Field(
         default=None,
         description="논문/알고리즘 단위 objective 조합 preset 식별자.",
-    )
-    loss_name: str | None = Field(
-        default=None,
-        description=(
-            "학습 objective의 loss 함수 식별자. backend 선택과는 독립적인 의미 축이다."
-        ),
-    )
-    confidence_threshold: float | None = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-        description="Pseudo-label를 채택하기 위한 최소 confidence.",
-    )
-    margin_threshold: float | None = Field(
-        default=None,
-        description="Top1과 top2 score 차이의 최소값.",
-    )
-    example_generation_backend_name: str | None = Field(
-        default=None,
-        description="학습 예시 재구성 backend 식별자.",
-    )
-    evidence_backend_name: str | None = Field(
-        default=None,
-        description="Pseudo-label evidence 정규화 backend 식별자.",
-    )
-    scorer_backend_name: str | None = Field(
-        default=None,
-        description="카테고리 score 계산 backend 식별자.",
-    )
-    score_policy_name: str | None = Field(
-        default=None,
-        description="카테고리 내 다중 prototype score 집계 정책 식별자.",
-    )
-    score_top_k: int | None = Field(
-        default=None,
-        ge=1,
-        description="Top-k score 집계 정책이 사용할 k 값.",
-    )
-    pseudo_label_algorithm_name: str | None = Field(
-        default=None,
-        description="Pseudo-label 후보를 평가하는 selection 알고리즘 식별자.",
-    )
-    acceptance_policy_name: str | None = Field(
-        default=None,
-        description="Pseudo-label acceptance 정책 식별자.",
     )
     privacy_guard_name: str | None = Field(
         default=None,
@@ -96,7 +36,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
     )
     extras: dict[str, TrainingConfigScalar] = Field(
         default_factory=dict,
-        description="Objective family별 추가 하이퍼파라미터 확장 슬롯.",
+        description="Objective family별 '<component>.<name>' 추가 하이퍼파라미터.",
     )
 
     @classmethod
@@ -108,42 +48,23 @@ class TrainingObjectiveConfigPayload(BaseModel):
         if source is None:
             raise ValueError("training_backend_name is required.")
         source = _flatten_objective_mapping(source)
-        backend_name = source.get("training_backend_name", source.get("loss"))
+        unscoped_extras = sorted(
+            key
+            for key in source
+            if key not in _OBJECTIVE_CONFIG_KEYS and "." not in key
+        )
+        if unscoped_extras:
+            raise ValueError(
+                "training objective extras must be scoped with '<component>.<name>': "
+                f"{', '.join(unscoped_extras)}"
+            )
+        backend_name = source.get("training_backend_name")
         if backend_name is None:
             raise ValueError("training_backend_name is required.")
-        pseudo_label_algorithm_name = optional_config_str(
-            source.get("pseudo_label_algorithm_name")
-        )
-        if pseudo_label_algorithm_name is None:
-            # compatibility:
-            # 과거 objective mapping은 acceptance 정책 이름을 selection 알고리즘
-            # 식별자로도 재사용했다. canonical contract는 분리하되,
-            # mapping 정규화 경로에서만 얇게 이어받는다.
-            pseudo_label_algorithm_name = optional_config_str(
-                source.get("acceptance_policy_name")
-            )
         return cls(
             training_backend_name=str(backend_name),
             algorithm_profile_name=optional_config_str(
                 source.get("algorithm_profile_name")
-            ),
-            loss_name=optional_config_str(source.get("loss_name")),
-            confidence_threshold=optional_config_float(
-                source.get("confidence_threshold")
-            ),
-            margin_threshold=optional_config_float(source.get("margin_threshold")),
-            example_generation_backend_name=optional_config_str(
-                source.get("example_generation_backend_name")
-            ),
-            evidence_backend_name=optional_config_str(
-                source.get("evidence_backend_name")
-            ),
-            scorer_backend_name=optional_config_str(source.get("scorer_backend_name")),
-            score_policy_name=optional_config_str(source.get("score_policy_name")),
-            score_top_k=optional_config_positive_int(source.get("score_top_k")),
-            pseudo_label_algorithm_name=pseudo_label_algorithm_name,
-            acceptance_policy_name=optional_config_str(
-                source.get("acceptance_policy_name")
             ),
             privacy_guard_name=optional_config_str(source.get("privacy_guard_name")),
             extras={
@@ -160,28 +81,6 @@ class TrainingObjectiveConfigPayload(BaseModel):
         }
         if self.algorithm_profile_name is not None:
             result["algorithm_profile_name"] = self.algorithm_profile_name
-        if self.loss_name is not None:
-            result["loss_name"] = self.loss_name
-        if self.confidence_threshold is not None:
-            result["confidence_threshold"] = self.confidence_threshold
-        if self.margin_threshold is not None:
-            result["margin_threshold"] = self.margin_threshold
-        if self.example_generation_backend_name is not None:
-            result["example_generation_backend_name"] = (
-                self.example_generation_backend_name
-            )
-        if self.evidence_backend_name is not None:
-            result["evidence_backend_name"] = self.evidence_backend_name
-        if self.scorer_backend_name is not None:
-            result["scorer_backend_name"] = self.scorer_backend_name
-        if self.score_policy_name is not None:
-            result["score_policy_name"] = self.score_policy_name
-        if self.score_top_k is not None:
-            result["score_top_k"] = self.score_top_k
-        if self.pseudo_label_algorithm_name is not None:
-            result["pseudo_label_algorithm_name"] = self.pseudo_label_algorithm_name
-        if self.acceptance_policy_name is not None:
-            result["acceptance_policy_name"] = self.acceptance_policy_name
         if self.privacy_guard_name is not None:
             result["privacy_guard_name"] = self.privacy_guard_name
         result.update(self.extras)
@@ -190,8 +89,6 @@ class TrainingObjectiveConfigPayload(BaseModel):
     def get_component_extras(
         self,
         component_scope: str,
-        *,
-        legacy_keys: Collection[str] = (),
     ) -> dict[str, TrainingConfigScalar]:
         """컴포넌트 scope별 extra 파라미터를 추출한다."""
 
@@ -204,14 +101,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
             for key, value in self.extras.items()
             if key.startswith(prefix)
         }
-        if scoped:
-            return scoped
-        return {key: value for key, value in self.extras.items() if key in legacy_keys}
-
-    @property
-    def loss(self) -> str:
-        """구버전 config key와의 호환을 위한 deprecated alias."""
-        return self.training_backend_name
+        return scoped
 
 
 def _flatten_objective_mapping(

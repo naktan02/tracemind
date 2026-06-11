@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -21,6 +22,7 @@ from methods.adaptation.peft_text_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.peft_text_encoder.training.delta_extraction import (
+    extract_peft_encoder_materialized_state,
     load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.peft_text_encoder.training.modeling import (
@@ -29,11 +31,10 @@ from methods.adaptation.peft_text_encoder.training.modeling import (
 )
 from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
-    compact_peft_encoder_materialized_state,
 )
 from methods.adaptation.query_text_views.data import build_weak_dataloader
 from methods.common.runtime_resources import RuntimeResourceCache
-from methods.federated_ssl.peer_context import (
+from methods.federated_ssl.hooks.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )
@@ -60,6 +61,14 @@ class PeftEncoderHelperWeakProbabilityProvider:
         init=False,
         repr=False,
     )
+    helper_model_materialization_seconds: float = field(
+        default=0.0,
+        init=False,
+    )
+    helper_model_cache_hit_count: int = field(default=0, init=False)
+    helper_model_cache_miss_count: int = field(default=0, init=False)
+    helper_forward_seconds: float = field(default=0.0, init=False)
+    helper_forward_call_count: int = field(default=0, init=False)
 
     @property
     def helper_count(self) -> int:
@@ -74,16 +83,25 @@ class PeftEncoderHelperWeakProbabilityProvider:
         """호출 시점에만 helper model을 GPU에 materialize한다."""
 
         if self._helper_models is None:
-            self._helper_models = tuple(
-                _materialize_helper_model(
+            helper_models: list[PeftTextEncoderWithLinearHead] = []
+            for snapshot in self.helper_snapshots:
+                started_at = time.perf_counter()
+                model, cache_hit = _materialize_helper_model(
                     snapshot=snapshot,
                     labels=self.labels,
                     peft_config=self.peft_config,
                     trainer_runtime_config=self.trainer_runtime_config,
                     runtime_resource_cache=self.runtime_resource_cache,
                 )
-                for snapshot in self.helper_snapshots
-            )
+                self.helper_model_materialization_seconds += (
+                    time.perf_counter() - started_at
+                )
+                if cache_hit:
+                    self.helper_model_cache_hit_count += 1
+                else:
+                    self.helper_model_cache_miss_count += 1
+                helper_models.append(model)
+            self._helper_models = tuple(helper_models)
         return self._helper_models
 
     def __call__(
@@ -91,17 +109,23 @@ class PeftEncoderHelperWeakProbabilityProvider:
         *,
         unlabeled_batch: Mapping[str, Tensor],
     ) -> Tensor | None:
-        if not self.helper_models:
+        helper_models = self.helper_models
+        if not helper_models:
             return None
+        started_at = time.perf_counter()
         input_ids = unlabeled_batch["weak_input_ids"].to(self.device)
         attention_mask = unlabeled_batch["weak_attention_mask"].to(self.device)
         probabilities: list[Tensor] = []
-        with torch.no_grad():
-            for model in self.helper_models:
-                model.eval()
-                logits = model(input_ids=input_ids, attention_mask=attention_mask)
-                probabilities.append(torch.softmax(logits, dim=-1).detach())
-        return torch.stack(probabilities, dim=0)
+        try:
+            with torch.no_grad():
+                for model in helper_models:
+                    model.eval()
+                    logits = model(input_ids=input_ids, attention_mask=attention_mask)
+                    probabilities.append(torch.softmax(logits, dim=-1).detach())
+            return torch.stack(probabilities, dim=0)
+        finally:
+            self.helper_forward_seconds += time.perf_counter() - started_at
+            self.helper_forward_call_count += 1
 
 
 def build_peft_encoder_peer_client_snapshot(
@@ -189,43 +213,6 @@ def compute_peft_encoder_probe_vector(
     return tuple(float(value) for value in mean_probability.reshape(-1).tolist())
 
 
-def extract_peft_encoder_materialized_state(
-    *,
-    model: PeftTextEncoderWithLinearHead,
-    labels: Sequence[str],
-) -> PeftEncoderMaterializedState:
-    """현재 PEFT text encoder/head trainable state를 materialize한다."""
-
-    peft_parameters: dict[str, list[float]] = {}
-    for name, parameter in model.named_parameters():
-        if not parameter.requires_grad or name.startswith("classifier."):
-            continue
-        peft_parameters[name] = [
-            float(value) for value in parameter.detach().cpu().reshape(-1).tolist()
-        ]
-    if not peft_parameters:
-        raise ValueError("PEFT peer snapshot requires trainable adapter parameters.")
-
-    weight = model.classifier.weight.detach().cpu()
-    bias = model.classifier.bias.detach().cpu()
-    classifier_head_weights: dict[str, list[float]] = {}
-    classifier_head_biases: dict[str, float] = {}
-    for label_index, label in enumerate(labels):
-        key = str(label)
-        classifier_head_weights[key] = [
-            float(value) for value in weight[label_index].reshape(-1).tolist()
-        ]
-        classifier_head_biases[key] = float(bias[label_index].item())
-
-    return compact_peft_encoder_materialized_state(
-        PeftEncoderMaterializedState(
-            peft_parameters=peft_parameters,
-            classifier_head_weights=classifier_head_weights,
-            classifier_head_biases=classifier_head_biases,
-        )
-    )
-
-
 def build_peft_encoder_helper_probability_provider(
     *,
     peer_context: FederatedSslPeerContext | None,
@@ -271,7 +258,7 @@ def _materialize_helper_model(
     peft_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
-) -> PeftTextEncoderWithLinearHead:
+) -> tuple[PeftTextEncoderWithLinearHead, bool]:
     if not isinstance(snapshot.payload, PeftEncoderMaterializedState):
         raise TypeError("snapshot payload must be PeftEncoderMaterializedState.")
     cache_key = _helper_model_cache_key(
@@ -287,7 +274,7 @@ def _materialize_helper_model(
                 raise TypeError(
                     "Cached helper model must be PeftTextEncoderWithLinearHead."
                 )
-            return cached
+            return cached, True
 
     model, _tokenizer = build_peft_text_encoder_with_linear_head_from_config(
         labels=list(labels),
@@ -304,7 +291,7 @@ def _materialize_helper_model(
     model.eval()
     if runtime_resource_cache is not None:
         runtime_resource_cache.set_resource(cache_key, model)
-    return model
+    return model, False
 
 
 def _helper_model_cache_key(

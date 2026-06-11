@@ -15,9 +15,7 @@ from methods.federated.aggregation.fedavg.strategy import (
     FedAvgAdapterStrategySpec,
     register_fedavg_adapter_strategy,
 )
-from methods.federated.aggregation_weighting import (
-    AGGREGATION_WEIGHT_EXAMPLE_COUNT,
-)
+from methods.federated.aggregation_weighting import AGGREGATION_WEIGHT_UNIFORM
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_ADAPTER_KIND,
     PeftClassifierDelta,
@@ -68,7 +66,7 @@ def compute_peft_encoder_partitioned_delta_average(
     *,
     label_schema: Sequence[str],
     updates: Sequence[PeftEncoderPartitionedDeltaAverageUpdate],
-    weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+    weight_policy_name: str = AGGREGATION_WEIGHT_UNIFORM,
 ) -> PeftEncoderFedAvgResult:
     """client별 partition을 병합한 뒤 PEFT/head delta를 policy weight로 평균한다."""
 
@@ -144,12 +142,16 @@ def aggregate_peft_encoder_partitioned_delta_average(
     method_result = compute_peft_encoder_partitioned_delta_average(
         label_schema=base_state.label_schema,
         updates=method_updates,
-        weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
+        weight_policy_name=str(
+            (overrides or {}).get("weight_policy", AGGREGATION_WEIGHT_UNIFORM)
+        ),
     )
     partition_average_deltas = _compute_average_partition_deltas(
         label_schema=base_state.label_schema,
         updates=method_updates,
-        weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
+        weight_policy_name=str(
+            (overrides or {}).get("weight_policy", AGGREGATION_WEIGHT_UNIFORM)
+        ),
     )
     base_parameters = materialize_base_peft_encoder_state(
         base_state=base_state,

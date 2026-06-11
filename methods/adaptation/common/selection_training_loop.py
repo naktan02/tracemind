@@ -21,6 +21,7 @@ class SelectionTrackedEpochResult:
 
     train_loss_total: float
     train_loss_denominator: int
+    step: int | None = None
     extra_train_metrics: Mapping[str, float] | None = None
 
 
@@ -34,6 +35,7 @@ def run_selection_tracked_training_loop(
     log_epoch_summary: Callable[[str], None] | None = None,
     initial_history: Sequence[Mapping[str, Any]] | None = None,
     initial_best_checkpoint_state: dict[str, Any] | None = None,
+    include_selection_report: bool = False,
     after_epoch: Callable[[int, list[dict[str, Any]], dict[str, Any]], None]
     | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -58,10 +60,12 @@ def run_selection_tracked_training_loop(
         selection_report = evaluate_selection()
         epoch_record = build_selection_epoch_record(
             epoch=epoch_number,
+            step=train_result.step,
             train_loss_total=train_result.train_loss_total,
             train_loss_denominator=train_result.train_loss_denominator,
             selection_report=selection_report,
             extra_train_metrics=train_result.extra_train_metrics,
+            include_selection_report=include_selection_report,
         )
         history.append(epoch_record)
         if log_epoch_summary is not None:

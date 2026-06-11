@@ -67,10 +67,10 @@ def build_partitioned_peft_text_encoder_with_linear_head_from_config(
 ) -> PartitionedPeftTextEncoderWithLinearHeadBuildResult:
     """Build one full PEFT text encoder/head module per physical trainable partition.
 
-    FedMatch의 sigma/psi 이름 의미는 이 builder가 해석하지 않는다. caller가 넘긴
-    partition 이름마다 같은 global base state를 로드한 full text encoder/head module을
-    만들고, partition-local parameter key는 각 module의 canonical named parameter를
-    그대로 보존한다.
+    이 builder는 partition 이름의 method 의미를 해석하지 않는다. caller가 넘긴
+    partition 이름마다 같은 global base state를 로드한 full text encoder/head
+    module을 만들고, partition-local parameter key는 각 module의 canonical named
+    parameter를 그대로 보존한다.
     """
 
     plan = ptm.TrainableAdapterPartitionPlan.from_names(partition_names)

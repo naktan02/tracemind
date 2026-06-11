@@ -9,7 +9,8 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capabilities.axes import is_query_ssl_local_objective_policy
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     validate_federated_ssl_local_ssl_policy_alignment,
 )
@@ -24,8 +25,14 @@ from methods.federated_ssl.local_update_profile import (
 )
 from methods.federated_ssl.method_config_surface import (
     build_federated_ssl_method_config_surface,
+    default_method_aggregation_weight_policy_name,
+    default_method_labeled_exposure_policy_name,
     default_method_local_ssl_policy_name,
+    default_method_local_supervision_regime_name,
+    default_method_peer_context_policy_name,
+    default_method_server_step_policy_name,
     default_method_server_update_policy_name,
+    default_method_update_partition_policy_name,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.experiments.fl_ssl.federated_simulation.config_utils import (
@@ -38,7 +45,6 @@ from scripts.experiments.fl_ssl.federated_simulation.data_source_request import 
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedArtifactPersistenceConfig,
     FederatedClientPoolSplitConfig,
-    FederatedDiagnosticsConfig,
     FederatedDiagnosticViewConfig,
     FederatedFinalProjectionConfig,
     FederatedLocalTrainerRuntimeConfig,
@@ -73,17 +79,23 @@ def build_simulation_request_from_config(
 ) -> SimulationRunRequest:
     """Hydra 실행 config를 typed simulation request로 해석한다."""
 
-    embedding_spec = instantiate(cfg.embedding.spec)
-    local_update_profile = LocalUpdateProfile.from_mapping(
-        to_plain_dict(cfg.local_update_profile)
-    )
     execution_plan = _build_execution_plan(cfg)
+    embedding_spec = instantiate(cfg.embedding.spec)
+    local_update_profile = _resolve_local_update_profile(
+        cfg=cfg,
+        execution_plan=execution_plan,
+    )
+    uses_query_ssl_objective = _uses_query_ssl_objective_payload(
+        cfg=cfg,
+        execution_plan=execution_plan,
+    )
     round_runtime_payloads = _build_round_runtime_payloads(cfg.round_runtime)
     training_task_config = _build_training_task_config(
         cfg.training_task,
         task_type=_resolve_training_task_type(cfg=cfg, execution_plan=execution_plan),
         local_update_profile=local_update_profile,
         round_runtime=cfg.round_runtime,
+        include_query_ssl_objective=uses_query_ssl_objective,
     )
     round_runtime_config = FederatedRoundRuntimeConfig(
         payload_adapter_kind=_resolve_round_payload_adapter_kind(cfg.round_runtime),
@@ -102,8 +114,16 @@ def build_simulation_request_from_config(
             cfg.round_runtime,
             "local_objective_executors",
         ),
+        client_round_runtime=optional_plain_dict(
+            cfg.round_runtime,
+            "client_round_runtime",
+        ),
         server_step_executors=to_plain_dict(
             cfg.round_runtime.get("server_step_executors", {})
+        ),
+        server_round_runtime=optional_plain_dict(
+            cfg.round_runtime,
+            "server_round_runtime",
         ),
         initial_state_builder=_optional_config_str(
             cfg.round_runtime,
@@ -121,11 +141,20 @@ def build_simulation_request_from_config(
             cfg.round_runtime,
             "transient_resource_cleaner",
         ),
+        release_transient_model_cache_after_client=_optional_config_bool(
+            cfg.round_runtime,
+            "release_transient_model_cache_after_client",
+            default=False,
+        ),
     )
     actual_seed = int(cfg.seed if seed is None else seed)
     shard_policy = FederatedShardPolicyConfig(**to_plain_dict(cfg.shard_policy))
     client_pool_split_config = FederatedClientPoolSplitConfig(
         **to_plain_dict(cfg.client_pool_split)
+    )
+    labeled_exposure_policy_mapping = _resolve_labeled_exposure_policy_mapping(
+        cfg=cfg,
+        execution_plan=execution_plan,
     )
     fl_data_source = resolve_fl_data_source(
         cfg=cfg,
@@ -133,19 +162,28 @@ def build_simulation_request_from_config(
         bootstrap_ratio=float(cfg.federated_run_budget.bootstrap_ratio),
         seed=actual_seed,
         shard_policy=shard_policy,
+        labeled_exposure_policy_mapping=labeled_exposure_policy_mapping,
     )
     capability_plan = _build_capability_plan(
         cfg=cfg,
         labeled_exposure_policy=fl_data_source.data_source_config.labeled_exposure_policy,
         execution_plan=execution_plan,
     )
-    query_ssl_objective_config = FederatedQuerySslObjectiveConfig.from_mapping(
-        to_plain_dict(cfg.query_ssl_method),
-        strong_view_policy=str(cfg.query_ssl_strong_view_policy),
+    query_ssl_objective_config = (
+        FederatedQuerySslObjectiveConfig.from_mapping(
+            to_plain_dict(cfg.query_ssl_method),
+            strong_view_policy=str(cfg.query_ssl_strong_view_policy),
+        )
+        if uses_query_ssl_objective
+        else None
     )
     validate_federated_ssl_local_ssl_policy_alignment(
         capability_plan=capability_plan,
-        query_ssl_algorithm_name=query_ssl_objective_config.algorithm_name,
+        query_ssl_algorithm_name=(
+            None
+            if query_ssl_objective_config is None
+            else query_ssl_objective_config.algorithm_name
+        ),
     )
     return SimulationRunRequest(
         train_rows=fl_data_source.train_rows,
@@ -165,7 +203,6 @@ def build_simulation_request_from_config(
         shard_policy=shard_policy,
         training_task_config=training_task_config,
         validation_config=FederatedValidationConfig(**to_plain_dict(cfg.validation)),
-        diagnostics_config=FederatedDiagnosticsConfig(**to_plain_dict(cfg.diagnostics)),
         artifact_persistence_config=FederatedArtifactPersistenceConfig.from_mapping(
             optional_plain_dict(cfg, "artifact_persistence")
         ),
@@ -181,7 +218,7 @@ def build_simulation_request_from_config(
         execution_plan=execution_plan,
         capability_plan=capability_plan,
         server_step_executor=round_runtime_config.server_step_executor_for_policy(
-            cfg.server_step_policy.name
+            capability_plan.server_step_policy_name
         ),
         query_ssl_objective_config=query_ssl_objective_config,
         local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
@@ -203,6 +240,58 @@ def build_simulation_request_from_config(
     )
 
 
+def _resolve_local_update_profile(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> LocalUpdateProfile:
+    """manual baseline은 composed profile을 쓰고 method-owned는 recipe를 따른다."""
+
+    local_update_profile = LocalUpdateProfile.from_mapping(
+        to_plain_dict(cfg.local_update_profile)
+    )
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return local_update_profile
+    if execution_plan.descriptor_name is None:
+        return local_update_profile
+
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    supported_profile_names = descriptor.recipe.supported_local_update_profile_names
+    if not supported_profile_names:
+        return local_update_profile
+    if len(supported_profile_names) != 1:
+        raise ValueError(
+            "method-owned local_update_profile derivation requires exactly one "
+            "descriptor.recipe.supported_local_update_profile_names entry: "
+            f"method={descriptor.name}, values={list(supported_profile_names)!r}."
+        )
+    expected_profile_name = supported_profile_names[0]
+    if local_update_profile.algorithm_profile_name != expected_profile_name:
+        raise ValueError(
+            "method-owned local_update_profile override is not allowed: "
+            f"method={descriptor.name}, expected={expected_profile_name!r}, "
+            f"got={local_update_profile.algorithm_profile_name!r}."
+        )
+    return local_update_profile
+
+
+def _uses_query_ssl_objective_payload(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> bool:
+    """Query SSL objective payload가 실제 local SSL policy 의미인지 판단한다."""
+
+    local_ssl_policy = _resolve_local_ssl_policy_mapping(
+        cfg=cfg,
+        execution_plan=execution_plan,
+    )
+    if local_ssl_policy is None:
+        return False
+    policy_name = str(local_ssl_policy.get("name", "") or "").strip().lower()
+    return is_query_ssl_local_objective_policy(policy_name)
+
+
 def _build_capability_plan(
     *,
     cfg: DictConfig,
@@ -216,15 +305,33 @@ def _build_capability_plan(
         client_participation_policy=optional_plain_dict(
             cfg, "client_participation_policy"
         ),
-        aggregation_weight_policy=optional_plain_dict(cfg, "aggregation_weight_policy"),
+        aggregation_weight_policy=_resolve_aggregation_weight_policy_mapping(
+            cfg=cfg,
+            execution_plan=resolved_execution_plan,
+        ),
         labeled_exposure_policy=(
             labeled_exposure_policy
-            or optional_plain_dict(cfg, "labeled_exposure_policy")
+            or _resolve_labeled_exposure_policy_mapping(
+                cfg=cfg,
+                execution_plan=resolved_execution_plan,
+            )
         ),
-        local_supervision_regime=optional_plain_dict(cfg, "local_supervision_regime"),
-        server_step_policy=optional_plain_dict(cfg, "server_step_policy"),
-        peer_context_policy=optional_plain_dict(cfg, "peer_context_policy"),
-        update_partition_policy=optional_plain_dict(cfg, "update_partition_policy"),
+        local_supervision_regime=_resolve_local_supervision_regime_mapping(
+            cfg=cfg,
+            execution_plan=resolved_execution_plan,
+        ),
+        server_step_policy=_resolve_server_step_policy_mapping(
+            cfg=cfg,
+            execution_plan=resolved_execution_plan,
+        ),
+        peer_context_policy=_resolve_peer_context_policy_mapping(
+            cfg=cfg,
+            execution_plan=resolved_execution_plan,
+        ),
+        update_partition_policy=_resolve_update_partition_policy_mapping(
+            cfg=cfg,
+            execution_plan=resolved_execution_plan,
+        ),
         local_ssl_policy=_resolve_local_ssl_policy_mapping(
             cfg=cfg,
             execution_plan=resolved_execution_plan,
@@ -274,6 +381,70 @@ def _resolve_local_ssl_policy_mapping(
     }
 
 
+def _resolve_labeled_exposure_policy_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned labeled exposure는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "labeled_exposure_policy")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "labeled_exposure_policy")
+
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    default_policy_name = default_method_labeled_exposure_policy_name(
+        descriptor,
+        method_config=_ssl_method_config_mapping(cfg),
+    )
+    if default_policy_name is not None:
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
+
+    names = descriptor.required_capabilities.labeled_exposure_policy_names
+    if not names:
+        return optional_plain_dict(cfg, "labeled_exposure_policy")
+    if len(names) != 1:
+        raise ValueError(
+            "method-owned labeled_exposure_policy derivation requires exactly one "
+            "descriptor.required_capabilities.labeled_exposure_policy_names entry: "
+            f"method={descriptor.name}, values={list(names)!r}."
+        )
+    return {"name": names[0], "parameter_source": "method_descriptor"}
+
+
+def _resolve_local_supervision_regime_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned local supervision regime는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "local_supervision_regime")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "local_supervision_regime")
+
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    default_policy_name = default_method_local_supervision_regime_name(
+        descriptor,
+        method_config=_ssl_method_config_mapping(cfg),
+    )
+    if default_policy_name is not None:
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
+
+    names = descriptor.required_capabilities.local_supervision_regime_names
+    if not names:
+        return optional_plain_dict(cfg, "local_supervision_regime")
+    if len(names) != 1:
+        raise ValueError(
+            "method-owned local_supervision_regime derivation requires exactly one "
+            "descriptor.required_capabilities.local_supervision_regime_names entry: "
+            f"method={descriptor.name}, values={list(names)!r}."
+        )
+    return {"name": names[0], "parameter_source": "method_descriptor"}
+
+
 def _resolve_server_update_policy_mapping(
     *,
     cfg: DictConfig,
@@ -313,12 +484,157 @@ def _resolve_server_update_policy_mapping(
     return {"name": names[0], "parameter_source": "method_descriptor"}
 
 
+def _resolve_server_step_policy_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned server step policy는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "server_step_policy")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "server_step_policy")
+
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    default_policy_name = default_method_server_step_policy_name(
+        descriptor,
+        method_config=_ssl_method_config_mapping(cfg),
+    )
+    if default_policy_name is not None:
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
+
+    names = descriptor.required_capabilities.server_step_policy_names
+    if not names:
+        return optional_plain_dict(cfg, "server_step_policy")
+    if len(names) != 1:
+        raise ValueError(
+            "method-owned server_step_policy derivation requires exactly one "
+            "descriptor.required_capabilities.server_step_policy_names entry or "
+            "DEFAULT_SERVER_STEP_POLICY_NAME: "
+            f"method={descriptor.name}, values={list(names)!r}."
+        )
+    return {"name": names[0], "parameter_source": "method_descriptor"}
+
+
+def _resolve_peer_context_policy_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned peer context policy는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "peer_context_policy")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "peer_context_policy")
+
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    default_policy_name = default_method_peer_context_policy_name(
+        descriptor,
+        method_config=_ssl_method_config_mapping(cfg),
+    )
+    if default_policy_name is not None:
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
+
+    names = descriptor.required_capabilities.peer_context_policy_names
+    if not names:
+        return optional_plain_dict(cfg, "peer_context_policy")
+    if len(names) != 1:
+        raise ValueError(
+            "method-owned peer_context_policy derivation requires exactly one "
+            "descriptor.required_capabilities.peer_context_policy_names entry or "
+            "DEFAULT_PEER_CONTEXT_POLICY_NAME: "
+            f"method={descriptor.name}, values={list(names)!r}."
+        )
+    return {"name": names[0], "parameter_source": "method_descriptor"}
+
+
+def _resolve_update_partition_policy_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned update partition policy는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "update_partition_policy")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "update_partition_policy")
+
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    default_policy_name = default_method_update_partition_policy_name(descriptor)
+    if default_policy_name is not None:
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
+
+    names = descriptor.required_capabilities.update_partition_policy_names
+    if not names:
+        return optional_plain_dict(cfg, "update_partition_policy")
+    if len(names) != 1:
+        raise ValueError(
+            "method-owned update_partition_policy derivation requires exactly one "
+            "descriptor.required_capabilities.update_partition_policy_names entry: "
+            f"method={descriptor.name}, values={list(names)!r}."
+        )
+    return {"name": names[0], "parameter_source": "method_descriptor"}
+
+
+def _resolve_aggregation_weight_policy_mapping(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> dict[str, object] | None:
+    """method-owned aggregation weight policy는 descriptor 요구사항에서 읽는다."""
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return optional_plain_dict(cfg, "aggregation_weight_policy")
+    if execution_plan.descriptor_name is None:
+        return optional_plain_dict(cfg, "aggregation_weight_policy")
+
+    descriptor = resolve_federated_ssl_method_descriptor(execution_plan.descriptor_name)
+    default_policy_name = default_method_aggregation_weight_policy_name(descriptor)
+    if default_policy_name is not None:
+        return {"name": default_policy_name, "parameter_source": "method_descriptor"}
+
+    names = descriptor.required_capabilities.aggregation_weight_policy_names
+    if not names:
+        return optional_plain_dict(cfg, "aggregation_weight_policy")
+    if len(names) != 1:
+        raise ValueError(
+            "method-owned aggregation_weight_policy derivation requires exactly one "
+            "descriptor.required_capabilities.aggregation_weight_policy_names entry: "
+            f"method={descriptor.name}, values={list(names)!r}."
+        )
+    return {"name": names[0], "parameter_source": "method_descriptor"}
+
+
 def _optional_config_str(cfg: DictConfig, key: str) -> str | None:
     value = getattr(cfg, key, None)
     if value is None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _optional_config_bool(cfg: DictConfig, key: str, *, default: bool) -> bool:
+    value = getattr(cfg, key, None)
+    if value is None:
+        return bool(default)
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "on"}:
+        return True
+    if text in {"false", "0", "no", "off"}:
+        return False
+    raise ValueError(f"{key} must be a boolean value.")
+
+
+def _ssl_method_config_mapping(cfg: DictConfig) -> dict[str, object] | None:
+    ssl_method = cfg.get("ssl_method")
+    if ssl_method is None:
+        return None
+    return to_plain_dict(ssl_method)
 
 
 def _resolve_round_payload_adapter_kind(round_runtime: DictConfig) -> str:
@@ -351,11 +667,14 @@ def _build_training_task_config(
     task_type: str,
     local_update_profile: LocalUpdateProfile,
     round_runtime: DictConfig,
+    include_query_ssl_objective: bool,
 ) -> FederatedTrainingTaskConfig:
     objective_config = _merge_round_runtime_objective_payload(
         objective_config=to_plain_dict(cfg.objective),
         round_runtime=round_runtime,
     )
+    if not include_query_ssl_objective:
+        objective_config = _without_query_ssl_objective_payload(objective_config)
     selection_policy = to_plain_dict(cfg.selection_policy)
     training_objective = TrainingObjectiveConfig.from_mapping(objective_config)
     require_training_objective_matches_local_update_profile(
@@ -375,6 +694,18 @@ def _build_training_task_config(
         objective_config=training_objective,
         selection_policy=TrainingSelectionPolicy.from_mapping(selection_policy),
     )
+
+
+def _without_query_ssl_objective_payload(
+    objective_config: dict[str, object],
+) -> dict[str, object]:
+    """method-owned local objective가 쓰지 않는 Query SSL payload를 제거한다."""
+
+    return {
+        key: value
+        for key, value in objective_config.items()
+        if key != "query_ssl" and not str(key).startswith("query_ssl.")
+    }
 
 
 def _merge_round_runtime_objective_payload(

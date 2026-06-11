@@ -11,7 +11,10 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from scripts.support.query_ssl_peft.io.artifacts import write_run_artifacts
+from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
+from scripts.support.query_ssl_text_encoder.io.full_text_encoder_artifacts import (
+    write_full_text_encoder_run_artifacts,
+)
 
 
 class _DummySaver:
@@ -51,8 +54,6 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
 ) -> None:
     cfg = SimpleNamespace(
         output_dir=tmp_path / "runs",
-        adapter_output_dir=tmp_path / "adapters",
-        classifier_output_dir=tmp_path / "classifiers",
         central_ssl_budget=SimpleNamespace(name="smoke", output_root="runs/_smoke"),
         train_jsonl=tmp_path / "train.jsonl",
         selection_set="validation",
@@ -89,6 +90,7 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
         },
         history=[{"epoch": 1, "loss": 0.5}],
         best_selection_report={"macro_f1": 0.75},
+        final_selection_report={"macro_f1": 0.74},
         results={"test": {"accuracy": 0.8}},
         extra_manifest={"ssl_algorithm": "fixmatch"},
     )
@@ -103,6 +105,10 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
 
     assert Path(outputs["output_dir"]) == tmp_path / "runs" / "run-001"
     assert (Path(outputs["output_dir"]) / "logs").is_dir()
+    assert adapter_dir == Path(outputs["output_dir"]) / "artifacts" / "adapter"
+    assert classifier_path == (
+        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.pt"
+    )
     assert (adapter_dir / "backbone.txt").read_text(encoding="utf-8") == "saved\n"
     assert (adapter_dir / "tokenizer.txt").read_text(encoding="utf-8") == "saved\n"
     assert classifier_payload == {
@@ -124,14 +130,14 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
     assert manifest["ssl_algorithm"] == "fixmatch"
     assert report["schema_version"] == "central_peft_classifier_eval.v1"
     assert report["manifest"] == manifest
-    assert report["results"] == {"test": {"accuracy": 0.8}}
+    assert report["results"]["test"] == {"accuracy": 0.8}
+    assert report["results"]["best"] == {"accuracy": 0.8}
+    assert report["results"]["final"] == {"macro_f1": 0.74}
 
 
 def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None:
     cfg = SimpleNamespace(
         output_dir=tmp_path / "runs",
-        adapter_output_dir=tmp_path / "adapters",
-        classifier_output_dir=tmp_path / "classifiers",
         train_jsonl=tmp_path / "train.jsonl",
         selection_set="validation",
         seed=7,
@@ -171,6 +177,7 @@ def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None
         backbone_summary={"name": "dummy-backbone"},
         history=[],
         best_selection_report={"macro_f1": 1.0},
+        final_selection_report=None,
         results={"validation": {"accuracy_top_1": 1.0}},
         eval_loaders={"validation": eval_loader},
     )
@@ -183,6 +190,160 @@ def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None
     validation_projection = projection_manifest["datasets"]["validation"]
 
     assert manifest["projection_artifacts"]["enabled"] is True
+    assert (
+        projection_manifest["projection_space"]
+        == "final_peft_encoder_pooled_backbone_features"
+    )
+    assert projection_manifest["mark_incorrect"] is False
     assert validation_projection["row_count"] == 2
     assert Path(validation_projection["points_jsonl"]).exists()
     assert Path(validation_projection["figure_png"]).exists()
+
+
+def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
+    tmp_path: Path,
+) -> None:
+    cfg = SimpleNamespace(
+        output_dir=tmp_path / "runs",
+        central_ssl_budget=SimpleNamespace(name="smoke", output_root="runs/_smoke"),
+        train_jsonl=tmp_path / "train.jsonl",
+        selection_set="validation",
+        seed=7,
+        epochs=3,
+        train_batch_size=4,
+        eval_batch_size=5,
+        learning_rate=0.00002,
+        classifier_learning_rate=0.0002,
+        weight_decay=0.01,
+        max_grad_norm=1.0,
+    )
+    model = SimpleNamespace(
+        backbone=_DummySaver("model.txt"),
+        classifier=_DummyClassifier(),
+    )
+    tokenizer = _DummySaver("tokenizer.txt")
+
+    outputs = write_full_text_encoder_run_artifacts(
+        cfg=cfg,
+        trainer_version="full-run-001",
+        created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        model=model,
+        tokenizer=tokenizer,
+        categories=["alpha", "beta"],
+        eval_set_map={"validation": tmp_path / "validation.jsonl"},
+        training_device="cpu",
+        backbone_summary={
+            "name": "dummy-backbone",
+            "trainable_surface": {
+                "name": "full_text_encoder",
+                "trainable_state": "full_encoder_and_classifier_head",
+            },
+        },
+        history=[{"epoch": 1, "loss": 0.5}],
+        best_selection_report={"macro_f1": 0.75},
+        final_selection_report=None,
+        results={"test": {"accuracy": 0.8}},
+        extra_manifest={"experiment_family": "full_supervised"},
+    )
+
+    model_dir = Path(outputs["model_dir"])
+    classifier_path = Path(outputs["classifier_path"])
+    manifest_path = Path(outputs["manifest"])
+    report_path = Path(outputs["report_json"])
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert "adapter_dir" not in outputs
+    assert Path(outputs["output_dir"]) == tmp_path / "runs" / "full-run-001"
+    assert (Path(outputs["output_dir"]) / "logs").is_dir()
+    assert model_dir == Path(outputs["output_dir"]) / "artifacts" / "model"
+    assert classifier_path == (
+        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.pt"
+    )
+    assert (model_dir / "model.txt").read_text(encoding="utf-8") == "saved\n"
+    assert (model_dir / "tokenizer.txt").read_text(encoding="utf-8") == "saved\n"
+    assert torch.load(classifier_path, weights_only=False)["hidden_size"] == 384
+    assert manifest["model_dir"] == str(model_dir)
+    assert manifest["classifier_path"] == str(classifier_path)
+    assert manifest["trainable_surface"] == {
+        "name": "full_text_encoder",
+        "trainable_state": "full_encoder_and_classifier_head",
+    }
+    assert manifest["experiment_family"] == "full_supervised"
+    assert report["schema_version"] == "central_full_text_encoder_eval.v1"
+    assert report["manifest"] == manifest
+    assert report["results"]["test"] == {"accuracy": 0.8}
+    assert report["results"]["best"] == {"accuracy": 0.8}
+
+
+def test_write_full_text_encoder_run_artifacts_writes_projection_artifacts(
+    tmp_path: Path,
+) -> None:
+    cfg = SimpleNamespace(
+        output_dir=tmp_path / "runs",
+        train_jsonl=tmp_path / "train.jsonl",
+        selection_set="test",
+        seed=7,
+        epochs=1,
+        train_batch_size=2,
+        eval_batch_size=2,
+        learning_rate=0.00002,
+        classifier_learning_rate=0.0002,
+        weight_decay=0.01,
+        max_grad_norm=1.0,
+    )
+    eval_loader = DataLoader(
+        [
+            {
+                "input_ids": torch.tensor([2.0, 0.0]),
+                "attention_mask": torch.tensor([1, 1]),
+                "labels": torch.tensor(0),
+            },
+            {
+                "input_ids": torch.tensor([0.0, 3.0]),
+                "attention_mask": torch.tensor([1, 1]),
+                "labels": torch.tensor(1),
+            },
+        ],
+        batch_size=2,
+    )
+
+    outputs = write_full_text_encoder_run_artifacts(
+        cfg=cfg,
+        trainer_version="full-run-002",
+        created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        model=_ProjectionModel(),
+        tokenizer=_DummySaver("tokenizer.txt"),
+        categories=["alpha", "beta"],
+        eval_set_map={"test": tmp_path / "test.jsonl"},
+        training_device="cpu",
+        backbone_summary={
+            "name": "dummy-backbone",
+            "trainable_surface": {
+                "name": "full_text_encoder",
+                "trainable_state": "full_encoder_and_classifier_head",
+            },
+        },
+        history=[],
+        best_selection_report={"macro_f1": 1.0},
+        final_selection_report={"macro_f1": 1.0},
+        results={"test": {"accuracy_top_1": 1.0}},
+        eval_loaders={"test": eval_loader},
+    )
+
+    manifest = json.loads(Path(outputs["manifest"]).read_text(encoding="utf-8"))
+    projection_manifest_path = Path(outputs["projection_manifest"])
+    projection_manifest = json.loads(
+        projection_manifest_path.read_text(encoding="utf-8")
+    )
+    test_projection = projection_manifest["datasets"]["test"]
+
+    assert manifest["projection_artifacts"]["enabled"] is True
+    assert (
+        projection_manifest["projection_space"]
+        == "final_full_text_encoder_pooled_backbone_features"
+    )
+    assert projection_manifest["mark_incorrect"] is False
+    assert test_projection["row_count"] == 2
+    assert Path(test_projection["points_jsonl"]).exists()
+    assert Path(test_projection["figure_png"]).exists()

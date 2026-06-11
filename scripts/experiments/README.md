@@ -9,9 +9,8 @@
 - 이 디렉터리는 그 코어를 조합하는 실험 CLI와 실험 전용 helper만 둔다.
 - Hydra entrypoint config는 `conf/entrypoints/**/*.yaml`이 source of truth다.
 
-전략 축 전체와 현재 override 가능 여부는
-[docs/strategy_surface_map.md](../../docs/strategy_surface_map.md)를
-먼저 보는 편이 빠르다.
+전략 축 전체와 현재 override 가능 여부는 `conf/README.md`와 관련
+`conf/strategy_axes/**` leaf를 먼저 보는 편이 빠르다.
 
 ## 구조
 
@@ -19,18 +18,12 @@
   - 중앙 pooled/offline SSL control entrypoint를 둔다.
 - `fl_ssl/`
   - client split, round loop, aggregation, per-client metric 같은 FL SSL orchestration을 둔다.
-- `prototype_analysis/`
-  - prototype 전략 비교와 threshold sweep entrypoint를 둔다.
 
-공용 PEFT SSL runner/helper는 `scripts/support/query_ssl_peft/`, dataset/prototype
-pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
+공용 text encoder SSL runner/helper는 `scripts/support/query_ssl_text_encoder/`,
+dataset/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
 
 ## 직접 실행하는 entrypoint
 
-- `prototype_analysis/prototype_strategy_experiment.py`
-  - single/kmeans/dbscan prototype 전략 비교.
-- `prototype_analysis/prototype_threshold_sweep.py`
-  - 선택된 prototype 전략 위에서 threshold policy 비교.
 - `fl_ssl/run_federated_simulation.py`
   - agent/main_server 코어를 조합한 synthetic FL loop.
   - runtime/task/validation/report shape는
@@ -45,52 +38,31 @@ pack/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
     소유하고, 실제 runtime 구현이 완료된 method만 열어야 한다.
 - `central/ssl_control/run_peft_supervised_control.py`
   - query-domain 적응 단계의 `frozen backbone + PEFT text encoder + linear head` canonical supervised baseline entrypoint.
+- `central/ssl_control/run_full_text_encoder_supervised_control.py`
+  - 중앙 실험용 `full mxbai encoder + linear head` supervised-only transfer baseline entrypoint.
 - `central/ssl_control/run_peft_ssl_control.py`
   - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT text encoder scaffold에 얹는
-    공통 SSL entrypoint.
-  - `strategy_axes/ssl_objective/input_mode=consistency`는
-    `strategy_axes/ssl_objective/consistency_method`를 실행한다.
-  - `strategy_axes/ssl_objective/input_mode=pseudo_label_replay`는 이미 생성된
-    pseudo-label JSONL을 같은 scaffold에서 replay/self-training 입력으로 사용한다.
-  - method/source/augmentation/strong-view/initial checkpoint source of truth는
+    consistency family SSL entrypoint.
+  - method/source/strong-view/initial checkpoint source of truth는
     `strategy_axes/ssl_objective/consistency_method`,
     `execution_context/query_data_source`,
-    `strategy_axes/ssl_objective/augmentation_source`,
     `query_ssl_strong_view_policy`,
     `strategy_axes/model_architecture/initial_checkpoint` selector다.
-  - teacher bootstrap은 별도 seed entrypoint가 아니라
-    `input_mode=teacher_bootstrap`의 source 설정과
-    `scripts/support/query_ssl_peft/runners/bootstrap_teacher.py`로 조립한다.
-- `scripts/support/query_ssl_peft/`
-  - `runners/{supervised,consistency,pseudo_label,query_adaptation}.py`가 query-domain
-    PEFT text encoder scaffold를 실행한다.
-  - Query SSL family 공통 scaffolding은 `query_ssl/common.py`, strict USB NLP
-    view preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
-  - bootstrap teacher의 selection preset은 `local_update_profile`이 아니라
-    `strategy_axes/ssl_objective/pseudo_label_selection`으로 고른다.
-  - agent-local query adaptation export는 `io/query_adaptation*.py`가 담당하고,
-    `source_row.query_id`를 single source of truth로 쓴다.
+    현재 augmentation reader는 entrypoint의 `query_ssl_augmenter` 고정 설정으로
+    precomputed USB candidates만 사용한다.
+- `scripts/support/query_ssl_text_encoder/`
+  - `runners/{supervised,full_text_encoder_supervised,consistency}.py`가 query-domain
+    central supervised/SSL scaffold를 실행한다.
+  - Query SSL family run context scaffolding은 `query_ssl/run_context.py`, strict USB NLP
+    view preparation/cache는 `query_ssl/view_preparation.py`가 담당한다.
+  - bootstrap teacher, pseudo-label replay, agent-local query adaptation export
+    helper는 중앙 지도/중앙 SSL/FSSL canonical experiment surface가 아니므로
+    제거했다.
 
 ## 공통 Helper
 
-- `scripts/support/reporting/query_buffer_selection_diagnostics.py`: query-buffer selection summary/trace dump 저장 helper
-
-## `scripts/workflows/prototype_pack`와의 차이
-
-- `scripts/experiments/prototype_analysis/*`
-  - prototype 전략이나 threshold 정책을 비교하는 연구형 실험 레일
-- `scripts/workflows/prototype_pack/*`
-  - prototype pack을 실제로 seed/evaluate/pull/activate/report 하는
-    artifact workflow 레일
-
-즉 이름은 비슷하지만, 전자는 `비교/탐색`, 후자는 `artifact lifecycle`이 핵심이다.
 
 ## 먼저 읽을 파일
-
-prototype 전략 실험:
-
-1. `prototype_analysis/prototype_strategy_experiment.py`
-2. `prototype_analysis/prototype_strategy/README.md`
 
 federated simulation:
 
@@ -101,8 +73,8 @@ central PEFT / SSL control:
 
 1. `central/ssl_control/run_peft_supervised_control.py`
 2. `central/ssl_control/run_peft_ssl_control.py`
-3. `../support/query_ssl_peft/runners/supervised.py`
-4. 필요하면 `../support/query_ssl_peft/runners/{consistency,query_adaptation,bootstrap_teacher,pseudo_label}.py`
+3. `../support/query_ssl_text_encoder/runners/supervised.py`
+4. 필요하면 `../support/query_ssl_text_encoder/runners/consistency.py`
 
 중앙 PEFT/SSL warm-start와 method별 실행 명령은
 `central/ssl_control/README.md`와 각 entrypoint의 `--cfg job` preview를 기준으로 본다.

@@ -82,7 +82,7 @@ def test_fl_simulation_client_training_has_no_payload_adapter_literals() -> None
 def test_fl_simulation_config_callable_loading_is_centralized() -> None:
     callable_loader_path = SCRIPTS_SRC / "support" / "configured_callable.py"
     checked_paths = (
-        SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py",
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "support" / "layout.py",
         SCRIPTS_SRC
         / "experiments"
         / "fl_ssl"
@@ -120,7 +120,7 @@ def test_fl_simulation_config_callable_loading_is_centralized() -> None:
         / "final_projection.py",
         SCRIPTS_SRC
         / "support"
-        / "query_ssl_peft"
+        / "query_ssl_text_encoder"
         / "query_ssl"
         / "view_preparation.py",
         SCRIPTS_SRC
@@ -175,6 +175,90 @@ def test_server_step_policy_leaf_does_not_own_update_family_executor() -> None:
         "prototype/linear 등 다음 model_architecture/update_family를 추가할 때 "
         "server_step_policy를 수정하지 않는다.\n"
         f"path={_relative_repo_path(update_family_path)}"
+    )
+
+
+def test_peft_update_family_runtime_callables_use_simulation_bridge() -> None:
+    update_family_path = (
+        CONF_SRC
+        / "strategy_axes"
+        / "model_architecture"
+        / "update_family"
+        / "peft_text_encoder.yaml"
+    )
+    source = update_family_path.read_text(encoding="utf-8")
+
+    assert "agent.src.services.training_runtime.query_ssl_peft" not in source, (
+        "FL simulation은 agent skeleton을 재사용하더라도 update_family config에서 "
+        "agent.src를 직접 가리키지 않는다. agent runtime 연결은 "
+        "scripts/runtime_adapters/federated_agent bridge가 소유한다.\n"
+        f"path={_relative_repo_path(update_family_path)}"
+    )
+    assert (
+        "scripts.runtime_adapters.federated_agent.query_ssl_training_request."
+        "build_query_ssl_peft_encoder_local_training_request" in source
+    )
+
+
+def test_generic_runtime_bridges_do_not_derive_update_family_modules() -> None:
+    checked_paths = (
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_agent"
+        / "generic_client_runtime_bridge.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "generic_server_runtime_bridge.py",
+    )
+    forbidden_snippets = (
+        "importlib",
+        "_normalize_prefix",
+        "methods.adaptation.{",
+        'f"methods.adaptation',
+        "f'methods.adaptation",
+        "QuerySsl{",
+        "run_method_owned_{",
+        "build_training_backend_for_{",
+        "peft_encoder",
+    )
+    violations = [
+        (_relative_repo_path(path), snippet)
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "generic FL runtime bridge는 update_family 이름으로 methods module/function "
+        "path를 만들지 않는다. family-specific 실행 표면은 "
+        "strategy_axes/model_architecture/update_family leaf의 "
+        "client_round_runtime/server_round_runtime callable 선언이 소유한다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
+def test_legacy_federated_agent_stored_event_runtime_is_removed() -> None:
+    package_root = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent"
+    forbidden_paths = (
+        package_root / "selection_runtime.py",
+        package_root / "training_example_mapper.py",
+    )
+    existing = [_relative_repo_path(path) for path in forbidden_paths if path.exists()]
+
+    assert not existing, (
+        "FL SSL simulation은 Query SSL/FSSL local objective executors를 사용한다. "
+        "stored-event pseudo-label selection/runtime mapper를 재도입하지 않는다.\n"
+        f"existing={existing}"
+    )
+
+
+def test_fl_simulation_selection_diagnostics_writer_is_removed() -> None:
+    legacy_path = FL_SIMULATION_IO_SRC / "selection_diagnostics_writer.py"
+
+    assert not legacy_path.exists(), (
+        "stored-event/query-buffer 시절 selection diagnostics writer를 active FL "
+        "simulation I/O에 다시 만들지 않는다. 현재 diagnostics는 simulation report와 "
+        "methods-owned FSSL diagnostics helper가 소유한다.\n"
+        f"path={_relative_repo_path(legacy_path)}"
     )
 
 
@@ -255,7 +339,7 @@ def test_fl_simulation_diagnostic_sampling_core_stays_in_methods() -> None:
         if snippet in path.read_text(encoding="utf-8")
     ]
 
-    assert (METHODS_FEDERATED_SSL_SRC / "diagnostic_sampling.py").exists()
+    assert (METHODS_FEDERATED_SSL_SRC / "diagnostics" / "sampling.py").exists()
     assert not violations, (
         "FL diagnostic/probe row sampling algorithm은 methods/federated_ssl이 "
         "소유한다. scripts adapter는 config와 manifest 조립만 맡는다.\n"
@@ -511,26 +595,16 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         package_root / "client_update_flow.py",
         package_root / "generic_client_runtime_bridge.py",
         package_root / "scoring_runtime.py",
-        package_root / "selection_runtime.py",
-        package_root / "training_example_mapper.py",
         package_root / "training_runtime.py",
     )
-    forbidden_paths = (package_root / "row_validator.py",)
-    mapper_source = (package_root / "training_example_mapper.py").read_text(
-        encoding="utf-8"
+    forbidden_paths = (
+        package_root / "row_validator.py",
+        package_root / "selection_runtime.py",
+        package_root / "training_example_mapper.py",
     )
     training_runtime_source = (package_root / "training_runtime.py").read_text(
         encoding="utf-8"
     )
-    mapper_forbidden_snippets = (
-        "WEAK_STRONG_PAIR_BACKEND_NAME",
-        "RUNTIME_FALLBACK_TRAINING_PROFILE",
-        "build_shared_adapter_training_backend",
-        "LocalTrainingRequest(",
-    )
-    mapper_violations = [
-        snippet for snippet in mapper_forbidden_snippets if snippet in mapper_source
-    ]
     training_runtime_forbidden_snippets = (
         "methods.adaptation.peft_text_encoder",
         "LORA_CLASSIFIER_TRAINING_BACKEND_NAME",
@@ -562,21 +636,21 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
         "PEFT encoder local training 파일은 dynamic loader/bridge 구조로 통합되어 "
         "더 이상 존재하지 않는다."
     )
-    assert not any(path.exists() for path in forbidden_paths), (
-        "training example backend별 row shape 요구사항은 methods/query_text_views가 "
-        "소유하고, scripts runtime adapter는 별도 row_validator module을 두지 않는다."
+    forbidden_existing = [
+        _relative_repo_path(path) for path in forbidden_paths if path.exists()
+    ]
+
+    assert not forbidden_existing, (
+        "training example backend별 row shape와 stored-event pseudo-label selection은 "
+        "FL SSL runtime adapter가 소유하지 않는다. local objective별 실행은 "
+        "methods/adaptation/<family>/와 methods/federated_ssl/<method>/ 경계에서 "
+        "선택한다.\n"
+        f"{chr(10).join(f'- {path}' for path in forbidden_existing)}"
     )
     assert not missing_files, (
         "federated_agent runtime adapter package는 artifact store, base-state "
-        "materialization, local training, mapper, scoring/selection/training runtime "
-        "bridge를 분리한다.\n"
+        "materialization, scoring/training runtime bridge를 분리한다.\n"
         f"{chr(10).join(f'- {path}' for path in missing_files)}"
-    )
-    assert not mapper_violations, (
-        "training_example_mapper는 row -> TrainingExampleSource 변환만 맡는다. "
-        "backend fallback, weak/strong row 검증, local training request 생성은 "
-        "각 전용 module로 분리한다.\n"
-        f"violations={mapper_violations}"
     )
     assert not training_runtime_violations, (
         "training_runtime은 objective가 고른 backend를 registry로 resolve하고, "

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from main_server.src.services.federation.rounds.boundary.mappers import (
+    initial_shared_artifact_publication_request_from_payload,
     model_manifest_from_payload,
     model_manifest_to_payload,
     round_finalize_request_from_payload,
@@ -15,6 +16,7 @@ from main_server.src.services.federation.rounds.boundary.mappers import (
     round_update_acceptance_to_payload,
 )
 from main_server.src.services.federation.rounds.boundary.payloads import (
+    InitialSharedArtifactPublicationRequestPayload,
     RoundFinalizeRequestPayload,
     RoundOpenRequestPayload,
     RoundRecordPayload,
@@ -93,6 +95,30 @@ def activate_model_manifest(
     )
 
 
+@router.post(
+    "/active-manifest/initialize",
+    response_model=ModelManifestPayload,
+    status_code=status.HTTP_201_CREATED,
+)
+def initialize_active_shared_artifact(
+    request: InitialSharedArtifactPublicationRequestPayload,
+    service: RoundServiceDep,
+) -> ModelManifestPayload:
+    """선택된 shared adapter family의 initial state를 active manifest로 publish한다."""
+
+    try:
+        return model_manifest_to_payload(
+            service.publish_initial_shared_artifact(
+                initial_shared_artifact_publication_request_from_payload(request)
+            )
+        )
+    except (RoundValidationError, ValueError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+
+
 @router.get("/active-state/current", response_model=CurrentSharedAdapterStatePayload)
 def get_active_shared_adapter_state(
     service: RoundServiceDep,
@@ -104,6 +130,47 @@ def get_active_shared_adapter_state(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         ) from error
+
+
+@router.get("/aggregation-artifacts/json")
+def get_aggregation_json_artifact(
+    service: RoundServiceDep,
+    artifact_ref: str = Query(min_length=1),
+) -> dict[str, object]:
+    """server-owned aggregation JSON artifact를 반환한다."""
+
+    try:
+        return service.load_aggregation_json_artifact(artifact_ref)
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+
+
+@router.get("/aggregation-artifacts/safetensors")
+def get_aggregation_safetensors_artifact(
+    service: RoundServiceDep,
+    artifact_ref: str = Query(min_length=1),
+) -> dict[str, object]:
+    """server-owned aggregation safetensors artifact를 JSON-safe하게 반환한다."""
+
+    try:
+        tensors, metadata = service.load_aggregation_safetensors_artifact(artifact_ref)
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+    return {
+        "artifact_ref": artifact_ref,
+        "artifact_format": "safetensors",
+        "metadata": metadata,
+        "tensors": {
+            name: tensor.detach().cpu().tolist()
+            for name, tensor in sorted(tensors.items())
+        },
+    }
 
 
 @router.post("", response_model=RoundRecordPayload, status_code=status.HTTP_201_CREATED)

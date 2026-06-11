@@ -35,7 +35,7 @@ class AggregationWeightDiagnosticClient(Protocol):
 class AggregationWeightPolicy:
     """client update를 aggregate할 때 사용할 weight 기준."""
 
-    name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT
+    name: str = AGGREGATION_WEIGHT_UNIFORM
 
     @classmethod
     def from_mapping(
@@ -44,7 +44,7 @@ class AggregationWeightPolicy:
     ) -> "AggregationWeightPolicy":
         if source is None:
             return cls()
-        return cls(name=str(source.get("name", AGGREGATION_WEIGHT_EXAMPLE_COUNT)))
+        return cls(name=str(source.get("name", AGGREGATION_WEIGHT_UNIFORM)))
 
     def __post_init__(self) -> None:
         if self.name not in AGGREGATION_WEIGHT_POLICY_NAMES:
@@ -71,7 +71,7 @@ def aggregation_weight_for_update(
         if accepted_count is None:
             raise ValueError(
                 "accepted_count aggregation weight requires update payloads to "
-                "expose accepted_count or accepted label_counts."
+                "expose accepted_count."
             )
         return float(accepted_count)
     return float(update.example_count)
@@ -131,7 +131,4 @@ def _accepted_count(update: AggregationWeightUpdate) -> int | None:
     value = getattr(update, "accepted_count", None)
     if value is not None:
         return int(value)
-    label_counts = getattr(update, "label_counts", None)
-    if isinstance(label_counts, Mapping) and label_counts:
-        return sum(int(count) for count in label_counts.values())
     return None

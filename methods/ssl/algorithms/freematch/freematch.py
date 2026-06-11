@@ -8,10 +8,12 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from ...base import QuerySslStepResult, TextBatchClassifier
-from ...hooks.adaptive_thresholding import (
-    FreeMatchThresholdingHook,
-    replace_inf_to_zero,
+from ...base import (
+    QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
+    QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA,
+    QuerySslRuntimeRequirements,
+    QuerySslStepResult,
+    TextBatchClassifier,
 )
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
 from ...hooks.pseudo_labeling import (
@@ -33,6 +35,7 @@ from ..usb_consistency import (
     compute_unlabeled_weak_strong_logits,
     validate_usb_consistency_loaders,
 )
+from .thresholding import FreeMatchThresholdingHook, replace_inf_to_zero
 
 
 def entropy_loss(
@@ -346,6 +349,14 @@ def build_freematch_pseudo_label(
     display_name="FreeMatch",
     required_views=USB_MULTIVIEW_REQUIRED_VIEWS,
     default_uses_labeled_batches=True,
+    runtime_requirements=QuerySslRuntimeRequirements(
+        algorithm_state_surface=frozenset(
+            {
+                QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
+                QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA,
+            }
+        ),
+    ),
 )
 def build_freematch_algorithm(parameters: Mapping[str, Any]) -> FreeMatchAlgorithm:
     """Hydra method parameter mapping으로 FreeMatch algorithm을 만든다."""

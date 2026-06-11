@@ -5,12 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
-
-from .capability_plan import (
+from methods.federated_ssl.capabilities.plan import (
     LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
     LOCAL_SUPERVISION_REGIMES,
 )
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 @dataclass(frozen=True, slots=True)

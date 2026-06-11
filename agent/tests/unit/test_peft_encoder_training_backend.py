@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -11,12 +12,7 @@ import pytest
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.training.examples.models import EmbeddedTrainingExample
-from agent.src.services.training.execution.local_training_service import (
-    LocalTrainingRequest,
-    LocalTrainingService,
-)
-from agent.src.services.training.execution.query_ssl_local_training_service import (
+from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (
     QuerySslLocalTrainingService,
     QuerySslPeftEncoderLocalTrainingRequest,
 )
@@ -53,7 +49,7 @@ from shared.src.contracts.training_contracts import (
     TrainingTask,
     make_training_update_envelope,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.events import AnalysisEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
 )
@@ -90,6 +86,7 @@ class _RecordingPeftEncoderTrainExecutor:
 
 class _QuerySslPeftBackend:
     backend_name = "peft_classifier_trainer"
+    config = peft_config.PeftEncoderTrainingBackendConfig()
 
     def __init__(self, update_payload: PeftClassifierDelta) -> None:
         self.update_payload = update_payload
@@ -104,11 +101,11 @@ class _QuerySslPeftBackend:
 
     def build_query_ssl_update(
         self,
-        **kwargs: object,
+        request: object,
     ) -> QuerySslPeftEncoderClientTrainingResult:
         self.called = True
-        training_task = kwargs["training_task"]
-        model_manifest = kwargs["model_manifest"]
+        training_task = request.local_session.training_task
+        model_manifest = request.model_manifest
         assert isinstance(training_task, TrainingTask)
         assert isinstance(model_manifest, ModelManifest)
         update_envelope = make_training_update_envelope(
@@ -147,7 +144,7 @@ def _build_manifest() -> ModelManifest:
         published_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref="shared_adapter_state::rev_000",
-        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+        auxiliary_artifact_versions={"calibration_set": "calib_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -172,13 +169,10 @@ def _build_task(
         max_steps=1,
         objective_config=TrainingObjectiveConfig(
             training_backend_name="peft_classifier_trainer",
-            confidence_threshold=0.6,
-            margin_threshold=0.02,
-            scorer_backend_name="prototype_similarity",
-            acceptance_policy_name="top1_margin_threshold",
-            pseudo_label_algorithm_name="top1_margin_threshold",
             privacy_guard_name="noop",
-            extras={} if extras is None else extras,
+            extras={
+                **({} if extras is None else extras),
+            },
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=2),
         min_required_examples=1,
@@ -205,19 +199,27 @@ def _candidate(
     )
 
 
+@dataclass(slots=True)
+class _AcceptedExample:
+    update_analysis_event: AnalysisEvent
+    update_embedding: list[float]
+    candidate: PseudoLabelCandidate | None
+    metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
+
+
 def _example(
     *,
     query_id: str = "q1",
     raw_text: str | None = "오늘 너무 불안해요",
     translated_text: str | None = None,
     candidate: PseudoLabelCandidate | None = None,
-) -> EmbeddedTrainingExample:
+) -> _AcceptedExample:
     metadata: dict[str, str | int | float | bool] = {}
     if raw_text is not None:
         metadata["raw_text"] = raw_text
         metadata["training_text"] = raw_text
-    return EmbeddedTrainingExample(
-        scored_event=ScoredEvent(
+    return _AcceptedExample(
+        update_analysis_event=AnalysisEvent(
             query_id=query_id,
             occurred_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
             translated_text=translated_text,
@@ -225,7 +227,7 @@ def _example(
             translation_model_id=None,
             category_scores={"anxiety": 0.92, "depression": 0.2, "normal": 0.1},
         ),
-        embedding=[1.0, 0.0],
+        update_embedding=[1.0, 0.0],
         candidate=candidate or _candidate(query_id=query_id, label="anxiety"),
         metadata=metadata,
     )
@@ -328,36 +330,6 @@ def test_peft_encoder_training_backend_is_registered() -> None:
     assert catalog_entries["peft_classifier_trainer"].accepted_payload_formats == (
         PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     )
-
-
-def test_local_training_service_uses_peft_classifier_backend(
-    tmp_path: Path,
-) -> None:
-    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
-    service = LocalTrainingService(repository=repository)
-
-    result = service.run(
-        LocalTrainingRequest(
-            training_examples=(_example(candidate=None),),
-            training_task=_build_task(),
-            model_manifest=_build_manifest(),
-            created_at=datetime(2026, 4, 21, 12, 30, tzinfo=timezone.utc),
-        )
-    )
-
-    assert result.update_envelope is not None
-    assert result.update_payload is not None
-    assert result.update_payload.adapter_kind == "peft_classifier"
-    assert result.update_envelope.payload_format == "peft_classifier_update"
-    assert result.update_envelope.client_metrics["selected_examples"] == 1.0
-    assert result.update_envelope.client_metrics["label_schema_size"] == 3.0
-    assert result.update_envelope.client_metrics["delta_l2_norm"] == 0.0
-    assert result.update_payload.label_counts == {"anxiety": 1}
-
-    loaded_payload = repository.load_shared_adapter_update(
-        result.update_envelope.update_id
-    )
-    assert isinstance(loaded_payload, PeftClassifierDelta)
 
 
 def test_query_ssl_local_training_service_runs_peft_backend(

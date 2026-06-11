@@ -124,3 +124,131 @@ export interface ParentUnlockResponsePayload {
   remaining_attempts: number | null;
   locked_until: string | null;
 }
+
+export type TypingSegmentSourceType = "browser_extension" | "desktop_app" | "manual" | "unknown";
+
+export type TypingSurfaceType = "input" | "textarea" | "contenteditable" | "rich_editor" | "unknown";
+
+export type TypingCaptureConfidence = "high" | "medium" | "low";
+
+export interface TypingSegmentStatsPayload {
+  insert_count: number;
+  delete_count: number;
+  paste_count: number;
+  composition_count: number;
+}
+
+export interface TypingSegmentPayload {
+  schema_version: string;
+  segment_id: string;
+  source_type: TypingSegmentSourceType;
+  surface_type: TypingSurfaceType;
+  capture_confidence: TypingCaptureConfidence;
+  page_origin: string | null;
+  page_url: string | null;
+  field_hint: string | null;
+  started_at: string;
+  ended_at: string;
+  idle_ms: number;
+  locale: string;
+  final_text: string | null;
+  deleted_text: string | null;
+  stats: TypingSegmentStatsPayload;
+}
+
+export interface TypingSegmentIngestResponsePayload {
+  schema_version: string;
+  segment_id: string;
+  query_id: string;
+  top_category: string | null;
+  top_score: number | null;
+  message: string;
+}
+
+export interface TypingSegmentBatchIngestRequestPayload {
+  segments: TypingSegmentPayload[];
+}
+
+export interface TypingSegmentBatchIngestResponsePayload {
+  schema_version: string;
+  processed: number;
+  results: TypingSegmentIngestResponsePayload[];
+}
+
+export type CapturedTextSourceType = "search" | "reddit" | "webpage" | "typing" | "manual" | "unknown";
+
+export type CapturedTextSurfaceType = "search_box" | "address_bar" | "reddit_post" | "reddit_comment" | "page_text" | "selection" | "typing_segment" | "unknown";
+
+export interface CapturedTextEventPayload {
+  schema_version: string;
+  event_id: string;
+  occurred_at: string;
+  text: string;
+  locale: string;
+  source_type: CapturedTextSourceType;
+  surface_type: CapturedTextSurfaceType;
+  page_url: string | null;
+  page_title: string | null;
+  collector_version: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface CapturedTextBatchIngestRequestPayload {
+  events: CapturedTextEventPayload[];
+}
+
+export interface CapturedTextIngestResponsePayload {
+  schema_version: string;
+  event_id: string;
+  query_id: string;
+  top_category: string | null;
+  top_score: number | null;
+  message: string;
+}
+
+export interface CapturedTextBatchIngestResponsePayload {
+  schema_version: string;
+  processed: number;
+  results: CapturedTextIngestResponsePayload[];
+}
+
+export interface CapturedTextDebugJobRunRequestPayload {
+  limit: number;
+}
+
+export interface CapturedTextDebugJobConfigRequestPayload {
+  view_generation_enabled: boolean;
+  view_generation_interval_seconds: number;
+  view_generation_batch_size: number;
+}
+
+export interface CapturedTextDebugJobRunResultPayload {
+  schema_version: string;
+  selected_count: number;
+  generated_count: number;
+  failed_count: number;
+  analysis_selected_count: number;
+  analysis_processed_count: number;
+  analysis_failed_count: number;
+  pending_remaining_count: number;
+  generated_view_count: number;
+  message: string;
+}
+
+export interface CapturedTextDebugJobStatusPayload {
+  schema_version: string;
+  view_generation_enabled: boolean;
+  view_generation_running: boolean;
+  view_generation_interval_seconds: number;
+  view_generation_batch_size: number;
+  weak_text_provider_name: string;
+  strong_text_provider_name: string;
+  weak_text_identity_fallback: boolean;
+  strong_text_identity_fallback: boolean;
+  captured_text_event_count: number;
+  generated_view_count: number;
+  view_generation_status_counts: Record<string, number>;
+  analysis_status_counts: Record<string, number>;
+  last_run_at: string | null;
+  last_run_result: CapturedTextDebugJobRunResultPayload | null;
+}

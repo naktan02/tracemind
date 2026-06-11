@@ -11,14 +11,17 @@ canonical_layers:
 
 source_of_truth_priority:
   - shared/src/contracts/*.py
+  - agent/src/contracts/*.py
   - shared/src/domain/entities/*
+  - agent/src/services/inference/state.py
+  - agent/src/services/inference/result.py
   - shared/src/contracts/README.md
+  - agent/src/contracts/README.md
   - plan.md
   - docs/project_execution_plan.md
   - docs/architecture/target-method-runtime-structure.md
   - docs/architecture/system-overview.md
   - docs/contracts/*
-  - docs/strategy_surface_map.md
   - docs/api/*
   - docs/operations/local-runbook.md
   - docs/quality/*
@@ -49,15 +52,9 @@ active_entrypoints:
   - docs/project_execution_plan.md
   - docs/architecture/system-overview.md
   - docs/architecture/target-method-runtime-structure.md
-  - docs/architecture/code-expression-guidelines.md
-  - docs/architecture/pattern-integrity-refactor-backlog.md
-  - docs/architecture/method-owned-runtime-refactor-plan.md
-  - docs/contracts/query_buffer_v1.md
+  - docs/architecture/live-fssl-runtime-translation.md
   - docs/contracts/legacy_contract_ledger.md
   - docs/contracts/central_peft_text_encoder_trainer_contract.md
-  - docs/contracts/fl_ssl_method_capability_matrix.md
-  - docs/fl_runtime_implementation_checklist.md
-  - docs/strategy_surface_map.md
   - docs/operations/local-runbook.md
   - docs/quality/test-strategy.md
   - docs/governance/document-governance.md
@@ -73,11 +70,12 @@ task_routes:
       - AGENTS.md
       - relevant path-specific AGENTS.md
       - shared/src/contracts/README.md
+      - agent/src/contracts/README.md when changing agent-local API/UI payloads
       - relevant shared/src/contracts file
+      - relevant agent/src/contracts file for agent-local API/UI payloads
       - relevant producer and consumer files
     conditional_read:
       - docs/contracts/central_peft_text_encoder_trainer_contract.md for query-domain PEFT text encoder trainer contracts
-      - docs/contracts/algorithm_extension_guide.md for strategy-axis contract changes
     verify:
       - producers and consumers stay aligned
       - related tests and docs are updated
@@ -89,15 +87,10 @@ task_routes:
       - plan.md
       - docs/project_execution_plan.md
       - docs/architecture/target-method-runtime-structure.md
-      - docs/architecture/method-owned-runtime-refactor-plan.md
       - docs/contracts/central_peft_text_encoder_trainer_contract.md
-      - docs/contracts/query_buffer_v1.md
-      - docs/contracts/fl_ssl_method_capability_matrix.md
       - scripts/AGENTS.md
       - relevant conf config group
       - relevant scripts/experiments entrypoint
-    conditional_read:
-      - docs/fl_runtime_implementation_checklist.md for FL SSL non-IID comparisons or runtime translation
     verify:
       - goal, fixed/changed variables, metric, seed, and output metadata are explicit
       - central SSL stays pooled/offline control unless explicitly promoted
@@ -117,15 +110,11 @@ task_routes:
       - methods/AGENTS.md
       - conf/AGENTS.md
       - docs/architecture/target-method-runtime-structure.md
-      - docs/strategy_surface_map.md
-      - docs/contracts/strategy_addition_playbook.md
-      - docs/contracts/fl_ssl_method_capability_matrix.md
-      - docs/architecture/method-owned-runtime-refactor-plan.md
       - methods/README.md
+      - methods/ssl/NEW_METHOD.md or methods/federated_ssl/NEW_METHOD.md when adding a method
       - conf/README.md
       - relevant path-specific AGENTS.md
     conditional_read:
-      - docs/contracts/algorithm_extension_guide.md when protocol details are needed
       - docs/notes/decisions/2026-05-28-archived-text-classifier-adaptation-refactor-plan.md only when auditing historical lora_classifier migration context
     verify:
       - family or strategy boundary stays explicit
@@ -137,8 +126,9 @@ task_routes:
       - AGENTS.md
       - agent/AGENTS.md
       - main_server/AGENTS.md
-      - docs/fl_runtime_implementation_checklist.md
-      - docs/architecture/method-owned-runtime-refactor-plan.md
+      - docs/architecture/system-overview.md
+      - docs/architecture/live-fssl-runtime-translation.md
+      - docs/operations/local-runbook.md
     verify:
       - stale processes are checked first
       - dump, trace, or summary exists before tuning
@@ -164,7 +154,6 @@ task_routes:
       - docs/execution_index.md
       - docs/architecture/system-overview.md
       - docs/architecture/target-method-runtime-structure.md
-      - docs/architecture/method-owned-runtime-refactor-plan.md
       - docs/project_execution_plan.md
       - methods/README.md
       - conf/README.md
@@ -176,9 +165,9 @@ task_routes:
   family_extension_mvp:
     read_order:
       - AGENTS.md
-      - docs/family_extension_wellbeing_signal_mvp_plan.md
       - apps/AGENTS.md
       - apps/family_extension/AGENTS.md
+      - apps/family_extension/README.md
       - shared/src/contracts/README.md
     verify:
       - external UI only sees overall wellbeing signal
@@ -188,6 +177,4 @@ archive_paths:
   - docs/notes/**
 
 maintainer_docs:
-  - docs/ai_harness_operating_model.md
-  - docs/ai_harness_eval_cases.yaml
   - .codex/skills/THIRD_PARTY_NOTICES.md

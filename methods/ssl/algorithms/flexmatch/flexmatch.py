@@ -7,9 +7,13 @@ from typing import Any
 
 from torch import Tensor
 
-from ...base import QuerySslStepResult, TextBatchClassifier
-from ...common import compute_prob
-from ...hooks.adaptive_thresholding import FlexMatchThresholdingHook
+from ...base import (
+    QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
+    QUERY_SSL_ALGORITHM_STATE_DATASET_STATE,
+    QuerySslRuntimeRequirements,
+    QuerySslStepResult,
+    TextBatchClassifier,
+)
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
 from ...hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
@@ -17,6 +21,7 @@ from ...hooks.pseudo_labeling import (
     PseudoLabelingHook,
 )
 from ...hooks.supervised import compute_labeled_cross_entropy_loss
+from ...primitives.probability import compute_prob
 from ...registry import register_query_ssl_algorithm
 from ...state import (
     build_query_ssl_algorithm_state,
@@ -30,6 +35,7 @@ from ..usb_consistency import (
     compute_unlabeled_weak_strong_logits,
     validate_usb_consistency_loaders,
 )
+from .thresholding import FlexMatchThresholdingHook
 
 
 class FlexMatchAlgorithm:
@@ -213,6 +219,8 @@ def compute_flexmatch_step(
         sup_loss = logits_x_ulb_s.new_zeros(())
 
     probs_x_ulb_w = compute_prob(logits_x_ulb_w.detach())
+    max_probs, _ = probs_x_ulb_w.max(dim=-1)
+    high_conf_mask = max_probs.ge(p_cutoff)
     masking_algorithm = algorithm or _FlexMatchMaskingAlgorithm(p_cutoff=p_cutoff)
     mask = masking_hook.masking(
         masking_algorithm,
@@ -245,7 +253,13 @@ def compute_flexmatch_step(
             "sup_loss": sup_loss,
             "unsup_loss": unsup_loss,
         },
-        metrics={"util_ratio": mask.float().mean()},
+        metrics={
+            "util_ratio": mask.float().mean(),
+            "high_conf_ratio": high_conf_mask.float().mean(),
+            "selected_label_coverage": masking_hook.selected_label.ge(0).float().mean(),
+            "classwise_acc_mean": masking_hook.classwise_acc.float().mean(),
+            "classwise_acc_max": masking_hook.classwise_acc.float().max(),
+        },
         debug_tensors={
             "mask": mask,
             "classwise_acc": masking_hook.classwise_acc,
@@ -270,6 +284,14 @@ def _require_row_indices(unlabeled_batch: Mapping[str, Any]) -> Tensor:
     display_name="FlexMatch",
     required_views=USB_MULTIVIEW_REQUIRED_VIEWS,
     default_uses_labeled_batches=True,
+    runtime_requirements=QuerySslRuntimeRequirements(
+        algorithm_state_surface=frozenset(
+            {
+                QUERY_SSL_ALGORITHM_STATE_ADAPTIVE_THRESHOLD,
+                QUERY_SSL_ALGORITHM_STATE_DATASET_STATE,
+            }
+        ),
+    ),
 )
 def build_flexmatch_algorithm(parameters: Mapping[str, Any]) -> FlexMatchAlgorithm:
     """Hydra method parameter mapping으로 FlexMatch algorithm을 만든다."""

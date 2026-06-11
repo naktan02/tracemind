@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from agent.src.contracts.family_access_contracts import FamilyAccessRole
 from agent.src.infrastructure.repositories.wellbeing_storage import (
     DEFAULT_WELLBEING_DB_PATH,
     connect_wellbeing_db,
 )
-from shared.src.contracts.family_access_contracts import FamilyAccessRole
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS family_access_profiles (

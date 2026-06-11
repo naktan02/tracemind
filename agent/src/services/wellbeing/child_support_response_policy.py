@@ -5,15 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from agent.src.contracts.child_support_contracts import (
+    ChildSupportSafetyLevel,
+    ChildSupportScopeStatus,
+)
 from agent.src.services.wellbeing.child_support_safety_intent import (
     ChildSupportSafetyIntent,
 )
 from agent.src.services.wellbeing.child_support_safety_policy import (
     ChildSupportSafetyAssessment,
-)
-from shared.src.contracts.child_support_contracts import (
-    ChildSupportSafetyLevel,
-    ChildSupportScopeStatus,
 )
 
 

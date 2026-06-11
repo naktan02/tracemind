@@ -29,11 +29,9 @@ SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
-QUERY_SSL_PEFT_SRC = SCRIPTS_SRC / "support" / "query_ssl_peft"
-QUERY_SSL_PEFT_IO_SRC = QUERY_SSL_PEFT_SRC / "io"
-PROTOTYPE_STRATEGY_SRC = (
-    SCRIPTS_SRC / "experiments" / "prototype_analysis" / "prototype_strategy"
-)
+QUERY_SSL_TEXT_ENCODER_SRC = SCRIPTS_SRC / "support" / "query_ssl_text_encoder"
+QUERY_SSL_TEXT_ENCODER_CONFIG_SRC = QUERY_SSL_TEXT_ENCODER_SRC / "config"
+QUERY_SSL_TEXT_ENCODER_IO_SRC = QUERY_SSL_TEXT_ENCODER_SRC / "io"
 PYTHON_SOURCE_ROOTS = (
     SHARED_SRC,
     METHODS_SRC,
@@ -44,14 +42,9 @@ PYTHON_SOURCE_ROOTS = (
 )
 TEST_FIXTURES_SRC = REPO_ROOT / "tests" / "fixtures"
 FORBIDDEN_DUNDER_ALL = "__" + "all__"
-LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
-    SHARED_SRC / "services" / "prototypes" / "build_strategies.py",
-    SHARED_SRC / "services" / "prototypes" / "prototype_pack_builder.py",
-)
-PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
-PROTOTYPE_SRC = REPO_ROOT / "methods" / "prototype"
-PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
+METHODS_SSL_SRC = METHODS_SRC / "ssl"
+METHODS_SSL_ALGORITHMS_SRC = METHODS_SSL_SRC / "algorithms"
 PEFT_TEXT_ENCODER_SRC = METHODS_SRC / "adaptation" / "peft_text_encoder"
 PEFT_TEXT_ENCODER_AGGREGATION_SRC = PEFT_TEXT_ENCODER_SRC / "aggregation"
 LINEAR_HEAD_CLASSIFICATION_SRC = METHODS_SRC / "classification" / "linear_head"
@@ -63,12 +56,15 @@ LEGACY_AGENT_QUERY_TEXT_VIEWS_SRC = (
 TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS: set[Path] = set()
 RUNTIME_LAYER_METHOD_NAME_FRAGMENTS = (
     "fedmatch",
-    "fedlgmatch",
-    "fl2",
     "fixmatch",
+    "refixmatch",
+    "remixmatch",
     "freematch",
     "flexmatch",
     "comatch",
+    "dash",
+    "simmatch",
+    "mixmatch",
     "mixtext",
     "rdrop",
 )
@@ -77,12 +73,7 @@ FL_SCRIPT_RUNTIME_ROOTS = (
     SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
     SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server",
 )
-PAPER_METHOD_NAME_FRAGMENTS = (
-    "fedmatch",
-    "fedlgmatch",
-    "fl2",
-    "fl_2",
-)
+PAPER_METHOD_NAME_FRAGMENTS = ("fedmatch",)
 
 
 def _iter_python_files(root: Path) -> list[Path]:
@@ -141,6 +132,117 @@ def test_shared_layer_does_not_import_runtime_layers() -> None:
         ),
     )
     assert not violations, _format_violations(violations)
+
+
+def test_central_query_ssl_support_does_not_import_agent_runtime() -> None:
+    violations = _find_forbidden_imports(
+        root=QUERY_SSL_TEXT_ENCODER_SRC,
+        forbidden_prefixes=("agent.src", "main_server.src"),
+    )
+    assert not violations, (
+        "central Query SSL support는 offline control adapter다. live agent/server "
+        "runtime 재사용은 methods-owned local training surface를 통해 하고, "
+        "agent.src/main_server.src를 직접 import하지 않는다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_central_peft_ssl_uses_methods_local_training_request_surface() -> None:
+    trainable_surface_path = (
+        CONF_SRC
+        / "strategy_axes"
+        / "model_architecture"
+        / "trainable_surface"
+        / "peft_text_encoder.yaml"
+    )
+    runner_path = QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "consistency.py"
+    trainable_surface_source = trainable_surface_path.read_text(encoding="utf-8")
+    runner_source = runner_path.read_text(encoding="utf-8")
+
+    assert "run_query_ssl_peft_encoder_local_session" in trainable_surface_source
+    assert "QuerySslPeftEncoderLocalSessionRequest" in runner_source
+    assert "**local_session_request" not in runner_source, (
+        "central SSL runner는 methods-owned dataclass request를 그대로 넘긴다. "
+        "dict/kwargs surface로 되돌리면 central/agent/FL training 의미 drift를 "
+        "테스트하기 어려워진다."
+    )
+
+
+def test_method_owned_fssl_uses_request_training_surface() -> None:
+    surface_path = (
+        PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "method_training_surface.py"
+    )
+    agent_task_path = (
+        AGENT_SRC
+        / "services"
+        / "training_runtime"
+        / "current_task"
+        / "query_ssl_training_task_service.py"
+    )
+    fedmatch_descriptor_path = METHODS_FEDERATED_SSL_SRC / "fedmatch" / "descriptor.py"
+    method_owned_path = (
+        PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "method_owned_training.py"
+    )
+
+    assert surface_path.exists()
+    assert "FsslPeftEncoderMethodTrainingRequest" in surface_path.read_text(
+        encoding="utf-8"
+    )
+    assert "FsslPeftEncoderMethodTrainingRequest" in agent_task_path.read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "run_method_owned_peft_encoder_training_request"
+        in fedmatch_descriptor_path.read_text(encoding="utf-8")
+    )
+    assert "return core(request)" in method_owned_path.read_text(encoding="utf-8")
+
+
+def test_ssl_root_keeps_framework_surface_not_primitives() -> None:
+    allowed_root_files = {
+        "NEW_METHOD.md",
+        "README.md",
+        "__init__.py",
+        "base.py",
+        "model_capabilities.py",
+        "registry.py",
+        "state.py",
+    }
+    actual_root_files = {
+        path.name
+        for path in METHODS_SSL_SRC.iterdir()
+        if path.is_file() and path.suffix in {".py", ".md"}
+    }
+
+    assert actual_root_files <= allowed_root_files, (
+        "`methods/ssl` 바로 아래에는 framework surface만 둔다. "
+        "여러 algorithm이 공유하는 tensor/module helper는 "
+        "`methods/ssl/primitives/`에 둔다.\n"
+        f"unexpected={sorted(actual_root_files - allowed_root_files)}"
+    )
+    assert (METHODS_SSL_SRC / "primitives" / "README.md").exists()
+
+
+def test_ssl_algorithms_do_not_reuse_method_local_helper_packages() -> None:
+    forbidden_prefixes = ("methods.ssl.algorithms.mixmatch",)
+    violations = _find_forbidden_imports(
+        root=METHODS_SSL_ALGORITHMS_SRC,
+        forbidden_prefixes=forbidden_prefixes,
+        ignored_roots=(METHODS_SSL_ALGORITHMS_SRC / "mixmatch",),
+    )
+    relative_violations = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(METHODS_SSL_ALGORITHMS_SRC)
+        if not path.is_relative_to(METHODS_SSL_ALGORITHMS_SRC / "mixmatch")
+        and "from ..mixmatch" in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations and not relative_violations, (
+        "다른 SSL algorithm이 MixMatch method-local helper를 직접 가져다 쓰지 않는다. "
+        "공유 의미가 안정된 helper는 `methods/ssl/primitives/`로 승격한다.\n"
+        f"{_format_violations(violations)}\n"
+        f"relative_violations={relative_violations}"
+    )
 
 
 def test_shared_contracts_do_not_keep_central_payload_adapter_metadata_catalog() -> (
@@ -255,6 +357,39 @@ def test_shared_adapter_base_does_not_default_to_diagonal_scale() -> None:
     )
 
 
+def test_classifier_head_v1_contract_stays_linear_head_explicit() -> None:
+    contract_path = (
+        SHARED_SRC / "contracts" / "adapter_contract_families" / "classifier_head.py"
+    )
+    update_family_dir = (
+        CONF_SRC / "strategy_axes" / "model_architecture" / "update_family"
+    )
+    source = contract_path.read_text(encoding="utf-8")
+    missing_snippets = [
+        snippet
+        for snippet in (
+            'LINEAR_CLASSIFIER_HEAD_KIND = "linear"',
+            'ClassifierHeadKind: TypeAlias = Literal["linear"]',
+            "head_kind: ClassifierHeadKind",
+        )
+        if snippet not in source
+    ]
+    forbidden_leaf = update_family_dir / "classifier_head.yaml"
+
+    assert not missing_snippets, (
+        "classifier_head.v1은 generic classifier family 전체가 아니라 "
+        "linear weight/bias payload contract다. contract에 head_kind=linear를 "
+        "명시해 future MLP/projection head가 v1 shape에 섞이지 않게 한다.\n"
+        f"missing={missing_snippets}"
+    )
+    assert not forbidden_leaf.exists(), (
+        "config update_family leaf는 concrete 실행 단위여야 한다. 현재 "
+        "classifier-head 실행 leaf는 linear_head.yaml이며, generic "
+        "classifier_head.yaml placeholder를 만들지 않는다.\n"
+        f"path={_relative_repo_path(forbidden_leaf)}"
+    )
+
+
 def test_python_modules_do_not_define_dunder_all() -> None:
     violations = [
         _relative_repo_path(path)
@@ -313,106 +448,26 @@ def test_hydra_config_groups_are_python_package_markers() -> None:
     )
 
 
-def test_prototype_builder_core_stays_in_methods_layer() -> None:
-    existing_paths = [
-        _relative_repo_path(path)
-        for path in LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS
-        if path.exists()
-    ]
-    assert not existing_paths, (
-        "prototype builder 알고리즘 core는 methods/prototype/building에 둔다. "
-        f"legacy shared paths={sorted(str(path) for path in existing_paths)}"
-    )
-
-
-def test_prototype_projection_and_evaluation_core_stays_in_methods_layer() -> None:
-    forbidden_paths = (
-        SHARED_SRC / "services" / "prototypes" / "projections.py",
-        SCRIPTS_SRC / "workflows" / "prototype_pack" / "evaluation.py",
+def test_active_prototype_surface_is_removed_until_method_is_adopted() -> None:
+    removed_paths = (
+        METHODS_SRC / "prototype",
+        SHARED_SRC / "contracts" / "prototype_contracts.py",
+        SHARED_SRC / "contracts" / "prototype_build_state_contracts.py",
+        SHARED_SRC / "services" / "prototypes",
+        MAIN_SERVER_SRC / "services" / "federation" / "prototypes",
+        SCRIPTS_SRC / "workflows" / "prototype_pack",
+        CONF_SRC / "strategy_axes" / "prototype",
+        CONF_SRC / "entrypoints" / "prototype_pack",
     )
     existing_paths = [
-        _relative_repo_path(path) for path in forbidden_paths if path.exists()
+        _relative_repo_path(path) for path in removed_paths if path.exists()
     ]
-    distance_report_script = (
-        SCRIPTS_SRC / "workflows" / "prototype_pack" / "report_prototype_distances.py"
-    )
-    distance_report_source = distance_report_script.read_text(encoding="utf-8")
-    forbidden_script_snippets = (
-        "def cosine_similarity(",
-        "def l2_distance(",
-        'args.centroid_view == "strict_single"',
-        "project_category_centroids_by_largest_cluster(",
-        "require_single_category_centroids(",
-    )
-    script_violations = [
-        snippet
-        for snippet in forbidden_script_snippets
-        if snippet in distance_report_source
-    ]
-    assert (PROTOTYPE_SRC / "projections.py").exists()
-    assert (PROTOTYPE_SRC / "distance_report.py").exists()
+
     assert not existing_paths, (
-        "prototype projection/evaluation 계산 core는 methods/prototype에 둔다. "
-        "shared는 contract/serialization을, scripts는 artifact workflow만 소유한다.\n"
+        "prototype 방법론은 현재 active 연구/운영 surface가 아니다. 다시 도입할 때 "
+        "methods/conf/runtime adapter를 한 번에 열고, 지금은 잔재를 두지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_paths)}"
     )
-    assert not script_violations, (
-        "prototype distance report script는 CLI와 출력만 맡고 centroid view 선택과 "
-        "거리 계산은 methods/prototype/distance_report.py에 둔다.\n"
-        f"violations={script_violations}"
-    )
-
-
-def test_prototype_building_keeps_strategy_files_separate() -> None:
-    monolith_path = PROTOTYPE_BUILDING_SRC / "build_strategies.py"
-    assert not monolith_path.exists(), (
-        "prototype builder strategy는 base/single/kmeans/dbscan 파일로 나눈다. "
-        f"monolith path={_relative_repo_path(monolith_path)}"
-    )
-
-
-def test_prototype_analysis_scripts_do_not_own_build_strategy_catalog() -> None:
-    strategies_path = PROTOTYPE_STRATEGY_SRC / "strategies.py"
-    models_path = PROTOTYPE_STRATEGY_SRC / "models.py"
-    dbscan_config_path = (
-        CONF_SRC / "strategy_axes" / "prototype" / "build_strategy" / "dbscan.yaml"
-    )
-    source = strategies_path.read_text(encoding="utf-8")
-    models_source = models_path.read_text(encoding="utf-8")
-    forbidden_snippets = (
-        "from methods.prototype.building.single import",
-        "from methods.prototype.building.kmeans import",
-        "from methods.prototype.building.dbscan import",
-        'normalized_name == "single"',
-        'normalized_name == "kmeans"',
-        'normalized_name == "dbscan"',
-        'normalized_name == "all"',
-    )
-    violations = [snippet for snippet in forbidden_snippets if snippet in source]
-
-    assert (PROTOTYPE_BUILDING_SRC / "strategy_factory.py").exists()
-    assert dbscan_config_path.exists()
-    assert "class PrototypeIndex" not in models_source
-    assert "class PrototypeVector" not in models_source
-    assert not violations, (
-        "prototype build strategy catalog와 name 분기는 methods/prototype/building이 "
-        "소유한다. prototype analysis scripts는 methods-owned runtime strategy를 "
-        "실험용 PrototypeIndex로 변환하는 adapter만 맡는다.\n"
-        f"violations={violations}"
-    )
-
-
-def test_prototype_scoring_does_not_keep_policy_facade() -> None:
-    facade_path = PROTOTYPE_SCORING_SRC / "policies.py"
-    implementation_root = PROTOTYPE_SCORING_SRC / "score_policies"
-
-    assert not facade_path.exists(), (
-        "prototype score policy는 중앙 facade 없이 registry와 구현 파일로 분리한다. "
-        "runtime은 policy_registry.py를, concrete 구현은 "
-        "score_policies/<policy>.py를 직접 import한다.\n"
-        f"facade path={_relative_repo_path(facade_path)}"
-    )
-    assert implementation_root.is_dir()
 
 
 def test_methods_layer_does_not_import_runtime_or_research_layers() -> None:
@@ -467,11 +522,14 @@ def test_query_text_views_stays_input_glue_only() -> None:
 
 
 def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
-    legacy_script_path = QUERY_SSL_PEFT_SRC / "query_ssl" / "augmentation.py"
-    view_preparation_path = QUERY_SSL_PEFT_SRC / "query_ssl" / "view_preparation.py"
+    legacy_script_path = QUERY_SSL_TEXT_ENCODER_SRC / "query_ssl" / "augmentation.py"
+    view_preparation_path = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "query_ssl" / "view_preparation.py"
+    )
     source = view_preparation_path.read_text(encoding="utf-8")
     forbidden_snippets = (
         'view_builder_name == "usb_multiview"',
+        'view_builder_name == "usb_weak_strong_pair"',
         'view_builder_name == "usb_weak"',
         'augmenter_type == "precomputed_usb_candidates"',
         'augmenter_type != "nllb_backtranslation"',
@@ -487,15 +545,84 @@ def test_query_ssl_view_preparation_core_stays_in_methods_layer() -> None:
         "runtime callable 주입만 맡긴다."
     )
     assert not violations, (
-        "query_ssl_peft script adapter는 USB view builder나 augmentation source "
-        "정책을 직접 분기하지 않는다.\n"
+        "query_ssl_text_encoder script adapter는 USB view builder나 "
+        "augmentation source 정책을 직접 분기하지 않는다.\n"
         f"violations={violations}"
     )
 
 
-def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
-    router_path = (
-        SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "ssl_mode_router.py"
+def test_query_ssl_text_encoder_runner_stays_descriptor_capability_driven() -> None:
+    runner_source = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "consistency.py"
+    ).read_text(encoding="utf-8")
+    forbidden_snippets = (
+        'algorithm_name == "comatch"',
+        'algorithm_name == "simmatch"',
+        'algorithm_name == "softmatch"',
+        'algorithm_name == "mixmatch"',
+        'algorithm_name == "remixmatch"',
+        'algorithm_name == "refixmatch"',
+        'algorithm_name == "vat"',
+        'view_builder_name == "usb_weak_strong_pair"',
+        'if "comatch"',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in runner_source]
+
+    assert not violations, (
+        "query_ssl_text_encoder consistency runner는 method 이름이나 concrete view "
+        "이름으로 분기하지 않는다. Descriptor required_views/runtime_requirements와 "
+        "methods-owned view builder를 통해 capability를 해석해야 한다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_common_ssl_hooks_do_not_own_method_specific_hooks() -> None:
+    method_fragments = (
+        "AdaMatch",
+        "CoMatch",
+        "Dash",
+        "FixMatch",
+        "ReFixMatch",
+        "ReMixMatch",
+        "FlexMatch",
+        "FreeMatch",
+        "MixMatch",
+        "SimMatch",
+        "SoftMatch",
+        "adamatch",
+        "comatch",
+        "dash",
+        "fixmatch",
+        "refixmatch",
+        "remixmatch",
+        "flexmatch",
+        "freematch",
+        "mixmatch",
+        "simmatch",
+        "softmatch",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {fragment}"
+        for path in _iter_python_files(METHODS_SSL_SRC / "hooks")
+        for fragment in method_fragments
+        if fragment in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "methods/ssl/hooks는 여러 SSL algorithm에서 안정적으로 공유되는 mechanism만 "
+        "소유한다. 단일 method 이름이 붙은 hook/state 조합은 "
+        "methods/ssl/algorithms/<method>/ 아래에 둔다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
+def test_central_ssl_consistency_entrypoint_imports_runner_directly() -> None:
+    entrypoint_path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "central"
+        / "ssl_control"
+        / "run_peft_ssl_control.py"
     )
     entrypoint_config = (
         CONF_SRC
@@ -504,35 +631,20 @@ def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
         / "ssl_control"
         / "run_peft_ssl_control.yaml"
     )
-    source = router_path.read_text(encoding="utf-8")
+    source = entrypoint_path.read_text(encoding="utf-8")
     forbidden_snippets = (
-        "run_query_ssl_peft_baseline",
-        "run_pseudo_label_self_training",
-        "SSL_INPUT_MODE_CONSISTENCY",
-        "SSL_INPUT_MODE_PSEUDO_LABEL_REPLAY",
-        'mode == "consistency"',
-        'mode == "pseudo_label_replay"',
+        "run_central_ssl_mode",
+        "load_configured_callable",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
-    assert (
-        CONF_SRC / "strategy_axes" / "ssl_objective" / "input_mode" / "consistency.yaml"
-    ).exists()
-    assert (
-        CONF_SRC
-        / "strategy_axes"
-        / "ssl_objective"
-        / "input_mode"
-        / "pseudo_label_replay.yaml"
-    ).exists()
-    assert (
-        "/strategy_axes/ssl_objective/input_mode: consistency"
-        in entrypoint_config.read_text(encoding="utf-8")
+    assert "run_query_ssl_peft_baseline" in source
+    assert "group_by_query_ssl_method: true" in entrypoint_config.read_text(
+        encoding="utf-8"
     )
     assert not violations, (
-        "central SSL mode router는 mode별 concrete runner를 직접 import/분기하지 "
-        "않는다. input_mode Hydra leaf가 runner callable을 선언하고 router는 "
-        "generic callable loader만 맡는다.\n"
+        "central SSL consistency entrypoint는 explicit workflow 진입점이므로 "
+        "generic mode router를 통하지 않는다.\n"
         f"violations={violations}"
     )
 
@@ -558,39 +670,21 @@ def test_dataset_pipeline_download_sources_are_config_declared() -> None:
     )
 
 
-def test_dataset_pipeline_prototype_input_ref_is_structured() -> None:
-    source = (
-        SCRIPTS_SRC / "workflows" / "datasets" / "run_dataset_pipeline.py"
-    ).read_text(encoding="utf-8")
-    forbidden_snippets = (
-        'prototype_source == "split_train"',
-        'prototype_source.startswith("mapped:")',
-        'removeprefix("mapped:")',
-        "prototype.source",
-    )
-    violations = [snippet for snippet in forbidden_snippets if snippet in source]
-
-    assert not violations, (
-        "prototype input은 접두어 문자열이 아니라 dataset config의 "
-        "prototype.input_ref 구조로 해석한다.\n"
-        f"violations={violations}"
-    )
-
-
 def test_query_peft_artifact_paths_do_not_branch_on_ssl_input_mode_names() -> None:
-    path = QUERY_SSL_PEFT_IO_SRC / "artifact_paths.py"
+    path = QUERY_SSL_TEXT_ENCODER_IO_SRC / "artifact_paths.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         'ssl_input_mode != "consistency"',
         'ssl_input_mode == "consistency"',
         'ssl_input_mode == "pseudo_label_replay"',
+        "central_ssl_runner",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert not violations, (
         "central SSL output grouping 규칙은 "
-        "strategy_axes/ssl_objective/input_mode leaf가 소유한다. artifact_paths.py는 "
-        "central_ssl_runner의 resolved flag만 읽는다.\n"
+        "entrypoint top-level flag가 소유한다. artifact_paths.py는 "
+        "group_by_query_ssl_method만 읽는다.\n"
         f"violations={violations}"
     )
 
@@ -630,7 +724,7 @@ def test_fl_local_update_profiles_do_not_keep_lora_classifier_leaf() -> None:
     profile_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "local_update_profile"
     forbidden_path = profile_root / "lora_pseudo_label_v1.yaml"
     assert not forbidden_path.exists(), (
-        "active FL local update profile leaf는 peft_pseudo_label_v1을 사용한다. "
+        "active FL local update profile leaf는 peft_classifier_update_v1을 사용한다. "
         "lora_pseudo_label_v1은 old-run artifact/report reader compatibility "
         "표면으로만 남기고 Hydra 실행 profile로 되살리지 않는다."
     )
@@ -647,6 +741,136 @@ def test_legacy_fl_strategy_axis_group_is_removed() -> None:
     )
 
 
+def test_fl_client_split_preset_is_not_strategy_axis() -> None:
+    forbidden_path = CONF_SRC / "strategy_axes" / "fl_topology" / "materialized_split"
+    expected_path = CONF_SRC / "execution_context" / "fl_client_split"
+
+    assert not forbidden_path.exists(), (
+        "materialized FL client split preset은 method/topology strategy axis가 아니라 "
+        "실행 데이터 artifact 선택이다. execution_context/fl_client_split 아래에 둔다."
+    )
+    assert expected_path.exists(), (
+        "FL client split preset 선택 group은 execution_context/fl_client_split에 둔다."
+    )
+
+
+def test_central_ssl_input_mode_strategy_axis_group_is_removed() -> None:
+    legacy_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "input_mode"
+
+    assert not legacy_root.exists(), (
+        "central SSL은 explicit consistency entrypoint가 workflow를 고르고, "
+        "input_mode를 public strategy axis로 다시 열지 않는다. "
+        "pseudo-label replay는 별도 workflow로만 두고 teacher bootstrap helper는 "
+        "scripts에 되살리지 않는다."
+    )
+
+
+def test_central_ssl_entrypoint_does_not_compose_input_mode_strategy_axis() -> None:
+    path = (
+        CONF_SRC
+        / "entrypoints"
+        / "central"
+        / "ssl_control"
+        / "run_peft_ssl_control.yaml"
+    )
+    source = path.read_text(encoding="utf-8")
+
+    assert "strategy_axes/ssl_objective/input_mode" not in source, (
+        "central SSL root entrypoint는 consistency method와 scaffold 조합만 소유한다. "
+        "input_mode는 workflow/helper 내부 값으로 격리한다."
+    )
+
+
+def test_query_peft_support_does_not_emit_ssl_input_mode_manifest_field() -> None:
+    search_roots = (
+        QUERY_SSL_TEXT_ENCODER_SRC,
+        SCRIPTS_SRC / "experiments" / "central" / "ssl_control",
+        CONF_SRC / "entrypoints" / "central" / "ssl_control",
+    )
+    violations = [
+        _relative_repo_path(path)
+        for root in search_roots
+        for path in root.rglob("*")
+        if path.is_file()
+        and path.suffix in {".py", ".yaml", ".md"}
+        and "ssl_input_mode" in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "`ssl_input_mode`는 제거된 input_mode strategy axis의 legacy manifest "
+        "표식이다. "
+        "workflow-specific metadata가 필요하면 active runner의 이름 있는 payload로 "
+        "남긴다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_central_ssl_teacher_provider_strategy_axis_group_is_removed() -> None:
+    legacy_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "teacher_provider"
+
+    assert not legacy_root.exists(), (
+        "teacher source는 독립 teacher_provider strategy axis가 아니다. "
+        "중앙 SSL에서는 method hook/recipe가 teacher source 의미를 소유한다."
+    )
+
+
+def test_central_ssl_pseudo_label_selection_strategy_axis_group_is_removed() -> None:
+    legacy_root = (
+        CONF_SRC / "strategy_axes" / "ssl_objective" / "pseudo_label_selection"
+    )
+
+    assert not legacy_root.exists(), (
+        "pseudo_label_selection은 중앙 SSL public strategy axis가 아니다. "
+        "selection hook은 methods/ssl/hooks가 소유하고, recipe 기본값이나 "
+        "ablation metadata로만 연결한다."
+    )
+
+
+def test_query_peft_offline_pseudo_label_replay_workflow_is_removed() -> None:
+    removed_paths = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "pseudo_label.py",
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "pseudo_label_inputs.py",
+        METHODS_SSL_SRC / "pseudo_label_replay.py",
+        METHODS_SSL_SRC / "teacher_pseudo_label.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_artifact_writer.py",
+    )
+    existing_paths = [path for path in removed_paths if path.exists()]
+
+    assert not existing_paths, (
+        "offline pseudo-label replay/self-training workflow는 중앙 online SSL "
+        "canonical surface가 아니다.\n"
+        f"{chr(10).join(f'- {_relative_repo_path(path)}' for path in existing_paths)}"
+    )
+
+
+def test_query_peft_agent_local_query_adaptation_export_bridge_is_removed() -> None:
+    removed_paths = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "query_adaptation.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "query_adaptation.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "query_adaptation_multiview.py",
+    )
+    existing_paths = [path for path in removed_paths if path.exists()]
+
+    assert not existing_paths, (
+        "agent-local query adaptation export bridge는 중앙 지도/중앙 SSL/FSSL "
+        "canonical experiment surface가 아니다. "
+        "agent-local adaptation dataset runtime은 agent owner에 남기고, 중앙 "
+        "실험은 supervised/consistency runner와 Hydra initial_checkpoint로 연결한다.\n"
+        f"{chr(10).join(f'- {_relative_repo_path(path)}' for path in existing_paths)}"
+    )
+
+
+def test_query_peft_teacher_bootstrap_compatibility_tree_is_removed() -> None:
+    legacy_root = QUERY_SSL_TEXT_ENCODER_SRC / "compatibility" / "teacher_bootstrap"
+
+    assert not legacy_root.exists(), (
+        "teacher_bootstrap은 scripts owner가 아닌 fixed-classifier compatibility "
+        "debt였다. "
+        "새 teacher source가 필요하면 methods/ssl hook 또는 method recipe로 추가한다.\n"
+        f"legacy path={_relative_repo_path(legacy_root)}"
+    )
+
+
 def test_fl_local_ssl_policy_does_not_expose_method_local_fedmatch_leaf() -> None:
     forbidden_path = (
         CONF_SRC
@@ -658,8 +882,24 @@ def test_fl_local_ssl_policy_does_not_expose_method_local_fedmatch_leaf() -> Non
 
     assert not forbidden_path.exists(), (
         "fedmatch_agreement는 FedMatch method-local objective다. generic "
-        "local_ssl_policy Hydra leaf로 선택하지 말고 method_descriptor=fedmatch의 "
-        "method config에서 파생한다."
+        "local_ssl_policy Hydra leaf로 선택하지 말고 FedMatch descriptor와 "
+        "scenario default에서 파생한다."
+    )
+
+
+def test_fl_local_ssl_policy_does_not_point_to_local_update_profile() -> None:
+    policy_root = CONF_SRC / "strategy_axes" / "ssl_objective" / "local_ssl_policy"
+    violations: list[Path] = []
+    for path in policy_root.glob("*.yaml"):
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        if payload.get("parameter_source") == "local_update_profile":
+            violations.append(path)
+
+    assert not violations, (
+        "local_ssl_policy는 SSL method 파라미터 출처를 뜻한다. "
+        "local_update_profile은 update backend/example/privacy recipe만 소유하므로 "
+        "pseudo-label/selection/scoring 파라미터 출처로 쓰면 안 된다.\n"
+        f"{chr(10).join(f'- {_relative_repo_path(path)}' for path in violations)}"
     )
 
 
@@ -675,7 +915,7 @@ def test_fl_server_update_policy_does_not_expose_method_local_fedmatch_leaf() ->
     assert not forbidden_path.exists(), (
         "fedmatch_partitioned는 FedMatch method-local server update policy다. "
         "generic server_update_policy Hydra leaf로 선택하지 말고 "
-        "method_descriptor=fedmatch의 method config에서 파생한다."
+        "FedMatch descriptor와 scenario default에서 파생한다."
     )
 
 
@@ -839,7 +1079,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
 
 
 def test_fl_run_layout_does_not_own_labeled_exposure_policy_slug_map() -> None:
-    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py"
+    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "support" / "layout.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "def _compact_labeled_exposure_slug(",
@@ -1004,8 +1244,15 @@ def test_result_index_uses_payload_adapter_kind_as_canonical_field() -> None:
             ('"payload_adapter_kinds"',),
         ),
         (
-            REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "app.js",
-            ("row.payload_adapter_kind", "runtime.payload_adapter_kind"),
+            REPO_ROOT
+            / "apps"
+            / "experiment_dashboard"
+            / "src"
+            / "features"
+            / "fl_ssl"
+            / "logic"
+            / "labels.js",
+            ("row.payload_adapter_kind", "payload_adapter_kind"),
         ),
     )
     forbidden_by_path = (
@@ -1048,7 +1295,7 @@ def test_federated_ssl_active_docs_use_update_family_terms() -> None:
     checked_paths = (
         METHODS_FEDERATED_SSL_SRC / "README.md",
         METHODS_FEDERATED_SSL_SRC / "fedmatch" / "README.md",
-        METHODS_FEDERATED_SSL_SRC / "fedmatch" / "parameter_routing.py",
+        METHODS_FEDERATED_SSL_SRC / "fedmatch" / "partitioning.py",
     )
     forbidden_snippets = (
         "LoRA-classifier",
@@ -1385,12 +1632,15 @@ def test_partitioned_peft_execution_primitive_uses_adapter_linear_head_names() -
     )
 
 
-def test_scripts_use_query_ssl_peft_runtime_support_package_path() -> None:
+def test_scripts_use_query_ssl_text_encoder_runtime_support_package_path() -> None:
     legacy_root = SCRIPTS_SRC / "experiments" / "query_lora_ssl"
+    legacy_peft_support_root = SCRIPTS_SRC / "support" / "query_ssl_peft"
     checked_roots = (SCRIPTS_SRC, REPO_ROOT / "tests")
     forbidden_snippets = (
         "scripts.experiments." + "query_lora_ssl",
         "scripts/experiments/" + "query_lora_ssl",
+        "scripts.support." + "query_ssl_peft",
+        "scripts/support/" + "query_ssl_peft",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
@@ -1402,12 +1652,17 @@ def test_scripts_use_query_ssl_peft_runtime_support_package_path() -> None:
     ]
 
     assert (
-        QUERY_SSL_PEFT_SRC.is_dir() and not legacy_root.exists() and not violations
+        QUERY_SSL_TEXT_ENCODER_SRC.is_dir()
+        and not legacy_root.exists()
+        and not legacy_peft_support_root.exists()
+        and not violations
     ), (
-        "중앙 Query SSL runtime support package 경로는 query_ssl_peft를 사용한다. "
-        "LoRA는 PEFT adapter mechanism 또는 v1 artifact/contract 이름으로만 "
-        "남기고, scripts package boundary 이름으로 재도입하지 않는다.\n"
+        "중앙 Query SSL runtime support package 경로는 text encoder scaffold 기준인 "
+        "query_ssl_text_encoder를 사용한다. LoRA/PEFT는 adapter mechanism, "
+        "entrypoint 이름, artifact/contract 이름으로만 남기고 scripts support "
+        "package boundary 이름으로 재도입하지 않는다.\n"
         f"legacy_exists={legacy_root.exists()}\n"
+        f"legacy_peft_support_exists={legacy_peft_support_root.exists()}\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
@@ -1424,6 +1679,11 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         / "central"
         / "ssl_control"
         / "run_peft_supervised_control.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "central"
+        / "ssl_control"
+        / "run_full_text_encoder_supervised_control.py",
         CONF_SRC
         / "entrypoints"
         / "central"
@@ -1434,6 +1694,11 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         / "central"
         / "ssl_control"
         / "run_peft_supervised_control.yaml",
+        CONF_SRC
+        / "entrypoints"
+        / "central"
+        / "ssl_control"
+        / "run_full_text_encoder_supervised_control.yaml",
     )
     legacy_paths = (
         SCRIPTS_SRC
@@ -1481,7 +1746,7 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         SCRIPTS_SRC / "README.md",
         SCRIPTS_SRC / "experiments" / "README.md",
         SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "README.md",
-        SCRIPTS_SRC / "support" / "query_ssl_peft" / "README.md",
+        SCRIPTS_SRC / "support" / "query_ssl_text_encoder" / "README.md",
     )
     forbidden_snippets = (
         "train_lora_ssl_classifier",
@@ -1546,7 +1811,7 @@ def test_central_peft_entrypoints_do_not_write_lora_named_artifact_roots() -> No
     )
 
 
-def test_query_ssl_peft_runtime_support_uses_peft_helper_names() -> None:
+def test_query_ssl_text_encoder_runtime_support_keeps_surface_names_separated() -> None:
     forbidden_snippets = (
         "query_" + "lora",
         "Query" + "Lora",
@@ -1561,19 +1826,45 @@ def test_query_ssl_peft_runtime_support_uses_peft_helper_names() -> None:
         "query_adapt_lora",
         "lora_bootstrap",
         "lora_clf",
+        "SupervisedPeftRunContext",
+        "PeftLabeledRunContext",
+        "prepare_supervised_peft_run_context",
+        "evaluate_supervised_peft_run_context",
     )
     violations = [
         f"{_relative_repo_path(path)}: {snippet}"
-        for path in _iter_python_files(QUERY_SSL_PEFT_SRC)
+        for path in _iter_python_files(QUERY_SSL_TEXT_ENCODER_SRC)
         for snippet in forbidden_snippets
         if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
 
     assert not violations, (
-        "query_ssl_peft runtime support 내부 helper/type 이름은 PEFT 기준을 사용한다. "
-        "LoRA는 adapter mechanism이나 old-run artifact/entrypoint compatibility "
-        "표면에만 남긴다.\n"
+        "query_ssl_text_encoder runtime support 내부 공통 helper/type 이름은 "
+        "trainable surface와 PEFT adapter mechanism 이름을 섞지 않는다. "
+        "PEFT는 PEFT entrypoint/runner/artifact 이름에만, LoRA는 adapter mechanism이나 "
+        "old-run artifact/entrypoint compatibility 표면에만 남긴다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
+def test_query_ssl_text_encoder_common_context_does_not_default_to_peft() -> None:
+    checked_paths = (
+        QUERY_SSL_TEXT_ENCODER_SRC / "text_encoder_run_context.py",
+        QUERY_SSL_TEXT_ENCODER_SRC / "query_ssl" / "run_context.py",
+        QUERY_SSL_TEXT_ENCODER_SRC / "runners" / "supervised_text_encoder.py",
+    )
+    forbidden_snippet = "methods.adaptation.peft_text_encoder"
+    violations = [
+        _relative_repo_path(path)
+        for path in checked_paths
+        if forbidden_snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "query_ssl_text_encoder 공통 context는 PEFT model builder를 기본값으로 "
+        "소유하지 않는다. PEFT runner가 PEFT builder를 주입하고, full/frozen/prototype "
+        "runner는 자기 surface builder를 주입해야 한다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 
@@ -1611,17 +1902,16 @@ def test_result_index_and_dashboard_use_peft_adapter_fields() -> None:
         for snippet in forbidden_snippets
         if path.exists() and snippet in path.read_text(encoding="utf-8")
     ]
-    dashboard_path = REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "app.js"
-    dashboard_source = dashboard_path.read_text(encoding="utf-8")
-    legacy_reader_start = dashboard_source.index("function normalizeDashboardBundle(")
-    legacy_reader_end = dashboard_source.index("function hydrateFilters(")
-    dashboard_active_source = (
-        dashboard_source[:legacy_reader_start] + dashboard_source[legacy_reader_end:]
+    dashboard_paths = tuple(
+        path
+        for path in (REPO_ROOT / "apps" / "experiment_dashboard" / "src").rglob("*.js")
+        if path.name != "normalize_bundle.js"
     )
     violations.extend(
-        f"{_relative_repo_path(dashboard_path)}: {snippet}"
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in dashboard_paths
         for snippet in forbidden_snippets
-        if snippet in dashboard_active_source
+        if snippet in path.read_text(encoding="utf-8")
     )
 
     assert not violations, (
@@ -1772,7 +2062,7 @@ def test_federated_agent_runtime_adapter_unit_tests_name_active_peft_surface() -
 
 
 def test_federated_ssl_client_diagnostics_use_method_discovery() -> None:
-    source = (METHODS_FEDERATED_SSL_SRC / "client_diagnostics.py").read_text(
+    source = (METHODS_FEDERATED_SSL_SRC / "diagnostics" / "client.py").read_text(
         encoding="utf-8"
     )
     forbidden_snippets = (
@@ -1785,7 +2075,7 @@ def test_federated_ssl_client_diagnostics_use_method_discovery() -> None:
     assert not violations, (
         "method-local client diagnostics는 methods/federated_ssl/<method>/"
         "client_diagnostics.py convention으로 발견한다. 새 FL method 추가 때 "
-        "공통 client_diagnostics.py에 method 이름 목록을 누적하지 않는다.\n"
+        "공통 diagnostics/client.py에 method 이름 목록을 누적하지 않는다.\n"
         f"violations={violations}"
     )
 
@@ -1878,14 +2168,12 @@ def test_agent_runtime_compatibility_does_not_hardcode_privacy_guard_default() -
     path = (
         AGENT_SRC / "services" / "training" / "execution" / "runtime_compatibility.py"
     )
-    source = path.read_text(encoding="utf-8")
 
-    assert 'default_privacy_guard_name: str = "noop"' not in source, (
-        "agent runtime compatibility는 no-op privacy guard 이름을 직접 기본값으로 "
-        "갖지 않는다. live/API fallback profile의 privacy_guard_name을 읽어야 "
-        "privacy guard 기본값 source-of-truth가 중복되지 않는다."
+    assert not path.exists(), (
+        "agent stored-event runtime compatibility module은 제거됐다. privacy guard "
+        "기본값을 agent runtime에 다시 하드코딩하지 않는다.\n"
+        f"path={_relative_repo_path(path)}"
     )
-    assert "RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name" in source
 
 
 def test_round_manager_does_not_own_default_payload_adapter() -> None:
@@ -1944,6 +2232,37 @@ def test_server_round_runtime_config_isolates_legacy_adapter_profile() -> None:
         "main_server runtime config는 기본 payload/update/aggregation 선택 문자열을 "
         "직접 하드코딩하지 않는다. live/API compatibility fallback은 "
         "runtime_fallbacks.py의 named profile이 소유한다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_round_lifecycle_uses_fallback_profile_for_runtime_defaults() -> None:
+    path = (
+        MAIN_SERVER_SRC
+        / "services"
+        / "federation"
+        / "rounds"
+        / "round_lifecycle_service.py"
+    )
+    source = path.read_text(encoding="utf-8")
+
+    assert "RUNTIME_FALLBACK_SERVER_ROUND_PROFILE" in source, (
+        "RoundLifecycleService는 live/API fallback 값을 직접 소유하지 않는다. "
+        "runtime surface 기본값은 methods.federated_ssl.runtime_fallbacks의 "
+        "named profile에서 읽는다."
+    )
+    forbidden_default_literals = (
+        'return "fedavg"',
+        'or "fedavg"',
+        'return "peft_text_encoder"',
+        'or "peft_text_encoder"',
+    )
+    violations = [
+        snippet for snippet in forbidden_default_literals if snippet in source
+    ]
+    assert not violations, (
+        "RoundLifecycleService는 update family나 aggregation backend 기본값을 "
+        "문자열로 직접 하드코딩하지 않는다.\n"
         f"violations={violations}"
     )
 
@@ -2017,6 +2336,84 @@ def test_runtime_layers_do_not_define_method_specific_modules() -> None:
     )
 
 
+def test_live_runtime_layers_do_not_import_concrete_fssl_method_packages() -> None:
+    violations: list[tuple[Path, str]] = []
+    for root in (AGENT_SRC, MAIN_SERVER_SRC):
+        violations.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=("methods.federated_ssl.fedmatch",),
+            )
+        )
+
+    assert not violations, (
+        "live agent/main_server는 concrete FL SSL method package를 직접 import하지 "
+        "않는다. method identity는 registry/descriptor로 resolve하고, runtime "
+        "계층은 capability snapshot과 generic adapter만 해석한다.\n"
+        f"{chr(10).join(_live_runtime_import_violation(item) for item in violations)}"
+    )
+
+
+def test_agent_current_task_runner_delegates_runtime_resolution() -> None:
+    path = (
+        AGENT_SRC
+        / "services"
+        / "training_runtime"
+        / "current_task"
+        / "agent_training_task_runner_service.py"
+    )
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "validate_federated_ssl_capability_compatibility",
+        "resolve_federated_ssl_method_descriptor",
+        "FederatedSslCapabilityPlan",
+        "QuerySslObjectiveRuntimeConfig",
+        "PEFT_TEXT_ENCODER_UPDATE_FAMILY_NAME",
+        "PEFT_CLASSIFIER_UPDATE_PROFILE_NAME",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert "resolve_current_task_runtime" in source
+    assert not violations, (
+        "agent current-task runner는 orchestration만 소유한다. runtime/profile/"
+        "capability 해석은 runtime_dispatch.py로 위임해 live task 경계가 runner에 "
+        "다시 누적되지 않게 한다.\n"
+        f"violations={violations}"
+    )
+
+
+def test_agent_query_ssl_service_delegates_live_fssl_context_parsing() -> None:
+    path = (
+        AGENT_SRC
+        / "services"
+        / "training_runtime"
+        / "current_task"
+        / "query_ssl_training_task_service.py"
+    )
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "def _method_config_from_task_context",
+        "def _peer_context_from_task",
+        "def _find_peer_context_client_payload",
+        "client_contexts",
+        "helper_client_ids",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert "build_method_config_from_live_fssl_context" in source
+    assert "build_peer_context_from_live_fssl_context" in source
+    assert not violations, (
+        "agent query SSL service는 학습 실행만 조립한다. live FSSL context payload "
+        "해석은 methods/federated_ssl/live_task_context.py가 소유한다.\n"
+        f"violations={violations}"
+    )
+
+
+def _live_runtime_import_violation(item: tuple[Path, str]) -> str:
+    path, name = item
+    return f"- {_relative_repo_path(path)}: {name}"
+
+
 def test_fl_scripts_do_not_define_paper_method_specific_runtime_modules() -> None:
     violations: list[Path] = []
     for root in FL_SCRIPT_RUNTIME_ROOTS:
@@ -2030,7 +2427,7 @@ def test_fl_scripts_do_not_define_paper_method_specific_runtime_modules() -> Non
                 violations.append(relative_path)
 
     assert not violations, (
-        "FL scripts/runtime adapters는 FedMatch/FedLGMatch/(FL)^2 같은 논문 method "
+        "FL scripts/runtime adapters는 FedMatch 같은 논문 method "
         "구현을 파일명으로 소유하지 않는다. method identity와 policy 의미는 "
         "methods/federated_ssl/<method>/에 두고, scripts는 entrypoint/report/runtime "
         "bridge만 맡긴다.\n"
@@ -2087,7 +2484,7 @@ def test_fl_scripts_legacy_payload_names_stay_in_compatibility_files() -> None:
 
 
 def test_fl_run_layout_stays_update_family_oriented() -> None:
-    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py"
+    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "support" / "layout.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "training_task.objective.peft_classifier.proximal_mu",
@@ -2333,13 +2730,20 @@ def test_test_only_federated_ssl_fixture_stays_family_contract_agnostic() -> Non
 def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
     """method descriptor YAML만 먼저 생기는 placeholder config를 막는다."""
 
+    from methods.federated_ssl.method_module_resolution import (
+        resolve_federated_ssl_method_family_name,
+    )
+    from methods.federated_ssl.registry import (
+        resolve_federated_ssl_method_descriptor,
+        resolve_federated_ssl_method_descriptor_module,
+    )
+
     violations: list[str] = []
     method_package_root = METHODS_SRC / "federated_ssl"
     for config_path in sorted(CONF_FL_METHOD_DESCRIPTOR_SRC.glob("*.yaml")):
         method_name = config_path.stem
         payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
         declared_name = payload.get("name")
-        method_dir = method_package_root / method_name
 
         if declared_name != method_name:
             violations.append(
@@ -2398,6 +2802,27 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
                         "round_state_exchange YAML: "
                         f"{duplicated_round_state_keys}"
                     )
+        try:
+            descriptor = resolve_federated_ssl_method_descriptor(method_name)
+            descriptor_module = resolve_federated_ssl_method_descriptor_module(
+                method_name
+            )
+            implementation_family_name = resolve_federated_ssl_method_family_name(
+                method_name
+            )
+        except (ModuleNotFoundError, NotImplementedError, ValueError) as exc:
+            violations.append(
+                f"{_relative_repo_path(config_path)}: method descriptor is not wired: "
+                f"{exc}"
+            )
+            continue
+
+        if descriptor.name != method_name:
+            violations.append(
+                f"{_relative_repo_path(config_path)}: resolved descriptor name "
+                f"{descriptor.name!r} must match config method name {method_name!r}"
+            )
+        method_dir = method_package_root / implementation_family_name
         if not method_dir.is_dir():
             violations.append(
                 f"{_relative_repo_path(config_path)}: missing "
@@ -2408,8 +2833,7 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
         required_files = (
             method_dir / "descriptor.py",
             method_dir / "local_objective.py",
-            method_dir / "server_policy.py",
-            method_dir / "round_policy.py",
+            method_dir / "method_surface.py",
         )
         for required_file in required_files:
             if not required_file.is_file():
@@ -2417,7 +2841,16 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
                     f"{_relative_repo_path(config_path)}: missing "
                     f"{_relative_repo_path(required_file)}"
                 )
-        registry_wiring_shim = method_dir / f"{method_name}.py"
+        descriptor_path = Path(descriptor_module.__file__ or "")
+        if descriptor_path.name != "descriptor.py" or method_dir not in (
+            descriptor_path.parents
+        ):
+            violations.append(
+                f"{_relative_repo_path(config_path)}: descriptor module must be "
+                f"owned by {_relative_repo_path(method_dir)}; got "
+                f"{_relative_repo_path(descriptor_path)}"
+            )
+        registry_wiring_shim = method_dir / f"{implementation_family_name}.py"
         if registry_wiring_shim.exists():
             violations.append(
                 f"{_relative_repo_path(config_path)}: remove pass-through "
@@ -2481,14 +2914,26 @@ def test_federated_ssl_capability_axes_do_not_split_tiny_policy_files() -> None:
 
     assert not violations, (
         "FL SSL local/server capability 이름과 작은 normalizer는 "
-        "capability_axes.py에 함께 둔다. 이름/상수만 가진 sibling policy 파일은 "
+        "capabilities/axes.py에 함께 둔다. 이름/상수만 가진 sibling policy 파일은 "
         "reader path를 늘린다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 
+def test_peft_partitioned_runtime_uses_query_ssl_policy_predicate() -> None:
+    path = PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned_objective_training.py"
+    source = path.read_text(encoding="utf-8")
+
+    assert "is_query_ssl_local_objective_policy" in source
+    assert "LOCAL_SSL_POLICIES_FROM_QUERY_SSL" not in source, (
+        "active PEFT partitioned runtime은 Query SSL local objective 여부를 "
+        "canonical predicate로 확인한다. LOCAL_SSL_POLICIES_FROM_QUERY_SSL 이름은 "
+        "compatibility alias로만 남긴다."
+    )
+
+
 def test_federated_ssl_capability_axes_stays_payload_adapter_agnostic() -> None:
-    path = METHODS_FEDERATED_SSL_SRC / "capability_axes.py"
+    path = METHODS_FEDERATED_SSL_SRC / "capabilities" / "axes.py"
     imports = _collect_absolute_imports(path)
     forbidden_imports = {
         "shared.src.contracts.adapter_contract_families.classifier_head",
@@ -2503,17 +2948,25 @@ def test_federated_ssl_capability_axes_stays_payload_adapter_agnostic() -> None:
         "methods/adaptation/<family>/federated_ssl/가 소유한다."
     )
     assert "lora_classifier" not in source, (
-        "capability_axes.py는 LoRA-classifier family literal을 하드코딩하지 않는다."
+        "capabilities/axes.py는 LoRA-classifier family literal을 하드코딩하지 않는다."
     )
 
 
-def test_fedmatch_descriptor_does_not_keep_recipe_pass_through() -> None:
-    recipe_path = METHODS_FEDERATED_SSL_SRC / "fedmatch" / "recipe.py"
+def test_federated_ssl_hooks_stay_method_agnostic() -> None:
+    hook_root = METHODS_FEDERATED_SSL_SRC / "hooks"
+    forbidden_snippets = ("fedmatch", "sigma", "psi")
+    violations: list[str] = []
+    for path in _iter_python_files(hook_root):
+        source = path.read_text(encoding="utf-8").lower()
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append(f"{_relative_repo_path(path)}: {snippet}")
 
-    assert not recipe_path.exists(), (
-        "FedMatch recipe metadata는 descriptor.py에서 바로 읽는다. descriptor.recipe를 "
-        "다시 노출하는 pass-through recipe.py는 만들지 않는다.\n"
-        f"recipe path={_relative_repo_path(recipe_path)}"
+    assert not violations, (
+        "methods/federated_ssl/hooks는 여러 FL SSL method가 공유할 hook surface만 "
+        "소유한다. FedMatch method 이름과 sigma/psi 같은 method-local partition "
+        "의미는 methods/federated_ssl/<method>/ 아래에 둔다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
 
@@ -2546,11 +2999,10 @@ def test_federated_ssl_method_packages_do_not_own_payload_adapter_runtime_files(
 def test_payload_adapter_federated_ssl_files_do_not_multiply_by_method_name() -> None:
     method_fragments = (
         "fedmatch",
-        "fedlgmatch",
-        "fl2",
         "fixmatch",
         "flexmatch",
         "freematch",
+        "dash",
     )
     violations: list[Path] = []
     for family_dir in sorted((METHODS_SRC / "adaptation").iterdir()):
@@ -2569,27 +3021,41 @@ def test_payload_adapter_federated_ssl_files_do_not_multiply_by_method_name() ->
     )
 
 
-def test_lora_classifier_partitioned_training_loop_is_method_neutral() -> None:
-    path = (
+def test_peft_text_encoder_partitioned_runtime_is_method_neutral() -> None:
+    checked_paths = (
         METHODS_SRC
         / "adaptation"
         / "peft_text_encoder"
         / "federated_ssl"
         / "partitioned"
-        / "training_loop.py"
+        / "training_loop.py",
+        METHODS_SRC
+        / "adaptation"
+        / "peft_text_encoder"
+        / "federated_ssl"
+        / "partitioned_objective_training.py",
     )
-    imports = _collect_absolute_imports(path)
-    violations = sorted(
-        imported
-        for imported in imports
-        if imported.startswith("methods.federated_ssl.fedmatch")
-    )
+    import_violations: list[str] = []
+    snippet_violations: list[str] = []
+    for path in checked_paths:
+        import_violations.extend(
+            f"{_relative_repo_path(path)}: {imported}"
+            for imported in _collect_absolute_imports(path)
+            if imported.startswith("methods.federated_ssl.fedmatch")
+        )
+        source = path.read_text(encoding="utf-8").lower()
+        snippet_violations.extend(
+            f"{_relative_repo_path(path)}: {snippet}"
+            for snippet in ("fedmatch", "sigma", "psi")
+            if snippet in source
+        )
 
-    assert not violations, (
-        "partitioned training loop는 payload-adapter execution primitive다. "
-        "FedMatch objective와 partition 이름은 methods/federated_ssl/fedmatch/의 "
-        "caller가 주입해야 한다.\n"
-        f"{chr(10).join(f'- {item}' for item in violations)}"
+    assert not import_violations and not snippet_violations, (
+        "partitioned PEFT text encoder runtime은 payload-adapter execution "
+        "primitive다. FedMatch objective, metric prefix, partition 이름은 "
+        "methods/federated_ssl/fedmatch/의 caller가 주입해야 한다.\n"
+        f"{chr(10).join(f'- import: {item}' for item in import_violations)}"
+        f"{chr(10).join(f'- snippet: {item}' for item in snippet_violations)}"
     )
 
 
@@ -2791,9 +3257,6 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
         CONF_SRC / "strategy_axes" / "fl" / "README.md",
         REPO_ROOT / "docs" / "project_execution_plan.md",
-        REPO_ROOT / "docs" / "strategy_surface_map.md",
-        REPO_ROOT / "docs" / "contracts" / "fl_ssl_method_capability_matrix.md",
-        REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md",
         REPO_ROOT / "docs" / "operations" / "local-runbook.md",
     )
     forbidden_snippets = (
@@ -2836,13 +3299,11 @@ def test_active_docs_use_current_trainable_state_vocabulary() -> None:
         REPO_ROOT / "agent" / "src" / "services" / "README.md",
         REPO_ROOT / "docs" / "ai_context_manifest.yaml",
         REPO_ROOT / "docs" / "contracts" / "model_manifest_v1.md",
-        REPO_ROOT / "docs" / "contracts" / "prototype_pack_v1.md",
         REPO_ROOT
         / "docs"
         / "contracts"
         / "central_peft_text_encoder_trainer_contract.md",
         REPO_ROOT / "docs" / "contracts" / "shared_adapter_contracts_v1.md",
-        REPO_ROOT / "docs" / "contracts" / "strategy_addition_playbook.md",
         REPO_ROOT / "docs" / "contracts" / "training_task_v1.md",
         REPO_ROOT / "docs" / "contracts" / "training_update_envelope_v1.md",
     )
@@ -2874,9 +3335,6 @@ def test_active_surface_and_runbook_docs_stay_concise() -> None:
         CONF_SRC / "README.md",
         SCRIPTS_SRC / "README.md",
         REPO_ROOT / "docs" / "project_execution_plan.md",
-        REPO_ROOT / "docs" / "experiment_results.md",
-        REPO_ROOT / "docs" / "strategy_surface_map.md",
-        REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md",
         SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "README.md",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md",
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "README.md",
@@ -2885,9 +3343,6 @@ def test_active_surface_and_runbook_docs_stay_concise() -> None:
         CONF_SRC / "README.md": 160,
         SCRIPTS_SRC / "README.md": 120,
         REPO_ROOT / "docs" / "project_execution_plan.md": 160,
-        REPO_ROOT / "docs" / "experiment_results.md": 100,
-        REPO_ROOT / "docs" / "strategy_surface_map.md": 120,
-        REPO_ROOT / "docs" / "fl_runtime_implementation_checklist.md": 120,
         SCRIPTS_SRC / "experiments" / "central" / "ssl_control" / "README.md": 100,
         SCRIPTS_SRC / "experiments" / "fl_ssl" / "README.md": 160,
         SCRIPTS_SRC
@@ -3091,21 +3546,14 @@ def test_fl_peer_context_policy_configs_stay_mechanism_only() -> None:
     )
 
 
-def test_local_training_service_uses_update_executor_not_concrete_backends() -> None:
-    path = (
-        AGENT_SRC / "services" / "training" / "execution" / "local_training_service.py"
-    )
-    imports = _collect_absolute_imports(path)
-    violations = sorted(
-        imported_module
-        for imported_module in imports
-        if imported_module.startswith("agent.src.services.training.backends.training.")
-    )
-    assert not violations, (
-        "LocalTrainingService는 selection orchestration만 맡고 update 생성은 "
-        "LocalUpdateExecutor port를 통해 호출한다. concrete training backend나 "
-        "training backend registry를 직접 import하지 않는다.\n"
-        f"{chr(10).join(f'- {module}' for module in violations)}"
+def test_agent_legacy_training_package_is_not_reintroduced() -> None:
+    package_root = AGENT_SRC / "services" / "training"
+
+    assert not package_root.exists(), (
+        "agent/src/services/training은 stored-event pseudo-label self-training "
+        "legacy package다. 현재 runtime은 services/training_runtime에서 current "
+        "TrainingTask와 Query SSL/FSSL local objective adapter만 소유한다.\n"
+        f"path={_relative_repo_path(package_root)}"
     )
 
 
@@ -3347,12 +3795,12 @@ def test_lora_classifier_update_package_does_not_keep_one_use_helper_files() -> 
 
 
 def test_query_peft_run_artifacts_do_not_keep_writer_exporter_monolith() -> None:
-    orchestrator_path = QUERY_SSL_PEFT_IO_SRC / "artifacts.py"
+    orchestrator_path = QUERY_SSL_TEXT_ENCODER_IO_SRC / "artifacts.py"
     expected_responsibility_files = (
-        QUERY_SSL_PEFT_IO_SRC / "artifact_paths.py",
-        QUERY_SSL_PEFT_IO_SRC / "artifact_writer.py",
-        QUERY_SSL_PEFT_IO_SRC / "manifest_builder.py",
-        QUERY_SSL_PEFT_IO_SRC / "model_artifact_exporter.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "artifact_paths.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "artifact_writer.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "manifest_builder.py",
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "model_artifact_exporter.py",
     )
     source = orchestrator_path.read_text(encoding="utf-8")
     forbidden_snippets = (
@@ -3380,104 +3828,32 @@ def test_query_peft_run_artifacts_do_not_keep_writer_exporter_monolith() -> None
     )
 
 
-def test_query_peft_teacher_pseudo_label_does_not_keep_exporter_monolith() -> None:
-    legacy_exporter_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_exporter.py"
-    builder_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_builder.py"
-    writer_path = QUERY_SSL_PEFT_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
-    builder_source = builder_path.read_text(encoding="utf-8")
-    builder_forbidden_snippets = (
-        "json.dumps(",
-        ".write_text(",
-        ".open(",
-        ".mkdir(",
+def test_query_peft_teacher_pseudo_label_export_surface_is_removed() -> None:
+    legacy_exporter_path = (
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_exporter.py"
     )
-    violations = [
-        snippet for snippet in builder_forbidden_snippets if snippet in builder_source
-    ]
+    legacy_builder_path = (
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_builder.py"
+    )
+    legacy_algorithm_path = (
+        QUERY_SSL_TEXT_ENCODER_CONFIG_SRC / "pseudo_label_algorithm.py"
+    )
+    methods_builder_path = METHODS_SSL_SRC / "teacher_pseudo_label.py"
+    writer_path = (
+        QUERY_SSL_TEXT_ENCODER_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
+    )
+    removed_paths = (
+        legacy_exporter_path,
+        legacy_builder_path,
+        legacy_algorithm_path,
+        methods_builder_path,
+        writer_path,
+    )
+    existing_paths = [path for path in removed_paths if path.exists()]
 
-    assert not legacy_exporter_path.exists(), (
-        "teacher pseudo-label 경로는 builder/writer를 직접 조합한다. "
-        "단순 compatibility exporter facade를 다시 만들지 않는다.\n"
-        f"legacy path={_relative_repo_path(legacy_exporter_path)}"
-    )
-    assert writer_path.exists(), (
-        "teacher pseudo-label artifact 저장은 전용 writer가 맡는다. "
-        f"missing writer={_relative_repo_path(writer_path)}"
-    )
-    assert not violations, (
-        "TeacherPseudoLabelBuilder는 pseudo-label row와 diagnostics payload만 만든다. "
-        "JSON serialization과 파일 write는 TeacherPseudoLabelArtifactWriter가 맡는다.\n"
-        f"violations={violations}"
-    )
-
-
-def test_prototype_threshold_sweep_runner_splits_eval_selection_and_write() -> None:
-    runner_path = PROTOTYPE_STRATEGY_SRC / "sweep.py"
-    evaluator_path = PROTOTYPE_STRATEGY_SRC / "threshold_policy_evaluator.py"
-    selection_path = METHODS_SRC / "prototype" / "thresholding" / "selection.py"
-    policies_path = METHODS_SRC / "prototype" / "thresholding" / "policies.py"
-    writer_path = PROTOTYPE_STRATEGY_SRC / "threshold_artifact_writer.py"
-    required_files = (evaluator_path, selection_path, policies_path, writer_path)
-    runner_source = runner_path.read_text(encoding="utf-8")
-    evaluator_source = evaluator_path.read_text(encoding="utf-8")
-    runner_forbidden_snippets = (
-        "policy.build_evaluations(",
-        "score_embeddings(",
-        "dump_json(",
-        ".write_text(",
-        ".mkdir(",
-        "_confidence_threshold_or_floor",
-    )
-    evaluator_forbidden_snippets = (
-        "dump_json(",
-        ".write_text(",
-        ".mkdir(",
-    )
-    missing_files = [
-        _relative_repo_path(path) for path in required_files if not path.exists()
-    ]
-    runner_violations = [
-        snippet for snippet in runner_forbidden_snippets if snippet in runner_source
-    ]
-    evaluator_violations = [
-        snippet
-        for snippet in evaluator_forbidden_snippets
-        if snippet in evaluator_source
-    ]
-
-    assert not missing_files, (
-        "prototype threshold sweep는 policy 평가, selection policy, artifact writer를 "
-        "전용 module로 분리한다.\n"
-        f"{chr(10).join(f'- {path}' for path in missing_files)}"
-    )
-    assert not runner_violations, (
-        "ThresholdPolicyExperimentRunner는 orchestration만 맡는다. threshold 후보 "
-        "평가, 선택 정렬 기준, JSON artifact 저장은 전용 module이 맡는다.\n"
-        f"violations={runner_violations}"
-    )
-    assert not evaluator_violations, (
-        "threshold_policy_evaluator.py는 후보 평가만 맡는다. JSON 저장과 directory "
-        "생성은 threshold_artifact_writer.py가 맡는다.\n"
-        f"violations={evaluator_violations}"
-    )
-    assert not (PROTOTYPE_STRATEGY_SRC / "threshold_policies.py").exists()
-    assert not (PROTOTYPE_STRATEGY_SRC / "threshold_selection.py").exists()
-
-
-def test_prototype_strategy_scoring_does_not_use_runtime_fallback_profile() -> None:
-    path = (
-        SCRIPTS_SRC
-        / "experiments"
-        / "prototype_analysis"
-        / "prototype_strategy"
-        / "scoring.py"
-    )
-    imports = _collect_absolute_imports(path)
-
-    assert "methods.federated_ssl.runtime_fallbacks" not in imports, (
-        "prototype strategy scorer 기본값은 prototype 실험 축의 로컬 상수가 "
-        "소유한다. FL SSL API/runtime fallback profile을 실험 기본값 "
-        "source-of-truth처럼 import하지 않는다."
+    assert not existing_paths, (
+        "teacher pseudo-label export는 active 중앙 online SSL workflow가 아니다.\n"
+        f"{chr(10).join(f'- {_relative_repo_path(path)}' for path in existing_paths)}"
     )
 
 
@@ -3722,8 +4098,8 @@ def test_main_server_federation_assets_package_has_no_source_modules() -> None:
 
     assert not violations, (
         "main_server federation assets package는 넓은 catch-all source package로 "
-        "사용하지 않는다. server-owned prototype artifact lifecycle은 "
-        "main_server/src/services/federation/prototypes에 둔다.\n"
+        "사용하지 않는다. server-owned artifact lifecycle은 좁은 capability "
+        "package에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 

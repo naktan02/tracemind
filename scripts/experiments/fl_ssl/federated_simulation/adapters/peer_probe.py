@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from methods.federated_ssl.diagnostic_sampling import (
+from methods.federated_ssl.diagnostics.sampling import (
     hash_query_ids,
     select_label_balanced_probe_rows,
 )

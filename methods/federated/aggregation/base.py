@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, cast
 
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.entities.training.shared_adapter_update import (
@@ -13,6 +13,47 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 )
 
 AggregationConfigScalar = str | int | float | bool
+AGGREGATED_ARTIFACT_FORMAT_KEY = "artifact_format"
+AGGREGATED_ARTIFACT_TENSORS_KEY = "tensors"
+AGGREGATED_ARTIFACT_METADATA_KEY = "metadata"
+AGGREGATED_SAFETENSORS_ARTIFACT_FORMAT = "safetensors"
+
+
+def build_safetensors_aggregated_artifact(
+    *,
+    tensors: Mapping[str, object],
+    metadata: Mapping[str, str],
+) -> dict[str, object]:
+    """server-owned aggregate tensor artifact 저장 envelope을 만든다."""
+
+    return {
+        AGGREGATED_ARTIFACT_FORMAT_KEY: AGGREGATED_SAFETENSORS_ARTIFACT_FORMAT,
+        AGGREGATED_ARTIFACT_TENSORS_KEY: dict(tensors),
+        AGGREGATED_ARTIFACT_METADATA_KEY: dict(metadata),
+    }
+
+
+def is_safetensors_aggregated_artifact(payload: Mapping[str, object]) -> bool:
+    """aggregate artifact payload가 safetensors envelope인지 확인한다."""
+
+    return (
+        payload.get(AGGREGATED_ARTIFACT_FORMAT_KEY)
+        == AGGREGATED_SAFETENSORS_ARTIFACT_FORMAT
+    )
+
+
+def safetensors_aggregated_artifact_parts(
+    payload: Mapping[str, object],
+) -> tuple[Mapping[str, object], Mapping[str, str]]:
+    """safetensors aggregate envelope에서 tensor와 metadata를 꺼낸다."""
+
+    tensors = payload.get(AGGREGATED_ARTIFACT_TENSORS_KEY)
+    metadata = payload.get(AGGREGATED_ARTIFACT_METADATA_KEY)
+    if not isinstance(tensors, Mapping):
+        raise ValueError("safetensors aggregate artifact requires tensors mapping.")
+    if not isinstance(metadata, Mapping):
+        raise ValueError("safetensors aggregate artifact requires metadata mapping.")
+    return tensors, cast(Mapping[str, str], metadata)
 
 
 @dataclass(frozen=True, slots=True)

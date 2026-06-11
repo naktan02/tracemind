@@ -27,6 +27,7 @@ from methods.federated.aggregation.fedavg.weighted_average import (
 )
 from methods.federated.aggregation_weighting import (
     AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+    AGGREGATION_WEIGHT_UNIFORM,
     AggregationWeightPolicy,
     aggregation_weight_for_update,
 )
@@ -80,7 +81,7 @@ def compute_peft_encoder_fedavg(
     *,
     label_schema: Sequence[str],
     updates: Sequence[PeftEncoderFedAvgUpdate],
-    weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+    weight_policy_name: str = AGGREGATION_WEIGHT_UNIFORM,
 ) -> PeftEncoderFedAvgResult:
     """PEFT encoder/head delta를 policy weight로 평균한다."""
 
@@ -223,7 +224,9 @@ def aggregate_peft_encoder_fedavg(
     method_result = compute_peft_encoder_fedavg(
         label_schema=base_state.label_schema,
         updates=method_updates,
-        weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
+        weight_policy_name=str(
+            (overrides or {}).get("weight_policy", AGGREGATION_WEIGHT_UNIFORM)
+        ),
     )
     artifact_ref_resolver = context.require_artifact_ref_resolver(
         context="PEFT encoder/head FedAvg"

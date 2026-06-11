@@ -7,6 +7,12 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+from agent.src.contracts.family_access_contracts import (
+    FamilyAccessRole,
+    FamilySetupResponsePayload,
+    FamilySetupStatusPayload,
+    FamilyUnlockResponsePayload,
+)
 from agent.src.infrastructure.repositories.family_access_repository import (
     FamilyAccessRepository,
     FamilyAccessState,
@@ -14,12 +20,6 @@ from agent.src.infrastructure.repositories.family_access_repository import (
 from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
     WellbeingSettingsRecord,
     WellbeingSettingsRepository,
-)
-from shared.src.contracts.family_access_contracts import (
-    FamilyAccessRole,
-    FamilySetupResponsePayload,
-    FamilySetupStatusPayload,
-    FamilyUnlockResponsePayload,
 )
 
 

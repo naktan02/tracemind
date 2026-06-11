@@ -1,22 +1,36 @@
 # Central SSL Control
 
-이 폴더는 중앙집중형 query-domain PEFT text encoder control entrypoint만 둔다.
-SSL objective는 `methods/ssl`, adaptation core는 `methods/adaptation/peft_text_encoder`,
-실행 조합과 파라미터는 루트 `conf/`가 소유한다.
+중앙집중형 query-domain text encoder control entrypoint다. 이 트랙은
+pooled/offline control이며, FL SSL non-IID 메인 비교를 대체하지 않는다.
 
 긴 과거 cookbook은
-`docs/notes/decisions/2026-05-28-archived-central-ssl-control-readme.md`에 보관했다.
+`docs/notes/decisions/2026-05-28-archived-central-ssl-control-readme.md`에
+보관했다. 현재 경계 판단은 이 README, `conf/README.md`,
+`docs/contracts/central_peft_text_encoder_trainer_contract.md`를 기준으로 본다.
 
-## 실행 순서
+## 책임
 
-1. `run_peft_supervised_control.py`로 같은 PEFT scaffold의 supervised baseline을 만든다.
-2. `run_peft_ssl_control.py`에서 SSL objective만 바꿔 pooled/offline control을 비교한다.
-3. teacher bootstrap이 필요하면 별도 seed entrypoint가 아니라
-   `strategy_axes/ssl_objective/input_mode=teacher_bootstrap`와 source 설정으로
-   `scripts/support/query_ssl_peft/runners/bootstrap_teacher.py`를 조립한다.
+- `run_peft_supervised_control.py`: PEFT text encoder scaffold의 supervised control
+- `run_peft_ssl_control.py`: 같은 scaffold에서 SSL objective 비교
+- `run_full_text_encoder_supervised_control.py`: full-model supervised-only ablation
+- `build_method_projection_figure.py`: 완료된 report 기반 projection figure 생성
+- `enrich_final_reports.py`: 과거 report의 final-selection metadata 보강
 
-중앙 SSL method 비교의 기본 initial checkpoint는 `none`이다. teacher는 SSL 실행의
-숨은 sub-step이 아니라 bootstrap/pseudo-label source를 명시할 때만 쓴다.
+`scripts`는 dataset/report/artifact IO와 orchestration만 맡는다. SSL objective는
+`methods/ssl`, PEFT local training core는
+`methods/adaptation/peft_text_encoder`, full fine-tuning core는
+`methods/adaptation/full_text_encoder`, 실행 조합은 루트 `conf/`가 소유한다.
+
+## 읽기 경로
+
+```text
+conf/entrypoints/central/ssl_control/*.yaml
+-> run_peft_supervised_control.py 또는 run_peft_ssl_control.py
+-> scripts/support/query_ssl_text_encoder/runners/{supervised_text_encoder,consistency}.py
+-> scripts/support/query_ssl_text_encoder/{text_encoder_run_context.py,query_ssl/run_context.py}
+-> methods/adaptation/peft_text_encoder/training/{local_training_surface,query_ssl_training_session}.py
+-> scripts/support/query_ssl_text_encoder/io/*
+```
 
 ## 기본 실행
 
@@ -26,61 +40,41 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
   run_controls/central_ssl/budget=smoke
 uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
   run_controls/central_ssl/budget=smoke
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl_objective/consistency_method=freematch_usb_v1
+uv run python scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py \
+  run_controls/central_ssl/budget=smoke
 ```
 
-smoke 산출물은 main run과 섞지 않는다. method는
-`strategy_axes/ssl_objective/consistency_method`로 선택한다. 현재 중앙 trainer의
-학습 표면은 `strategy_axes/model_architecture/trainable_surface=peft_text_encoder`다.
+method는 `strategy_axes/ssl_objective/consistency_method`로 선택한다. PEFT
+supervised/SSL entrypoint의 학습 표면은 `trainable_surface=peft_text_encoder`이고,
+full-model supervised-only control은 `trainable_surface=full_text_encoder`를 쓴다.
+smoke 산출물은 main run과 섞지 않는다.
 
-## 데이터 source 변경
+## Public Surface
+
+사용자가 고르는 public surface는 아래로 제한한다.
+
+- `strategy_axes/ssl_objective/consistency_method`
+- `strategy_axes/model_architecture/{backbone,trainable_surface,peft,initial_checkpoint}`
+- `execution_context/{dataset_asset,query_data_source,query_view,runtime_env}`
+- `run_controls/central_ssl/budget`
+
+`input_mode`, `teacher_provider`, `pseudo_label_selection`은 central SSL public
+Hydra group이 아니다. 기본 중앙 supervised/SSL 실행은 `selection_set=test`이고
+`eval_sets`에는 단일 `test`만 포함한다.
+
+## 데이터와 산출물
 
 source 주소록은 `conf/execution_context/query_data_source/default.yaml`이 소유한다.
-실행 시에는 `query_data_selection.labeled`, `unlabeled`, `validation`, `test`만
+실행 시에는 `query_data_selection.{labeled,unlabeled,validation,test}` selector만
 override한다.
 
-```bash
-# general labeled + Reddit unlabeled + Reddit validation/test
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  query_data_selection.labeled=szegeelim_general4 \
-  query_data_selection.unlabeled=ourafla_reddit \
-  query_data_selection.validation=ourafla_reddit \
-  query_data_selection.test=ourafla_reddit
+PEFT run은 `artifacts/adapter/`와 `artifacts/classifier_head.pt`, full text
+encoder run은 `artifacts/model/`과 `artifacts/classifier_head.pt`를 저장한다.
+`report.json`은 기존 downstream 호환을 위해 `results[test]`를 `best`로 유지하고,
+마지막 epoch 기준 값은 `manifest.final_selection_report`와 `results.final`에 남긴다.
 
-# 같은 override는 supervised baseline에도 적용된다.
-uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
-  query_data_selection.labeled=szegeelim_general4 \
-  query_data_selection.validation=ourafla_reddit \
-  query_data_selection.test=ourafla_reddit
-```
+## 경계
 
-## 입력 모드와 initial checkpoint
-
-기본 `consistency` mode는 `unlabeled_jsonl`과 precomputed weak/strong view를 읽는다.
-
-```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl_objective/input_mode=consistency \
-  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1
-
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl_objective/input_mode=pseudo_label_replay \
-  pseudo_label_jsonl=data/artifacts/query_peft_pseudo_label/<run_id>/pseudo_label_train.jsonl \
-  include_seed_train_rows=false
-```
-
-teacher bootstrap을 실행하는 helper는 concrete provider가 필요하다.
-
-```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl_objective/input_mode=teacher_bootstrap \
-  strategy_axes/ssl_objective/pseudo_label_selection=margin_threshold_v1
-```
-
-## 경계와 Read Path
-
-이 폴더는 dataset, method, adapter family 기본값을 새로 정의하지 않는다.
-`conf/entrypoints/central/ssl_control/*.yaml`에서 시작해
-`conf/strategy_axes/ssl_objective/**`, `conf/strategy_axes/model_architecture/**`,
-`methods/ssl/**`, `methods/adaptation/peft_text_encoder/**` 순서로 본다.
+이 폴더는 dataset, method, adapter family 기본값을 새로 정의하지 않는다. 중앙
+Query SSL runner는 pooled/offline orchestration만 맡고, PEFT local SSL 학습은
+FL/live와 같은 methods-owned local training surface를 통해 호출한다.

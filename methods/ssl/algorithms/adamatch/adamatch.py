@@ -8,16 +8,21 @@ from typing import Any
 from torch import Tensor
 from torch.nn import functional as F
 
-from ...base import QuerySslStepResult, TextBatchClassifier
-from ...common import compute_prob
+from ...base import (
+    QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA,
+    QuerySslRuntimeRequirements,
+    QuerySslStepResult,
+    TextBatchClassifier,
+)
 from ...hooks.adaptive_thresholding import RelativeConfidenceThresholdingHook
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
-from ...hooks.distribution_alignment import AdaMatchDistAlignHook
+from ...hooks.distribution_alignment import EmaDistributionAlignmentHook
 from ...hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
     PseudoLabelingConfig,
     PseudoLabelingHook,
 )
+from ...primitives.probability import compute_prob
 from ...registry import register_query_ssl_algorithm
 from ...state import (
     build_query_ssl_algorithm_state,
@@ -32,6 +37,24 @@ from ..usb_consistency import (
 )
 
 AdaMatchThresholdingHook = RelativeConfidenceThresholdingHook
+
+
+class AdaMatchDistAlignHook(EmaDistributionAlignmentHook):
+    """USB AdaMatch가 쓰는 EMA distribution alignment 조합."""
+
+    hook_name: str = "adamatch_dist_align_ema"
+
+    def __init__(
+        self,
+        *,
+        num_classes: int,
+        momentum: float = 0.999,
+    ) -> None:
+        super().__init__(
+            num_classes=num_classes,
+            momentum=momentum,
+            p_target_type="model",
+        )
 
 
 class AdaMatchAlgorithm:
@@ -277,6 +300,9 @@ class _AdaMatchMaskingAlgorithm:
     display_name="AdaMatch",
     required_views=USB_MULTIVIEW_REQUIRED_VIEWS,
     default_uses_labeled_batches=True,
+    runtime_requirements=QuerySslRuntimeRequirements(
+        algorithm_state_surface=frozenset({QUERY_SSL_ALGORITHM_STATE_DISTRIBUTION_EMA}),
+    ),
 )
 def build_adamatch_algorithm(parameters: Mapping[str, Any]) -> AdaMatchAlgorithm:
     """Hydra method parameter mapping으로 AdaMatch algorithm을 만든다."""

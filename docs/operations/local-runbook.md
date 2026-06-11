@@ -185,9 +185,10 @@ uv run python scripts/workflows/datasets/materialize_query_ssl_views.py \
   execution_context/query_view=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
 ```
 
-Teacher bootstrap은 별도 seed entrypoint가 아니라 중앙 SSL
-`input_mode=teacher_bootstrap` 내부 source 설정으로 조립한다. 중앙 SSL method 비교
-기본값은 `initial_checkpoint=none`이다.
+Teacher bootstrap은 public central SSL experiment entrypoint가 아니며 scripts
+compatibility workflow에서도 제거했다. 중앙 SSL method 비교 기본값은
+`initial_checkpoint=none`이다. 새 teacher source가 필요하면 method hook/recipe로
+정의한다.
 
 PEFT supervised baseline:
 
@@ -195,12 +196,20 @@ PEFT supervised baseline:
 uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py
 ```
 
+Full text encoder supervised-only baseline:
+
+```bash
+uv run python scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py \
+  query_data_selection.labeled=szegeelim_general4 \
+  query_data_selection.validation=ourafla_reddit \
+  query_data_selection.test=ourafla_reddit
+```
+
 USB PseudoLabel baseline:
 
 ```bash
 uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
-  strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1 \
-  output_dir=runs/run_peft_ssl_control_pseudolabel
+  strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1
 ```
 
 FixMatch baseline:
@@ -210,6 +219,8 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py
 ```
 
 중앙 SSL의 labeled/unlabeled source는 `query_data_selection.*`으로 바꾼다.
+`input_mode`, `teacher_provider`, `pseudo_label_selection`은 central SSL public
+Hydra group이 아니다.
 
 ```bash
 uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
@@ -220,11 +231,45 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
 ```
 
 중앙 SSL smoke/test 실행은 `run_controls/central_ssl/budget=smoke`를 사용한다.
-이 경우 산출물은 `runs/_smoke/run_peft_ssl_control/...` 또는
-`runs/_smoke/run_peft_supervised_control` 아래에 저장되어 main run과 섞이지
-않는다.
+이 경우 산출물은 `runs/_smoke/central/ssl/peft_classifier/...`,
+`runs/_smoke/central/supervised/peft_classifier`,
+`runs/_smoke/central/supervised/full_text_encoder` 아래에 저장되어 main run과
+섞이지 않는다. 중앙 supervised/SSL의 best 모델 artifact도 해당 run 폴더의
+`artifacts/` 아래에 저장한다. PEFT는 `artifacts/adapter/`와
+`artifacts/classifier_head.pt`, full text encoder는 `artifacts/model/`과
+`artifacts/classifier_head.pt`를 쓴다. PEFT supervised baseline은 epoch마다
+`checkpoints/epoch_000N_step_XXXXXX/manifest.json`을 남기며, 이 manifest는
+central SSL warm-start의 `query_adaptation_initial_checkpoint.manifest_path`로
+사용할 수 있다.
+중앙 supervised/SSL main preset의 train batch 기본값은 `8`이다. 중앙 SSL 학습
+loader는 기본적으로 마지막 partial batch를 버린다
+(`drop_last_train_batches=true`, `drop_last_unlabeled_batches=true`). 이는
+MixMatch처럼 labeled/unlabeled batch 크기 동일성이 필요한 method와 같은 조건을
+유지하기 위한 정책이며, eval loader에는 적용하지 않는다.
 기본 dashboard/index ingest(`--runs-root runs`)는 `runs/_smoke/**` report를
 제외한다.
+
+중앙 SSL figure 산출(runs/figures):
+
+```bash
+uv run python scripts/experiments/central/ssl_control/build_method_projection_figure.py \
+  --run supervised=<supervised_run_dir>/reports/report.json \
+  --run fixmatch=<fixmatch_run_dir>/reports/report.json \
+  --split test \
+  --output-root runs/figures/central_ssl/method_projection
+```
+
+특정 폴더 안의 모든 방법론 결과를 한 번에 쓰려면 아래처럼 지정한다.
+
+```bash
+uv run python scripts/experiments/central/ssl_control/build_method_projection_figure.py \
+  --run-dir runs/central/ssl/peft_classifier/labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit \
+  --split test \
+  --output-root runs/figures/central_ssl/method_projection
+```
+
+예시 실행 후 stdout에 `output_dir=<...>`와 `projection_manifest=<...>`가 표시되고,
+`<output_dir>/test/*.method_projection.png`가 생성된다.
 
 FL simulation:
 
@@ -237,8 +282,9 @@ uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
 FL SSL seed sweep smoke:
 
 ```bash
-uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py \
+uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
   run_controls/fl_ssl/budget=smoke \
+  sweep.axis=seed \
   federated_run_budget.rounds=1
 ```
 
@@ -249,11 +295,24 @@ FL SSL runner는 accidental long run을 막기 위해 총 예정 communication r
 `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 같이 override한다.
 
 새 wiring이나 method 검증은 먼저 `1-round` smoke 또는 `5-round` reduced run으로
-확인한다. 현재 FL SSL reduced preset은 `run_controls/fl_ssl/budget=reduced`이며
-`10 clients`, `5 rounds`, `runs/fl_ssl` root를 쓴다. smoke preset 산출물은
+확인한다. 현재 FL SSL train batch 기본값은 `8`이고, reduced preset은
+`run_controls/fl_ssl/budget=reduced`이며 `10 clients`, `5 rounds`,
+`runs/fl_ssl` root를 쓴다. smoke preset 산출물은
 `runs/_smoke/fl_ssl` 아래에 쌓아 웹/논문용 run과 섞지 않는다. full-budget 실행은
 후보와 비교 조건을 명시한 뒤 `budget=main`과
 필요한 long-run ack를 함께 지정한다.
+
+Live FSSL runtime translation smoke:
+
+```bash
+uv run pytest tests/integration/test_live_fssl_runtime_translation.py
+```
+
+이 smoke는 성능 숫자나 논문 metric을 검증하지 않는다. main_server가 method-owned
+FSSL task에 `fssl_execution`/`fssl_capability_plan` snapshot을 싣고, agent
+current-task runner가 같은 shared contract를 검증한 뒤 local runtime service로
+라우팅하는지만 확인한다. live capability를 넓힐 때는 manual Query SSL -> method-owned
+no-peer -> peer context -> partitioned update 순서로 작은 smoke를 추가한다.
 
 기존 FL SSL 산출물 metadata 검증:
 
@@ -361,12 +420,12 @@ ps aux | rg "pytest|uv run python|uvicorn|train_peft|run_federated"
 | 위치 | 용도 |
 |---|---|
 | `data/datasets/` | 새 dataset별 raw/mapped/split/query_ssl/view 산출물 |
-| `data/artifacts/` | 새 classifier head, LoRA adapter, prototype pack 등 재사용 산출물 |
+| `data/artifacts/` | 새 classifier head, LoRA adapter 등 재사용 산출물 |
 | `data/cache/` | 새 모델/cache/translation/query view cache |
-| `data/processed/` | legacy dataset/model/prototype 산출물 |
+| `data/processed/` | legacy dataset/model 산출물 |
 | `runs/` | 실험 실행별 report/log/artifact |
-| `agent/state/` | local prototype pack, query/scored event 등 agent state |
-| `main_server/state/` | server prototype/model/round state |
+| `agent/state/` | query/scored event 등 agent state |
+| `main_server/state/` | server model/round state |
 | `hf_cache/` | legacy model cache |
 | `tmp/` | 임시 비교/외부 reference checkout |
 

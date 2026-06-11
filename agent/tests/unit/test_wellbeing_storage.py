@@ -5,6 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agent.src.contracts.family_access_contracts import FamilyAccessRole
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalRange,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
 from agent.src.infrastructure.repositories.family_access_repository import (
     FamilyAccessRepository,
     FamilyAccessState,
@@ -19,14 +27,6 @@ from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import 
 from agent.src.services.wellbeing.family_access_service import FamilyAccessService
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
-from shared.src.contracts.family_access_contracts import FamilyAccessRole
-from shared.src.contracts.wellbeing_signal_contracts import (
-    WellbeingSignalConfidence,
-    WellbeingSignalLevel,
-    WellbeingSignalRange,
-    WellbeingSignalSummaryPayload,
-    WellbeingSignalTrend,
-)
 
 
 def _build_summary_payload(
@@ -124,6 +124,21 @@ def test_wellbeing_services_prefer_repository_data(tmp_path: Path) -> None:
     )
     assert len(timeseries.points) == 1
     assert timeseries.points[0].signal_score == 58.0
+
+
+def test_wellbeing_services_return_low_data_when_repository_is_empty(
+    tmp_path: Path,
+) -> None:
+    repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+
+    summary = WellbeingSummaryService(repository=repository).get_current_summary()
+    timeseries = WellbeingTimeseriesService(repository=repository).get_timeseries(
+        requested_range=WellbeingSignalRange.LAST_7_DAYS
+    )
+
+    assert summary.low_data is True
+    assert summary.signal_score == 0.0
+    assert timeseries.points == ()
 
 
 def test_family_access_service_persists_failed_attempts_in_repository(

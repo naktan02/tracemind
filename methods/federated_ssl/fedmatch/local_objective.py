@@ -14,11 +14,13 @@ from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
     resolve_original_scenario_spec,
 )
-from methods.federated_ssl.local_objective import (
+from methods.federated_ssl.hooks.local_objective import (
     FederatedSslLocalObjectiveSpec,
     PartitionedObjectiveParameterTensors,
     TensorLocalObjectiveResult,
 )
+from methods.ssl.hooks.consistency import consistency_cross_entropy_loss
+from methods.ssl.hooks.masking import build_fixed_threshold_mask
 
 FEDMATCH_LOCAL_OBJECTIVE_NAME = "fedmatch_sigma_psi_local_objective"
 FEDMATCH_CONFIDENCE_FILTER = "confidence_filter"
@@ -203,8 +205,9 @@ class FedMatchPartitionedTensorObjective:
         weak_logits: Tensor,
     ) -> Tensor:
         weak_probabilities = torch.softmax(weak_logits.detach(), dim=-1)
-        return torch.max(weak_probabilities, dim=-1).values >= (
-            self.parameters.confidence_threshold
+        return _build_confidence_mask_from_probabilities(
+            probabilities=weak_probabilities,
+            confidence_threshold=self.parameters.confidence_threshold,
         )
 
     def compute_unsupervised_loss(
@@ -346,9 +349,9 @@ def compute_fedmatch_unsupervised_loss(
 
     weak_probabilities = torch.softmax(weak_logits, dim=-1)
     weak_probabilities_for_selection = weak_probabilities.detach()
-    confidence_mask = (
-        torch.max(weak_probabilities_for_selection, dim=-1).values
-        >= parameters.confidence_threshold
+    confidence_mask = _build_confidence_mask_from_probabilities(
+        probabilities=weak_probabilities_for_selection,
+        confidence_threshold=parameters.confidence_threshold,
     )
     selected_count = int(confidence_mask.sum().item())
     selected_weak_probabilities = weak_probabilities[confidence_mask]
@@ -518,6 +521,17 @@ def _validate_selected_strong_logits(
         raise ValueError("selected_strong_logits class count must match weak_logits.")
 
 
+def _build_confidence_mask_from_probabilities(
+    *,
+    probabilities: Tensor,
+    confidence_threshold: float,
+) -> Tensor:
+    return build_fixed_threshold_mask(
+        probs_x_ulb_w=probabilities,
+        p_cutoff=confidence_threshold,
+    ).bool()
+
+
 def _normalize_selected_helper_probability_tensor(
     *,
     selected_helper_weak_probabilities: Tensor | Sequence[Tensor] | None,
@@ -570,10 +584,9 @@ def _compute_agreement_pseudo_label_loss(
         selected_weak_probabilities=selected_weak_probabilities,
         selected_helper_probabilities=selected_helper_probabilities,
     )
-    loss = F.cross_entropy(
-        selected_strong_logits,
-        pseudo_labels,
-        reduction="mean",
+    loss = consistency_cross_entropy_loss(
+        logits=selected_strong_logits,
+        targets=pseudo_labels,
     )
     return loss * lambda_a, pseudo_labels
 

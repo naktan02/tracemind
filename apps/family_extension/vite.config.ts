@@ -7,8 +7,17 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        popup: "index.html",
+        popup: "popup.html",
+        child: "index.html",
         parent: "parent.html",
+        collectorDebug: "collector-debug.html",
+        content: "src/collector/content.ts",
+        background: "src/extension/background.ts",
+      },
+      output: {
+        entryFileNames: "assets/[name].js",
+        chunkFileNames: "assets/[name].js",
+        assetFileNames: "assets/[name][extname]",
       },
     },
   },

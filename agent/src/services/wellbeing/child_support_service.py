@@ -6,6 +6,16 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from agent.src.contracts.child_support_contracts import (
+    ChildSupportAssistantMode,
+    ChildSupportConversationRequestPayload,
+    ChildSupportConversationResponsePayload,
+    ChildSupportProactivePromptPayload,
+    ChildSupportSafetyLevel,
+    ChildSupportScopeStatus,
+    ChildSupportSuggestionPayload,
+)
+from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
     ChildSupportMessageRecord,
@@ -30,16 +40,6 @@ from agent.src.services.wellbeing.child_support_safety_policy import (
     ChildSupportSafetyPolicy,
 )
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from shared.src.contracts.child_support_contracts import (
-    ChildSupportAssistantMode,
-    ChildSupportConversationRequestPayload,
-    ChildSupportConversationResponsePayload,
-    ChildSupportProactivePromptPayload,
-    ChildSupportSafetyLevel,
-    ChildSupportScopeStatus,
-    ChildSupportSuggestionPayload,
-)
-from shared.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 
 DISCLOSURE_NOTICE = (
     "TraceMind는 진단이나 상담을 대신하지 않습니다. 위험하거나 혼자 감당하기 "
@@ -246,20 +246,6 @@ def _build_llm_prompt(
             f"- action_tip: {summary.action_tip}"
         )
 
-    query_lines = [
-        (
-            f"- {item.occurred_at.isoformat()} | "
-            f"query='{item.raw_text_excerpt}' | "
-            f"label={item.predicted_label} | confidence={item.confidence}"
-        )
-        for item in context.recent_queries
-    ]
-    query_block = (
-        "최근 로컬 query buffer 요약:\n" + "\n".join(query_lines)
-        if query_lines
-        else "최근 로컬 query buffer 요약: 없음"
-    )
-
     message_lines = [
         f"- {record.role}: {record.text}" for record in context.recent_messages[-6:]
     ]
@@ -311,7 +297,6 @@ def _build_llm_prompt(
         "의미를 지켜 자연스럽게 답한다.\n"
         f"fallback_reference:\n{plan.fallback_text}\n\n"
         f"{summary_block}\n\n"
-        f"{query_block}\n\n"
         f"{history_block}\n\n"
         f"아이의 새 메시지: {message}\n\n"
         "아이에게 바로 보여줄 답변만 작성해라."

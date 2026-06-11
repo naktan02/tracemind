@@ -1,0 +1,571 @@
+{
+  "schema_version": "collector_replay.v1",
+  "cases": [
+    {
+      "name": "stale-compositionend-eottae",
+      "expectedFinalTexts": ["어때"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "어ㄸ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄸ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "어ㄸ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "때",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "pending-flush-before-eottae-commit",
+      "expectedFinalTexts": ["넌 어때"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "넌 어",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "넌 어",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "넌 어ㄸ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄸ",
+          "isCompositionUpdate": true,
+          "flushAfter": true
+        },
+        {
+          "snapshotText": "넌 어ㄸ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "때",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "pending-flush-before-eottae-commit-without-stable-prefix",
+      "expectedFinalTexts": ["넌 어때"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "넌 어ㄸ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄸ",
+          "isCompositionUpdate": true,
+          "flushAfter": true
+        },
+        {
+          "snapshotText": "넌 어ㄸ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "때",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "non-composing-input-good-eunde",
+      "expectedFinalTexts": ["좋은데"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "좋ㅇ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㅇ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "좋ㅇ은데",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "은데",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "non-composing-trailing-placeholder-before-kkang",
+      "expectedFinalTexts": ["과연너무뺄까될깡"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "과연너무뺄까될",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "과연너무뺄까될",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "과연너무뺄까될ㄲ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄲ",
+          "isCompositionUpdate": false,
+          "flushAfter": true
+        },
+        {
+          "snapshotText": "과연너무뺄까될ㄲ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "깡",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "non-composing-trailing-placeholder-with-editor-sentinel-before-kkang",
+      "expectedFinalTexts": ["너무무서워아아앙깡"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "너무무서워아아앙",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "너무무서워아아앙",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "너무무서워아아앙ㄲ\u200b",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄲ",
+          "isCompositionUpdate": false,
+          "flushAfter": true
+        },
+        {
+          "snapshotText": "너무무서워아아앙ㄲ\u200b",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "깡",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "non-composing-null-data-before-yeon",
+      "expectedFinalTexts": ["과연"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "과",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "과",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "과여",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "여",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "과여",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": null,
+          "isCompositionUpdate": false,
+          "flushAfter": true
+        },
+        {
+          "snapshotText": "과여",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "연",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "space-preserved-eodeonde",
+      "expectedFinalTexts": ["넌 어던데"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "넌 어",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "넌 어",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "넌 어ㄷ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄷ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "넌 어ㄷ던데",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "던데",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "null-data-normalizes-eotteonde",
+      "expectedFinalTexts": ["넌 어떤데"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "넌 어",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "넌 어",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "넌 어ㄸ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄸ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "넌 어ㄸ떤데",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": null,
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "null-data-normalizes-joeunde",
+      "expectedFinalTexts": ["좋은데"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "좋",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "좋",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "좋ㅇ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㅇ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "좋ㅇ은데",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": null,
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "full-committed-text-jalhane",
+      "expectedFinalTexts": ["잘하네"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "잘하",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "잘하",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "잘하ㄴ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄴ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "잘하ㄴ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "잘하네",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "onset-placeholder-to-syllable",
+      "expectedFinalTexts": ["가"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "ㄱ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄱ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "ㄱ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "가",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "final-consonant-added",
+      "expectedFinalTexts": ["간"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "가ㄴ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄴ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "가ㄴ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "간",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "final-consonant-split-to-next-syllable",
+      "expectedFinalTexts": ["가나"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "가",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "가",
+          "isCompositionUpdate": false
+        },
+        {
+          "snapshotText": "간",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄴ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "간",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "가나",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "compound-vowel-syllable",
+      "expectedFinalTexts": ["왜"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "오ㅐ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㅐ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "오ㅐ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "왜",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "compound-vowel-dwae",
+      "expectedFinalTexts": ["돼"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "되ㅏ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㅏ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "되ㅏ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "돼",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "compound-final-syllable",
+      "expectedFinalTexts": ["읽"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "일ㄱ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄱ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "일ㄱ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "읽",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "compound-final-anj",
+      "expectedFinalTexts": ["앉"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "안ㅈ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㅈ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "안ㅈ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "앉",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "compound-final-eops",
+      "expectedFinalTexts": ["없"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "업ㅅ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㅅ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "업ㅅ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "없",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "compound-final-gaps",
+      "expectedFinalTexts": ["값"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "갑ㅅ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㅅ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "갑ㅅ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "값",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "compound-vowel-and-final-gwaen",
+      "expectedFinalTexts": ["괜"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "괘ㄴ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄴ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "괘ㄴ",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "괜",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "final-placeholder-expands-after-past-tense",
+      "expectedFinalTexts": ["했다"],
+      "expectedDeletedTexts": [null],
+      "events": [
+        {
+          "snapshotText": "했ㄷ",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㄷ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "했ㄷ다",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "다",
+          "isCompositionUpdate": false
+        }
+      ]
+    },
+    {
+      "name": "middle-insert-after-baseline",
+      "expectedFinalTexts": ["오늘 입니다", "좋은"],
+      "expectedDeletedTexts": [null, null],
+      "events": [
+        {
+          "snapshotText": "오늘 입니다",
+          "eventType": "compositionend",
+          "inputType": null,
+          "insertedText": "오늘 입니다",
+          "isCompositionUpdate": false,
+          "flushAfter": true
+        },
+        {
+          "snapshotText": "오늘 좋ㅇ입니다",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "ㅇ",
+          "isCompositionUpdate": true
+        },
+        {
+          "snapshotText": "오늘 좋ㅇ은입니다",
+          "eventType": "input",
+          "inputType": "insertCompositionText",
+          "insertedText": "은",
+          "isCompositionUpdate": false
+        }
+      ]
+    }
+  ]
+}

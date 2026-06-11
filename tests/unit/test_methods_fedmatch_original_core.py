@@ -34,16 +34,14 @@ from methods.federated_ssl.fedmatch.original_spec import (
     fedmatch_original_parameter_mapping,
     resolve_original_scenario_spec,
 )
-from methods.federated_ssl.fedmatch.parameter_routing import (
+from methods.federated_ssl.fedmatch.partitioning import (
     FEDMATCH_PSI_PARTITION,
     FEDMATCH_SIGMA_PARTITION,
-    trace_parameter_mapping,
-    upload_partitions_for_scenario,
-)
-from methods.federated_ssl.fedmatch.partitioned_runtime_plan import (
     build_fedmatch_partitioned_runtime_plan,
     normalize_fedmatch_scenario_name,
     resolve_fedmatch_psi_factor,
+    trace_parameter_mapping,
+    upload_partitions_for_scenario,
 )
 from methods.federated_ssl.method_parameters import (
     build_federated_ssl_method_parameter_snapshot,
@@ -451,6 +449,10 @@ def test_fedmatch_partitioned_runtime_plan_owns_sigma_psi_routing() -> None:
     assert plan.partition_names == (FEDMATCH_SIGMA_PARTITION, FEDMATCH_PSI_PARTITION)
     assert plan.supervised_partition == FEDMATCH_SIGMA_PARTITION
     assert plan.unsupervised_partition == FEDMATCH_PSI_PARTITION
+    assert plan.partition_hook.hook_name == "partitioned_update"
+    assert plan.partition_hook.partition_names == plan.partition_names
+    assert plan.partition_hook.upload_partitions == plan.upload_partitions
+    assert plan.partition_hook.aggregate_partitions == plan.upload_partitions
     assert plan.upload_partitions == (FEDMATCH_PSI_PARTITION,)
     assert not plan.emit_supervised_partition
     assert plan.l1_sparse_partitions == (FEDMATCH_PSI_PARTITION,)

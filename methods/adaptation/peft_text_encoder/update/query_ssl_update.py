@@ -92,7 +92,6 @@ def build_query_ssl_peft_encoder_update_payload(
         config=peft_config,
         label_schema=labels,
         example_count=len(labeled_rows) + len(unlabeled_rows),
-        label_counts=_build_labeled_row_label_counts(labeled_rows),
         artifacts=PeftEncoderTrainArtifacts(
             peft_adapter_delta_artifact_ref=peft_adapter_delta_artifact_ref,
             classifier_head_delta_artifact_ref=classifier_head_delta_artifact_ref,
@@ -175,13 +174,3 @@ def build_query_ssl_peft_encoder_client_metrics(
         if str(key).startswith("train_"):
             metrics[f"query_ssl_{key}"] = numeric_value
     return metrics
-
-
-def _build_labeled_row_label_counts(
-    labeled_rows: Sequence[LabeledQueryRow],
-) -> dict[str, int]:
-    label_counts: dict[str, int] = {}
-    for row in labeled_rows:
-        label = str(row["mapped_label_4"])
-        label_counts[label] = label_counts.get(label, 0) + 1
-    return label_counts

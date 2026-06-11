@@ -1,4 +1,0 @@
-# @package local_ssl_policy
-
-name: profile_pseudo_label
-parameter_source: local_update_profile

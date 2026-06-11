@@ -6,16 +6,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
-from methods.federated_ssl.diagnostic_sampling import (
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.diagnostics.sampling import (
     DIAGNOSTIC_VIEW_DETERMINISTIC_RANDOM,
     PEER_PROBE_LABEL_BALANCED,
     normalize_sampling_policy_name,
 )
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
+from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
 from scripts.experiments.fl_ssl.federated_simulation import (
     simulation_result_models,
 )
@@ -23,7 +23,6 @@ from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN = "runtime_split_from_train"
@@ -75,16 +74,7 @@ class FederatedValidationConfig:
     similarity_name: str
     scorer_backend_name: str
     score_policy_name: str | None
-    confidence_threshold: float
-    margin_threshold: float
     score_top_k: int | None = None
-
-
-@dataclass(slots=True)
-class FederatedDiagnosticsConfig:
-    """selection dump 저장 설정."""
-
-    dump_dir_name: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -327,11 +317,14 @@ class FederatedRoundRuntimeConfig:
     runtime_payloads: dict[str, object] = field(default_factory=dict)
     round_runtime_payload_builder: str | None = None
     local_objective_executors: tuple[str, ...] = ()
+    client_round_runtime: dict[str, str] = field(default_factory=dict)
     server_step_executors: dict[str, str] = field(default_factory=dict)
+    server_round_runtime: dict[str, str] = field(default_factory=dict)
     initial_state_builder: str | None = None
     validation_evaluator: str | None = None
     final_projection_builder: str | None = None
     transient_resource_cleaner: str | None = None
+    release_transient_model_cache_after_client: bool = False
 
     def __init__(
         self,
@@ -343,11 +336,14 @@ class FederatedRoundRuntimeConfig:
         runtime_payloads: Mapping[str, object] | None = None,
         round_runtime_payload_builder: str | None = None,
         local_objective_executors: tuple[str, ...] = (),
+        client_round_runtime: Mapping[str, str] | None = None,
         server_step_executors: Mapping[str, str] | None = None,
+        server_round_runtime: Mapping[str, str] | None = None,
         initial_state_builder: str | None = None,
         validation_evaluator: str | None = None,
         final_projection_builder: str | None = None,
         transient_resource_cleaner: str | None = None,
+        release_transient_model_cache_after_client: bool = False,
     ) -> None:
         self.payload_adapter_kind = payload_adapter_kind
         self.aggregation_backend_name = aggregation_backend_name
@@ -356,6 +352,10 @@ class FederatedRoundRuntimeConfig:
         self.runtime_payloads = dict(runtime_payloads or {})
         self.round_runtime_payload_builder = round_runtime_payload_builder
         self.local_objective_executors = local_objective_executors
+        self.client_round_runtime = _normalize_round_runtime_callable_mapping(
+            client_round_runtime or {},
+            field_name="client_round_runtime",
+        )
         self.server_step_executors = {
             _normalize_round_runtime_name(
                 key,
@@ -363,10 +363,17 @@ class FederatedRoundRuntimeConfig:
             ): str(value)
             for key, value in (server_step_executors or {}).items()
         }
+        self.server_round_runtime = _normalize_round_runtime_callable_mapping(
+            server_round_runtime or {},
+            field_name="server_round_runtime",
+        )
         self.initial_state_builder = initial_state_builder
         self.validation_evaluator = validation_evaluator
         self.final_projection_builder = final_projection_builder
         self.transient_resource_cleaner = transient_resource_cleaner
+        self.release_transient_model_cache_after_client = bool(
+            release_transient_model_cache_after_client
+        )
         self.__post_init__()
 
     def __post_init__(self) -> None:
@@ -394,6 +401,26 @@ class FederatedRoundRuntimeConfig:
             return self.runtime_payloads.get(self.runtime_payload_key)
         return self.runtime_payloads.get(self.update_family_name)
 
+    def client_round_callable_path(self, callable_name: str) -> str | None:
+        """client round bridge가 실행할 update-family callable path를 반환한다."""
+
+        return self.client_round_runtime.get(
+            _normalize_round_runtime_name(
+                callable_name,
+                field_name="client_round_runtime key",
+            )
+        )
+
+    def server_round_callable_path(self, callable_name: str) -> str | None:
+        """server round bridge가 실행할 update-family callable path를 반환한다."""
+
+        return self.server_round_runtime.get(
+            _normalize_round_runtime_name(
+                callable_name,
+                field_name="server_round_runtime key",
+            )
+        )
+
     def server_step_executor_for_policy(self, policy_name: object) -> str | None:
         """선택된 server step policy를 이 update family runtime executor로 해석한다."""
 
@@ -408,80 +435,27 @@ class FederatedRoundRuntimeConfig:
         )
 
 
+def _normalize_round_runtime_callable_mapping(
+    source: Mapping[str, str],
+    *,
+    field_name: str,
+) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for key, value in source.items():
+        normalized_key = _normalize_round_runtime_name(
+            str(key),
+            field_name=f"{field_name} key",
+        )
+        normalized_value = _optional_str(value)
+        if normalized_value is None:
+            raise ValueError(f"round_runtime.{field_name}.{key} must not be empty.")
+        result[normalized_key] = normalized_value
+    return result
+
+
 @dataclass(frozen=True, slots=True)
-class FederatedQuerySslObjectiveConfig:
+class FederatedQuerySslObjectiveConfig(QuerySslObjectiveRuntimeConfig):
     """manual FL 조합이 실제 Query SSL algorithm을 가리키는지 나타내는 설정."""
-
-    method_name: str
-    algorithm_name: str
-    parameters: Mapping[str, object] = field(default_factory=dict)
-    strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY
-    unlabeled_batch_size: int | None = None
-
-    @classmethod
-    def from_objective_config(
-        cls,
-        objective_config: TrainingObjectiveConfig | None,
-    ) -> "FederatedQuerySslObjectiveConfig | None":
-        """Training objective extras에서 query_ssl.* 축을 읽는다."""
-
-        if objective_config is None:
-            return None
-        extras = objective_config.get_component_extras("query_ssl")
-        method_name = _optional_str(extras.get("method_name"))
-        algorithm_name = _optional_str(extras.get("algorithm_name"))
-        if method_name is None and algorithm_name is None:
-            return None
-        if method_name is None or algorithm_name is None:
-            raise ValueError(
-                "query_ssl objective extras require both method_name and "
-                "algorithm_name."
-            )
-        unlabeled_batch_size_raw = extras.get("unlabeled_batch_size")
-        unlabeled_batch_size = (
-            None if unlabeled_batch_size_raw is None else int(unlabeled_batch_size_raw)
-        )
-        if unlabeled_batch_size is not None and unlabeled_batch_size <= 0:
-            raise ValueError("query_ssl.unlabeled_batch_size must be positive.")
-        return cls(
-            method_name=method_name,
-            algorithm_name=algorithm_name,
-            parameters={},
-            strong_view_policy=(
-                _optional_str(extras.get("strong_view_policy"))
-                or DEFAULT_STRONG_VIEW_POLICY
-            ),
-            unlabeled_batch_size=unlabeled_batch_size,
-        )
-
-    @classmethod
-    def from_mapping(
-        cls,
-        source: Mapping[str, object],
-        *,
-        strong_view_policy: str = DEFAULT_STRONG_VIEW_POLICY,
-    ) -> "FederatedQuerySslObjectiveConfig":
-        """Hydra query_ssl_method mapping을 typed config로 해석한다."""
-
-        method_name = _optional_str(source.get("name"))
-        algorithm_name = _optional_str(source.get("algorithm_name"))
-        if method_name is None or algorithm_name is None:
-            raise ValueError("query_ssl_method requires name and algorithm_name.")
-        parameters = {
-            str(key): value
-            for key, value in source.items()
-            if str(key) not in {"name", "algorithm_name"}
-        }
-        unlabeled_batch_size = parameters.get("unlabeled_batch_size")
-        return cls(
-            method_name=method_name,
-            algorithm_name=algorithm_name,
-            parameters=parameters,
-            strong_view_policy=strong_view_policy,
-            unlabeled_batch_size=(
-                None if unlabeled_batch_size is None else int(unlabeled_batch_size)
-            ),
-        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -580,7 +554,6 @@ class SimulationRunRequest:
     shard_policy: FederatedShardPolicyConfig
     training_task_config: FederatedTrainingTaskConfig
     validation_config: FederatedValidationConfig
-    diagnostics_config: FederatedDiagnosticsConfig
     test_rows: list[LabeledQueryRow] = field(default_factory=list)
     artifact_persistence_config: FederatedArtifactPersistenceConfig = field(
         default_factory=FederatedArtifactPersistenceConfig

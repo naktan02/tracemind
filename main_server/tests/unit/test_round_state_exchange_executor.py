@@ -15,6 +15,7 @@ from main_server.src.services.federation.rounds.boundary.models import (
 )
 from main_server.src.services.federation.rounds.round_state_exchange.executor import (
     DefaultRoundStateExchangeExecutor,
+    build_peer_context_task_payload,
 )
 from methods.federated_ssl.base import (
     FederatedSslLocalStepSpec,
@@ -70,7 +71,7 @@ def _build_record() -> RoundRecord:
         published_at=fixed_time,
         artifact_kind="shared_adapter_state",
         artifact_ref="shared_adapter_state::rev_000",
-        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
+        auxiliary_artifact_versions={"calibration_set": "calib_000"},
         training_scope="adapter_only",
         training_enabled=True,
     )
@@ -178,6 +179,57 @@ def test_default_round_state_exchange_rejects_missing_required_metric() -> None:
             method_descriptor=descriptor,
             record=_build_record(),
         )
+
+
+def test_default_round_state_exchange_summarizes_peer_context() -> None:
+    descriptor = _build_descriptor(
+        FederatedSslRoundStateExchangeSpec(
+            exchange_name="peer_context",
+            required_client_metric_keys=("mean_confidence",),
+            summary_metric_prefix="fedmatch",
+            requires_custom_exchange=True,
+        )
+    )
+
+    result = DefaultRoundStateExchangeExecutor().summarize(
+        method_descriptor=descriptor,
+        record=_build_record(),
+    )
+
+    assert result.exchange_name == "peer_context"
+    assert result.summary_metrics == {
+        "fedmatch.update_count": 2.0,
+        "fedmatch.example_count": 6.0,
+        "fedmatch.mean_confidence.available_count": 2.0,
+        "fedmatch.mean_confidence.mean": pytest.approx(0.8),
+    }
+
+
+def test_peer_context_task_payload_uses_previous_round_updates() -> None:
+    descriptor = _build_descriptor(
+        FederatedSslRoundStateExchangeSpec(
+            exchange_name="peer_context",
+            required_client_metric_keys=("mean_confidence",),
+            summary_metric_prefix="fedmatch",
+            requires_custom_exchange=True,
+        )
+    )
+
+    payload = build_peer_context_task_payload(
+        method_descriptor=descriptor,
+        source_round=_build_record(),
+    )
+
+    assert payload["schema_version"] == "peer_context_task.v1"
+    assert payload["source_round_id"] == "round_001"
+    assert payload["warmup"] is False
+    assert payload["summary_metrics"] == {
+        "fedmatch.update_count": 2.0,
+        "fedmatch.example_count": 6.0,
+        "fedmatch.mean_confidence.available_count": 2.0,
+        "fedmatch.mean_confidence.mean": pytest.approx(0.8),
+    }
+    assert payload["client_contexts"][0]["client_id"] == "update_001"
 
 
 def test_default_round_state_exchange_rejects_custom_exchange() -> None:

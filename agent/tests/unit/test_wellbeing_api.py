@@ -16,6 +16,19 @@ from agent.src.api.main import (
     create_app,
     load_family_extension_allowed_origins_from_env,
 )
+from agent.src.contracts.family_access_contracts import (
+    FamilyAccessRole,
+    FamilySetupRequestPayload,
+    FamilyUnlockRequestPayload,
+)
+from agent.src.contracts.wellbeing_signal_contracts import (
+    ParentUnlockRequestPayload,
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalRange,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
 from agent.src.infrastructure.repositories.family_access_repository import (
     FamilyAccessRepository,
 )
@@ -23,19 +36,6 @@ from agent.src.services.wellbeing.family_access_service import FamilyAccessServi
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import (
     WellbeingTimeseriesService,
-)
-from shared.src.contracts.family_access_contracts import (
-    FamilyAccessRole,
-    FamilySetupRequestPayload,
-    FamilyUnlockRequestPayload,
-)
-from shared.src.contracts.wellbeing_signal_contracts import (
-    ParentUnlockRequestPayload,
-    WellbeingSignalConfidence,
-    WellbeingSignalLevel,
-    WellbeingSignalRange,
-    WellbeingSignalSummaryPayload,
-    WellbeingSignalTrend,
 )
 
 
@@ -66,7 +66,7 @@ def test_wellbeing_timeseries_api_returns_requested_range() -> None:
     )
 
     assert response.range == WellbeingSignalRange.LAST_14_DAYS
-    assert len(response.points) == 14
+    assert response.points == ()
 
 
 def test_parent_unlock_api_grants_valid_pin() -> None:

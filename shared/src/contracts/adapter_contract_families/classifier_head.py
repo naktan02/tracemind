@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
-from typing import ClassVar
+from collections.abc import Mapping, Sequence
+from typing import ClassVar, Literal, TypeAlias
 
 from pydantic import Field, model_validator
 
@@ -21,6 +21,8 @@ from .base import (
 )
 
 CLASSIFIER_HEAD_ADAPTER_KIND = AdapterKind.CLASSIFIER_HEAD.value
+LINEAR_CLASSIFIER_HEAD_KIND = "linear"
+ClassifierHeadKind: TypeAlias = Literal["linear"]
 CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT = "classifier_head_update"
 CLASSIFIER_HEAD_ACCEPTED_UPDATE_PAYLOAD_FORMATS = (
     CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
@@ -28,15 +30,22 @@ CLASSIFIER_HEAD_ACCEPTED_UPDATE_PAYLOAD_FORMATS = (
 
 
 class ClassifierHeadAdapterStatePayload(SharedAdapterStatePayload):
-    """고정 임베딩 위 category별 선형 분류 head를 공유하는 family state."""
+    """고정 임베딩 위 category별 linear classifier head를 공유하는 family state."""
 
     schema_version: ClassifierHeadStateSchemaVersion = Field(
         default=CLASSIFIER_HEAD_STATE_V1,
         description="Classifier head state payload contract 버전.",
     )
     adapter_kind: str = Field(default=CLASSIFIER_HEAD_ADAPTER_KIND)
+    head_kind: ClassifierHeadKind = Field(
+        default=LINEAR_CLASSIFIER_HEAD_KIND,
+        description=(
+            "classifier_head.v1 payload가 표현하는 concrete head kind. "
+            "v1은 category별 weight/bias를 갖는 linear head만 표현한다."
+        ),
+    )
     label_weights: dict[str, list[float]] = Field(
-        description="카테고리별 선형 head weight 벡터."
+        description="카테고리별 linear head weight 벡터."
     )
     label_biases: dict[str, float] = Field(
         default_factory=dict,
@@ -125,13 +134,20 @@ class ClassifierHeadAdapterStatePayload(SharedAdapterStatePayload):
 
 
 class ClassifierHeadAdapterUpdatePayload(SharedAdapterUpdatePayload):
-    """Classifier-head family update payload."""
+    """Linear classifier-head family update payload."""
 
     schema_version: ClassifierHeadDeltaSchemaVersion = Field(
         default=CLASSIFIER_HEAD_DELTA_V1,
         description="Classifier head update payload contract 버전.",
     )
     adapter_kind: str = Field(default=CLASSIFIER_HEAD_ADAPTER_KIND)
+    head_kind: ClassifierHeadKind = Field(
+        default=LINEAR_CLASSIFIER_HEAD_KIND,
+        description=(
+            "classifier_head.v1 update가 갱신하는 concrete head kind. "
+            "v1은 category별 weight/bias delta를 갖는 linear head만 표현한다."
+        ),
+    )
     canonical_update_payload_format: ClassVar[str] = (
         CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT
     )
@@ -142,9 +158,17 @@ class ClassifierHeadAdapterUpdatePayload(SharedAdapterUpdatePayload):
         description="카테고리별 weight delta 벡터."
     )
     label_bias_deltas: dict[str, float] = Field(default_factory=dict)
-    mean_confidence: float = Field(ge=0.0, le=1.0)
+    mean_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     mean_margin: float | None = None
-    label_counts: dict[str, int] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_private_label_counts(cls, source: object) -> object:
+        if not isinstance(source, Mapping):
+            return source
+        data = dict(source)
+        data.pop("label_counts", None)
+        return data
 
     @model_validator(mode="after")
     def _validate_classifier_head_delta_shape(

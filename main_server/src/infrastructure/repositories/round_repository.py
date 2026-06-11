@@ -10,7 +10,10 @@ from main_server.src.services.federation.rounds.boundary.mappers import (
     round_record_from_payload,
     round_record_to_payload,
 )
-from main_server.src.services.federation.rounds.boundary.models import RoundRecord
+from main_server.src.services.federation.rounds.boundary.models import (
+    RoundRecord,
+    RoundStatus,
+)
 from main_server.src.services.federation.rounds.boundary.payloads import (
     ActiveRoundPointerPayload,
     dump_active_round_pointer_payload,
@@ -54,6 +57,24 @@ class RoundRepository:
         if not path.exists():
             raise FileNotFoundError(f"Round not found: {round_id}")
         return round_record_from_payload(load_round_record_payload(path))
+
+    def load_latest_finalized_round(self) -> RoundRecord | None:
+        """가장 최근 finalized round를 반환한다."""
+        if not self.rounds_dir.exists():
+            return None
+        latest: RoundRecord | None = None
+        for path in self.rounds_dir.glob("*.json"):
+            record = round_record_from_payload(load_round_record_payload(path))
+            if record.status != RoundStatus.FINALIZED:
+                continue
+            if latest is None:
+                latest = record
+                continue
+            latest_time = latest.finalized_at or latest.updated_at
+            record_time = record.finalized_at or record.updated_at
+            if record_time > latest_time:
+                latest = record
+        return latest
 
     def load_active_pointer(self) -> ActiveRoundPointerPayload | None:
         if not self.active_pointer_path.exists():

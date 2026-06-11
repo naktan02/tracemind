@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from types import SimpleNamespace
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+from methods.adaptation.common.query_ssl_training_resume import (
+    load_query_ssl_training_checkpoint,
+    save_query_ssl_training_checkpoint,
+)
 from methods.adaptation.local_objective_regularizers.fedprox import (
     compute_fedprox_proximal_loss,
     snapshot_trainable_parameters,
@@ -18,6 +23,9 @@ from methods.adaptation.peft_text_encoder.config import (
 from methods.adaptation.peft_text_encoder.training import (
     pseudo_label_diagnostics as pld,
 )
+from methods.adaptation.peft_text_encoder.training.delta_extraction import (
+    extract_peft_parameter_deltas,
+)
 from methods.adaptation.peft_text_encoder.training.loops import (
     evaluate_classifier,
     train_classifier,
@@ -25,6 +33,12 @@ from methods.adaptation.peft_text_encoder.training.loops import (
 )
 from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftTextEncoderWithLinearHead,
+)
+from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
+    _build_bounded_label_balanced_selection_rows,
+)
+from methods.adaptation.peft_text_encoder.training.ssl_model_extensions import (
+    build_peft_query_ssl_model_extensions,
 )
 
 resolve_fixed_pseudo_label_diagnostic_threshold = (
@@ -78,6 +92,33 @@ def test_pseudo_label_diagnostic_threshold_marks_fixed_threshold_only() -> None:
     }
 
 
+def test_query_ssl_local_selection_probe_is_bounded_and_balanced() -> None:
+    rows = [
+        _query_row(query_id=f"{label}_{index}", label=label)
+        for label in ("anxiety", "normal", "suicidal")
+        for index in range(6)
+    ]
+
+    first = _build_bounded_label_balanced_selection_rows(
+        rows=rows,
+        max_examples=6,
+        seed=42,
+    )
+    second = _build_bounded_label_balanced_selection_rows(
+        rows=rows,
+        max_examples=6,
+        seed=42,
+    )
+
+    assert [row["query_id"] for row in first] == [row["query_id"] for row in second]
+    assert len(first) == 6
+    assert Counter(row["mapped_label_4"] for row in first) == {
+        "anxiety": 2,
+        "normal": 2,
+        "suicidal": 2,
+    }
+
+
 def test_peft_encoder_text_classifier_train_step_and_evaluation() -> None:
     torch.manual_seed(7)
     model = PeftTextEncoderWithLinearHead(
@@ -112,6 +153,20 @@ def test_peft_encoder_text_classifier_train_step_and_evaluation() -> None:
     assert selection_report["rows_total"] == 2
     assert evaluation["rows_total"] == 2
     assert set(evaluation["per_category"]) == {"anxiety", "normal"}
+
+
+def _query_row(*, query_id: str, label: str) -> dict[str, str | None]:
+    return {
+        "query_id": query_id,
+        "text": f"text {query_id}",
+        "raw_label_scheme": "test",
+        "raw_label": label,
+        "mapped_label_4": label,
+        "locale": "en",
+        "annotation_source": "test",
+        "approved_by": None,
+        "created_at": "2026-06-05T00:00:00Z",
+    }
 
 
 def test_peft_encoder_config_accepts_fedprox_mu() -> None:
@@ -178,6 +233,10 @@ class _StatefulCountingQuerySslAlgorithm(_CountingQuerySslAlgorithm):
         self.dataset_configured = True
         self.events.append("dataset")
 
+    def configure_labeled_dataset(self, *, labeled_row_count: int) -> None:
+        assert labeled_row_count == 2
+        self.events.append("labeled_dataset")
+
     def configure_training(self, *, num_train_iter: int) -> None:
         self.events.append("training")
         super().configure_training(num_train_iter=num_train_iter)
@@ -195,6 +254,133 @@ class _StatefulCountingQuerySslAlgorithm(_CountingQuerySslAlgorithm):
             "configured": True,
             "steps": self.steps,
         }
+
+
+class _ContextAwareCountingQuerySslAlgorithm(_CountingQuerySslAlgorithm):
+    algorithm_name = "context_aware_counting"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.step_contexts = []
+
+    def compute_step(self, *, model, labeled_batch, unlabeled_batch):
+        raise AssertionError("context-aware algorithm should receive step context.")
+
+    def compute_step_with_context(
+        self,
+        *,
+        model,
+        labeled_batch,
+        unlabeled_batch,
+        step_context,
+    ):
+        self.step_contexts.append(step_context)
+        return super().compute_step(
+            model=model,
+            labeled_batch=labeled_batch,
+            unlabeled_batch=unlabeled_batch,
+        )
+
+
+class _InitialSelectionLossQuerySslAlgorithm(_CountingQuerySslAlgorithm):
+    algorithm_name = "initial_selection_loss_counting"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.initial_selection_loss: float | None = None
+
+    @property
+    def needs_initial_selection_loss(self) -> bool:
+        return self.initial_selection_loss is None
+
+    def configure_initial_selection_loss(self, *, selection_loss: float) -> None:
+        self.initial_selection_loss = float(selection_loss)
+
+    def compute_step(self, *, model, labeled_batch, unlabeled_batch):
+        assert self.initial_selection_loss is not None
+        return super().compute_step(
+            model=model,
+            labeled_batch=labeled_batch,
+            unlabeled_batch=unlabeled_batch,
+        )
+
+
+class _WarmupInitialSelectionLossQuerySslAlgorithm(
+    _InitialSelectionLossQuerySslAlgorithm
+):
+    algorithm_name = "warmup_initial_selection_loss_counting"
+
+    def __init__(self, model: PeftTextEncoderWithLinearHead) -> None:
+        super().__init__()
+        self.model = model
+        self.initial_classifier_weight = model.classifier.weight.detach().clone()
+        self.classifier_changed_before_rho_init = False
+
+    @property
+    def initial_selection_warmup_steps(self) -> int:
+        return 2
+
+    def configure_initial_selection_loss(self, *, selection_loss: float) -> None:
+        self.classifier_changed_before_rho_init = not torch.allclose(
+            self.model.classifier.weight.detach(),
+            self.initial_classifier_weight,
+        )
+        super().configure_initial_selection_loss(selection_loss=selection_loss)
+
+
+class _AuxiliaryProjectionQuerySslAlgorithm(_CountingQuerySslAlgorithm):
+    algorithm_name = "auxiliary_projection"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.projection: nn.Linear | None = None
+        self.initial_projection_weight: torch.Tensor | None = None
+
+    def build_auxiliary_modules(self, *, model):
+        del model
+        self.projection = nn.Linear(3, 1, bias=False)
+        nn.init.constant_(self.projection.weight, 0.25)
+        self.initial_projection_weight = self.projection.weight.detach().clone()
+        return {"projection": self.projection}
+
+    def compute_step(self, *, model, labeled_batch, unlabeled_batch):
+        del unlabeled_batch
+        self.steps += 1
+        assert labeled_batch is not None
+        assert self.projection is not None
+        pooled = model.extract_pooled_features(
+            input_ids=labeled_batch["input_ids"],
+            attention_mask=labeled_batch["attention_mask"],
+        )
+        projected = self.projection(pooled)
+        loss = projected.square().mean()
+        return SimpleNamespace(
+            total_loss=loss,
+            loss_components={"projection_loss": loss.detach()},
+            metrics={"projection_norm": self.projection.weight.detach().norm()},
+        )
+
+
+class _PostStepHookQuerySslAlgorithm(_CountingQuerySslAlgorithm):
+    algorithm_name = "post_step_hook"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.model_configured = False
+        self.post_step_weight_norms: list[float] = []
+        self.post_step_global_steps: list[int] = []
+
+    def configure_model(self, *, model, device) -> None:
+        del device
+        self.model_configured = True
+        assert isinstance(model, PeftTextEncoderWithLinearHead)
+
+    def after_optimizer_step(self, *, model, step_context) -> None:
+        assert self.model_configured
+        self.post_step_weight_norms.append(
+            float(model.classifier.weight.detach().norm())
+        )
+        self.post_step_global_steps.append(int(step_context.global_step))
 
 
 def _build_unlabeled_loader() -> DataLoader[dict[str, torch.Tensor]]:
@@ -276,8 +462,195 @@ def test_query_ssl_training_loads_initial_state_after_dataset_config() -> None:
         },
     )
 
-    assert algorithm.events[:3] == ["dataset", "load", "training"]
+    assert algorithm.events[:4] == ["dataset", "labeled_dataset", "training", "load"]
     assert algorithm.steps == 5
+
+
+def test_query_ssl_training_passes_step_context_to_context_aware_algorithm() -> None:
+    torch.manual_seed(7)
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _ContextAwareCountingQuerySslAlgorithm()
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=2,
+        max_train_steps=2,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+    )
+
+    assert [context.global_step for context in algorithm.step_contexts] == [1, 2]
+    assert {context.total_train_steps for context in algorithm.step_contexts} == {2}
+    assert {context.num_classes for context in algorithm.step_contexts} == {2}
+    assert {context.device.type for context in algorithm.step_contexts} == {"cpu"}
+
+
+def test_query_ssl_training_injects_initial_selection_loss_when_required() -> None:
+    torch.manual_seed(7)
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _InitialSelectionLossQuerySslAlgorithm()
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=1,
+        max_train_steps=1,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+    )
+
+    assert algorithm.initial_selection_loss is not None
+    assert algorithm.initial_selection_loss > 0
+    assert algorithm.steps == 1
+
+
+def test_query_ssl_training_runs_supervised_warmup_before_initial_selection_loss() -> (
+    None
+):
+    torch.manual_seed(7)
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _WarmupInitialSelectionLossQuerySslAlgorithm(model)
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=1,
+        max_train_steps=1,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+    )
+
+    assert algorithm.classifier_changed_before_rho_init is True
+    assert algorithm.initial_selection_loss is not None
+    assert algorithm.steps == 1
+
+
+def test_query_ssl_training_runs_algorithm_post_optimizer_step_hook() -> None:
+    torch.manual_seed(7)
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _PostStepHookQuerySslAlgorithm()
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=2,
+        max_train_steps=2,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+    )
+
+    assert algorithm.model_configured is True
+    assert algorithm.post_step_global_steps == [1, 2]
+    assert len(algorithm.post_step_weight_norms) == 2
+
+
+def test_query_ssl_training_updates_algorithm_auxiliary_module() -> None:
+    torch.manual_seed(7)
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _AuxiliaryProjectionQuerySslAlgorithm()
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=2,
+        max_train_steps=2,
+        learning_rate=0.05,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+    )
+
+    assert algorithm.projection is not None
+    assert algorithm.initial_projection_weight is not None
+    assert not torch.allclose(
+        algorithm.projection.weight.detach(),
+        algorithm.initial_projection_weight,
+    )
+
+
+def test_query_ssl_auxiliary_modules_are_not_registered_on_peft_model() -> None:
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    extensions = build_peft_query_ssl_model_extensions(
+        algorithm=_AuxiliaryProjectionQuerySslAlgorithm(),
+        model=model,
+        device="cpu",
+    )
+
+    assert list(extensions.auxiliary_modules) == ["projection"]
+    assert "projection.weight" not in dict(model.named_parameters())
+    assert "projection.weight" not in extract_peft_parameter_deltas(
+        model=model,
+        base_parameters={},
+    )
 
 
 def test_fedprox_proximal_loss_uses_round_start_snapshot() -> None:
@@ -403,6 +776,83 @@ def test_query_ssl_training_resume_checkpoint_continues_remaining_steps(
     assert len(first_history) == 2
     assert resumed_algorithm.steps == 1
     assert len(resumed_history) == 3
+
+
+def test_query_ssl_training_checkpoint_roundtrips_auxiliary_module_state(
+    tmp_path,
+) -> None:
+    model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _AuxiliaryProjectionQuerySslAlgorithm()
+    extensions = build_peft_query_ssl_model_extensions(
+        algorithm=algorithm,
+        model=model,
+        device="cpu",
+    )
+    assert algorithm.projection is not None
+    with torch.no_grad():
+        algorithm.projection.weight.fill_(1.75)
+    optimizer = torch.optim.SGD(
+        [
+            *model.parameters(),
+            *extensions.auxiliary_trainable_parameters,
+        ],
+        lr=0.1,
+    )
+
+    save_query_ssl_training_checkpoint(
+        checkpoint_output_dir=tmp_path,
+        algorithm=algorithm,
+        model=model,
+        optimizer=optimizer,
+        completed_steps=1,
+        total_train_steps=2,
+        history=[],
+        best_checkpoint_state={},
+        categories=["anxiety", "normal"],
+        auxiliary_modules=extensions.auxiliary_modules,
+    )
+
+    restored_model = PeftTextEncoderWithLinearHead(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    restored_algorithm = _AuxiliaryProjectionQuerySslAlgorithm()
+    restored_extensions = build_peft_query_ssl_model_extensions(
+        algorithm=restored_algorithm,
+        model=restored_model,
+        device="cpu",
+    )
+    restored_optimizer = torch.optim.SGD(
+        [
+            *restored_model.parameters(),
+            *restored_extensions.auxiliary_trainable_parameters,
+        ],
+        lr=0.1,
+    )
+
+    resume_state = load_query_ssl_training_checkpoint(
+        path=tmp_path / "latest_training_checkpoint.pt",
+        model=restored_model,
+        optimizer=restored_optimizer,
+        algorithm=restored_algorithm,
+        categories=["anxiety", "normal"],
+        device="cpu",
+        auxiliary_modules=restored_extensions.auxiliary_modules,
+    )
+
+    assert resume_state.completed_steps == 1
+    assert restored_algorithm.projection is not None
+    assert torch.allclose(
+        restored_algorithm.projection.weight,
+        torch.full_like(restored_algorithm.projection.weight, 1.75),
+    )
 
 
 def test_query_text_views_paths_do_not_keep_compatibility_shims() -> None:

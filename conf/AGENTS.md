@@ -24,8 +24,8 @@
 - YAML leaf는 callable path나 owner metadata를 선언할 수 있지만, Python 계산 의미나
   기본값 해석을 복제하지 않는다.
 - teacher source는 독립 `teacher_provider` strategy axis로 열지 않는다. 중앙 SSL은
-  `input_mode` 내부 설정으로, FL SSL은 method descriptor나 runtime capability 요구로
-  표현한다.
+  explicit workflow entrypoint 내부 설정으로, FL SSL은 method descriptor나 runtime
+  capability 요구로 표현한다.
 - 새 config group은 실제 변화 축이 있을 때만 만든다. entrypoint 하나에서만 쓰는
   값 묶음은 entrypoint YAML에 남긴다.
 

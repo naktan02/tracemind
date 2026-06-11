@@ -20,13 +20,13 @@ from .config import (
     build_peft_encoder_training_backend_config,
 )
 from .initial_state import (
+    PEFT_TEXT_ENCODER_UPDATE_FAMILY,
     PeftEncoderInitialStateConfig,
     build_initial_peft_classifier_state,
 )
 from .training_backend import PeftEncoderTrainingBackend
 
 PeftEncoderState = PeftClassifierState
-PEFT_TEXT_ENCODER_UPDATE_FAMILY = "peft_text_encoder"
 PEFT_ENCODER_UPDATE_FAMILIES = (PEFT_TEXT_ENCODER_UPDATE_FAMILY,)
 
 

@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from safetensors import safe_open
 from safetensors.torch import load_file, save_file
 from torch import Tensor
+
+from methods.federated.aggregation.base import (
+    is_safetensors_aggregated_artifact,
+    safetensors_aggregated_artifact_parts,
+)
 
 MAIN_SERVER_ROOT = Path(__file__).resolve().parents[5]
 AGGREGATION_ARTIFACT_REF_PREFIX = "aggregation_artifact::"
@@ -186,6 +192,33 @@ class AggregationArtifactStore:
             artifact_id = artifact_ref.removeprefix(SERVER_AGGREGATE_REF_PREFIX)
             return "/".join(_safe_artifact_id_parts(artifact_id))
         return None
+
+
+def save_aggregated_artifact_payload(
+    *,
+    artifact_store: AggregationArtifactStore,
+    artifact_ref: str,
+    payload: Mapping[str, object],
+) -> dict[str, object]:
+    """aggregate artifact payload를 저장하고 JSON-safe summary를 반환한다."""
+
+    if is_safetensors_aggregated_artifact(payload):
+        tensors, metadata = safetensors_aggregated_artifact_parts(payload)
+        artifact_store.save_safetensors_artifact_ref(
+            artifact_ref=artifact_ref,
+            tensors=cast(dict[str, Tensor], dict(tensors)),
+            metadata=dict(metadata),
+        )
+        return {
+            "artifact_format": "safetensors",
+            "tensor_count": len(tensors),
+            "metadata_keys": sorted(str(key) for key in metadata),
+        }
+    artifact_store.save_json_artifact_ref(
+        artifact_ref=artifact_ref,
+        payload=dict(payload),
+    )
+    return dict(payload)
 
 
 def _slug_ref_part(value: str) -> str:

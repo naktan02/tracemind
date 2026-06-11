@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 
+from methods.adaptation.scoring_backend import ScoringAssets
 from methods.adaptation.scoring_registry import register_shared_adapter_scoring_backend
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_ADAPTER_KIND,
     ClassifierHeadState,
 )
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 CLASSIFIER_HEAD_LOGITS_BACKEND_NAME = "classifier_head_logits"
-CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND = "classifier_head_logit_top1"
 
 CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
@@ -27,7 +27,6 @@ CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     tags=("requires_shared_state",),
     metadata={
         "requires_shared_state": True,
-        "confidence_kind": CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND,
     },
 )
 
@@ -37,17 +36,16 @@ class ClassifierHeadLogitsScoringBackend:
     """공통 classifier head state로 category logits를 계산한다."""
 
     backend_name: str = CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
-    confidence_kind: str = CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND
     supported_adapter_kinds: tuple[str, ...] = (CLASSIFIER_HEAD_ADAPTER_KIND,)
     requires_shared_state: bool = True
 
     def score(
         self,
         embedding: Sequence[float],
-        prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        scoring_assets: ScoringAssets,
         shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
-        del prototypes
+        del scoring_assets
         if not isinstance(shared_state, ClassifierHeadState):
             raise ValueError(
                 "classifier_head_logits backend requires "
@@ -62,12 +60,12 @@ class ClassifierHeadLogitsScoringBackend:
     catalog_entry=CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
 )
 def build_classifier_head_logits_scoring_backend(
-    objective_config: TrainingObjectiveConfig,
+    scoring_config: ScoringConfigPayload,
     similarity_name: str,
 ) -> ClassifierHeadLogitsScoringBackend:
     """classifier-head logits scoring backend factory."""
 
-    del objective_config, similarity_name
+    del scoring_config, similarity_name
     return ClassifierHeadLogitsScoringBackend()
 
 

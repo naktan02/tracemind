@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capabilities.plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from scripts.experiments.fl_ssl.federated_simulation.io import (
     communication_cost_estimates,
@@ -71,6 +71,7 @@ class SimulationReportBuilder:
         validation_config: FederatedValidationConfig,
         round_runtime_config: FederatedRoundRuntimeConfig,
         execution_plan: FederatedSslExecutionPlan | None = None,
+        local_update_profile_name: str | None = None,
         capability_plan: FederatedSslCapabilityPlan | None = None,
         server_step_executor: str | None = None,
         data_source_config: FederatedDataSourceConfig | None = None,
@@ -146,6 +147,7 @@ class SimulationReportBuilder:
                 validation_config=validation_config,
                 round_runtime_config=round_runtime_config,
                 execution_plan=execution_plan,
+                local_update_profile_name=local_update_profile_name,
                 capability_plan=capability_plan,
                 server_step_executor=server_step_executor,
                 data_source_config=data_source_config,

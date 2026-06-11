@@ -7,7 +7,7 @@ from typing import Any
 
 def build_federated_scoring_service(
     *,
-    objective_config: Any,
+    scoring_config: Any,
     similarity_name: str,
     shared_state: Any | None = None,
 ) -> Any:
@@ -15,8 +15,8 @@ def build_federated_scoring_service(
 
     from agent.src.services.inference.scoring_service import ScoringService
 
-    return ScoringService.from_objective_config(
-        objective_config,
+    return ScoringService.from_scoring_config(
+        scoring_config,
         similarity_name=similarity_name,
         shared_state=shared_state,
     )

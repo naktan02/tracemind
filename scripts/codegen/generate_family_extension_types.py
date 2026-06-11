@@ -9,92 +9,10 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter
 
-import shared.src.contracts.child_support_contracts as child_support_contracts
-import shared.src.contracts.family_access_contracts as family_access_contracts
-import shared.src.contracts.wellbeing_signal_contracts as wellbeing_signal_contracts
+from scripts.runtime_adapters.family_extension_contract_sources import TYPE_SOURCES
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_PATH = ROOT / "apps/family_extension/src/contracts/generated.ts"
-
-TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
-    ("FamilyAccessMode", family_access_contracts.FamilyAccessMode),
-    ("FamilyAccessRole", family_access_contracts.FamilyAccessRole),
-    (
-        "FamilySetupStatusPayload",
-        family_access_contracts.FamilySetupStatusPayload,
-    ),
-    (
-        "FamilySetupRequestPayload",
-        family_access_contracts.FamilySetupRequestPayload,
-    ),
-    (
-        "FamilySetupResponsePayload",
-        family_access_contracts.FamilySetupResponsePayload,
-    ),
-    (
-        "FamilyUnlockRequestPayload",
-        family_access_contracts.FamilyUnlockRequestPayload,
-    ),
-    (
-        "FamilyUnlockResponsePayload",
-        family_access_contracts.FamilyUnlockResponsePayload,
-    ),
-    (
-        "ChildSupportAssistantMode",
-        child_support_contracts.ChildSupportAssistantMode,
-    ),
-    (
-        "ChildSupportSafetyLevel",
-        child_support_contracts.ChildSupportSafetyLevel,
-    ),
-    (
-        "ChildSupportScopeStatus",
-        child_support_contracts.ChildSupportScopeStatus,
-    ),
-    (
-        "ChildSupportSuggestionPayload",
-        child_support_contracts.ChildSupportSuggestionPayload,
-    ),
-    (
-        "ChildSupportConversationRequestPayload",
-        child_support_contracts.ChildSupportConversationRequestPayload,
-    ),
-    (
-        "ChildSupportConversationResponsePayload",
-        child_support_contracts.ChildSupportConversationResponsePayload,
-    ),
-    (
-        "ChildSupportProactivePromptPayload",
-        child_support_contracts.ChildSupportProactivePromptPayload,
-    ),
-    ("WellbeingSignalLevel", wellbeing_signal_contracts.WellbeingSignalLevel),
-    ("WellbeingSignalTrend", wellbeing_signal_contracts.WellbeingSignalTrend),
-    (
-        "WellbeingSignalConfidence",
-        wellbeing_signal_contracts.WellbeingSignalConfidence,
-    ),
-    ("WellbeingSignalRange", wellbeing_signal_contracts.WellbeingSignalRange),
-    (
-        "WellbeingSignalSummaryPayload",
-        wellbeing_signal_contracts.WellbeingSignalSummaryPayload,
-    ),
-    (
-        "WellbeingSignalTimeseriesPointPayload",
-        wellbeing_signal_contracts.WellbeingSignalTimeseriesPointPayload,
-    ),
-    (
-        "WellbeingSignalTimeseriesPayload",
-        wellbeing_signal_contracts.WellbeingSignalTimeseriesPayload,
-    ),
-    (
-        "ParentUnlockRequestPayload",
-        wellbeing_signal_contracts.ParentUnlockRequestPayload,
-    ),
-    (
-        "ParentUnlockResponsePayload",
-        wellbeing_signal_contracts.ParentUnlockResponsePayload,
-    ),
-)
 
 
 def build_schema_definitions() -> dict[str, dict[str, Any]]:

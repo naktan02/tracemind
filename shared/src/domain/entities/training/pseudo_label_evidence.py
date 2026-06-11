@@ -18,7 +18,6 @@ class PseudoLabelEvidence:
     occurred_at: datetime
     label: str
     confidence: float
-    confidence_kind: str
     margin: float
     top1_label: str
     top1_score: float
