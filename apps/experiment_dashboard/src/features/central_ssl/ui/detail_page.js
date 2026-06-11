@@ -7,8 +7,7 @@ import {
   renderSortableTableHeader,
   resolveTableColumns,
 } from "../../../ui/tables/table.js";
-import { algorithmName, centralEvalSetLabel, runDetail } from "../logic/labels.js";
-import { centralAlgorithms, rowsForAlgorithms } from "../logic/selectors.js";
+import { centralEvalSetLabel, runDetail } from "../logic/labels.js";
 
 const CLASS_TABLE_COLUMNS = [
   { id: "category", label: "category", group: "axis", render: (row) => escapeHtml(row.category) },
@@ -37,42 +36,27 @@ const CLASS_TABLE_COLUMNS = [
 ];
 
 export function normalizeDetailSelection(rows, state) {
-  const algorithms = centralAlgorithms(rows);
-  if (state.detailAlgorithm && !algorithms.includes(state.detailAlgorithm)) {
-    state.detailAlgorithm = null;
-    state.detailRunId = null;
-  }
-  if (!state.detailAlgorithm) {
-    state.detailRunId = null;
-    return;
-  }
-  const runIds = new Set(rowsForAlgorithms(rows, [state.detailAlgorithm]).map((row) => row.run_id));
-  if (state.detailRunId && !runIds.has(state.detailRunId)) {
+  const runIds = new Set(rows.map((row) => rowToText(row.run_id)));
+  if (state.detailRunId && !runIds.has(rowToText(state.detailRunId))) {
     state.detailRunId = null;
   }
 }
 
 export function renderDetailPage(elements, rows, state, bundle, rerender = () => {}) {
-  const algorithms = centralAlgorithms(rows);
-  fillSelect(elements.detailMethodFilter, algorithms, state.detailAlgorithm, "algorithm 없음");
-  const detailRows = state.detailAlgorithm ? rowsForAlgorithms(rows, [state.detailAlgorithm]) : [];
+  const detailRows = rows;
   fillSelect(
     elements.detailRunFilter,
-    detailRows.map((row) => row.run_id),
-    state.detailRunId,
-    state.detailAlgorithm ? "run 없음" : "algorithm 선택 먼저",
+    detailRows.map((row) => rowToText(row.run_id)),
+    rowToText(state.detailRunId),
+    "run 없음",
   );
   Array.from(elements.detailRunFilter.options).forEach((option) => {
-    const row = detailRows.find((candidate) => candidate.run_id === option.value);
+    const row = detailRows.find((candidate) => rowToText(candidate.run_id) === option.value);
     if (row) option.textContent = runDetail(row);
   });
-  const row = detailRows.find((candidate) => candidate.run_id === state.detailRunId);
+  const row = detailRows.find((candidate) => rowToText(candidate.run_id) === rowToText(state.detailRunId));
   elements.detailRunSummary.textContent = row
-    ? [
-        algorithmName(row),
-        `eval=${centralEvalSetLabel(state.classEvalSet)}`,
-        row.run_id,
-      ].join(" · ")
+    ? [`eval=${centralEvalSetLabel(state.classEvalSet)}`, rowToText(row.run_id)].join(" · ")
     : "Per-class와 confusion matrix를 보려면 상세 run을 선택하세요.";
   renderClassTable(elements, row, state, bundle, rerender);
   renderClassChart(elements, row, state, bundle);
@@ -99,7 +83,10 @@ function renderClassTable(elements, row, state, bundle, rerender) {
     return;
   }
   const rows = (bundle.per_class_metrics ?? [])
-    .filter((item) => item.run_id === row.run_id && item.eval_set === state.classEvalSet)
+    .filter((item) =>
+      rowToText(item.run_id) === rowToText(row.run_id) &&
+      item.eval_set === state.classEvalSet
+    )
     .sort((left, right) => String(left.category).localeCompare(String(right.category)));
   if (rows.length === 0) {
     elements.classTable.innerHTML = emptyTableRow(
@@ -128,7 +115,8 @@ function renderClassChart(elements, row, state, bundle) {
     return;
   }
   const rows = (bundle.per_class_metrics ?? []).filter(
-    (item) => item.run_id === row.run_id && item.eval_set === state.classEvalSet,
+    (item) =>
+      rowToText(item.run_id) === rowToText(row.run_id) && item.eval_set === state.classEvalSet,
   );
   const max = Math.max(...rows.map((item) => Number(item[state.classMetric]) || 0), 0.000001);
   elements.classChart.innerHTML = rows
@@ -151,7 +139,9 @@ function renderConfusionMatrix(elements, row, state, bundle) {
     return;
   }
   const cells = (bundle.confusion_matrix_cells ?? []).filter(
-    (cell) => cell.run_id === row.run_id && cell.eval_set === state.classEvalSet,
+    (cell) =>
+      rowToText(cell.run_id) === rowToText(row.run_id) &&
+      cell.eval_set === state.classEvalSet,
   );
   if (cells.length === 0) {
     elements.confusionMatrix.innerHTML = `<p class="empty">confusion matrix가 없습니다.</p>`;
@@ -178,7 +168,11 @@ function renderConfusionMatrix(elements, row, state, bundle) {
               .join("")}
           `,
         )
-        .join("")}
+              .join("")}
     </div>
   `;
+}
+
+function rowToText(value) {
+  return value === undefined || value === null ? "" : String(value);
 }

@@ -26,7 +26,6 @@ export function getDashboardElements() {
     comparisonRunCheckboxes: document.querySelector("#comparison-run-checkboxes"),
     selectedRunCards: document.querySelector("#selected-run-cards"),
     classEvalFilter: document.querySelector("#class-eval-filter"),
-    detailMethodFilter: document.querySelector("#detail-method-filter"),
     detailRunFilter: document.querySelector("#detail-run-filter"),
     detailRunSummary: document.querySelector("#detail-run-summary"),
     classMetricFilter: document.querySelector("#class-metric-filter"),

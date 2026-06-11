@@ -231,11 +231,6 @@ function bindCentralEvents() {
     state.central.classEvalSet = event.target.value;
     render();
   });
-  elements.detailMethodFilter.addEventListener("change", (event) => {
-    state.central.detailAlgorithm = event.target.value || null;
-    state.central.detailRunId = null;
-    render();
-  });
   elements.detailRunFilter.addEventListener("change", (event) => {
     state.central.detailRunId = event.target.value || null;
     render();
@@ -646,7 +641,6 @@ function syncFlRunColumnTabUI() {
 function resetCentralSelections() {
   state.central.overviewRunIds = [];
   state.central.compareRunIds = [];
-  state.central.detailAlgorithm = null;
   state.central.detailRunId = null;
   state.central.projectionAlgorithm = null;
   state.central.projectionRunIds = [];

@@ -21,7 +21,6 @@ export function createCentralSslState() {
     classMetric: "f1",
     overviewColumnTab: "metric",
     overviewTableColumns: { order: [], visible: [] },
-    detailAlgorithm: null,
     detailRunId: null,
     projectionEvalSet: "validation",
     projectionAlgorithm: null,
