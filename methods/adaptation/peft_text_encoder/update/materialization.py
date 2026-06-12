@@ -10,6 +10,10 @@ from typing import Protocol, cast
 
 from torch import Tensor
 
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    parse_classifier_head_state_tensor_artifact,
+    parse_partitioned_classifier_head_state_tensor_artifact,
+)
 from methods.federated.aggregation.base import (
     AggregationJsonArtifactLoader,
     FederatedAggregationContext,
@@ -168,17 +172,26 @@ def materialize_base_peft_encoder_partitioned_state(
     partitioned_head_weights: dict[str, dict[str, list[float]]] = {}
     partitioned_head_biases: dict[str, dict[str, float]] = {}
     if base_state.classifier_head_artifact_ref is not None:
-        head_artifact = loader.load_json_artifact(
-            artifact_ref=base_state.classifier_head_artifact_ref
+        tensor_partitioned_head = (
+            _try_load_partitioned_base_classifier_head_tensor_artifact(
+                loader=loader,
+                artifact_ref=base_state.classifier_head_artifact_ref,
+            )
         )
-        partitioned_head_weights = _normalize_partitioned_vector_mapping(
-            head_artifact.get(PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY, {}),
-            field_name=PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
-        )
-        partitioned_head_biases = _normalize_partitioned_scalar_mapping(
-            head_artifact.get(PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY, {}),
-            field_name=PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
-        )
+        if tensor_partitioned_head is not None:
+            partitioned_head_weights, partitioned_head_biases = tensor_partitioned_head
+        else:
+            head_artifact = loader.load_json_artifact(
+                artifact_ref=base_state.classifier_head_artifact_ref
+            )
+            partitioned_head_weights = _normalize_partitioned_vector_mapping(
+                head_artifact.get(PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY, {}),
+                field_name=PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
+            )
+            partitioned_head_biases = _normalize_partitioned_scalar_mapping(
+                head_artifact.get(PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY, {}),
+                field_name=PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
+            )
 
     partition_names = sorted(
         set(partitioned_peft_parameters)
@@ -569,6 +582,15 @@ def _load_base_classifier_head_parameters(
     artifact_ref: str,
     loader: AggregationJsonArtifactLoader,
 ) -> tuple[dict[str, list[float]], dict[str, float]]:
+    tensor_state = _try_load_base_classifier_head_tensor_artifact(
+        loader=loader,
+        artifact_ref=artifact_ref,
+    )
+    if tensor_state is not None:
+        return (
+            tensor_state.classifier_head_weights,
+            tensor_state.classifier_head_biases,
+        )
     artifact = loader.load_json_artifact(artifact_ref=artifact_ref)
     weight_source = artifact.get(
         CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
@@ -587,6 +609,48 @@ def _load_base_classifier_head_parameters(
             bias_source,
             field_name=CLASSIFIER_HEAD_STATE_BIASES_KEY,
         ),
+    )
+
+
+def _try_load_base_classifier_head_tensor_artifact(
+    *,
+    loader: AggregationJsonArtifactLoader,
+    artifact_ref: str,
+):
+    tensor_loader = getattr(loader, "load_safetensors_artifact", None)
+    if tensor_loader is None:
+        return None
+    tensor_artifact_loader = cast(_AggregationTensorArtifactLoader, loader)
+    try:
+        tensors, metadata = tensor_artifact_loader.load_safetensors_artifact(
+            artifact_ref=artifact_ref
+        )
+    except (FileNotFoundError, KeyError):
+        return None
+    return parse_classifier_head_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _try_load_partitioned_base_classifier_head_tensor_artifact(
+    *,
+    loader: AggregationJsonArtifactLoader,
+    artifact_ref: str,
+) -> tuple[dict[str, dict[str, list[float]]], dict[str, dict[str, float]]] | None:
+    tensor_loader = getattr(loader, "load_safetensors_artifact", None)
+    if tensor_loader is None:
+        return None
+    tensor_artifact_loader = cast(_AggregationTensorArtifactLoader, loader)
+    try:
+        tensors, metadata = tensor_artifact_loader.load_safetensors_artifact(
+            artifact_ref=artifact_ref
+        )
+    except (FileNotFoundError, KeyError):
+        return None
+    return parse_partitioned_classifier_head_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
     )
 
 

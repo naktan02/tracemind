@@ -48,7 +48,7 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
         "peft_fixmatch_2026_05_10_155954/artifacts/adapter"
     )
     assert str(paths.classifier_path).endswith(
-        "peft_fixmatch_2026_05_10_155954/artifacts/classifier_head.pt"
+        "peft_fixmatch_2026_05_10_155954/artifacts/classifier_head.safetensors"
     )
 
 

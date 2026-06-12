@@ -193,6 +193,10 @@ Query Buffer (raw text)
 - PEFT adapter와 classifier head는 분리된 artifact로 남기는 편이 좋다.
 - 그래야 나중에 시스템 FL translation에서 `peft_text_encoder` update family가
   adapter mechanism과 classifier head 결합 방식을 다시 선택하기 쉽다.
+- 새 중앙 supervised/SSL 산출물의 weight artifact는 tensor-first로 둔다.
+  PEFT adapter와 classifier head 모두 `safetensors`를 canonical weight format으로
+  쓰고, JSON은 manifest, provenance, report, projection index 같은 설명 계층으로
+  제한한다. 기존 `.pt` classifier head는 재현용 legacy input으로만 해석한다.
 
 ## future FL SSL translation 경계
 

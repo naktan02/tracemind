@@ -69,11 +69,14 @@ runtime과 test는 family별 direct import를 사용한다.
   - `head_kind="linear"`를 사용한다. `classifier_head.v1`은 generic
     classifier head family 전체가 아니라 category별 linear head payload다
   - `label_weights`, `label_biases`는 category별 linear head 파라미터다
-- `PeftClassifierAdapterStatePayload`
+  - `PeftClassifierAdapterStatePayload`
   - PEFT-classifier v2 concrete 구현
   - LoRA/DoRA 같은 adapter mechanism은 `peft_adapter_config.peft_adapter_name`과
     `peft_adapter_config.parameters`로 표현하고, classifier head는 별도 artifact로
     유지한다
+  - 새 server-published weight artifact는 PEFT adapter와 classifier head 모두
+    `safetensors`를 canonical format으로 사용한다. JSON은 manifest/report와
+    legacy artifact fallback에만 남긴다
   - `adapter_kind=peft_classifier`, `schema_version=peft_classifier_state.v2`를
     사용한다
   - v1 `lora_classifier` shared parser/factory는 제거됐다. 과거 run/report artifact

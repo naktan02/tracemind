@@ -7,10 +7,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    load_classifier_head_state_tensor_artifact,
+)
 from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
 from scripts.support.query_ssl_text_encoder.io.full_text_encoder_artifacts import (
     write_full_text_encoder_run_artifacts,
@@ -29,8 +33,11 @@ class _DummySaver:
 class _DummyClassifier:
     in_features = 384
 
-    def state_dict(self) -> dict[str, list[float]]:
-        return {"weights": [0.1, 0.2, 0.3]}
+    def state_dict(self) -> dict[str, torch.Tensor]:
+        return {
+            "weight": torch.tensor([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]),
+            "bias": torch.tensor([0.01, -0.01]),
+        }
 
 
 class _ProjectionModel:
@@ -101,21 +108,23 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
     report_path = Path(outputs["report_json"])
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    classifier_payload = torch.load(classifier_path, weights_only=False)
+    classifier_payload = load_classifier_head_state_tensor_artifact(classifier_path)
 
     assert Path(outputs["output_dir"]) == tmp_path / "runs" / "run-001"
     assert (Path(outputs["output_dir"]) / "logs").is_dir()
     assert adapter_dir == Path(outputs["output_dir"]) / "artifacts" / "adapter"
     assert classifier_path == (
-        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.pt"
+        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.safetensors"
     )
     assert (adapter_dir / "backbone.txt").read_text(encoding="utf-8") == "saved\n"
     assert (adapter_dir / "tokenizer.txt").read_text(encoding="utf-8") == "saved\n"
-    assert classifier_payload == {
-        "classifier_state_dict": {"weights": [0.1, 0.2, 0.3]},
-        "categories": ["alpha", "beta"],
-        "hidden_size": 384,
-    }
+    assert classifier_payload.label_schema == ("alpha", "beta")
+    assert classifier_payload.classifier_head_weights["alpha"] == pytest.approx(
+        [0.1, 0.2, 0.3]
+    )
+    assert classifier_payload.classifier_head_biases == pytest.approx(
+        {"alpha": 0.01, "beta": -0.01}
+    )
     assert manifest["adapter_dir"] == str(adapter_dir)
     assert manifest["classifier_path"] == str(classifier_path)
     assert manifest["run_control"] == {
@@ -258,11 +267,11 @@ def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
     assert (Path(outputs["output_dir"]) / "logs").is_dir()
     assert model_dir == Path(outputs["output_dir"]) / "artifacts" / "model"
     assert classifier_path == (
-        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.pt"
+        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.safetensors"
     )
     assert (model_dir / "model.txt").read_text(encoding="utf-8") == "saved\n"
     assert (model_dir / "tokenizer.txt").read_text(encoding="utf-8") == "saved\n"
-    assert torch.load(classifier_path, weights_only=False)["hidden_size"] == 384
+    assert load_classifier_head_state_tensor_artifact(classifier_path).hidden_size == 3
     assert manifest["model_dir"] == str(model_dir)
     assert manifest["classifier_path"] == str(classifier_path)
     assert manifest["trainable_surface"] == {

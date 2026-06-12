@@ -31,7 +31,7 @@ def write_peft_supervised_epoch_checkpoint(
     step = int(epoch_record.get("step") or 0)
     checkpoint_dir = checkpoint_root / f"epoch_{int(epoch):04d}_step_{step:06d}"
     adapter_dir = checkpoint_dir / "adapter"
-    classifier_path = checkpoint_dir / "classifier_head.pt"
+    classifier_path = checkpoint_dir / "classifier_head.safetensors"
     manifest_path = checkpoint_dir / "manifest.json"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     adapter_dir.mkdir(parents=True, exist_ok=True)

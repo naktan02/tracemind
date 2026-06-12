@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 
-import torch
 from torch import nn
 
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    load_classifier_head_state_tensor_artifact,
+)
 from scripts.support.query_ssl_text_encoder.io.supervised_epoch_checkpoints import (
     write_peft_supervised_epoch_checkpoint,
 )
@@ -62,12 +64,12 @@ def test_write_peft_supervised_epoch_checkpoint_exports_warm_start_manifest(
         "checkpoints/epoch_0002_step_004000/adapter"
     )
     assert manifest["classifier_path"].endswith(
-        "checkpoints/epoch_0002_step_004000/classifier_head.pt"
+        "checkpoints/epoch_0002_step_004000/classifier_head.safetensors"
     )
     assert manifest["epoch"] == 2
     assert manifest["step"] == 4000
-    saved_head = torch.load(manifest["classifier_path"], map_location="cpu")
-    assert saved_head["categories"] == ["anxiety", "normal"]
+    saved_head = load_classifier_head_state_tensor_artifact(manifest["classifier_path"])
+    assert saved_head.label_schema == ("anxiety", "normal")
     latest = json.loads(
         (tmp_path / "checkpoints/latest_epoch_checkpoint.json").read_text(
             encoding="utf-8"

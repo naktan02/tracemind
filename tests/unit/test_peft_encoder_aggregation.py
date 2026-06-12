@@ -40,6 +40,9 @@ from methods.adaptation.peft_text_encoder.update.partitioned_delta import (
     PeftEncoderPartitionDelta,
     normalize_partition_deltas,
 )
+from methods.adaptation.text_encoder_classifier import (
+    classifier_head_tensor_artifact as head_state_artifacts,
+)
 from methods.federated.aggregation.base import (
     FederatedAggregationContext,
     safetensors_aggregated_artifact_parts,
@@ -94,6 +97,16 @@ def _parse_applied_peft_delta_projection_artifact(
 ) -> dict[str, list[float]]:
     tensors, metadata = safetensors_aggregated_artifact_parts(artifact)
     return merged_artifacts.parse_applied_peft_parameter_deltas_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _parse_head_state_projection_artifact(
+    artifact: Mapping[str, object],
+) -> head_state_artifacts.LinearClassifierHeadState:
+    tensors, metadata = safetensors_aggregated_artifact_parts(artifact)
+    return head_state_artifacts.parse_classifier_head_state_tensor_artifact(
         tensors=tensors,
         metadata=metadata,
     )
@@ -364,21 +377,27 @@ def test_materialize_base_peft_encoder_state_prefers_safetensors_snapshot() -> N
             "encoder.q_proj.lora_A": [0.1, 0.2],
         },
     )
-    loader = InMemoryTensorArtifactLoader(
-        {
-            "server-aggregate://rev_000/classifier_head": {
-                "classifier_head_weights": {
-                    "anxiety": [0.1, 0.2],
-                    "normal": [-0.1, -0.2],
-                },
-                "classifier_head_biases": {
-                    "anxiety": 0.3,
-                    "normal": -0.3,
-                },
+    head_tensors, head_metadata = (
+        head_state_artifacts.build_classifier_head_state_tensor_artifact(
+            classifier_head_weights={
+                "anxiety": [0.1, 0.2],
+                "normal": [-0.1, -0.2],
             },
-        },
+            classifier_head_biases={
+                "anxiety": 0.3,
+                "normal": -0.3,
+            },
+            label_schema=("anxiety", "normal"),
+        )
+    )
+    loader = InMemoryTensorArtifactLoader(
+        {},
         {
             "server-aggregate://rev_000/peft_adapter": (tensors, metadata),
+            "server-aggregate://rev_000/classifier_head": (
+                head_tensors,
+                head_metadata,
+            ),
         },
     )
 
@@ -473,12 +492,13 @@ def test_peft_encoder_state_projection_applies_delta_to_base_snapshot() -> None:
     )
     assert peft_artifact["encoder.q_proj.lora_A"] == pytest.approx([1.2, 1.6])
     assert peft_artifact["encoder.q_proj.lora_B"] == pytest.approx([0.7])
-    assert projection.artifacts["server-aggregate://rev_001/classifier_head"][
-        "classifier_head_weights"
-    ]["normal"] == pytest.approx([-0.6, -0.1])
-    assert projection.artifacts["server-aggregate://rev_001/classifier_head"][
-        "classifier_head_biases"
-    ] == pytest.approx({"anxiety": 0.5, "normal": -0.2})
+    head_state = _parse_head_state_projection_artifact(
+        projection.artifacts["server-aggregate://rev_001/classifier_head"]
+    )
+    assert head_state.classifier_head_weights["normal"] == pytest.approx([-0.6, -0.1])
+    assert head_state.classifier_head_biases == pytest.approx(
+        {"anxiety": 0.5, "normal": -0.2}
+    )
 
 
 def test_peft_classifier_state_projection_uses_v2_state_and_artifact_keys() -> None:
