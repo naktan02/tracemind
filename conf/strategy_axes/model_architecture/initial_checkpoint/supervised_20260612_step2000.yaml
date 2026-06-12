@@ -1,0 +1,7 @@
+# @package query_adaptation_initial_checkpoint
+
+name: supervised_20260612_step2000
+mode: required
+manifest_path: runs/central/supervised/peft_classifier/peft_clf_2026_06_12_154038/checkpoints/epoch_0001_step_002000/manifest.json
+adapter_dir: ""
+classifier_path: ""

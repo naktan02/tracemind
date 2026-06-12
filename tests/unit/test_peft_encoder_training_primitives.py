@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib
+
 import torch
 from torch.utils.data import DataLoader
 
@@ -118,6 +120,12 @@ def test_scalar_metric_accumulator_preserves_average_record_keys() -> None:
 
 def test_tensor_mapping_l2_matches_partition_delta_metric() -> None:
     assert tensor_mapping_l2({"a": torch.tensor([3.0, 4.0])}) == 5.0
+
+
+def test_fedmatch_partitioned_runtime_imports_common_training_primitives() -> None:
+    module = importlib.import_module("methods.federated_ssl.fedmatch.local_runtime")
+
+    assert hasattr(module, "run_method_owned_peft_encoder_training_request")
 
 
 def test_peft_encoder_training_fedprox_adds_loss_only_when_enabled() -> None:

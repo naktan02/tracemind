@@ -1103,6 +1103,40 @@ def test_federated_simulation_uses_smoke_preset_by_default(tmp_path: Path) -> No
     assert "selection" not in cfg.training_task.objective
     assert "pseudo_label_algorithm_name" not in cfg.training_task.objective
     assert "acceptance_policy_name" not in cfg.training_task.objective
+
+
+def test_federated_simulation_composes_named_initial_checkpoint_preset(
+    tmp_path: Path,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/model_architecture/initial_checkpoint="
+                "supervised_20260612_step2000",
+            ],
+        )
+
+    request = build_simulation_request_from_config(cfg, output_dir=tmp_path)
+
+    assert cfg.query_adaptation_initial_checkpoint.name == (
+        "supervised_20260612_step2000"
+    )
+    assert cfg.query_adaptation_initial_checkpoint.mode == "required"
+    assert cfg.query_adaptation_initial_checkpoint.manifest_path == (
+        "runs/central/supervised/peft_classifier/"
+        "peft_clf_2026_06_12_154038/checkpoints/"
+        "epoch_0001_step_002000/manifest.json"
+    )
+    assert request.initial_checkpoint_config.name == (
+        "supervised_20260612_step2000"
+    )
+    assert request.initial_checkpoint_config.mode == "required"
+    assert request.initial_checkpoint_config.manifest_path == (
+        "runs/central/supervised/peft_classifier/"
+        "peft_clf_2026_06_12_154038/checkpoints/"
+        "epoch_0001_step_002000/manifest.json"
+    )
     assert cfg.federated_run_budget.output_dir == "runs/_smoke/fl_ssl"
     assert cfg.federated_run_budget.client_count == 4
     assert cfg.federated_run_budget.rounds == 3

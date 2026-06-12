@@ -117,6 +117,26 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   strategy_axes/fl_topology/shard_policy=dirichlet_alpha03
 ```
 
+중앙 supervised checkpoint에서 시작하는 실행은 initial checkpoint preset을 고른다.
+긴 manifest path를 CLI에 직접 넣지 않는다.
+
+```bash
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
+  run_controls/fl_ssl/budget=main \
+  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
+  strategy_axes/model_architecture/initial_checkpoint=supervised_20260612_step2000
+```
+
+FedMatch도 같은 checkpoint preset을 사용한다.
+
+```bash
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
+  run_controls/fl_ssl/budget=main \
+  fl_method.composition_mode=method_owned \
+  strategy_axes/fssl_method=fedmatch \
+  strategy_axes/model_architecture/initial_checkpoint=supervised_20260612_step2000
+```
+
 ## Sweep
 
 ```bash

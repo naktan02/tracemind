@@ -10,6 +10,12 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
+from methods.adaptation.common.batching import (
+    move_tensor_batch_to_device,
+    next_cycling_batch,
+)
+from methods.adaptation.common.optimizer_step import run_optimizer_loss_step
+from methods.adaptation.common.step_budget import resolve_epoch_distributed_step_budget
 from methods.adaptation.query_text_views.local_training_budget import (
     QuerySslLocalStepPlan,
 )
@@ -20,16 +26,11 @@ from methods.federated_ssl.hooks.local_objective import (
 )
 from methods.ssl.base import QuerySslAlgorithm, QuerySslStepResult, TextBatchClassifier
 
-from ...training.batching import (
-    move_tensor_batch_to_device,
-    next_cycling_batch,
-)
 from ...training.loops import (
     build_optimizer,
     trainable_model_parameters,
 )
 from ...training.modeling import PeftTextEncoderWithLinearHead
-from ...training.optimizer_step import run_optimizer_loss_step
 from ...training.partitioned_deltas import (
     build_peft_encoder_partition_delta_from_parameter_deltas,
     diff_parameter_snapshots,
@@ -40,7 +41,6 @@ from ...training.scalar_metrics import (
     ScalarMetricAccumulator,
     tensor_mapping_l2,
 )
-from ...training.step_budget import resolve_epoch_distributed_step_budget
 from ...update.partitioned_delta import PeftEncoderPartitionDelta
 from . import trainable_model as ptm
 
