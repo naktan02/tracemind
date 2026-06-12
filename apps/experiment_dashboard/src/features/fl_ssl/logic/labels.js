@@ -49,8 +49,18 @@ export function dataSourceLabel(row) {
 }
 
 export function labelBudgetLabel(row) {
-  const match = String(row.selection_slug ?? runId(row)).match(/labels_pc(\d+)/);
-  return match ? `pc${match[1]}` : "pc?";
+  const source = [
+    row.selection_slug,
+    row.run_id,
+    row.report_path,
+    row.labeled_dataset_name,
+  ].join(" ");
+  const labelsPcMatch = source.match(/labels_pc(\d+)/);
+  if (labelsPcMatch) return `pc${labelsPcMatch[1]}`;
+  const perClassMatch = source.match(/labeled(\d+)_per_class/);
+  if (perClassMatch) return `pc${perClassMatch[1]}`;
+  const inferred = inferLabelBudgetFromUniqueRows(row);
+  return inferred ? `pc${inferred}` : "pc?";
 }
 
 export function initialCheckpointLabel(row) {
@@ -165,4 +175,27 @@ function extractRunIdPart(row, prefix) {
   const next = prefix === "labeled" ? "unlabeled" : "labels_pc";
   const match = source.match(new RegExp(`${prefix}-(.+?)_${next}`));
   return match ? match[1] : null;
+}
+
+function inferLabelBudgetFromUniqueRows(row) {
+  const uniqueLabeledRows = Number(row.unique_labeled_row_count);
+  if (!Number.isFinite(uniqueLabeledRows) || uniqueLabeledRows <= 0) return null;
+  const labelCount = labelCountFromSchema(row);
+  if (!labelCount || uniqueLabeledRows % labelCount !== 0) return null;
+  return Math.round(uniqueLabeledRows / labelCount);
+}
+
+function labelCountFromSchema(row) {
+  const rawParameters = row.peft_adapter_parameters_json;
+  if (typeof rawParameters !== "string" || !rawParameters.trim()) return null;
+  try {
+    const parameters = JSON.parse(rawParameters);
+    const labels = String(parameters.label_schema ?? "")
+      .split(",")
+      .map((label) => label.trim())
+      .filter(Boolean);
+    return labels.length > 0 ? labels.length : null;
+  } catch (_error) {
+    return null;
+  }
 }

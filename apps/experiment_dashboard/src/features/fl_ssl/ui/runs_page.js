@@ -75,14 +75,10 @@ const FL_RUN_AXIS_COLUMNS = [
 export function normalizeFlRunSelection(rows, state) {
   const metrics = flRunMetricKeys(rows);
   state.runMetricIds = state.runMetricIds.filter((metric) => metrics.includes(metric));
-  const visibleRunIds = new Set(rows.map(runId));
-  state.runIds = state.runIds.filter((selectedRunId) =>
-    visibleRunIds.has(selectedRunId),
-  );
   normalizeRunColumns(state, rows);
 }
 
-export function renderFlRunsPage(elements, rows, state, _bundle = null, rerender = () => {}) {
+export function renderFlRunsPage(elements, rows, state, _bundle = null, rerender = () => {}, selectionRows = rows) {
   const columns = buildRunColumns(rows, _bundle ?? {});
   const { visibleColumns, allColumns, state: columnState } = resolveTableColumns(
     state.runTableColumns,
@@ -97,8 +93,8 @@ export function renderFlRunsPage(elements, rows, state, _bundle = null, rerender
   renderColumnCheckboxes(elements.flRunMetricPicker, metricColumns, visibleIds, "flRunTableColumn");
   renderColumnCheckboxes(elements.flRunAxisPicker, axisColumns, visibleIds, "flRunTableColumn");
   renderRunPicker(elements, rows, state);
-  renderSelectedRunCards(elements, rows, state);
-  renderRunTable(elements, visibleColumns, rows, state, rerender);
+  renderSelectedRunCards(elements, selectionRows, state);
+  renderRunTable(elements, visibleColumns, selectionRows, state, rerender);
 }
 
 function renderRunPicker(elements, rows, state) {

@@ -16,12 +16,10 @@ export function normalizeFlProjectionSelection(bundle, rows, state) {
     state.projectionEvalSet = evalSets.includes("validation") ? "validation" : evalSets[0] ?? "validation";
     state.projectionRunIds = [];
   }
-  const visibleRunIds = new Set(flRowsWithProjection(bundle, rows, state.projectionEvalSet).map(runId));
-  state.projectionRunIds = state.projectionRunIds.filter((id) => visibleRunIds.has(id));
 }
 
-export function renderFlProjectionPage(elements, rows, state, bundle) {
-  const evalSets = flProjectionEvalSets(bundle, rows);
+export function renderFlProjectionPage(elements, rows, state, bundle, selectionRows = rows) {
+  const evalSets = flProjectionEvalSets(bundle, selectionRows);
   fillSelect(elements.flProjectionEvalFilter, evalSets, state.projectionEvalSet, "eval 없음");
   const candidateRows = flRowsWithProjection(bundle, rows, state.projectionEvalSet);
   const selectedRunIds = new Set(state.projectionRunIds);
@@ -47,7 +45,7 @@ export function renderFlProjectionPage(elements, rows, state, bundle) {
             `;
           })
           .join("");
-  renderGallery(elements, rows, state, bundle);
+  renderGallery(elements, selectionRows, state, bundle);
 }
 
 function renderGallery(elements, rows, state, bundle) {

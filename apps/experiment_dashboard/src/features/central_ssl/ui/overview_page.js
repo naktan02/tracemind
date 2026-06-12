@@ -71,13 +71,10 @@ export function normalizeOverviewSelection(rows, state) {
   state.overviewMetricIds = state.overviewMetricIds.filter((metric) =>
     availableMetrics.includes(metric),
   );
-  state.overviewRunIds = state.overviewRunIds.filter((runId) =>
-    rows.some((row) => row.run_id === runId),
-  );
   normalizeOverviewColumns(state, availableColumnIds);
 }
 
-export function renderOverviewPage(elements, rows, state, _bundle, rerender = () => {}) {
+export function renderOverviewPage(elements, rows, state, _bundle, rerender = () => {}, selectionRows = rows) {
   const columns = buildOverviewColumns(rows);
   const { visibleColumns, allColumns, state: columnState } = resolveTableColumns(
     state.overviewTableColumns,
@@ -102,8 +99,8 @@ export function renderOverviewPage(elements, rows, state, _bundle, rerender = ()
     "overviewTableColumn",
   );
   renderRunPicker(elements, rows, state);
-  renderSelectedRunCards(elements, rows, state);
-  renderOverviewTable(elements, visibleColumns, rows, state, rerender);
+  renderSelectedRunCards(elements, selectionRows, state);
+  renderOverviewTable(elements, visibleColumns, selectionRows, state, rerender);
 }
 
 function renderRunPicker(elements, rows, state) {

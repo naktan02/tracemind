@@ -149,7 +149,6 @@ function bindCentralEvents() {
         delete state.central.filterValues[axisId];
       }
     }
-    resetCentralSelections();
     render();
   });
   elements.centralActiveFilters.addEventListener("change", (event) => {
@@ -161,13 +160,11 @@ function bindCentralEvents() {
       axisId,
       "centralFilterValue",
     );
-    resetCentralSelections();
     render();
   });
   elements.centralFilterReset.addEventListener("click", () => {
     state.central.filterAxisIds = [...DEFAULT_CENTRAL_FILTER_AXIS_IDS];
     state.central.filterValues = {};
-    resetCentralSelections();
     render();
   });
   elements.overviewEvalFilter.addEventListener("change", (event) => {
@@ -192,8 +189,9 @@ function bindCentralEvents() {
     render();
   });
   elements.overviewRunCheckboxes.addEventListener("change", () => {
-    syncCentralRunSelection(
-      checkedValues(elements.overviewRunCheckboxes, "overviewRunId"),
+    syncCentralRunSelectionFromVisible(
+      elements.overviewRunCheckboxes,
+      "overviewRunId",
     );
     render();
   });
@@ -223,8 +221,9 @@ function bindCentralEvents() {
     render();
   });
   elements.comparisonRunCheckboxes.addEventListener("change", () => {
-    syncCentralRunSelection(
-      checkedValues(elements.comparisonRunCheckboxes, "runId"),
+    syncCentralRunSelectionFromVisible(
+      elements.comparisonRunCheckboxes,
+      "runId",
     );
     render();
   });
@@ -281,7 +280,7 @@ function bindFlEvents() {
     for (const axisId of Object.keys(state.fl.filterValues)) {
       if (!state.fl.filterAxisIds.includes(axisId)) delete state.fl.filterValues[axisId];
     }
-    resetFlSelectionsAfterFilterChange();
+    resetFlSingleSelectionsAfterFilterChange();
     render();
   });
   elements.flActiveFilters.addEventListener("change", (event) => {
@@ -293,13 +292,13 @@ function bindFlEvents() {
       axisId,
       "flFilterValue",
     );
-    resetFlSelectionsAfterFilterChange();
+    resetFlSingleSelectionsAfterFilterChange();
     render();
   });
   elements.flFilterReset.addEventListener("click", () => {
     state.fl.filterAxisIds = [...DEFAULT_FL_FILTER_AXIS_IDS];
     state.fl.filterValues = {};
-    resetFlSelectionsAfterFilterChange();
+    resetFlSingleSelectionsAfterFilterChange();
     render();
   });
   elements.flRunColumnTabButtons.forEach((button) => {
@@ -320,23 +319,23 @@ function bindFlEvents() {
     render();
   });
   elements.flRunCheckboxes.addEventListener("change", () => {
-    state.fl.runIds = checkedValues(elements.flRunCheckboxes, "flRunId");
+    syncFlMultiRunSelectionFromVisible(elements.flRunCheckboxes, "flRunId");
     render();
   });
   elements.flRunSelectedRunCards.addEventListener("click", (event) => {
     const runId = event.target.dataset.removeFlRunId;
     if (!runId) return;
-    state.fl.runIds = state.fl.runIds.filter((id) => id !== runId);
+    syncFlMultiRunSelection(state.fl.runIds.filter((id) => id !== runId));
     render();
   });
   elements.flRoundRunCheckboxes.addEventListener("change", () => {
-    state.fl.roundRunIds = checkedValues(elements.flRoundRunCheckboxes, "flRoundRunId");
+    syncFlMultiRunSelectionFromVisible(elements.flRoundRunCheckboxes, "flRoundRunId");
     render();
   });
   elements.flRoundSelectedRunCards.addEventListener("click", (event) => {
     const runId = event.target.dataset.removeFlRoundRunId;
     if (!runId) return;
-    state.fl.roundRunIds = state.fl.roundRunIds.filter((id) => id !== runId);
+    syncFlMultiRunSelection(state.fl.roundRunIds.filter((id) => id !== runId));
     render();
   });
   elements.flRoundIncludeInitial.addEventListener("change", (event) => {
@@ -370,16 +369,13 @@ function bindFlEvents() {
     render();
   });
   elements.flProjectionRunCheckboxes.addEventListener("change", () => {
-    state.fl.projectionRunIds = checkedValues(
-      elements.flProjectionRunCheckboxes,
-      "flProjectionRunId",
-    );
+    syncFlMultiRunSelectionFromVisible(elements.flProjectionRunCheckboxes, "flProjectionRunId");
     render();
   });
   elements.flProjectionGallery.addEventListener("click", (event) => {
     const runId = event.target.dataset.removeFlProjectionRunId;
     if (!runId) return;
-    state.fl.projectionRunIds = state.fl.projectionRunIds.filter((id) => id !== runId);
+    syncFlMultiRunSelection(state.fl.projectionRunIds.filter((id) => id !== runId));
     render();
   });
 }
@@ -506,18 +502,14 @@ function renderCentral() {
   );
   pruneCentralFilters(overviewRowsAll, state.central);
   const overviewRows = applyCentralFilters(overviewRowsAll, state.central);
-  const compareRows = applyCentralFilters(
-    centralMetricRows(state.bundle, state.central.compareEvalSet, "macro_f1", trackPredicate),
-    state.central,
-  );
+  const compareRowsAll = centralMetricRows(state.bundle, state.central.compareEvalSet, "macro_f1", trackPredicate);
+  const compareRows = applyCentralFilters(compareRowsAll, state.central);
   const classRows = applyCentralFilters(
     centralMetricRows(state.bundle, state.central.classEvalSet, "macro_f1", trackPredicate),
     state.central,
   );
-  const projectionRows = applyCentralFilters(
-    centralMetricRows(state.bundle, state.central.projectionEvalSet, "macro_f1", trackPredicate),
-    state.central,
-  );
+  const projectionRowsAll = centralMetricRows(state.bundle, state.central.projectionEvalSet, "macro_f1", trackPredicate);
+  const projectionRows = applyCentralFilters(projectionRowsAll, state.central);
   renderFilterPanel({
     axisPicker: elements.centralFilterAxisPicker,
     activeFilters: elements.centralActiveFilters,
@@ -532,9 +524,9 @@ function renderCentral() {
   normalizeOverviewSelection(overviewRows, state.central);
   normalizeCompareSelection(compareRows, state.central, state.bundle);
   normalizeDetailSelection(classRows, state.central);
-  normalizeProjectionSelection(state.bundle, projectionRows, state.central);
-  renderOverviewPage(elements, overviewRows, state.central, state.bundle, render);
-  renderComparePage(elements, compareRows, state.central, state.bundle);
+  normalizeProjectionSelection(state.bundle, projectionRowsAll, state.central);
+  renderOverviewPage(elements, overviewRows, state.central, state.bundle, render, overviewRowsAll);
+  renderComparePage(elements, compareRows, state.central, state.bundle, compareRowsAll);
   renderDetailPage(elements, classRows, state.central, state.bundle, render);
   renderProjectionPage(elements, projectionRows, state.central, state.bundle);
 }
@@ -558,13 +550,13 @@ function renderFl() {
   normalizeRoundSelection(rows, state.fl);
   normalizeClientSelections(rows, state.fl, state.bundle);
   normalizeSplitSelection(rows, state.fl, state.bundle);
-  normalizeFlProjectionSelection(state.bundle, rows, state.fl);
+  normalizeFlProjectionSelection(state.bundle, allRows, state.fl);
   elements.flRoundIncludeInitial.checked = state.fl.roundIncludeInitial;
-  renderFlRunsPage(elements, rows, state.fl, state.bundle, render);
-  renderRoundsPage(elements, rows, state.fl, state.bundle, render);
+  renderFlRunsPage(elements, rows, state.fl, state.bundle, render, allRows);
+  renderRoundsPage(elements, rows, state.fl, state.bundle, render, allRows);
   renderClientsPage(elements, rows, state.fl, state.bundle, render);
   renderSplitsPage(elements, rows, state.fl, state.bundle, render);
-  renderFlProjectionPage(elements, rows, state.fl, state.bundle);
+  renderFlProjectionPage(elements, rows, state.fl, state.bundle, allRows);
 }
 
 function checkedValuesForAxis(container, axisDatasetKey, axisId, valueDatasetKey) {
@@ -654,13 +646,10 @@ function resetCentralSelections() {
   state.central.projectionRunIds = [];
 }
 
-function resetFlSelectionsAfterFilterChange() {
-  state.fl.runIds = [];
-  state.fl.roundRunIds = state.fl.roundRunIds.filter(Boolean);
+function resetFlSingleSelectionsAfterFilterChange() {
   state.fl.clientValidationRunId = null;
   state.fl.clientRoundRunId = null;
   state.fl.splitRunId = null;
-  state.fl.projectionRunIds = [];
 }
 
 function updateAlias(aliasMap, scope, runId, value) {
@@ -674,6 +663,48 @@ function syncCentralRunSelection(runIds = []) {
   const uniqueRunIds = Array.from(new Set(runIds));
   state.central.overviewRunIds = uniqueRunIds;
   state.central.compareRunIds = uniqueRunIds;
+}
+
+function syncCentralRunSelectionFromVisible(container, datasetKey) {
+  syncCentralRunSelection(
+    mergeVisibleRunSelection(
+      state.central.compareRunIds,
+      checkedValues(container, datasetKey),
+      availableValues(container, datasetKey),
+    ),
+  );
+}
+
+function syncFlMultiRunSelection(runIds = []) {
+  const uniqueRunIds = Array.from(new Set(runIds));
+  state.fl.runIds = uniqueRunIds;
+  state.fl.roundRunIds = uniqueRunIds;
+  state.fl.projectionRunIds = uniqueRunIds;
+}
+
+function syncFlMultiRunSelectionFromVisible(container, datasetKey) {
+  syncFlMultiRunSelection(
+    mergeVisibleRunSelection(
+      state.fl.runIds,
+      checkedValues(container, datasetKey),
+      availableValues(container, datasetKey),
+    ),
+  );
+}
+
+function mergeVisibleRunSelection(previousRunIds = [], checkedRunIds = [], visibleRunIds = []) {
+  const visible = new Set(visibleRunIds);
+  const next = previousRunIds.filter((runId) => !visible.has(runId));
+  for (const runId of checkedRunIds) {
+    if (!next.includes(runId)) next.push(runId);
+  }
+  return next;
+}
+
+function availableValues(container, datasetKey) {
+  return Array.from(container.querySelectorAll("input[type='checkbox']"))
+    .map((input) => input.dataset[datasetKey])
+    .filter(Boolean);
 }
 
 function updateAxisLabel(scope, value) {

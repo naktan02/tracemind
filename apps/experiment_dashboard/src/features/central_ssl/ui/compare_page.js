@@ -22,17 +22,13 @@ export function normalizeCompareSelection(rows, state, bundle) {
   if (!metrics.includes(state.compareMetric)) {
     state.compareMetric = metrics[0] ?? "selection_macro_f1";
   }
-  const visibleRunIds = new Set(rows.map((row) => row.run_id));
-  state.compareRunIds = state.compareRunIds.filter((runId) =>
-    visibleRunIds.has(runId),
-  );
 }
 
-export function renderComparePage(elements, rows, state, bundle) {
+export function renderComparePage(elements, rows, state, bundle, selectionRows = rows) {
   renderMetricPicker(elements, state, bundle);
   renderRunPicker(elements, rows, state);
-  renderSelectedRunCards(elements, rows, state);
-  renderComparisonChart(elements, rows, state, bundle);
+  renderSelectedRunCards(elements, selectionRows, state);
+  renderComparisonChart(elements, selectionRows, state, bundle);
 }
 
 function renderMetricPicker(elements, state, bundle) {

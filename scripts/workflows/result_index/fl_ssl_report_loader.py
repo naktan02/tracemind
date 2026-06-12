@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -88,7 +89,7 @@ def load_fl_ssl_result_index_records(
         ),
         method_name=method_name,
         algorithm_name=algorithm_name,
-        selection_slug=optional_str(fl_data_source.get("split_id")),
+        selection_slug=infer_selection_slug(fl_data_source),
         labeled_dataset_name=optional_str(source_selection.get("labeled")),
         unlabeled_dataset_name=optional_str(source_selection.get("unlabeled")),
         validation_dataset_name=optional_str(source_selection.get("validation")),
@@ -349,6 +350,35 @@ def infer_local_regularizer(objective: dict[str, Any]) -> tuple[str, float | Non
     if proximal_mu is not None and proximal_mu > 0:
         return "fedprox", proximal_mu
     return "none", None
+
+
+def infer_selection_slug(fl_data_source: dict[str, Any]) -> str | None:
+    split_id = optional_str(fl_data_source.get("split_id"))
+    if split_id:
+        return split_id
+    source_jsonl = as_mapping(fl_data_source.get("source_jsonl"))
+    label_budget = infer_label_budget_slug(optional_str(source_jsonl.get("labeled")))
+    if label_budget is None:
+        return None
+    source_selection = as_mapping(fl_data_source.get("source_selection"))
+    parts = []
+    for key in ("labeled", "unlabeled", "test"):
+        value = optional_str(source_selection.get(key))
+        if value:
+            parts.append(f"{key}-{value}")
+    parts.append(label_budget)
+    return "_".join(parts)
+
+
+def infer_label_budget_slug(value: str | None) -> str | None:
+    text = str(value or "")
+    legacy_match = re.search(r"(?:^|_)labels_pc(\d+)(?:_|$)", text)
+    if legacy_match:
+        return f"labels_pc{legacy_match.group(1)}"
+    split_match = re.search(r"(?:^|/)labeled(\d+)_per_class(?:_|/)", text)
+    if split_match:
+        return f"labels_pc{split_match.group(1)}"
+    return None
 
 
 def _trainable_state_objective_value(objective: dict[str, Any], key: str) -> object:

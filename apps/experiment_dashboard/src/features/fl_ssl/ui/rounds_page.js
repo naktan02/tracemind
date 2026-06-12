@@ -52,11 +52,9 @@ export function normalizeRoundSelection(rows, state) {
     .filter((id) => id.startsWith("metric:"))
     .map((id) => id.replace(/^metric:/, ""))[0] || ROUND_DEFAULT_METRIC;
   state.roundMetricIds = [state.roundMetric];
-  const visibleRunIds = new Set(rows.map(runId));
-  state.roundRunIds = state.roundRunIds.filter((id) => visibleRunIds.has(id));
 }
 
-export function renderRoundsPage(elements, rows, state, bundle, rerender = () => {}) {
+export function renderRoundsPage(elements, rows, state, bundle, rerender = () => {}, selectionRows = rows) {
   const columns = buildRoundColumns();
   const { visibleColumns, allColumns } = resolveTableColumns(
     state.roundTableColumns,
@@ -66,13 +64,13 @@ export function renderRoundsPage(elements, rows, state, bundle, rerender = () =>
   const metricColumns = allColumns.filter((column) => column.group === "metric");
   renderRoundMetricPicker(elements.flRoundTableMetricPicker, metricColumns, state.roundMetric);
   renderRunPicker(elements, rows, state);
-  renderSelectedRunCards(elements, rows, state);
+  renderSelectedRunCards(elements, selectionRows, state);
   const selectedRows = flRoundRows(bundle)
     .filter((row) => state.roundRunIds.includes(row.run_id))
     .filter((row) => state.roundIncludeInitial || numberOrNull(row.round_index) !== 0)
     .sort(compareFlRoundRows);
   renderFlatNote(elements, selectedRows, state);
-  renderRoundChart(elements, selectedRows, rows, state);
+  renderRoundChart(elements, selectedRows, selectionRows, state);
   renderRoundTable(elements, columns, selectedRows, visibleColumns, state, rerender);
 }
 

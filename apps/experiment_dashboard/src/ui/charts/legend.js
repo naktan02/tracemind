@@ -6,7 +6,7 @@ export function renderSeriesLegend(series, colors, scope = null) {
       ${series
         .map((item) => {
           const colorKey = item.colorKey ?? item.label;
-          const color = colors.get(item.label);
+          const color = colors.get(colorKey);
           return `
             <span>
               <input

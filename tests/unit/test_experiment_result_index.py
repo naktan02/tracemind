@@ -248,6 +248,37 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.artifacts[1].artifact_kind == "fl_client_split_manifest"
 
 
+def test_load_result_index_records_infers_fl_label_budget_from_source_path(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_fl_ssl_report(tmp_path)
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    fl_data_source = payload["protocol"]["fl_data_source"]
+    fl_data_source["split_id"] = None
+    fl_data_source["source_jsonl"] = {
+        "labeled": (
+            "data/datasets/szegeelim_mental_health/views/"
+            "labeled1024_per_class_seed42_v1/"
+            "backtranslation_nllb_en_de_fr_usb_v1/"
+            "labeled_train.with_views.jsonl"
+        )
+    }
+    fl_data_source["source_selection"] = {
+        "labeled": "szegeelim_general4",
+        "unlabeled": "ourafla_reddit",
+        "validation": "ourafla_reddit",
+        "test": "ourafla_reddit",
+    }
+    report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.selection_slug == (
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "test-ourafla_reddit_labels_pc1024"
+    )
+
+
 def test_load_result_index_records_reads_peft_classifier_objective(
     tmp_path: Path,
 ) -> None:
