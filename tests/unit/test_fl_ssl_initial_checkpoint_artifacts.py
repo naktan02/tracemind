@@ -132,6 +132,64 @@ def test_publish_initial_checkpoint_artifacts_writes_server_owned_tensors(
     assert head_state.classifier_head_biases["anxiety"] == pytest.approx(0.5)
 
 
+def test_publish_initial_checkpoint_manifest_accepts_repo_relative_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    checkpoint_dir = (
+        Path("runs")
+        / "central"
+        / "supervised"
+        / "peft_classifier"
+        / "peft_clf_unit"
+        / "checkpoints"
+        / "epoch_0001_step_002000"
+    )
+    adapter_dir = checkpoint_dir / "adapter"
+    adapter_dir.mkdir(parents=True)
+    classifier_path = checkpoint_dir / "classifier_head.safetensors"
+    classifier_path.write_bytes(b"placeholder")
+    manifest_path = checkpoint_dir / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "central_peft_supervised_epoch_checkpoint.v1",
+                "trainer_version": "central_step_2000",
+                "adapter_dir": str(adapter_dir),
+                "classifier_path": str(classifier_path),
+            }
+        ),
+        encoding="utf-8",
+    )
+    request = _request_for_checkpoint(
+        tmp_path=tmp_path,
+        adapter_dir=None,
+        classifier_path=None,
+    )
+    request.initial_checkpoint_config.manifest_path = str(manifest_path)
+
+    def fake_builder(
+        source: ResolvedInitialCheckpointSource,
+        _runtime_payload: FederatedPeftEncoderRuntimeConfig,
+        _runtime_config: FederatedLocalTrainerRuntimeConfig,
+        _labels: tuple[str, ...],
+    ) -> PeftEncoderMaterializedState:
+        assert source.adapter_dir == adapter_dir
+        assert source.classifier_path == classifier_path
+        return PeftEncoderMaterializedState(
+            peft_parameters={"base_model.lora_A": [0.1]},
+            classifier_head_weights={"anxiety": [1.0]},
+            classifier_head_biases={"anxiety": 0.0},
+        )
+
+    publish_initial_checkpoint_artifacts_for_request(
+        request=request,
+        labels=("anxiety",),
+        materialized_checkpoint_builder=fake_builder,
+    )
+
+
 def test_publish_initial_checkpoint_requires_canonical_safetensors_head(
     tmp_path: Path,
 ) -> None:

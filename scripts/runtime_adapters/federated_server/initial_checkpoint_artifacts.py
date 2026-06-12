@@ -167,11 +167,11 @@ def _resolve_initial_checkpoint_source(
 
     if manifest_path is not None:
         manifest_payload, manifest_path = _load_checkpoint_manifest(manifest_path)
-        adapter_dir = adapter_dir or _optional_path(
+        adapter_dir = adapter_dir or _optional_manifest_path(
             manifest_payload.get("adapter_dir"),
             base_dir=manifest_path.parent,
         )
-        classifier_path = classifier_path or _optional_path(
+        classifier_path = classifier_path or _optional_manifest_path(
             manifest_payload.get("classifier_path")
             or manifest_payload.get("model_path"),
             base_dir=manifest_path.parent,
@@ -310,7 +310,7 @@ def _load_checkpoint_manifest(path: Path) -> tuple[dict[str, object], Path]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"Initial checkpoint manifest must be a JSON object: {path}")
-    nested_manifest_path = _optional_path(
+    nested_manifest_path = _optional_manifest_path(
         payload.get("manifest_path"),
         base_dir=path.parent,
     )
@@ -358,6 +358,15 @@ def _optional_path(value: object, *, base_dir: Path | None = None) -> Path | Non
     if not path.is_absolute() and base_dir is not None:
         return base_dir / path
     return path
+
+
+def _optional_manifest_path(value: object, *, base_dir: Path) -> Path | None:
+    path = _optional_path(value)
+    if path is None:
+        return None
+    if path.is_absolute() or path.exists():
+        return path
+    return base_dir / path
 
 
 def _ensure_existing_dir(path: Path, *, field_name: str) -> None:
