@@ -1,9 +1,14 @@
 import { loadStoredRunAliases, loadStoredSeriesColors } from "../../state/preferences.js";
 
+export const DEFAULT_FL_FILTER_AXIS_IDS = [
+  "initial_checkpoint",
+  "created_date",
+];
+
 export function createFlSslState() {
   return {
     filterPanelOpen: false,
-    filterAxisIds: [],
+    filterAxisIds: [...DEFAULT_FL_FILTER_AXIS_IDS],
     filterValues: {},
     runColumnTab: "metric",
     runMetricIds: [],

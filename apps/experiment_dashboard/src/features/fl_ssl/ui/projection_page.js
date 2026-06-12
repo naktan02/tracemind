@@ -1,6 +1,13 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
 import { fillSelect } from "../../../ui/controls/form_controls.js";
-import { algorithmName, dataSourceLabel, labelBudgetLabel, runDescriptor, runId } from "../logic/labels.js";
+import {
+  algorithmName,
+  dataSourceLabel,
+  labelBudgetLabel,
+  runDescriptor,
+  runHoverDetail,
+  runId,
+} from "../logic/labels.js";
 import { flProjectionEvalSets, flRowsWithProjection } from "../logic/selectors.js";
 
 export function normalizeFlProjectionSelection(bundle, rows, state) {
@@ -24,8 +31,9 @@ export function renderFlProjectionPage(elements, rows, state, bundle) {
       : candidateRows
           .map((row) => {
             const id = runId(row);
+            const detail = runHoverDetail(row);
             return `
-              <label class="run-option">
+              <label class="run-option" title="${escapeHtml(detail)}">
                 <input
                   type="checkbox"
                   data-fl-projection-run-id="${escapeHtml(id)}"

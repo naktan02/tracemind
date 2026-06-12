@@ -9,8 +9,15 @@ import {
   resolveTableColumns,
   setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
+import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
 import { FL_ROUND_METRICS } from "../logic/constants.js";
-import { algorithmName, roundLegendLabel, runDescriptor, runId } from "../logic/labels.js";
+import {
+  algorithmName,
+  roundLegendLabel,
+  runDescriptor,
+  runHoverDetail,
+  runId,
+} from "../logic/labels.js";
 import { roundPointValue } from "../logic/metrics.js";
 import { compareFlRoundRows, flRoundRows } from "../logic/selectors.js";
 
@@ -77,8 +84,9 @@ function renderRunPicker(elements, rows, state) {
       : rows
           .map((row) => {
             const id = runId(row);
+            const detail = runHoverDetail(row);
             return `
-              <label class="run-option">
+              <label class="run-option" title="${escapeHtml(detail)}">
                 <input
                   type="checkbox"
                   data-fl-round-run-id="${escapeHtml(id)}"
@@ -106,24 +114,18 @@ function renderSelectedRunCards(elements, rows, state) {
     .map((row) => {
       const id = runId(row);
       const label = roundLegendLabel(row, state.roundRunAliases);
-      return `
-        <article class="selected-run-card alias-run-card">
-          <strong>${escapeHtml(label)}</strong>
-          <input
-            type="text"
-            data-fl-round-alias-run-id="${escapeHtml(id)}"
-            value="${escapeHtml(state.roundRunAliases[id] ?? "")}"
-            placeholder="legend alias"
-            aria-label="${escapeHtml(algorithmName(row))} 범례 alias"
-          />
-          <button
-            type="button"
-            data-remove-fl-round-run-id="${escapeHtml(id)}"
-            aria-label="${escapeHtml(label)} 제거"
-          >x</button>
-          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(runDescriptor(row))}</span>
-        </article>
-      `;
+      const detail = runHoverDetail(row);
+      return renderSelectedRunCard({
+        id,
+        label,
+        detail,
+        aliasValue: state.roundRunAliases[id],
+        aliasPlaceholder: "legend alias",
+        aliasDataAttribute: "fl-round-alias-run-id",
+        aliasAriaLabel: `${algorithmName(row)} 범례 alias`,
+        removeDataAttribute: "remove-fl-round-run-id",
+        removeAriaLabel: `${label} 제거`,
+      });
     })
     .join("");
 }

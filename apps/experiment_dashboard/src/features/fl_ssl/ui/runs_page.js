@@ -8,18 +8,24 @@ import {
   resolveTableColumns,
   setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
+import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
 import {
   algorithmName,
   compactRunSubLabel,
   labelBudgetLabel,
   runDescriptor,
   runDisplayLabel,
+  runHoverDetail,
   runId,
 } from "../logic/labels.js";
 import { flFilterAxes } from "../logic/filters.js";
 import { flRunMetricKeys, formatFlRunMetric } from "../logic/metrics.js";
 
-const DEFAULT_VISIBLE_COLUMNS = ["axis:algorithm"];
+const DEFAULT_VISIBLE_COLUMNS = [
+  "axis:algorithm",
+  "axis:created_date",
+  "axis:initial_checkpoint",
+];
 
 const FL_RUN_AXIS_COLUMNS = [
   {
@@ -103,8 +109,9 @@ function renderRunPicker(elements, rows, state) {
       : rows
           .map((row) => {
             const id = runId(row);
+            const detail = runHoverDetail(row);
             return `
-              <label class="run-option" title="${escapeHtml(runDescriptor(row))}">
+              <label class="run-option" title="${escapeHtml(detail)}">
                 <input
                   type="checkbox"
                   data-fl-run-id="${escapeHtml(id)}"
@@ -132,24 +139,18 @@ function renderSelectedRunCards(elements, rows, state) {
     .map((row) => {
       const id = runId(row);
       const label = runDisplayLabel(row, state.runAliases);
-      return `
-        <article class="selected-run-card alias-run-card">
-          <strong>${escapeHtml(label)}</strong>
-          <input
-            type="text"
-            data-fl-run-alias-run-id="${escapeHtml(id)}"
-            value="${escapeHtml(state.runAliases[id] ?? "")}"
-            placeholder="run alias"
-            aria-label="${escapeHtml(label)} 표시명 alias"
-          />
-          <button
-            type="button"
-            data-remove-fl-run-id="${escapeHtml(id)}"
-            aria-label="${escapeHtml(label)} 제거"
-          >x</button>
-          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(runDescriptor(row))}</span>
-        </article>
-      `;
+      const detail = runHoverDetail(row);
+      return renderSelectedRunCard({
+        id,
+        label,
+        detail,
+        aliasValue: state.runAliases[id],
+        aliasPlaceholder: "run alias",
+        aliasDataAttribute: "fl-run-alias-run-id",
+        aliasAriaLabel: `${label} 표시명 alias`,
+        removeDataAttribute: "remove-fl-run-id",
+        removeAriaLabel: `${label} 제거`,
+      });
     })
     .join("");
 }

@@ -3,6 +3,7 @@ import { createDashboardState } from "./app_shell/state.js";
 import { loadDashboardBundle } from "./data/load_bundle.js";
 import {
   CENTRAL_FILTER_AXES,
+  DEFAULT_CENTRAL_FILTER_AXIS_IDS,
   applyCentralFilters,
   centralEvalSets,
   centralMetricRows,
@@ -11,7 +12,14 @@ import {
   isCentralSupervisedTrack,
   pruneCentralFilters,
 } from "./features/central_ssl/index.js";
-import { applyFlFilters, flFilterAxes, flSslRows, pruneFlFilters, sortedFlRows } from "./features/fl_ssl/index.js";
+import {
+  DEFAULT_FL_FILTER_AXIS_IDS,
+  applyFlFilters,
+  flFilterAxes,
+  flSslRows,
+  pruneFlFilters,
+  sortedFlRows,
+} from "./features/fl_ssl/index.js";
 import { renderFilterPanel } from "./ui/controls/filter_panel.js";
 import { fillSelect, checkedValues } from "./ui/controls/form_controls.js";
 import { storeRunAliases, storeSeriesColors } from "./state/preferences.js";
@@ -157,7 +165,7 @@ function bindCentralEvents() {
     render();
   });
   elements.centralFilterReset.addEventListener("click", () => {
-    state.central.filterAxisIds = [];
+    state.central.filterAxisIds = [...DEFAULT_CENTRAL_FILTER_AXIS_IDS];
     state.central.filterValues = {};
     resetCentralSelections();
     render();
@@ -289,7 +297,7 @@ function bindFlEvents() {
     render();
   });
   elements.flFilterReset.addEventListener("click", () => {
-    state.fl.filterAxisIds = [];
+    state.fl.filterAxisIds = [...DEFAULT_FL_FILTER_AXIS_IDS];
     state.fl.filterValues = {};
     resetFlSelectionsAfterFilterChange();
     render();
@@ -417,7 +425,7 @@ function render() {
 }
 
 function resetCentralTrackState() {
-  state.central.filterAxisIds = [];
+  state.central.filterAxisIds = [...DEFAULT_CENTRAL_FILTER_AXIS_IDS];
   state.central.filterValues = {};
   state.central.overviewMetricIds = [];
 }

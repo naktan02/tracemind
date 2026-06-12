@@ -3,7 +3,7 @@
   "adapter_kind": "peft_classifier",
   "model_id": "mxbai-peft-classifier",
   "base_model_revision": "rev_peft_001",
-  "training_scope": "adapter_only",
+  "training_scope": "adapter_and_head",
   "example_count": 3,
   "created_at": "2026-04-08T00:00:00Z",
   "backbone": {

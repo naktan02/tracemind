@@ -38,6 +38,8 @@ v1 원칙:
    - pseudo-label selection과 local training에 사용한 active pair의 model revision
 
 7. `training_scope`
+   - 예: `head_only`, `adapter_only`, `adapter_and_head`
+   - PEFT adapter와 classifier head를 함께 올리는 update는 `adapter_and_head`를 사용한다
 
 8. `payload_ref`
    - 실제 update tensor/blob 위치 또는 조회 키

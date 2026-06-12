@@ -2,7 +2,13 @@ import { escapeHtml } from "../../../shared/formatting/html.js";
 import { metricLabel } from "../../../shared/formatting/metrics.js";
 import { formatMetric, numberOrNull } from "../../../shared/formatting/numbers.js";
 import { drawLineChart } from "../../../ui/charts/line_chart.js";
-import { algorithmName, compareDisplayLabel, runDescriptor } from "../logic/labels.js";
+import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
+import {
+  algorithmName,
+  compareDisplayLabel,
+  runDescriptor,
+  runDetail,
+} from "../logic/labels.js";
 import {
   centralEpochMetricKeys,
   centralEpochPoints,
@@ -59,7 +65,7 @@ function renderRunPicker(elements, rows, state) {
       : rows
           .map(
             (row) => `
-              <label class="run-option">
+              <label class="run-option" title="${escapeHtml(runDetail(row))}">
                 <input
                   type="checkbox"
                   data-run-id="${escapeHtml(row.run_id)}"
@@ -88,25 +94,18 @@ function renderSelectedRunCards(elements, rows, state) {
   elements.selectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const label = algorithmName(row);
-      const detail = [algorithmName(row), runDescriptor(row)].join(" · ");
-      return `
-        <article class="selected-run-card alias-run-card">
-          <strong>${escapeHtml(label)}</strong>
-          <input
-            type="text"
-            data-comparison-alias-run-id="${escapeHtml(row.run_id)}"
-            value="${escapeHtml(state.compareRunAliases[row.run_id] ?? "")}"
-            placeholder="legend alias"
-            aria-label="${escapeHtml(algorithmName(row))} 범례 alias"
-          />
-          <button
-            type="button"
-            data-remove-run-id="${escapeHtml(row.run_id)}"
-            aria-label="${escapeHtml(label)} 제거"
-          >x</button>
-          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(detail)}</span>
-        </article>
-      `;
+      const detail = runDetail(row);
+      return renderSelectedRunCard({
+        id: row.run_id,
+        label,
+        detail,
+        aliasValue: state.compareRunAliases[row.run_id],
+        aliasPlaceholder: "legend alias",
+        aliasDataAttribute: "comparison-alias-run-id",
+        aliasAriaLabel: `${algorithmName(row)} 범례 alias`,
+        removeDataAttribute: "remove-run-id",
+        removeAriaLabel: `${label} 제거`,
+      });
     })
     .join("");
 }

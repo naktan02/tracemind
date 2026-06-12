@@ -112,7 +112,7 @@ class TrainingTaskPayload(BaseModel):
     )
     task_type: TrainingTaskType = Field(description="학습 task 유형 식별자.")
     training_scope: TrainingScope = Field(
-        description="예: adapter_only 같은 학습 범위."
+        description="예: head_only, adapter_only, adapter_and_head 같은 학습 범위."
     )
     local_epochs: int = Field(ge=1, description="로컬 데이터 반복 횟수.")
     batch_size: int = Field(ge=1, description="로컬 학습 배치 크기.")
@@ -234,7 +234,7 @@ class TrainingUpdateEnvelopePayload(BaseModel):
         description="이 update가 계산된 기준 shared adapter revision."
     )
     training_scope: TrainingScope = Field(
-        description="예: adapter_only 같은 학습 범위."
+        description="예: head_only, adapter_only, adapter_and_head 같은 학습 범위."
     )
     payload_ref: str = Field(
         description=(

@@ -173,6 +173,9 @@ def _build_filters(
         "classifier_learning_rates": _unique(
             row.get("classifier_learning_rate") for row in runs
         ),
+        "initial_checkpoints": _unique(
+            row.get("initial_checkpoint_name") for row in runs
+        ),
         "peft_adapter_names": _unique(row.get("peft_adapter_name") for row in runs),
         "peft_adapter_ranks": _unique(row.get("peft_adapter_rank") for row in runs),
         "peft_adapter_alphas": _unique(row.get("peft_adapter_alpha") for row in runs),
@@ -211,6 +214,7 @@ def _build_filters(
         "local_trainer_devices": _unique(
             row.get("local_trainer_device") for row in runs
         ),
+        "created_dates": _unique(_created_date(row.get("created_at")) for row in runs),
     }
 
 
@@ -220,6 +224,13 @@ def _unique(values) -> list[Any]:
 
 def _payload_adapter_kind(row: dict[str, Any]) -> Any:
     return row.get("payload_adapter_kind")
+
+
+def _created_date(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text[:10] if len(text) >= 10 else None
 
 
 def _safe_path_part(value: str) -> str:

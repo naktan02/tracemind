@@ -1,6 +1,11 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
 import { fillSelect } from "../../../ui/controls/form_controls.js";
-import { algorithmName, centralEvalSetLabel, runDescriptor } from "../logic/labels.js";
+import {
+  algorithmName,
+  centralEvalSetLabel,
+  runDescriptor,
+  runDetail,
+} from "../logic/labels.js";
 import { centralAlgorithms, rowsForAlgorithms, rowsWithProjection } from "../logic/selectors.js";
 
 export function normalizeProjectionSelection(bundle, rows, state) {
@@ -30,7 +35,7 @@ export function renderProjectionPage(elements, rows, state, bundle) {
       : candidateRows
           .map(
             (row) => `
-              <label class="run-option">
+              <label class="run-option" title="${escapeHtml(runDetail(row))}">
                 <input
                   type="checkbox"
                   data-projection-run-id="${escapeHtml(row.run_id)}"

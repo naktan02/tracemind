@@ -10,8 +10,16 @@ export function applyFacetedFilters(rows, axisDefs, selectedAxisIds, selectedVal
 
 export function visibleFacetedAxes(rows, axisDefs, selectedAxisIds, selectedValues) {
   return axisDefs.filter(
-    (axis) =>
-      optionsForAxis(rows, axis, axisDefs, selectedAxisIds, selectedValues).length > 1,
+    (axis) => {
+      const optionCount = optionsForAxis(
+        rows,
+        axis,
+        axisDefs,
+        selectedAxisIds,
+        selectedValues,
+      ).length;
+      return optionCount > 1 || (axis.alwaysVisible && optionCount > 0);
+    },
   );
 }
 

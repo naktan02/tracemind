@@ -4,8 +4,10 @@ import {
   adapterKind,
   algorithmName,
   dataSourceLabel,
+  initialCheckpointLabel,
   labelBudgetLabel,
   localRegularizerLabel,
+  runCreatedDateLabel,
 } from "./labels.js";
 import { flRoundCountForRun } from "./selectors.js";
 
@@ -18,6 +20,12 @@ export function flFilterAxes(bundle) {
     axis("peft_adapter", "Adapter", (row) => row.peft_adapter_name ?? "-"),
     axis("peft_adapter_rank", "Adapter Rank", (row) => row.peft_adapter_rank ?? "-", (row) => `rank ${row.peft_adapter_rank ?? "-"}`),
     axis("data_pair", "Labeled / Unlabeled", dataSourceLabel),
+    axis("initial_checkpoint", "Initial Checkpoint", initialCheckpointLabel, null, {
+      alwaysVisible: true,
+    }),
+    axis("created_date", "Run Date", runCreatedDateLabel, null, {
+      alwaysVisible: true,
+    }),
     axis("label_budget", "Label Budget", labelBudgetLabel),
     axis("round_count", "Round Count", (row) => flRoundCountForRun(bundle, row) ?? "-", (row) => `${flRoundCountForRun(bundle, row) ?? "-"} rounds`),
     axis("local_epochs", "Local Epochs", (row) => row.epochs ?? "-", (row) => `${row.epochs ?? "-"} local epochs`),
@@ -42,9 +50,16 @@ export function pruneFlFilters(bundle, rows, flState) {
   const visibleAxisIds = new Set(
     axes
       .filter(
-        (axisDef) =>
-          optionsForAxis(rows, axisDef, axes, flState.filterAxisIds, flState.filterValues)
-            .length > 1,
+        (axisDef) => {
+          const optionCount = optionsForAxis(
+            rows,
+            axisDef,
+            axes,
+            flState.filterAxisIds,
+            flState.filterValues,
+          ).length;
+          return optionCount > 1 || (axisDef.alwaysVisible && optionCount > 0);
+        },
       )
       .map((axisDef) => axisDef.id),
   );
@@ -73,11 +88,12 @@ export function pruneFlFilters(bundle, rows, flState) {
   }
 }
 
-function axis(id, label, value, labelForValue = null) {
+function axis(id, label, value, labelForValue = null, options = {}) {
   return {
     id,
     label,
     value: (row) => String(value(row)),
     labelForValue: labelForValue ? (row) => labelForValue(row) : null,
+    alwaysVisible: Boolean(options.alwaysVisible),
   };
 }

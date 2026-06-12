@@ -9,6 +9,7 @@ import {
   resolveTableColumns,
   setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
+import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
 import { CENTRAL_FILTER_AXES } from "../logic/filters.js";
 import { centralOverviewMetricKeys } from "../logic/metrics.js";
 import {
@@ -18,7 +19,11 @@ import {
   runDetail,
 } from "../logic/labels.js";
 
-const DEFAULT_VISIBLE_COLUMNS = ["axis:algorithm"];
+const DEFAULT_VISIBLE_COLUMNS = [
+  "axis:algorithm",
+  "axis:created_date",
+  "axis:initial_checkpoint",
+];
 
 const OVERVIEW_AXIS_COLUMNS = [
   {
@@ -139,24 +144,18 @@ function renderSelectedRunCards(elements, rows, state) {
   elements.overviewSelectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const label = overviewRunLabel(row);
-      return `
-        <article class="selected-run-card alias-run-card">
-          <strong>${escapeHtml(label)}</strong>
-          <input
-            type="text"
-            data-overview-alias-run-id="${escapeHtml(row.run_id)}"
-            value="${escapeHtml(state.overviewRunAliases[row.run_id] ?? "")}"
-            placeholder="run alias"
-            aria-label="${escapeHtml(overviewRunLabel(row))} 표시명 alias"
-          />
-          <button
-            type="button"
-            data-remove-overview-run-id="${escapeHtml(row.run_id)}"
-            aria-label="${escapeHtml(label)} 제거"
-          >x</button>
-          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(runDetail(row))}</span>
-        </article>
-      `;
+      const detail = runDetail(row);
+      return renderSelectedRunCard({
+        id: row.run_id,
+        label,
+        detail,
+        aliasValue: state.overviewRunAliases[row.run_id],
+        aliasPlaceholder: "run alias",
+        aliasDataAttribute: "overview-alias-run-id",
+        aliasAriaLabel: `${overviewRunLabel(row)} 표시명 alias`,
+        removeDataAttribute: "remove-overview-run-id",
+        removeAriaLabel: `${label} 제거`,
+      });
     })
     .join("");
 }

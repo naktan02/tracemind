@@ -1,5 +1,9 @@
 import { formatMetric } from "../../../shared/formatting/numbers.js";
-import { shortRun } from "../../../shared/formatting/text.js";
+import {
+  compactDate,
+  compactDateTime,
+  shortRun,
+} from "../../../shared/formatting/text.js";
 
 export function runId(row) {
   return row.run_id ?? row.id ?? "-";
@@ -25,10 +29,7 @@ export function localRegularizerLabel(row) {
 
 export function adapterKind(row) {
   return displayAdapterKind(
-    row.payload_adapter_kind ??
-      row.protocol?.round_runtime?.payload_adapter_kind ??
-      row.peft_adapter_name ??
-      "-",
+    row.payload_adapter_kind ?? row.protocol?.round_runtime?.payload_adapter_kind,
   );
 }
 
@@ -52,6 +53,14 @@ export function labelBudgetLabel(row) {
   return match ? `pc${match[1]}` : "pc?";
 }
 
+export function initialCheckpointLabel(row) {
+  return checkpointDisplayValue(row.initial_checkpoint_name);
+}
+
+export function runCreatedDateLabel(row) {
+  return compactDate(row.created_at);
+}
+
 export function runDescriptor(row) {
   const cost = row.communication_cost;
   const costValue = typeof cost === "object" && cost !== null ? cost.value : cost;
@@ -62,6 +71,8 @@ export function runDescriptor(row) {
     `payload=${adapterKind(row)}`,
     `agg=${row.aggregation_backend_name ?? "-"}`,
     `regularizer=${localRegularizerLabel(row)}`,
+    `checkpoint=${initialCheckpointLabel(row)}`,
+    `created=${compactDateTime(row.created_at)}`,
     `clients=${row.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? "-"}/${row.round_budget ?? "-"}`,
     `updates=${costValue ?? "-"}`,
@@ -69,11 +80,25 @@ export function runDescriptor(row) {
   ].join(" · ");
 }
 
+export function runHoverDetail(row) {
+  return [
+    algorithmName(row),
+    runDescriptor(row),
+    `run_id=${runId(row)}`,
+  ].join(" · ");
+}
+
 function displayAdapterKind(value) {
-  const raw = String(value ?? "-");
-  if (raw === "peft_classifier") return "classifier";
+  const raw = String(value ?? "").trim();
+  if (!raw) return "unrecorded";
+  if (raw === "peft_classifier") return "peft classifier";
   if (raw === "peft_text_encoder_lora") return "lora text encoder";
   return raw.replace(/^peft_/, "");
+}
+
+function checkpointDisplayValue(value) {
+  const raw = String(value ?? "").trim();
+  return raw || "unrecorded";
 }
 
 export function compactRunLabel(row) {
@@ -90,11 +115,13 @@ export function runDisplayLabel(row, aliases) {
 }
 
 export function compactRunSubLabel(row) {
+  const created = compactDateTime(row.created_at);
   return [
     labelBudgetLabel(row),
     `clients=${row.client_count ?? "-"}`,
     `rank=${row.peft_adapter_rank ?? "-"}`,
-    runSuffix(row),
+    `ckpt=${initialCheckpointLabel(row)}`,
+    created !== "-" ? created : runSuffix(row),
   ].join(" · ");
 }
 
@@ -109,6 +136,8 @@ export function runDetailLabel(row) {
     `clients=${row.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? "-"}/${row.round_budget ?? "-"}`,
     `alpha=${formatMetric(row.shard_alpha)}`,
+    `checkpoint=${initialCheckpointLabel(row)}`,
+    `created=${compactDateTime(row.created_at)}`,
     `seed=${row.seed ?? "-"}`,
     runSuffix(row),
   ].join(" · ");

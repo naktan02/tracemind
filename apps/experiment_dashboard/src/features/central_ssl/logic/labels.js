@@ -1,5 +1,10 @@
 import { formatMetric } from "../../../shared/formatting/numbers.js";
-import { shortRun, shortSplit } from "../../../shared/formatting/text.js";
+import {
+  compactDate,
+  compactDateTime,
+  shortRun,
+  shortSplit,
+} from "../../../shared/formatting/text.js";
 
 export function algorithmName(row) {
   return row.algorithm_name ?? row.method_name ?? "-";
@@ -15,11 +20,22 @@ export function centralDataLabel(row) {
   return `${labeled} -> ${unlabeled}`;
 }
 
+export function initialCheckpointLabel(row) {
+  const raw = String(row.initial_checkpoint_name ?? "").trim();
+  return raw || "unrecorded";
+}
+
+export function runCreatedDateLabel(row) {
+  return compactDate(row.created_at);
+}
+
 export function overviewRunLabel(row) {
   return [
     algorithmName(row),
     `${peftAdapterLabel(row)} r${row.peft_adapter_rank ?? "?"}`,
-    centralRunSuffix(row.run_id),
+    compactDateTime(row.created_at) !== "-"
+      ? compactDateTime(row.created_at)
+      : centralRunSuffix(row.run_id),
   ].join(" · ");
 }
 
@@ -36,6 +52,7 @@ export function overviewRunSubLabel(row) {
     row.labeled_dataset_name ?? "?",
     "->",
     row.unlabeled_dataset_name ?? "?",
+    `ckpt=${initialCheckpointLabel(row)}`,
     `seed${row.seed ?? "?"}`,
   ].join(" ");
 }
@@ -59,6 +76,8 @@ export function runDetail(row) {
     `unlabeled=${row.unlabeled_dataset_name ?? "-"}`,
     `validation=${row.validation_dataset_name ?? "-"}`,
     `test=${row.test_dataset_name ?? "-"}`,
+    `checkpoint=${initialCheckpointLabel(row)}`,
+    `created=${compactDateTime(row.created_at)}`,
     `run_id=${row.run_id}`,
   ].join(" · ");
 }

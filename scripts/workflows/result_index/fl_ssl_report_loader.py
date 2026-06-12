@@ -54,6 +54,7 @@ def load_fl_ssl_result_index_records(
     embedding_adapter = as_mapping(protocol.get("embedding_adapter"))
     local_trainer_runtime = as_mapping(protocol.get("local_trainer_runtime"))
     run_control = as_mapping(protocol.get("run_control"))
+    initial_checkpoint = as_mapping(protocol.get("initial_checkpoint"))
     split_summary = as_mapping(protocol.get("labeled_unlabeled_split"))
 
     run_id = infer_fl_ssl_run_id(report_path)
@@ -99,7 +100,7 @@ def load_fl_ssl_result_index_records(
         max_train_steps=optional_int(local_update_budget.get("max_steps")),
         train_batch_size=optional_int(local_update_budget.get("batch_size")),
         eval_batch_size=None,
-        initial_checkpoint_name=None,
+        initial_checkpoint_name=_initial_checkpoint_name(initial_checkpoint),
         unlabeled_row_count=optional_int(split_summary.get("actual_unlabeled_count")),
         total_row_exposure_count=optional_int(
             split_summary.get("actual_total_exposure_count")
@@ -273,6 +274,18 @@ def _load_fl_ssl_projection_artifacts(
         "manifest_path": str(manifest_path),
         "datasets": as_mapping(manifest.get("datasets")),
     }
+
+
+def _initial_checkpoint_name(initial_checkpoint: dict[str, Any]) -> str | None:
+    """FL run이 시작한 checkpoint를 dashboard/index용 짧은 이름으로 정규화한다."""
+
+    for key in ("reference_id", "preset_name", "resolved_kind", "mode"):
+        value = optional_str(initial_checkpoint.get(key))
+        if value and value != "none":
+            return value
+    if optional_str(initial_checkpoint.get("mode")) == "none":
+        return "none"
+    return None
 
 
 def _projection_artifacts_have_existing_figures(

@@ -129,6 +129,8 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
     assert bundle["filters"]["methods"] == ["fixmatch"]
     assert bundle["filters"]["run_control_budget_names"] == ["main"]
     assert bundle["filters"]["run_control_output_dirs"] == ["runs"]
+    assert bundle["filters"]["initial_checkpoints"] == ["none"]
+    assert bundle["filters"]["created_dates"] == ["2026-05-13"]
     assert bundle["runs"][0]["selection_slug"] == (
         "labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit"
     )
@@ -214,6 +216,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.completed_rounds == 50
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs/fl_ssl"
+    assert records.run.initial_checkpoint_name == "central_seed_20260612"
     assert records.run.total_row_exposure_count == 40960
     assert records.run.labeled_row_exposure_count == 405
     assert records.run.unlabeled_row_exposure_count == 40555
@@ -418,6 +421,8 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["fl_descriptors"] == []
     assert bundle["filters"]["run_control_budget_names"] == ["main"]
     assert bundle["filters"]["run_control_output_dirs"] == ["runs/fl_ssl"]
+    assert bundle["filters"]["initial_checkpoints"] == ["central_seed_20260612"]
+    assert bundle["filters"]["created_dates"] == ["2026-05-17"]
     assert bundle["filters"]["client_counts"] == [10]
     assert bundle["filters"]["round_budgets"] == [50]
     assert bundle["filters"]["shard_alphas"] == [0.3]
@@ -437,6 +442,9 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["embedding_devices"] == ["cuda"]
     assert bundle["filters"]["local_trainer_devices"] == ["cuda"]
     assert bundle["fl_ssl_runs"][0]["macro_f1"] == 0.78
+    assert bundle["fl_ssl_runs"][0]["initial_checkpoint_name"] == (
+        "central_seed_20260612"
+    )
     assert bundle["fl_ssl_runs"][0]["worst_client_macro_f1"] == 0.41
     assert bundle["fl_ssl_runs"][0]["expected_calibration_error"] == 0.12
     assert bundle["fl_ssl_runs"][0]["labeled_row_exposure_count"] == 405
@@ -1045,6 +1053,27 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
                 "payload_adapter_kind": "peft_classifier",
                 "update_family_name": "peft_text_encoder",
                 "aggregation_backend_name": "fedavg",
+            },
+            "initial_checkpoint": {
+                "metadata_status": "recorded",
+                "preset_name": "required",
+                "mode": "required",
+                "source": "manifest",
+                "resolved_kind": "central_peft_classifier_checkpoint",
+                "manifest_path": "runs/central/supervised/seed/manifest.json",
+                "reference_id": "central_seed_20260612",
+                "adapter_dir": "runs/central/supervised/seed/adapter",
+                "classifier_path": (
+                    "runs/central/supervised/seed/classifier_head.safetensors"
+                ),
+                "peft_adapter_artifact_ref": (
+                    "server-aggregate://initial-checkpoint/central_seed_20260612/"
+                    "peft-adapter-state"
+                ),
+                "classifier_head_artifact_ref": (
+                    "server-aggregate://initial-checkpoint/central_seed_20260612/"
+                    "classifier-head-state"
+                ),
             },
             "ssl_method": {
                 "metadata_status": "not_applicable",
