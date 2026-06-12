@@ -5,23 +5,23 @@ from __future__ import annotations
 import torch
 from torch.utils.data import DataLoader
 
-from methods.adaptation.local_objective_regularizers.fedprox import (
-    prepare_fedprox_regularizer,
-)
-from methods.adaptation.peft_text_encoder.training.batching import (
+from methods.adaptation.common.batching import (
     move_tensor_batch_to_device,
     next_cycling_batch,
 )
-from methods.adaptation.peft_text_encoder.training.optimizer_step import (
+from methods.adaptation.common.optimizer_step import (
     run_optimizer_loss_step,
+)
+from methods.adaptation.common.step_budget import (
+    remaining_effective_epochs,
+    resolve_epoch_distributed_step_budget,
+)
+from methods.adaptation.local_objective_regularizers.fedprox import (
+    prepare_fedprox_regularizer,
 )
 from methods.adaptation.peft_text_encoder.training.scalar_metrics import (
     ScalarMetricAccumulator,
     tensor_mapping_l2,
-)
-from methods.adaptation.peft_text_encoder.training.step_budget import (
-    remaining_effective_epochs,
-    resolve_epoch_distributed_step_budget,
 )
 
 

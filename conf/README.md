@@ -63,9 +63,9 @@ conf/
 - `strategy_axes/ssl_objective/local_ssl_policy`는 manual baseline/ablation에서만 직접
   고르는 축이다. Method-owned 실행은 descriptor required capability와 method surface
   default에서 local SSL policy를 파생한다.
-- `strategy_axes/ssl_objective/multiview_source/materialized_rows`는 현재 FL SSL simulation의
-  materialized row view source를 나타내는 capability leaf다. live agent나 다른 source가
-  실제 구현되기 전에는 method별 leaf를 추가하지 않는다.
+- FL SSL simulation의 query multiview source는 현재 materialized row만 지원하므로
+  Hydra leaf로 노출하지 않고 capability plan 기본값으로 둔다. live agent나 다른
+  source가 실제 구현될 때만 별도 config 축을 연다.
 - update family와 runtime callable path는
   `strategy_axes/model_architecture/update_family`가 선언한다.
 - family-specific client/server round callable은 같은 leaf의

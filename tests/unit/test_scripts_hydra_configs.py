@@ -256,24 +256,6 @@ def test_central_ssl_trainable_surface_leafs_declare_runtime_callables() -> None
     assert central_ssl_leaf_count >= 1
 
 
-def test_query_multiview_source_leafs_declare_source_identity_only() -> None:
-    multiview_source_dir = (
-        REPO_ROOT / "conf" / "strategy_axes" / "ssl_objective" / "multiview_source"
-    )
-    leaf_paths = sorted(
-        path
-        for path in multiview_source_dir.glob("*.yaml")
-        if path.name != "__init__.py"
-    )
-
-    assert leaf_paths
-    for path in leaf_paths:
-        cfg = OmegaConf.load(path)
-        assert cfg.get("name"), path
-        assert "strong_view_policy" not in cfg, path
-        assert "query_ssl_augmenter" not in cfg, path
-
-
 @pytest.mark.parametrize(
     "config_name",
     [
@@ -1164,7 +1146,7 @@ def test_federated_simulation_uses_smoke_preset_by_default(tmp_path: Path) -> No
     assert "peer_context_policy" not in cfg
     assert "update_partition_policy" not in cfg
     assert "aggregation_weight_policy" not in cfg
-    assert cfg.query_multiview_source.name == "materialized_rows"
+    assert "query_multiview_source" not in cfg
 
 
 def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> None:

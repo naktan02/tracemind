@@ -25,7 +25,6 @@ defaults:
   - /strategy_axes/fl_topology/aggregation_weight: null
   # ssl_objective: SSL 학습 목적 함수 축
   - /strategy_axes/ssl_objective/consistency_method: fixmatch_usb_v1
-  - /strategy_axes/ssl_objective/multiview_source: materialized_rows
   - /strategy_axes/ssl_objective/local_ssl_policy: query_ssl_method
   - /strategy_axes/ssl_objective/local_update_profile: peft_classifier_update_v1
   # fssl_method: FL+SSL 결합 방법론

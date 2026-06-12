@@ -9,6 +9,11 @@ from typing import Any
 import torch
 from torch.utils.data import DataLoader
 
+from methods.adaptation.common.batching import (
+    move_tensor_batch_to_device,
+    next_cycling_batch,
+)
+from methods.adaptation.common.optimizer_step import run_optimizer_loss_step
 from methods.adaptation.common.query_ssl_training_resume import (
     load_query_ssl_training_checkpoint,
     save_query_ssl_training_checkpoint,
@@ -16,6 +21,10 @@ from methods.adaptation.common.query_ssl_training_resume import (
 from methods.adaptation.common.selection_training_loop import (
     SelectionTrackedEpochResult,
     run_selection_tracked_training_loop,
+)
+from methods.adaptation.common.step_budget import (
+    remaining_effective_epochs,
+    resolve_epoch_distributed_step_budget,
 )
 from methods.adaptation.local_objective_regularizers.fedprox import (
     prepare_fedprox_regularizer,
@@ -42,20 +51,11 @@ from shared.src.domain.services.classification_report import (
     safe_divide,
 )
 
-from .batching import (
-    move_tensor_batch_to_device,
-    next_cycling_batch,
-)
 from .modeling import PeftTextEncoderWithLinearHead
-from .optimizer_step import run_optimizer_loss_step
 from .scalar_metrics import ScalarMetricAccumulator
 from .ssl_model_extensions import (
     build_peft_query_ssl_model_extensions,
     set_peft_query_ssl_auxiliary_modules_train,
-)
-from .step_budget import (
-    remaining_effective_epochs,
-    resolve_epoch_distributed_step_budget,
 )
 
 set_seed = _text_training.set_seed
