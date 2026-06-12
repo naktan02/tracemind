@@ -60,7 +60,7 @@ runtime_payloads:
     delta_format: server_uploaded_artifact_ref
     artifact_ref_prefix: agent-local://peft_classifier
     text_metadata_keys: strong_text,training_text,raw_text,text,weak_text
-    label_schema: anxiety,depression,normal,suicidal
+    label_schema: ${dataset.label_categories}
     artifact_format: simulation_peft_classifier_state_ref
     peft_adapter_artifact_ref: null
     classifier_head_artifact_ref: null

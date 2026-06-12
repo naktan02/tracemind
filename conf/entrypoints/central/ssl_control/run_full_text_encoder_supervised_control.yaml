@@ -28,7 +28,6 @@ classifier_learning_rate: 0.0002
 weight_decay: 0.01
 max_grad_norm: 1.0
 log_every_steps: 100
-query_ssl_strong_view_policy: first_aug
 epoch_artifact_kind: none
 epoch_artifact_every_epochs: 0
 trainer_version: ""

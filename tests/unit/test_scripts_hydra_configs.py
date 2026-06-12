@@ -103,8 +103,6 @@ def _central_query_ssl_contract_snapshot(cfg: DictConfig) -> dict[str, object]:
             "train_jsonl": str(cfg.train_jsonl),
             "unlabeled_jsonl": str(cfg.unlabeled_jsonl),
             "selection_set": str(cfg.selection_set),
-            "strong_view_policy": str(cfg.query_ssl_strong_view_policy),
-            "augmenter": str(cfg.query_ssl_augmenter.name),
         },
         "budget": {
             "name": str(cfg.central_ssl_budget.name),
@@ -256,6 +254,24 @@ def test_central_ssl_trainable_surface_leafs_declare_runtime_callables() -> None
             )
 
     assert central_ssl_leaf_count >= 1
+
+
+def test_query_multiview_source_leafs_declare_source_identity_only() -> None:
+    multiview_source_dir = (
+        REPO_ROOT / "conf" / "strategy_axes" / "ssl_objective" / "multiview_source"
+    )
+    leaf_paths = sorted(
+        path
+        for path in multiview_source_dir.glob("*.yaml")
+        if path.name != "__init__.py"
+    )
+
+    assert leaf_paths
+    for path in leaf_paths:
+        cfg = OmegaConf.load(path)
+        assert cfg.get("name"), path
+        assert "strong_view_policy" not in cfg, path
+        assert "query_ssl_augmenter" not in cfg, path
 
 
 @pytest.mark.parametrize(
@@ -822,17 +838,14 @@ def test_run_peft_ssl_control_supports_softmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_uses_entrypoint_precomputed_query_views() -> None:
+def test_run_peft_ssl_control_uses_materialized_query_views_without_augmenter() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
-            overrides=["query_ssl_strong_view_policy=first_aug"],
+            config_name="entrypoints/central/ssl_control/run_peft_ssl_control"
         )
 
-    assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
-    assert cfg.query_ssl_augmenter.augmenter_type == "precomputed_usb_candidates"
-    assert cfg.query_ssl_augmenter.cache_dir == "data/cache/query_ssl_augmentations"
-    assert cfg.query_ssl_strong_view_policy == "first_aug"
+    assert "query_ssl_augmenter" not in cfg
+    assert "query_ssl_strong_view_policy" not in cfg
 
 
 def test_central_supervised_smoke_orchestration_contract_snapshot() -> None:
@@ -902,8 +915,6 @@ def test_central_query_ssl_smoke_orchestration_contract_snapshot() -> None:
                 "unlabeled_pool.with_views.jsonl"
             ),
             "selection_set": "test",
-            "strong_view_policy": "first_aug",
-            "augmenter": "precomputed_usb_candidates_v1",
         },
         "budget": {
             "name": "smoke",
@@ -1009,7 +1020,7 @@ def test_federated_ssl_smoke_orchestration_contract_snapshot(
     }
 
 
-def test_federated_simulation_uses_smoke_preset_by_default() -> None:
+def test_federated_simulation_uses_smoke_preset_by_default(tmp_path: Path) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
@@ -1094,10 +1105,13 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.train_jsonl == cfg.query_source.train_jsonl
     assert cfg.train_jsonl != cfg.dataset.train_jsonl
     assert cfg.query_ssl_method.unlabeled_batch_size == cfg.training_task.batch_size
-    assert cfg.query_ssl_strong_view_policy == "first_aug"
-    assert cfg.training_task.objective.query_ssl.method_name == "fixmatch_usb_v1"
-    assert cfg.training_task.objective.query_ssl.algorithm_name == "fixmatch"
-    assert cfg.training_task.objective.query_ssl.strong_view_policy == "first_aug"
+    assert "query_ssl_strong_view_policy" not in cfg
+    assert "query_ssl" not in cfg.training_task.objective
+    request = build_simulation_request_from_config(cfg, output_dir=tmp_path)
+    objective = request.training_task_config.objective_config.to_mapping()
+    assert objective["query_ssl.method_name"] == "fixmatch_usb_v1"
+    assert objective["query_ssl.algorithm_name"] == "fixmatch"
+    assert "query_ssl.strong_view_policy" not in objective
     assert cfg.local_update_profile.validation_scorer_backend_name == (
         "peft_classifier_eval"
     )
@@ -2017,9 +2031,9 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
     assert plan.manual_axes.update_family == "peft_text_encoder"
 
 
-def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name() -> (
-    None
-):
+def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name(
+    tmp_path: Path,
+) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
@@ -2046,8 +2060,11 @@ def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name()
     assert cfg.training_task.batch_size == 8
     assert cfg.training_task.max_steps == 7
     assert cfg.query_ssl_method.unlabeled_batch_size == 8
-    assert cfg.training_task.objective.query_ssl.method_name == "flexmatch_usb_v1"
-    assert cfg.training_task.objective.query_ssl.algorithm_name == "flexmatch"
+    assert "query_ssl" not in cfg.training_task.objective
+    request = build_simulation_request_from_config(cfg, output_dir=tmp_path)
+    objective = request.training_task_config.objective_config.to_mapping()
+    assert objective["query_ssl.method_name"] == "flexmatch_usb_v1"
+    assert objective["query_ssl.algorithm_name"] == "flexmatch"
     assert plan.manual_axes.client_ssl_objective == "flexmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
     assert plan.manual_axes.update_family == "peft_text_encoder"
@@ -2129,8 +2146,8 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
         "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
-    assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
-    assert cfg.query_ssl_strong_view_policy == "first_aug"
+    assert "query_ssl_augmenter" not in cfg
+    assert "query_ssl_strong_view_policy" not in cfg
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.drop_last_train_batches is True

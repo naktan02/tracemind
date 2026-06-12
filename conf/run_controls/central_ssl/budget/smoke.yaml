@@ -6,3 +6,4 @@ train_batch_size: 8
 eval_batch_size: 32
 epochs: 1
 max_train_steps: 100
+resume_checkpoint_every_epochs: 0

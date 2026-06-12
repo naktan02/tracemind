@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,7 @@ def build_simulation_request_from_config(
         local_update_profile=local_update_profile,
         round_runtime=cfg.round_runtime,
         include_query_ssl_objective=uses_query_ssl_objective,
+        query_ssl_method=cfg.query_ssl_method,
     )
     round_runtime_config = FederatedRoundRuntimeConfig(
         payload_adapter_kind=_resolve_round_payload_adapter_kind(cfg.round_runtime),
@@ -171,10 +173,7 @@ def build_simulation_request_from_config(
         execution_plan=execution_plan,
     )
     query_ssl_objective_config = (
-        FederatedQuerySslObjectiveConfig.from_mapping(
-            to_plain_dict(cfg.query_ssl_method),
-            strong_view_policy=str(cfg.query_ssl_strong_view_policy),
-        )
+        FederatedQuerySslObjectiveConfig.from_mapping(to_plain_dict(cfg.query_ssl_method))
         if uses_query_ssl_objective
         else None
     )
@@ -672,12 +671,18 @@ def _build_training_task_config(
     local_update_profile: LocalUpdateProfile,
     round_runtime: DictConfig,
     include_query_ssl_objective: bool,
+    query_ssl_method: DictConfig,
 ) -> FederatedTrainingTaskConfig:
     objective_config = _merge_round_runtime_objective_payload(
         objective_config=to_plain_dict(cfg.objective),
         round_runtime=round_runtime,
     )
-    if not include_query_ssl_objective:
+    if include_query_ssl_objective:
+        objective_config = _with_query_ssl_objective_payload(
+            objective_config=objective_config,
+            query_ssl_method=query_ssl_method,
+        )
+    else:
         objective_config = _without_query_ssl_objective_payload(objective_config)
     selection_policy = to_plain_dict(cfg.selection_policy)
     training_objective = TrainingObjectiveConfig.from_mapping(objective_config)
@@ -709,6 +714,23 @@ def _without_query_ssl_objective_payload(
         key: value
         for key, value in objective_config.items()
         if key != "query_ssl" and not str(key).startswith("query_ssl.")
+    }
+
+
+def _with_query_ssl_objective_payload(
+    *,
+    objective_config: dict[str, object],
+    query_ssl_method: DictConfig,
+) -> dict[str, object]:
+    """Query SSL objective payload를 selected method leaf에서 조립한다."""
+
+    return {
+        **objective_config,
+        "query_ssl": {
+            "method_name": str(query_ssl_method.name),
+            "algorithm_name": str(query_ssl_method.algorithm_name),
+            "unlabeled_batch_size": int(query_ssl_method.unlabeled_batch_size),
+        },
     }
 
 
@@ -748,7 +770,9 @@ def _merge_round_runtime_objective_payload(
         )
     )
     injected_payload = {
-        key: value for key, value in payload.items() if key not in excluded_keys
+        key: _objective_extra_scalar(value)
+        for key, value in payload.items()
+        if key not in excluded_keys
     }
     explicit_payload = objective_config.get(scope)
     if explicit_payload is not None and not isinstance(explicit_payload, dict):
@@ -762,6 +786,26 @@ def _merge_round_runtime_objective_payload(
             **(explicit_payload or {}),
         },
     }
+
+
+def _objective_extra_scalar(value: object) -> str | int | float | bool:
+    """Runtime payload 값을 objective extras scalar 계약에 맞춘다."""
+
+    if isinstance(value, str | int | float | bool):
+        return value
+    if value is None:
+        raise ValueError("training objective runtime payload values must not be null.")
+    if isinstance(value, Mapping):
+        raise ValueError(
+            "training objective runtime payload values must be scalar or sequence; "
+            "nested mappings require an explicit objective contract."
+        )
+    if isinstance(value, Sequence):
+        return ",".join(str(item).strip() for item in value if str(item).strip())
+    raise ValueError(
+        "training objective runtime payload values must be scalar or sequence: "
+        f"{type(value).__name__}."
+    )
 
 
 def _build_round_runtime_payloads(cfg: DictConfig) -> dict[str, object]:

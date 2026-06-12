@@ -9,3 +9,9 @@ central_ssl:
   model_builder: methods.adaptation.peft_text_encoder.training.modeling.build_model
   local_session_runner: methods.adaptation.peft_text_encoder.training.query_ssl_training_session.run_query_ssl_peft_encoder_local_session
   trainer_version_prefix: peft
+central_training:
+  learning_rate: 0.0002
+  classifier_learning_rate: 0.0002
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  log_every_steps: 100
