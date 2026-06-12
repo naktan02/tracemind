@@ -94,6 +94,9 @@ Query Buffer (raw text)
 6. full seed replay는 canonical 경로가 아니라 optional ablation로만 다룬다.
 7. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 PEFT adapter 재학습과 future query adaptation을 닫을 수 없다.
 8. scripts 실험 표면에서는 `strategy_axes/model_architecture/initial_checkpoint` selector를 source of truth로 두고, 같은 비교표 안의 run은 같은 초기 checkpoint provenance를 공유해야 한다.
+9. FSSL warm-start는 중앙 checkpoint 경로를 client/runtime payload로 넘기지 않는다.
+   bootstrap에서 중앙 PEFT adapter와 `classifier_head.safetensors`를 FSSL
+   server-owned tensor artifact로 승격하고, 이후 round는 artifact ref만 소비한다.
 
 ## 중앙 SSL control 비교축
 

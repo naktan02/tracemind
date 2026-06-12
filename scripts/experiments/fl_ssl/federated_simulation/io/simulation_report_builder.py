@@ -35,6 +35,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
     FederatedDiagnosticViewConfig,
+    FederatedInitialCheckpointConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedPeerProbeManifest,
     FederatedReportConfig,
@@ -81,6 +82,7 @@ class SimulationReportBuilder:
         diagnostic_view_config: FederatedDiagnosticViewConfig | None = None,
         final_projection_artifacts: Mapping[str, object] | None = None,
         peer_probe_manifest: FederatedPeerProbeManifest | None = None,
+        initial_checkpoint_config: FederatedInitialCheckpointConfig | None = None,
         run_artifact_dir: Path | None = None,
     ) -> dict[str, object]:
         client_metric_summary = build_client_metric_summary(
@@ -156,6 +158,7 @@ class SimulationReportBuilder:
                 artifact_persistence_config=artifact_persistence_config,
                 diagnostic_view_config=diagnostic_view_config,
                 peer_probe_manifest=peer_probe_manifest,
+                initial_checkpoint_config=initial_checkpoint_config,
             ),
             "diagnostics": {
                 "round_progression": round_progression,

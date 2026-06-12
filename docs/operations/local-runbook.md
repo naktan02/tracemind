@@ -196,6 +196,17 @@ PEFT supervised baseline:
 uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py
 ```
 
+PEFT supervised checkpoint에서 FSSL을 시작하려면 epoch checkpoint manifest를
+FL SSL initial checkpoint selector에 넘긴다. bootstrap은 중앙 `adapter/`와
+`classifier_head.safetensors`를 읽어 FSSL server-owned safetensors artifact로
+승격하고, 이후 round/client runtime은 `server-aggregate://...` ref만 소비한다.
+
+```bash
+uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
+  strategy_axes/model_architecture/initial_checkpoint=required \
+  query_adaptation_initial_checkpoint.manifest_path=<checkpoint_dir>/manifest.json
+```
+
 Full text encoder supervised-only baseline:
 
 ```bash
@@ -241,7 +252,9 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
 legacy warm-start reader에서만 해석한다. PEFT supervised baseline은 epoch마다
 `checkpoints/epoch_000N_step_XXXXXX/manifest.json`을 남기며, 이 manifest는
 central SSL warm-start의 `query_adaptation_initial_checkpoint.manifest_path`로
-사용할 수 있다.
+사용할 수 있다. FSSL warm-start도 같은 selector를 쓰지만, classifier head는
+canonical `classifier_head.safetensors`만 허용한다. 기존 `.pt` head는 중앙
+legacy reader 호환 경로에서만 해석한다.
 중앙 supervised/SSL main preset의 train batch 기본값은 `8`이다. 중앙 SSL 학습
 loader는 기본적으로 마지막 partial batch를 버린다
 (`drop_last_train_batches=true`, `drop_last_unlabeled_batches=true`). 이는

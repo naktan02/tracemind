@@ -16,6 +16,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
     FederatedDiagnosticViewConfig,
+    FederatedInitialCheckpointConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedPeerProbeManifest,
     FederatedReportConfig,
@@ -57,6 +58,7 @@ def build_protocol_payload(
     artifact_persistence_config: FederatedArtifactPersistenceConfig | None = None,
     diagnostic_view_config: FederatedDiagnosticViewConfig | None = None,
     peer_probe_manifest: FederatedPeerProbeManifest | None = None,
+    initial_checkpoint_config: FederatedInitialCheckpointConfig | None = None,
 ) -> dict[str, object]:
     resolved_data_source_config = data_source_config or FederatedDataSourceConfig()
     payload: dict[str, object] = {
@@ -123,6 +125,7 @@ def build_protocol_payload(
         "artifact_persistence": _artifact_persistence_to_payload(
             artifact_persistence_config
         ),
+        "initial_checkpoint": _initial_checkpoint_to_payload(initial_checkpoint_config),
         "diagnostic_view": _diagnostic_view_to_payload(diagnostic_view_config),
         "peer_probe": _peer_probe_to_payload(peer_probe_manifest),
         "objective": config_to_mapping(training_task_config.objective_config),
@@ -227,6 +230,14 @@ def _artifact_persistence_to_payload(
         "persist_agent_local_updates": config.persist_agent_local_updates,
         "canonical_update_source": "server_owned_aggregation_artifact",
     }
+
+
+def _initial_checkpoint_to_payload(
+    config: FederatedInitialCheckpointConfig | None,
+) -> dict[str, object]:
+    if config is None:
+        return {"metadata_status": "not_recorded"}
+    return config.to_payload()
 
 
 def _peer_probe_to_payload(

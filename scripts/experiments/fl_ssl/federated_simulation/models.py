@@ -123,6 +123,52 @@ class FederatedResumeConfig:
             raise ValueError("resume.run_dir is required when resume.enabled=true.")
 
 
+@dataclass(slots=True)
+class FederatedInitialCheckpointConfig:
+    """FL bootstrap이 소비할 초기 checkpoint source와 publish 결과."""
+
+    name: str = "none"
+    mode: str = "none"
+    manifest_path: str | None = None
+    adapter_dir: str | None = None
+    classifier_path: str | None = None
+    source: str = "none"
+    resolved_kind: str = "none"
+    reference_id: str | None = None
+    peft_adapter_artifact_ref: str | None = None
+    classifier_head_artifact_ref: str | None = None
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object] | None,
+    ) -> "FederatedInitialCheckpointConfig":
+        if source is None:
+            return cls()
+        return cls(
+            name=_optional_str(source.get("name")) or "none",
+            mode=(_optional_str(source.get("mode")) or "none").lower(),
+            manifest_path=_optional_str(source.get("manifest_path")),
+            adapter_dir=_optional_str(source.get("adapter_dir")),
+            classifier_path=_optional_str(source.get("classifier_path")),
+        )
+
+    def to_payload(self) -> dict[str, object]:
+        return {
+            "metadata_status": "recorded",
+            "preset_name": self.name,
+            "mode": self.mode,
+            "source": self.source,
+            "resolved_kind": self.resolved_kind,
+            "manifest_path": self.manifest_path,
+            "reference_id": self.reference_id,
+            "adapter_dir": self.adapter_dir,
+            "classifier_path": self.classifier_path,
+            "peft_adapter_artifact_ref": self.peft_adapter_artifact_ref,
+            "classifier_head_artifact_ref": self.classifier_head_artifact_ref,
+        }
+
+
 @dataclass(frozen=True, slots=True)
 class FederatedDiagnosticViewConfig:
     """client-local pseudo-label diagnostics에 쓸 unlabeled subset 설정."""
@@ -584,4 +630,7 @@ class SimulationRunRequest:
     )
     peer_probe_config: FederatedPeerProbeConfig = field(
         default_factory=FederatedPeerProbeConfig
+    )
+    initial_checkpoint_config: FederatedInitialCheckpointConfig = field(
+        default_factory=FederatedInitialCheckpointConfig
     )

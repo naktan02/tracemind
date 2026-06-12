@@ -47,6 +47,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDiagnosticViewConfig,
     FederatedFinalProjectionConfig,
+    FederatedInitialCheckpointConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedPeerProbeConfig,
     FederatedQuerySslObjectiveConfig,
@@ -236,6 +237,9 @@ def build_simulation_request_from_config(
         ),
         peer_probe_config=FederatedPeerProbeConfig.from_mapping(
             optional_plain_dict(cfg, "peer_probe")
+        ),
+        initial_checkpoint_config=FederatedInitialCheckpointConfig.from_mapping(
+            optional_plain_dict(cfg, "query_adaptation_initial_checkpoint")
         ),
     )
 
