@@ -22,6 +22,7 @@ _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS wellbeing_snapshots (
     computed_at     TEXT PRIMARY KEY,
     schema_version  TEXT NOT NULL,
+    projection_version TEXT NOT NULL DEFAULT 'legacy',
     signal_score    REAL NOT NULL,
     signal_level    TEXT NOT NULL,
     signal_label    TEXT NOT NULL,
@@ -33,16 +34,28 @@ CREATE TABLE IF NOT EXISTS wellbeing_snapshots (
 );
 """
 
+_ADD_PROJECTION_VERSION_COLUMN_SQL = """
+ALTER TABLE wellbeing_snapshots
+ADD COLUMN projection_version TEXT NOT NULL DEFAULT 'legacy';
+"""
+
 _INSERT_SQL = """
 INSERT OR REPLACE INTO wellbeing_snapshots
-    (computed_at, schema_version, signal_score, signal_level, signal_label,
-     trend, summary, action_tip, confidence, low_data)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    (computed_at, schema_version, projection_version, signal_score,
+     signal_level, signal_label, trend, summary, action_tip, confidence, low_data)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 _SELECT_LATEST_SQL = """
 SELECT computed_at, schema_version, signal_score, signal_level, signal_label,
        trend, summary, action_tip, confidence, low_data
+FROM wellbeing_snapshots
+ORDER BY computed_at DESC
+LIMIT 1;
+"""
+
+_SELECT_LATEST_PROJECTION_VERSION_SQL = """
+SELECT projection_version
 FROM wellbeing_snapshots
 ORDER BY computed_at DESC
 LIMIT 1;
@@ -66,14 +79,21 @@ class WellbeingSnapshotRepository:
     def __post_init__(self) -> None:
         with self._connect() as conn:
             conn.execute(_CREATE_TABLE_SQL)
+            _ensure_projection_version_column(conn)
 
-    def save_summary(self, payload: WellbeingSignalSummaryPayload) -> None:
+    def save_summary(
+        self,
+        payload: WellbeingSignalSummaryPayload,
+        *,
+        projection_version: str = "legacy",
+    ) -> None:
         with self._connect() as conn:
             conn.execute(
                 _INSERT_SQL,
                 (
                     payload.computed_at.isoformat(),
                     payload.schema_version,
+                    projection_version,
                     payload.signal_score,
                     payload.signal_level.value,
                     payload.signal_label,
@@ -90,6 +110,13 @@ class WellbeingSnapshotRepository:
             row = conn.execute(_SELECT_LATEST_SQL).fetchone()
         return None if row is None else _row_to_summary_payload(row)
 
+    def load_latest_projection_version(self) -> str | None:
+        """가장 최근 snapshot을 만든 projection logic version을 반환한다."""
+
+        with self._connect() as conn:
+            row = conn.execute(_SELECT_LATEST_PROJECTION_VERSION_SQL).fetchone()
+        return None if row is None else str(row[0])
+
     def list_summaries_since(
         self,
         *,
@@ -101,6 +128,13 @@ class WellbeingSnapshotRepository:
 
     def _connect(self) -> sqlite3.Connection:
         return connect_wellbeing_db(self.db_path)
+
+
+def _ensure_projection_version_column(conn: sqlite3.Connection) -> None:
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(wellbeing_snapshots)")}
+    if "projection_version" in columns:
+        return
+    conn.execute(_ADD_PROJECTION_VERSION_COLUMN_SQL)
 
 
 def _row_to_summary_payload(row: tuple[object, ...]) -> WellbeingSignalSummaryPayload:

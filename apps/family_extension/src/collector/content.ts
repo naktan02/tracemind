@@ -25,6 +25,7 @@ const PROACTIVE_PROMPT_AVAILABLE_MESSAGE = "tracemind.proactivePromptAvailable";
 const PROACTIVE_PROMPT_DISMISSED_MESSAGE = "tracemind.proactivePromptDismissed";
 const CHILD_SUPPORT_MESSAGE_REQUESTED_MESSAGE =
   "tracemind.childSupportMessageRequested";
+const CONTENT_SCRIPT_VERSION = "family_extension_content.v1";
 const surfaceElementIds = new WeakMap<HTMLElement, string>();
 let proactivePopupRoot: HTMLDivElement | null = null;
 let proactiveConversationId: string | null = null;
@@ -74,6 +75,7 @@ chrome.runtime?.onMessage?.addListener((message) => {
 
 sendCollectorStatus({
   last_content_script_at: new Date().toISOString(),
+  content_script_version: CONTENT_SCRIPT_VERSION,
   page_origin: window.location.origin,
   page_url: window.location.href,
 });

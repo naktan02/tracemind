@@ -12,6 +12,7 @@ from agent.src.api.main import app
 from agent.src.contracts.child_support_contracts import (
     ChildSupportAssistantMode,
     ChildSupportConversationRequestPayload,
+    ChildSupportProactivePromptClaimRequestPayload,
     ChildSupportSafetyLevel,
 )
 from agent.src.contracts.wellbeing_signal_contracts import (
@@ -35,6 +36,8 @@ from agent.src.features.wellbeing.child_support.service import (
 from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
 from agent.src.features.wellbeing.storage.child_support_repository import (
     ChildSupportConversationRepository,
+    ChildSupportMessageRecord,
+    ChildSupportProactivePromptClaimRecord,
 )
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
@@ -532,7 +535,12 @@ def test_child_support_proactive_prompt_uses_evidence_topic(
     prompt = service.build_proactive_prompt()
 
     assert prompt.should_prompt is True
-    assert prompt.prompt_text is not None
+    assert prompt.prompt_id is not None
+    assert prompt.prompt_text is None
+    claimed_prompt = service.claim_proactive_prompt(
+        ChildSupportProactivePromptClaimRequestPayload(prompt_id=prompt.prompt_id)
+    )
+    assert claimed_prompt.prompt_text is not None
     assert "학교/성적 부담" in provider.last_prompt
 
 
@@ -582,10 +590,15 @@ def test_child_support_proactive_prompt_passes_context_to_llm(
     prompt = service.build_proactive_prompt()
 
     assert prompt.should_prompt is True
-    assert prompt.conversation_id is not None
-    assert prompt.prompt_text is not None
-    assert "지금 정말 많이 버거워 보이네요" in prompt.prompt_text
-    assert "짧은 한 문장이어도 괜찮아요" in prompt.prompt_text
+    assert prompt.prompt_id is not None
+    assert prompt.conversation_id is None
+    assert prompt.prompt_text is None
+    claimed_prompt = service.claim_proactive_prompt(
+        ChildSupportProactivePromptClaimRequestPayload(prompt_id=prompt.prompt_id)
+    )
+    assert claimed_prompt.prompt_text is not None
+    assert "지금 정말 많이 버거워 보이네요" in claimed_prompt.prompt_text
+    assert "짧은 한 문장이어도 괜찮아요" in claimed_prompt.prompt_text
     assert "최근 wellbeing context notes:" in provider.last_prompt
     assert "반복 주제:" in provider.last_prompt
     assert "친구/관계 갈등" in provider.last_prompt
@@ -635,10 +648,15 @@ def test_child_support_proactive_prompt_uses_high_risk_local_evidence(
     )
 
     prompt = service.build_proactive_prompt()
+    assert prompt.prompt_id is not None
+    claimed_prompt = service.claim_proactive_prompt(
+        ChildSupportProactivePromptClaimRequestPayload(prompt_id=prompt.prompt_id)
+    )
 
     assert prompt.should_prompt is True
     assert prompt.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF
-    assert prompt.prompt_text is not None
+    assert prompt.prompt_text is None
+    assert claimed_prompt.prompt_text is not None
     assert "자해/죽음 관련 표현" in provider.last_prompt
 
 
@@ -746,9 +764,10 @@ def test_child_support_service_builds_proactive_prompt_for_high_summary() -> Non
     prompt = service.build_proactive_prompt()
 
     assert prompt.should_prompt is True
-    assert prompt.conversation_id is not None
+    assert prompt.prompt_id is not None
+    assert prompt.conversation_id is None
     assert prompt.safety_level == ChildSupportSafetyLevel.CHECK_IN
-    assert prompt.prompt_text is not None
+    assert prompt.prompt_text is None
 
 
 def test_child_support_service_skips_proactive_prompt_from_watch_score() -> None:
@@ -803,18 +822,111 @@ def test_child_support_proactive_prompt_persists_first_assistant_turn(
     )
 
     prompt = service.build_proactive_prompt()
+    assert prompt.prompt_id is not None
+    claimed_prompt = service.claim_proactive_prompt(
+        ChildSupportProactivePromptClaimRequestPayload(prompt_id=prompt.prompt_id)
+    )
     service.create_response(
         ChildSupportConversationRequestPayload(
             message="나 힘들어",
-            conversation_id=prompt.conversation_id,
+            conversation_id=claimed_prompt.conversation_id,
         )
     )
 
     assert prompt.should_prompt is True
-    assert prompt.conversation_id is not None
-    assert prompt.prompt_text is not None
-    assert f"- assistant: {prompt.prompt_text}" in provider.last_prompt
+    assert claimed_prompt.should_prompt is True
+    assert prompt.conversation_id is None
+    assert claimed_prompt.conversation_id is not None
+    assert claimed_prompt.prompt_text is not None
+    assert f"- assistant: {claimed_prompt.prompt_text}" in provider.last_prompt
     assert "아이의 새 메시지: 나 힘들어" in provider.last_prompt
+
+
+def test_child_support_proactive_prompt_claim_is_idempotent(
+    tmp_path: Path,
+) -> None:
+    repository = ChildSupportConversationRepository(
+        db_path=tmp_path / "child_support.db"
+    )
+    service = ChildSupportCoachService(
+        conversation_repository=repository,
+        llm_provider=StubChildSupportLlmProvider(),
+        summary_service=WellbeingSummaryService(
+            _mock_payload=WellbeingSignalSummaryPayload(
+                computed_at=datetime(2026, 4, 25, 10, 30, tzinfo=timezone.utc),
+                signal_score=82.0,
+                signal_level=WellbeingSignalLevel.HIGH,
+                signal_label="주의 필요",
+                trend=WellbeingSignalTrend.RISING,
+                summary="최근 상태가 평소보다 높습니다.",
+                action_tip="짧게 안부를 물어보세요.",
+                confidence=WellbeingSignalConfidence.MEDIUM,
+                low_data=False,
+            )
+        ),
+    )
+
+    prompt = service.build_proactive_prompt()
+    assert prompt.prompt_id is not None
+    assert prompt.conversation_id is None
+
+    first_claim = service.claim_proactive_prompt(
+        ChildSupportProactivePromptClaimRequestPayload(prompt_id=prompt.prompt_id)
+    )
+    second_claim = service.claim_proactive_prompt(
+        ChildSupportProactivePromptClaimRequestPayload(prompt_id=prompt.prompt_id)
+    )
+
+    assert first_claim.conversation_id is not None
+    assert second_claim.conversation_id == first_claim.conversation_id
+    assert second_claim.prompt_text == first_claim.prompt_text
+    assert repository.count_messages(first_claim.conversation_id) == 1
+
+
+def test_child_support_repository_claim_prevents_duplicate_prompt_messages(
+    tmp_path: Path,
+) -> None:
+    repository = ChildSupportConversationRepository(
+        db_path=tmp_path / "child_support.db"
+    )
+    occurred_at = datetime(2026, 6, 14, 9, tzinfo=timezone.utc)
+    first_claim = repository.claim_proactive_prompt(
+        message=ChildSupportMessageRecord(
+            message_id="assistant-1",
+            conversation_id="conversation-1",
+            role="assistant",
+            text="먼저 말을 걸어요.",
+            created_at=occurred_at,
+        ),
+        claim=ChildSupportProactivePromptClaimRecord(
+            prompt_id="prompt-1",
+            conversation_id="conversation-1",
+            message_id="assistant-1",
+            claimed_at=occurred_at,
+            prompt_text="먼저 말을 걸어요.",
+        ),
+    )
+
+    second_claim = repository.claim_proactive_prompt(
+        message=ChildSupportMessageRecord(
+            message_id="assistant-2",
+            conversation_id="conversation-2",
+            role="assistant",
+            text="두 번째 말을 걸어요.",
+            created_at=occurred_at,
+        ),
+        claim=ChildSupportProactivePromptClaimRecord(
+            prompt_id="prompt-1",
+            conversation_id="conversation-2",
+            message_id="assistant-2",
+            claimed_at=occurred_at,
+            prompt_text="두 번째 말을 걸어요.",
+        ),
+    )
+
+    assert second_claim == first_claim
+    assert repository.count_messages("conversation-1") == 1
+    assert repository.count_messages("conversation-2") == 0
 
 
 def test_child_support_service_skips_proactive_prompt_for_low_data() -> None:
@@ -845,6 +957,7 @@ def test_child_support_router_is_registered_on_agent_app() -> None:
 
     assert "/api/v1/child-support/messages" in route_paths
     assert "/api/v1/child-support/proactive-prompt" in route_paths
+    assert "/api/v1/child-support/proactive-prompt/claim" in route_paths
 
 
 def _high_summary_service() -> WellbeingSummaryService:

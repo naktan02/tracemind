@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 
-import { getChildSupportProactivePrompt } from "../api/childSupport";
+import {
+  claimChildSupportProactivePrompt,
+  getChildSupportProactivePrompt,
+} from "../api/childSupport";
 import {
   ChildSupportChatSurface,
   type AssistantPromptSeed,
@@ -26,14 +29,30 @@ export function ChildSupportCoachPanel() {
       try {
         const prompt = await getChildSupportProactivePrompt();
         const promptText = prompt.prompt_text;
-        if (cancelled || !prompt.should_prompt || promptText === null) {
+        if (
+          cancelled ||
+          !prompt.should_prompt ||
+          prompt.prompt_id === null ||
+          promptText === null
+        ) {
+          return;
+        }
+        const claimedPrompt = await claimChildSupportProactivePrompt({
+          schema_version: "child_support_proactive_prompt_claim.v1",
+          prompt_id: prompt.prompt_id,
+        });
+        if (
+          cancelled ||
+          !claimedPrompt.should_prompt ||
+          claimedPrompt.prompt_text === null
+        ) {
           return;
         }
         setPromptSeed({
-          id: `coach-page-${promptText}`,
-          text: promptText,
-          conversationId: prompt.conversation_id,
-          suggestions: prompt.suggested_prompts,
+          id: `coach-page-${claimedPrompt.prompt_id ?? claimedPrompt.prompt_text}`,
+          text: claimedPrompt.prompt_text,
+          conversationId: claimedPrompt.conversation_id,
+          suggestions: claimedPrompt.suggested_prompts,
         });
       } catch {
         // 화면 진입 보조 문구는 실패해도 기본 대화 UI를 막지 않는다.

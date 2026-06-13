@@ -45,9 +45,12 @@ Captured text ingest 응답의 `query_id`는 shape compatibility를 위해 `even
 `ChildSupportConversation*` raw message와 conversation 저장도 agent-local 경계다.
 LLM provider, prompt, safety policy, response plan 실행 방식은 agent runtime이
 소유하고 UI는 응답을 표시한다.
-`ChildSupportProactivePromptPayload.conversation_id`는 선제 발화를 실제 대화의
-첫 assistant turn으로 이어 붙이기 위한 agent-local conversation id다. UI는 이 값을
-후속 `ChildSupportConversationRequestPayload.conversation_id`로 다시 보내기만 한다.
+`ChildSupportProactivePromptPayload`는 선제 발화 후보 조회와 실제 표시 직전 claim에
+함께 쓰인다. `GET /child-support/proactive-prompt`는 side effect 없는 status 조회이며
+새 conversation이나 message를 만들지 않는다. UI/background가 prompt를 실제로 띄울 수
+있을 때 `POST /child-support/proactive-prompt/claim`을 호출하면 그때 첫 assistant turn과
+agent-local `conversation_id`가 생성된다. UI는 이 값을 후속
+`ChildSupportConversationRequestPayload.conversation_id`로 다시 보내기만 한다.
 
 Wellbeing space-web은 `analysis_events.category_scores`를 사용자 화면용
 `nodes`/`edges` view-model로 투영한 결과만 노출한다. category score 원본,

@@ -4,7 +4,10 @@ import type {
   ChildSupportProactivePromptPayload,
   WellbeingSignalRange,
 } from "../../../contracts/generated";
-import { getChildSupportProactivePrompt } from "../../api/childSupport";
+import {
+  claimChildSupportProactivePrompt,
+  getChildSupportProactivePrompt,
+} from "../../api/childSupport";
 import { ChildSupportCoachPanel } from "../../components/ChildSupportCoachPanel";
 import { ProactiveCoachPopup } from "../../components/ProactiveCoachPopup";
 import { WellbeingSpaceWebGraph } from "../../components/WellbeingSpaceWebGraph";
@@ -68,11 +71,23 @@ export function ChildPage({ activeTab }: ChildPageProps) {
         if (
           cancelled ||
           !prompt.should_prompt ||
+          prompt.prompt_id === null ||
           prompt.prompt_text === null
         ) {
           return;
         }
-        setProactivePrompt(prompt);
+        const claimedPrompt = await claimChildSupportProactivePrompt({
+          schema_version: "child_support_proactive_prompt_claim.v1",
+          prompt_id: prompt.prompt_id,
+        });
+        if (
+          cancelled ||
+          !claimedPrompt.should_prompt ||
+          claimedPrompt.prompt_text === null
+        ) {
+          return;
+        }
+        setProactivePrompt(claimedPrompt);
       } catch {
         // 선제 질문은 실패해도 분석 화면을 막지 않는다.
       }

@@ -11,6 +11,9 @@ from typing import Protocol
 
 from agent.src.features.captured_text.storage.records import CapturedTextRecord
 from agent.src.features.captured_text.storage.repository import CapturedTextRepository
+from agent.src.features.wellbeing.evidence_signal import (
+    contains_direct_risk_expression,
+)
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
@@ -50,7 +53,7 @@ _STOPWORDS = frozenset(
 )
 
 _TOPIC_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("자해/죽음 관련 표현", ("죽고", "자해", "극단", "suicide", "selfharm")),
+    ("자해/죽음 관련 표현", ("죽고", "자살", "자해", "극단", "suicide", "selfharm")),
     ("불안/공포", ("불안", "걱정", "무서", "공포", "panic", "anxiety")),
     ("우울/무기력", ("우울", "무기력", "외롭", "힘들", "depress", "lonely")),
     ("친구/관계 갈등", ("친구", "따돌", "괴롭", "관계", "싸움", "bully")),
@@ -270,12 +273,7 @@ def _max_non_normal_score(category_scores: dict[str, float]) -> float:
 
 
 def _contains_high_risk_topic(text: str) -> bool:
-    lowered = text.lower()
-    for label, keywords in _TOPIC_KEYWORDS:
-        if label != _HIGH_RISK_TOPIC_LABEL:
-            continue
-        return any(keyword in lowered for keyword in keywords)
-    return False
+    return contains_direct_risk_expression(text)
 
 
 def _sanitize_for_local_summary(text: str) -> str:

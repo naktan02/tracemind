@@ -75,6 +75,7 @@ def test_wellbeing_snapshot_repository_round_trips_latest_and_since(
     repository.save_summary(latest)
 
     assert repository.load_latest_summary() == latest
+    assert repository.load_latest_projection_version() == "legacy"
     assert repository.list_summaries_since(
         cutoff=datetime(2026, 4, 23, tzinfo=timezone.utc)
     ) == (latest,)

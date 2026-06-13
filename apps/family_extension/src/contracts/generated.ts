@@ -74,10 +74,16 @@ export interface ChildSupportConversationResponsePayload {
 export interface ChildSupportProactivePromptPayload {
   schema_version: string;
   should_prompt: boolean;
+  prompt_id: string | null;
   conversation_id: string | null;
   safety_level: ChildSupportSafetyLevel | null;
   prompt_text: string | null;
   suggested_prompts: ChildSupportSuggestionPayload[];
+}
+
+export interface ChildSupportProactivePromptClaimRequestPayload {
+  schema_version: string;
+  prompt_id: string;
 }
 
 export type WellbeingSignalLevel = "low" | "moderate" | "high" | "very_high";

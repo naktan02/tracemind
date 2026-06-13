@@ -15,10 +15,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 CHILD_SUPPORT_RESPONSE_V1 = "child_support_response.v1"
 CHILD_SUPPORT_PROACTIVE_PROMPT_V1 = "child_support_proactive_prompt.v1"
+CHILD_SUPPORT_PROACTIVE_PROMPT_CLAIM_V1 = "child_support_proactive_prompt_claim.v1"
 
 ChildSupportResponseSchemaVersion: TypeAlias = Literal["child_support_response.v1"]
 ChildSupportProactivePromptSchemaVersion: TypeAlias = Literal[
     "child_support_proactive_prompt.v1"
+]
+ChildSupportProactivePromptClaimSchemaVersion: TypeAlias = Literal[
+    "child_support_proactive_prompt_claim.v1"
 ]
 
 
@@ -95,9 +99,21 @@ class ChildSupportProactivePromptPayload(BaseModel):
         CHILD_SUPPORT_PROACTIVE_PROMPT_V1
     )
     should_prompt: bool
+    prompt_id: str | None = Field(default=None, min_length=1)
     conversation_id: str | None = Field(default=None, min_length=1)
     safety_level: ChildSupportSafetyLevel | None = None
     prompt_text: str | None = None
     suggested_prompts: tuple[ChildSupportSuggestionPayload, ...] = Field(
         default_factory=tuple
     )
+
+
+class ChildSupportProactivePromptClaimRequestPayload(BaseModel):
+    """선제 발화를 실제 표시 직전에 대화로 claim하는 요청."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: ChildSupportProactivePromptClaimSchemaVersion = (
+        CHILD_SUPPORT_PROACTIVE_PROMPT_CLAIM_V1
+    )
+    prompt_id: str = Field(min_length=1)

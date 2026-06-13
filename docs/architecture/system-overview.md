@@ -75,6 +75,12 @@ Raw Event
 | final decision | `agent/src/features/inference/interpretation/decision.py` |
 | wellbeing projection | `agent/src/features/wellbeing/signal/*`, `agent/src/features/wellbeing/space_web/*` |
 
+wellbeing projection은 classifier score를 기본 입력으로 쓰되,
+`agent/src/features/wellbeing/evidence_signal.py`의 로컬 evidence signal을 함께 본다.
+낮은 classifier score라도 원문에 직접적인 자해/자살 표현이 확인되면 agent-local
+summary는 `very_high`로 보수적으로 투영한다. projection logic이 바뀌면 snapshot
+저장소의 projection version으로 기존 snapshot을 stale 처리해 다음 조회 때 재계산한다.
+
 ### 3.2 Child Support Rail
 
 ```text
@@ -99,7 +105,7 @@ Child Message
 | local LLM prompt builder | `agent/src/features/wellbeing/child_support/llm_prompt.py` |
 | local evidence summary | `agent/src/features/wellbeing/child_support/evidence_summary.py` |
 | local LLM adapter | `agent/src/features/wellbeing/child_support/llm_provider.py` |
-| UI panel | `apps/family_extension/src/components/ChildSupportCoachPanel.tsx` |
+| UI panel | `apps/family_extension/src/ui/components/ChildSupportCoachPanel.tsx` |
 
 중요:
 
@@ -108,6 +114,8 @@ Child Message
   history로 전달해 LLM이 대화 흐름을 이어가게 한다.
 - proactive prompt는 위험 신호나 높은 위험 수치가 있을 때만 생성하며, 생성된
   첫 assistant turn도 같은 `conversation_id`에 저장해 아이의 첫 답변과 연결한다.
+  status 조회는 side effect 없이 prompt id만 계산하고, 실제 content tab에 표시할 수
+  있을 때 claim route가 첫 assistant turn을 만든다.
 - message safety hint는 직접적인 자해/타해 위험 표현만 `urgent`로 표시한다.
   off-topic redirect, 괴롭힘, 폭력 경험, 불안, 우울, 관계 갈등 같은 상황 해석은
   recent message, wellbeing summary, evidence summary를 받은 LLM이 처리한다.

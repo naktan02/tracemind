@@ -11,6 +11,8 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
 )
+from agent.src.features.captured_text.storage.records import CapturedTextRecord
+from agent.src.features.captured_text.storage.repository import CapturedTextRepository
 from agent.src.features.inference.interpretation.baseline import BaselineService
 from agent.src.features.inference.interpretation.decision import DecisionService
 from agent.src.features.inference.interpretation.result import AssessmentResult
@@ -18,12 +20,19 @@ from agent.src.features.inference.interpretation.state import (
     BaselineProfile,
     TimeSeriesState,
 )
+from agent.src.features.wellbeing.evidence_signal import (
+    WellbeingEvidenceSignal,
+    build_wellbeing_evidence_signal,
+)
 from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
+from shared.src.domain.entities.inference.events import AnalysisEvent
+
+WELLBEING_PROJECTION_VERSION = "wellbeing_projection.evidence_signal.v1"
 
 
 @dataclass(slots=True)
@@ -32,6 +41,7 @@ class WellbeingSignalProjectionService:
 
     analysis_event_repository: AnalysisEventRepository
     snapshot_repository: WellbeingSnapshotRepository
+    captured_text_repository: CapturedTextRepository | None = None
     baseline_service: BaselineService = field(default_factory=BaselineService)
     decision_service: DecisionService = field(default_factory=DecisionService)
     lookback_days: int = 30
@@ -64,12 +74,20 @@ class WellbeingSignalProjectionService:
                 previous_state=previous_state,
                 assessment_id=analysis_event.query_id,
             )
+            evidence_signal = build_wellbeing_evidence_signal(
+                analysis_event=analysis_event,
+                source_text=self._load_source_text(analysis_event),
+            )
             payload = _translate_to_wellbeing_summary(
                 assessment_result=evaluation.assessment_result,
                 baseline_profile=baseline_profile,
+                evidence_signal=evidence_signal,
                 computed_at=analysis_event.occurred_at,
             )
-            self.snapshot_repository.save_summary(payload)
+            self.snapshot_repository.save_summary(
+                payload,
+                projection_version=WELLBEING_PROJECTION_VERSION,
+            )
             previous_state = evaluation.time_series_state
             history.append(analysis_event)
 
@@ -82,26 +100,56 @@ class WellbeingSignalProjectionService:
         latest_snapshot = self.snapshot_repository.load_latest_summary()
         if latest_snapshot is None:
             return False
+        if (
+            self.snapshot_repository.load_latest_projection_version()
+            != WELLBEING_PROJECTION_VERSION
+        ):
+            return False
         return latest_snapshot.computed_at >= latest_analysis_at
+
+    def _load_source_text(self, analysis_event: AnalysisEvent) -> str:
+        if self.captured_text_repository is not None:
+            try:
+                record = self.captured_text_repository.get(
+                    analysis_event.source_event_id or analysis_event.query_id
+                )
+            except Exception:
+                record = None
+            if isinstance(record, CapturedTextRecord):
+                return record.text
+        return analysis_event.translated_text or ""
 
 
 def _translate_to_wellbeing_summary(
     *,
     assessment_result: AssessmentResult,
     baseline_profile: BaselineProfile,
+    evidence_signal: WellbeingEvidenceSignal,
     computed_at: datetime,
 ) -> WellbeingSignalSummaryPayload:
-    signal_level, signal_label = _map_signal_level(assessment_result.decision)
+    signal_level, signal_label = _map_signal_level(
+        assessment_result.decision,
+        evidence_signal=evidence_signal,
+    )
     trend = _map_trend(assessment_result)
     confidence = _map_confidence(assessment_result.confidence)
     signal_score = _build_signal_score(
         decision=assessment_result.decision,
         global_score=assessment_result.global_score,
         baseline_shift=assessment_result.baseline_shift,
+        evidence_signal=evidence_signal,
     )
-    low_data = not baseline_profile.warmup_complete
-    summary = _build_summary_text(signal_level=signal_level, low_data=low_data)
-    action_tip = _build_action_tip(signal_level=signal_level, low_data=low_data)
+    low_data = not baseline_profile.warmup_complete and not evidence_signal.direct_risk
+    summary = _build_summary_text(
+        signal_level=signal_level,
+        low_data=low_data,
+        evidence_signal=evidence_signal,
+    )
+    action_tip = _build_action_tip(
+        signal_level=signal_level,
+        low_data=low_data,
+        evidence_signal=evidence_signal,
+    )
 
     return WellbeingSignalSummaryPayload(
         computed_at=computed_at,
@@ -116,7 +164,13 @@ def _translate_to_wellbeing_summary(
     )
 
 
-def _map_signal_level(decision: str) -> tuple[WellbeingSignalLevel, str]:
+def _map_signal_level(
+    decision: str,
+    *,
+    evidence_signal: WellbeingEvidenceSignal,
+) -> tuple[WellbeingSignalLevel, str]:
+    if evidence_signal.direct_risk:
+        return WellbeingSignalLevel.VERY_HIGH, "도움 필요"
     mapping = {
         "NORMAL": (WellbeingSignalLevel.LOW, "안정"),
         "WATCH": (WellbeingSignalLevel.MODERATE, "관찰 필요"),
@@ -158,7 +212,10 @@ def _build_signal_score(
     decision: str,
     global_score: float | None,
     baseline_shift: float | None,
+    evidence_signal: WellbeingEvidenceSignal,
 ) -> float:
+    if evidence_signal.direct_risk:
+        return 95.0
     severity = min(
         max(((global_score or 0.0) + max(baseline_shift or 0.0, 0.0)) / 1.5, 0.0),
         1.0,
@@ -177,7 +234,13 @@ def _build_summary_text(
     *,
     signal_level: WellbeingSignalLevel,
     low_data: bool,
+    evidence_signal: WellbeingEvidenceSignal,
 ) -> str:
+    if evidence_signal.direct_risk:
+        return (
+            "최근 입력에서 직접적인 자해나 자살 관련 표현이 확인되어 "
+            "빠른 확인이 필요합니다."
+        )
     if low_data:
         return (
             "최근 데이터가 아직 충분하지 않아 현재 상태를 보수적으로 해석하고 있습니다."
@@ -203,7 +266,13 @@ def _build_action_tip(
     *,
     signal_level: WellbeingSignalLevel,
     low_data: bool,
+    evidence_signal: WellbeingEvidenceSignal,
 ) -> str:
+    if evidence_signal.direct_risk:
+        return (
+            "혼자 두지 말고 바로 가까운 보호자나 믿을 수 있는 어른과 "
+            "함께 확인해 주세요."
+        )
     if low_data:
         return "조금 더 관찰하면서 짧은 안부 대화를 먼저 시도해 보세요."
     mapping = {

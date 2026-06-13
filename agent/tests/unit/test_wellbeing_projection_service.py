@@ -7,7 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalRange,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
+from agent.src.features.captured_text.storage.records import CapturedTextRecord
+from agent.src.features.captured_text.storage.repository import CapturedTextRepository
 from agent.src.features.wellbeing.range_window import cutoff_for_range
 from agent.src.features.wellbeing.signal.projection_service import (
     WellbeingSignalProjectionService,
@@ -133,6 +141,98 @@ def test_projection_service_skips_replay_when_snapshots_are_current(
     monkeypatch.setattr(AnalysisEventRepository, "get_recent", fail_get_recent)
 
     projection_service.refresh_from_runtime()
+
+
+def test_projection_service_replays_when_projection_version_is_legacy(
+    tmp_path: Path,
+) -> None:
+    analysis_event_repository = AnalysisEventRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+    projection_service = WellbeingSignalProjectionService(
+        analysis_event_repository=analysis_event_repository,
+        snapshot_repository=snapshot_repository,
+        lookback_days=60,
+    )
+    occurred_at = datetime(2026, 4, 24, 9, tzinfo=timezone.utc)
+    analysis_event_repository.save(
+        _build_analysis_event(query_id="q1", occurred_at=occurred_at, score=0.73)
+    )
+    snapshot_repository.save_summary(
+        WellbeingSignalSummaryPayload(
+            computed_at=occurred_at,
+            signal_score=1.0,
+            signal_level=WellbeingSignalLevel.LOW,
+            signal_label="안정",
+            trend=WellbeingSignalTrend.UNKNOWN,
+            summary="legacy snapshot",
+            action_tip="legacy tip",
+            confidence=WellbeingSignalConfidence.LOW,
+            low_data=True,
+        )
+    )
+
+    projection_service.refresh_from_runtime()
+
+    latest_summary = snapshot_repository.load_latest_summary()
+    assert latest_summary is not None
+    assert latest_summary.summary != "legacy snapshot"
+    assert (
+        snapshot_repository.load_latest_projection_version()
+        == "wellbeing_projection.evidence_signal.v1"
+    )
+
+
+def test_projection_service_uses_direct_risk_source_text_as_evidence(
+    tmp_path: Path,
+) -> None:
+    analysis_event_repository = AnalysisEventRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    captured_text_repository = CapturedTextRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+    projection_service = WellbeingSignalProjectionService(
+        analysis_event_repository=analysis_event_repository,
+        snapshot_repository=snapshot_repository,
+        captured_text_repository=captured_text_repository,
+        lookback_days=60,
+    )
+    occurred_at = datetime(2026, 6, 14, 9, tzinfo=timezone.utc)
+    captured_text_repository.save(
+        CapturedTextRecord(
+            event_id="captured-risk-1",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="자살 어떻게 할 수 있지",
+            locale="ko",
+            source_type="browser",
+            surface_type="rich_editor",
+        )
+    )
+    analysis_event_repository.save(
+        AnalysisEvent(
+            query_id="captured-risk-1",
+            occurred_at=occurred_at,
+            translated_text="How can I commit suicide?",
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.80, "suicidal": 0.09},
+        ),
+        source_event_id="captured-risk-1",
+        scorer_name="test-scorer",
+        model_revision="test-revision",
+    )
+
+    projection_service.refresh_from_runtime()
+
+    latest_summary = snapshot_repository.load_latest_summary()
+    assert latest_summary is not None
+    assert latest_summary.signal_level == WellbeingSignalLevel.VERY_HIGH
+    assert latest_summary.signal_score == 95.0
+    assert latest_summary.low_data is False
 
 
 def test_wellbeing_services_refresh_projection_before_read(

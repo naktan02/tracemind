@@ -6,6 +6,7 @@ import type {
   CapturedTextSurfaceType,
   ChildSupportConversationRequestPayload,
   ChildSupportConversationResponsePayload,
+  ChildSupportProactivePromptClaimRequestPayload,
   ChildSupportProactivePromptPayload,
   TypingSegmentPayload,
 } from "../contracts/generated";
@@ -267,22 +268,14 @@ async function pollProactivePrompt({
       return;
     }
     const prompt = (await response.json()) as ChildSupportProactivePromptPayload;
-    if (!prompt.should_prompt || prompt.prompt_text === null) {
+    if (!prompt.should_prompt || prompt.prompt_id === null) {
       await saveStatusPatch({
         last_proactive_prompt_checked_at: checkedAt,
         last_proactive_prompt_should_prompt: false,
+        last_proactive_prompt_id: null,
         last_proactive_prompt_error: null,
         last_proactive_prompt_suppressed_by_dismissal: false,
-      });
-      return;
-    }
-    if (await isProactivePromptDismissed()) {
-      await saveStatusPatch({
-        last_proactive_prompt_checked_at: checkedAt,
-        last_proactive_prompt_should_prompt: true,
-        last_proactive_prompt_delivered_count: 0,
-        last_proactive_prompt_error: null,
-        last_proactive_prompt_suppressed_by_dismissal: true,
+        last_proactive_prompt_suppressed_reason: "agent_declined",
       });
       return;
     }
@@ -291,16 +284,46 @@ async function pollProactivePrompt({
       await saveStatusPatch({
         last_proactive_prompt_checked_at: checkedAt,
         last_proactive_prompt_should_prompt: true,
+        last_proactive_prompt_id: prompt.prompt_id,
         last_proactive_prompt_delivered_count: 0,
         last_proactive_prompt_error: "팝업을 보낼 content tab이 없습니다.",
+        last_proactive_prompt_suppressed_reason: "no_content_tab",
+      });
+      return;
+    }
+    if (await isProactivePromptDismissed()) {
+      await saveStatusPatch({
+        last_proactive_prompt_checked_at: checkedAt,
+        last_proactive_prompt_should_prompt: true,
+        last_proactive_prompt_id: prompt.prompt_id,
+        last_proactive_prompt_delivered_count: 0,
+        last_proactive_prompt_error: null,
+        last_proactive_prompt_suppressed_by_dismissal: true,
+        last_proactive_prompt_suppressed_reason: "dismissed",
+      });
+      return;
+    }
+    const claimedPrompt = await postProactivePromptClaim(prompt.prompt_id);
+    if (
+      !claimedPrompt.should_prompt ||
+      claimedPrompt.prompt_text === null ||
+      claimedPrompt.conversation_id === null
+    ) {
+      await saveStatusPatch({
+        last_proactive_prompt_checked_at: checkedAt,
+        last_proactive_prompt_should_prompt: false,
+        last_proactive_prompt_id: prompt.prompt_id,
+        last_proactive_prompt_delivered_count: 0,
+        last_proactive_prompt_error: "proactive prompt claim 결과가 비어 있습니다.",
+        last_proactive_prompt_suppressed_reason: "claim_empty",
       });
       return;
     }
     const message = {
       type: PROACTIVE_PROMPT_AVAILABLE_MESSAGE,
-      conversationId: prompt.conversation_id,
-      promptText: prompt.prompt_text,
-      suggestedPrompts: prompt.suggested_prompts,
+      conversationId: claimedPrompt.conversation_id,
+      promptText: claimedPrompt.prompt_text,
+      suggestedPrompts: claimedPrompt.suggested_prompts,
     };
     let deliveredCount = 0;
     const failedTabIds: number[] = [];
@@ -317,10 +340,15 @@ async function pollProactivePrompt({
     await saveStatusPatch({
       last_proactive_prompt_checked_at: checkedAt,
       last_proactive_prompt_should_prompt: true,
+      last_proactive_prompt_id: claimedPrompt.prompt_id,
       last_proactive_prompt_delivered_count: deliveredCount,
+      last_proactive_prompt_target_tab_ids: tabIds,
+      last_proactive_prompt_failed_tab_ids: failedTabIds,
       last_proactive_prompt_error:
         deliveredCount > 0 ? null : "content script가 응답한 탭이 없습니다.",
       last_proactive_prompt_suppressed_by_dismissal: false,
+      last_proactive_prompt_suppressed_reason:
+        deliveredCount > 0 ? null : "content_script_unreachable",
     });
   } catch (error) {
     await saveStatusPatch({
@@ -362,6 +390,34 @@ async function postChildSupportMessage(
     ok: true,
     response: (await response.json()) as ChildSupportConversationResponsePayload,
   };
+}
+
+async function postProactivePromptClaim(
+  promptId: string,
+): Promise<ChildSupportProactivePromptPayload> {
+  const payload: ChildSupportProactivePromptClaimRequestPayload = {
+    schema_version: "child_support_proactive_prompt_claim.v1",
+    prompt_id: promptId,
+  };
+  const response = await fetch(
+    buildAgentApiUrl("/api/v1/child-support/proactive-prompt/claim"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+  if (!response.ok) {
+    const detail = await readAgentErrorDetail(response);
+    throw new Error(
+      detail === null
+        ? `proactive prompt claim failed: ${response.status}`
+        : `proactive prompt claim failed: ${response.status}: ${detail}`,
+    );
+  }
+  return (await response.json()) as ChildSupportProactivePromptPayload;
 }
 
 async function postCapturedTextBatch(

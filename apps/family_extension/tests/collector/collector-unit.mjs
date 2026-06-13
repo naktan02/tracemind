@@ -302,6 +302,45 @@ function createHarness(): {
 {
   const harness = createHarness();
   harness.observe(
+    "자살 어떻게 할 수 잇ㅈ",
+    "input",
+    "insertText",
+    "ㅈ",
+    false,
+  );
+  harness.observe(
+    "자살 어떻게 할 수 잇",
+    "input",
+    "insertText",
+    null,
+    false,
+  );
+  harness.flush();
+
+  assert.equal(harness.emitted.length, 0);
+
+  harness.observe(
+    "자살 어떻게 할 수 잇지",
+    "input",
+    "insertText",
+    "지",
+    false,
+  );
+  harness.flush();
+
+  assert.equal(harness.emitted.length, 1);
+  const segment = harness.emitted[0] as {
+    final_text: string | null;
+    deleted_text: string | null;
+  };
+
+  assert.equal(segment.final_text, "자살 어떻게 할 수 잇지");
+  assert.equal(segment.deleted_text, null);
+}
+
+{
+  const harness = createHarness();
+  harness.observe(
     "죽고 싶어....\n\n알고 있나 이런 내 마음...난 살고 싶지 않ㅇ",
     "compositionend",
     null,

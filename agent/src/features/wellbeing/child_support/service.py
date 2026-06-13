@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -10,6 +12,7 @@ from agent.src.contracts.child_support_contracts import (
     ChildSupportAssistantMode,
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,
+    ChildSupportProactivePromptClaimRequestPayload,
     ChildSupportProactivePromptPayload,
     ChildSupportSafetyLevel,
     ChildSupportScopeStatus,
@@ -31,6 +34,7 @@ from agent.src.features.wellbeing.signal.summary_service import WellbeingSummary
 from agent.src.features.wellbeing.storage.child_support_repository import (
     ChildSupportConversationRepository,
     ChildSupportMessageRecord,
+    ChildSupportProactivePromptClaimRecord,
 )
 
 DISCLOSURE_NOTICE = (
@@ -76,6 +80,15 @@ class ChildSupportMessageSafety:
     @property
     def parent_handoff_suggested(self) -> bool:
         return self.safety_level == ChildSupportSafetyLevel.URGENT
+
+
+@dataclass(frozen=True, slots=True)
+class ChildSupportProactivePromptCandidate:
+    """side effect 없는 proactive prompt 후보."""
+
+    prompt_id: str
+    context: ChildSupportConversationContext
+    safety_level: ChildSupportSafetyLevel
 
 
 @dataclass(slots=True)
@@ -158,64 +171,116 @@ class ChildSupportCoachService:
         )
 
     def build_proactive_prompt(self) -> ChildSupportProactivePromptPayload:
-        """아이 화면 진입 시 먼저 말을 걸지 여부를 계산한다.
+        """아이 화면 진입 시 먼저 말을 걸지 여부를 side effect 없이 계산한다.
 
         데이터가 없거나 위험도가 낮으면 아무 문구도 반환하지 않는다.
         """
 
-        conversation_id = _new_conversation_id()
-        context = self.context_provider.build(conversation_id)
-        summary = context.wellbeing_summary
-        if (
-            summary is None
-            or summary.low_data
-            or not context.wellbeing_summary_is_observed
-        ):
+        candidate = self._build_proactive_candidate()
+        if candidate is None:
             return ChildSupportProactivePromptPayload(should_prompt=False)
-        has_high_risk_evidence = _has_high_risk_evidence(
-            context.wellbeing_context_notes
+        existing_claim = self._load_proactive_claim(candidate.prompt_id)
+        return ChildSupportProactivePromptPayload(
+            should_prompt=True,
+            prompt_id=candidate.prompt_id,
+            conversation_id=(
+                None if existing_claim is None else existing_claim.conversation_id
+            ),
+            safety_level=candidate.safety_level,
+            prompt_text=None if existing_claim is None else existing_claim.prompt_text,
+            suggested_prompts=(),
         )
-        if (
-            summary.signal_score < PROACTIVE_PROMPT_SCORE_THRESHOLD
-            and not has_high_risk_evidence
-        ):
+
+    def claim_proactive_prompt(
+        self,
+        request: ChildSupportProactivePromptClaimRequestPayload,
+    ) -> ChildSupportProactivePromptPayload:
+        """선제 발화를 실제 표시 직전에 conversation으로 claim한다."""
+
+        existing_claim = self._load_proactive_claim(request.prompt_id)
+        if existing_claim is not None:
+            return ChildSupportProactivePromptPayload(
+                should_prompt=True,
+                prompt_id=request.prompt_id,
+                conversation_id=existing_claim.conversation_id,
+                safety_level=(
+                    ChildSupportSafetyLevel(existing_claim.safety_level)
+                    if existing_claim.safety_level is not None
+                    else None
+                ),
+                prompt_text=existing_claim.prompt_text,
+                suggested_prompts=(),
+            )
+
+        candidate = self._build_proactive_candidate()
+        if candidate is None or candidate.prompt_id != request.prompt_id:
             return ChildSupportProactivePromptPayload(should_prompt=False)
-        safety_level = (
-            ChildSupportSafetyLevel.PARENT_HANDOFF
-            if summary.signal_level == WellbeingSignalLevel.VERY_HIGH
-            or has_high_risk_evidence
-            else ChildSupportSafetyLevel.CHECK_IN
-        )
         prompt_text = self._build_proactive_reply(
-            context=context,
-            safety_level=safety_level,
+            context=candidate.context,
+            safety_level=candidate.safety_level,
         )
         if prompt_text is None:
             return ChildSupportProactivePromptPayload(should_prompt=False)
+
+        conversation_id = _new_conversation_id()
         created_at = datetime.now(tz=timezone.utc)
-        self._save_message(
-            ChildSupportMessageRecord(
-                message_id=_new_message_id("assistant"),
+        message_id = _new_message_id("assistant")
+        message = ChildSupportMessageRecord(
+            message_id=message_id,
+            conversation_id=conversation_id,
+            role="assistant",
+            text=prompt_text,
+            created_at=created_at,
+            safety_level=candidate.safety_level.value,
+            assistant_mode=self.llm_provider.assistant_mode.value
+            if self.llm_provider is not None
+            else None,
+            scope_status=ChildSupportScopeStatus.IN_SCOPE.value,
+            metadata={
+                "source": "proactive_prompt",
+                "prompt_id": candidate.prompt_id,
+            },
+        )
+        claim = self._claim_proactive_prompt(
+            message=message,
+            claim=ChildSupportProactivePromptClaimRecord(
+                prompt_id=candidate.prompt_id,
                 conversation_id=conversation_id,
-                role="assistant",
-                text=prompt_text,
-                created_at=created_at,
-                safety_level=safety_level.value,
-                assistant_mode=self.llm_provider.assistant_mode.value
-                if self.llm_provider is not None
-                else None,
-                scope_status=ChildSupportScopeStatus.IN_SCOPE.value,
+                message_id=message_id,
+                claimed_at=created_at,
+                prompt_text=prompt_text,
+                safety_level=candidate.safety_level.value,
                 metadata={
                     "source": "proactive_prompt",
                 },
-            )
+            ),
+        )
+        safety_level = (
+            ChildSupportSafetyLevel(claim.safety_level)
+            if claim.safety_level is not None
+            else candidate.safety_level
         )
         return ChildSupportProactivePromptPayload(
             should_prompt=True,
-            conversation_id=conversation_id,
+            prompt_id=claim.prompt_id,
+            conversation_id=claim.conversation_id,
             safety_level=safety_level,
-            prompt_text=prompt_text,
+            prompt_text=claim.prompt_text,
             suggested_prompts=(),
+        )
+
+    def _claim_proactive_prompt(
+        self,
+        *,
+        message: ChildSupportMessageRecord,
+        claim: ChildSupportProactivePromptClaimRecord,
+    ) -> ChildSupportProactivePromptClaimRecord:
+        if self.conversation_repository is None:
+            self._save_message(message)
+            return claim
+        return self.conversation_repository.claim_proactive_prompt(
+            message=message,
+            claim=claim,
         )
 
     def _build_reply(
@@ -250,6 +315,14 @@ class ChildSupportCoachService:
             return
         self.conversation_repository.save_message(record)
 
+    def _load_proactive_claim(
+        self,
+        prompt_id: str,
+    ) -> ChildSupportProactivePromptClaimRecord | None:
+        if self.conversation_repository is None:
+            return None
+        return self.conversation_repository.get_proactive_prompt_claim(prompt_id)
+
     def _assess(
         self,
         *,
@@ -277,6 +350,40 @@ class ChildSupportCoachService:
         processed = _normalize_llm_reply(reply, max_chars=420)
         return processed or None
 
+    def _build_proactive_candidate(
+        self,
+    ) -> ChildSupportProactivePromptCandidate | None:
+        context = self.context_provider.build(_new_conversation_id())
+        summary = context.wellbeing_summary
+        if (
+            summary is None
+            or summary.low_data
+            or not context.wellbeing_summary_is_observed
+        ):
+            return None
+        has_high_risk_evidence = _has_high_risk_evidence(
+            context.wellbeing_context_notes
+        )
+        if (
+            summary.signal_score < PROACTIVE_PROMPT_SCORE_THRESHOLD
+            and not has_high_risk_evidence
+        ):
+            return None
+        safety_level = (
+            ChildSupportSafetyLevel.PARENT_HANDOFF
+            if summary.signal_level == WellbeingSignalLevel.VERY_HIGH
+            or has_high_risk_evidence
+            else ChildSupportSafetyLevel.CHECK_IN
+        )
+        return ChildSupportProactivePromptCandidate(
+            prompt_id=_build_proactive_prompt_id(
+                context=context,
+                safety_level=safety_level,
+            ),
+            context=context,
+            safety_level=safety_level,
+        )
+
 
 def _first_note_with_prefix(notes: tuple[str, ...], prefix: str) -> str | None:
     for note in notes:
@@ -295,6 +402,27 @@ def _normalize_llm_reply(reply: str, *, max_chars: int) -> str:
     if len(normalized) > max_chars:
         normalized = f"{normalized[:max_chars].rstrip()}..."
     return normalized
+
+
+def _build_proactive_prompt_id(
+    *,
+    context: ChildSupportConversationContext,
+    safety_level: ChildSupportSafetyLevel,
+) -> str:
+    summary = context.wellbeing_summary
+    stable_parts = {
+        "safety_level": safety_level.value,
+        "summary_computed_at": None
+        if summary is None
+        else summary.computed_at.isoformat(),
+        "summary_score": None if summary is None else round(summary.signal_score, 2),
+        "summary_level": None if summary is None else summary.signal_level.value,
+        "notes": list(context.wellbeing_context_notes),
+    }
+    digest = hashlib.sha256(
+        json.dumps(stable_parts, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:16]
+    return f"child-proactive-{digest}"
 
 
 def _assess_message_safety(message: str) -> ChildSupportMessageSafety:

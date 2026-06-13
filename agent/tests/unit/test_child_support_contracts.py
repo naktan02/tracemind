@@ -11,6 +11,7 @@ from agent.src.contracts.child_support_contracts import (
     ChildSupportAssistantMode,
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,
+    ChildSupportProactivePromptClaimRequestPayload,
     ChildSupportSafetyLevel,
     ChildSupportSuggestionPayload,
 )
@@ -26,6 +27,15 @@ def test_child_support_request_accepts_minimal_message() -> None:
 def test_child_support_request_rejects_empty_message() -> None:
     with pytest.raises(ValidationError):
         ChildSupportConversationRequestPayload(message="")
+
+
+def test_child_support_proactive_prompt_claim_request_accepts_prompt_id() -> None:
+    payload = ChildSupportProactivePromptClaimRequestPayload(
+        prompt_id="child-proactive-123"
+    )
+
+    assert payload.schema_version == "child_support_proactive_prompt_claim.v1"
+    assert payload.prompt_id == "child-proactive-123"
 
 
 def test_child_support_response_accepts_canonical_fields() -> None:

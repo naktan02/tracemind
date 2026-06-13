@@ -45,6 +45,20 @@ CREATE TABLE IF NOT EXISTS child_support_messages (
 );
 """
 
+_CREATE_PROACTIVE_CLAIMS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS child_support_proactive_prompt_claims (
+    prompt_id       TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    message_id      TEXT NOT NULL,
+    claimed_at      TEXT NOT NULL,
+    prompt_text     TEXT NOT NULL,
+    safety_level    TEXT,
+    metadata        TEXT NOT NULL,
+    FOREIGN KEY(conversation_id)
+        REFERENCES child_support_conversations(conversation_id)
+);
+"""
+
 _UPSERT_CONVERSATION_SQL = """
 INSERT INTO child_support_conversations
     (conversation_id, created_at, updated_at, metadata)
@@ -73,6 +87,22 @@ _COUNT_MESSAGES_SQL = """
 SELECT COUNT(*)
 FROM child_support_messages
 WHERE conversation_id = ?;
+"""
+
+_INSERT_PROACTIVE_CLAIM_SQL = """
+INSERT INTO child_support_proactive_prompt_claims
+    (prompt_id, conversation_id, message_id, claimed_at, prompt_text,
+     safety_level, metadata)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(prompt_id) DO NOTHING;
+"""
+
+_SELECT_PROACTIVE_CLAIM_SQL = """
+SELECT prompt_id, conversation_id, message_id, claimed_at, prompt_text,
+       safety_level, metadata
+FROM child_support_proactive_prompt_claims
+WHERE prompt_id = ?
+LIMIT 1;
 """
 
 
@@ -104,6 +134,19 @@ class ChildSupportMessageRecord:
             raise ValueError("schema_version must not be empty.")
 
 
+@dataclass(frozen=True, slots=True)
+class ChildSupportProactivePromptClaimRecord:
+    """선제 발화가 실제 대화로 claim된 기록."""
+
+    prompt_id: str
+    conversation_id: str
+    message_id: str
+    claimed_at: datetime
+    prompt_text: str
+    safety_level: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
 @dataclass(slots=True)
 class ChildSupportConversationRepository:
     """아이 지원 대화 conversation/message를 로컬 SQLite에 저장한다."""
@@ -115,6 +158,7 @@ class ChildSupportConversationRepository:
         with self._connect() as conn:
             conn.execute(_CREATE_CONVERSATIONS_TABLE_SQL)
             conn.execute(_CREATE_MESSAGES_TABLE_SQL)
+            conn.execute(_CREATE_PROACTIVE_CLAIMS_TABLE_SQL)
 
     def ensure_conversation(
         self,
@@ -126,36 +170,25 @@ class ChildSupportConversationRepository:
 
         now = datetime.now(tz=timezone.utc).isoformat()
         with self._connect() as conn:
-            conn.execute(
-                _UPSERT_CONVERSATION_SQL,
-                (
-                    conversation_id,
-                    now,
-                    now,
-                    json.dumps(metadata or {}, ensure_ascii=False),
-                ),
+            _ensure_conversation(
+                conn,
+                conversation_id,
+                metadata=metadata,
+                now_iso=now,
             )
 
     def save_message(self, record: ChildSupportMessageRecord) -> None:
         """대화 메시지 snapshot을 저장한다."""
 
-        self.ensure_conversation(record.conversation_id)
+        now = datetime.now(tz=timezone.utc).isoformat()
         with self._connect() as conn:
-            conn.execute(
-                _INSERT_MESSAGE_SQL,
-                (
-                    record.message_id,
-                    record.conversation_id,
-                    record.schema_version,
-                    record.role,
-                    record.text,
-                    record.created_at.isoformat(),
-                    record.safety_level,
-                    record.assistant_mode,
-                    record.scope_status,
-                    json.dumps(record.metadata, ensure_ascii=False),
-                ),
+            _ensure_conversation(
+                conn,
+                record.conversation_id,
+                metadata=None,
+                now_iso=now,
             )
+            conn.execute(_INSERT_MESSAGE_SQL, _message_params(record))
 
     def get_recent_messages(
         self,
@@ -181,6 +214,48 @@ class ChildSupportConversationRepository:
             row = conn.execute(_COUNT_MESSAGES_SQL, (conversation_id,)).fetchone()
         return int(row[0])
 
+    def get_proactive_prompt_claim(
+        self,
+        prompt_id: str,
+    ) -> ChildSupportProactivePromptClaimRecord | None:
+        """prompt_id로 기존 proactive claim을 조회한다."""
+
+        with self._connect() as conn:
+            row = conn.execute(_SELECT_PROACTIVE_CLAIM_SQL, (prompt_id,)).fetchone()
+        return None if row is None else _row_to_proactive_claim(row)
+
+    def claim_proactive_prompt(
+        self,
+        *,
+        message: ChildSupportMessageRecord,
+        claim: ChildSupportProactivePromptClaimRecord,
+    ) -> ChildSupportProactivePromptClaimRecord:
+        """첫 assistant message와 proactive claim을 같은 transaction에 저장한다."""
+
+        with self._connect() as conn:
+            now = datetime.now(tz=timezone.utc).isoformat()
+            _ensure_conversation(
+                conn,
+                message.conversation_id,
+                metadata=None,
+                now_iso=now,
+            )
+            conn.execute(_INSERT_MESSAGE_SQL, _message_params(message))
+            cursor = conn.execute(
+                _INSERT_PROACTIVE_CLAIM_SQL,
+                _proactive_claim_params(claim),
+            )
+            if cursor.rowcount > 0:
+                return claim
+            conn.rollback()
+            row = conn.execute(
+                _SELECT_PROACTIVE_CLAIM_SQL,
+                (claim.prompt_id,),
+            ).fetchone()
+        if row is None:
+            raise RuntimeError("proactive prompt claim conflict could not be loaded.")
+        return _row_to_proactive_claim(row)
+
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
@@ -201,5 +276,69 @@ def _row_to_message(row: sqlite3.Row) -> ChildSupportMessageRecord:
         safety_level=row["safety_level"],
         assistant_mode=row["assistant_mode"],
         scope_status=row["scope_status"],
+        metadata=metadata,
+    )
+
+
+def _ensure_conversation(
+    conn: sqlite3.Connection,
+    conversation_id: str,
+    *,
+    metadata: dict[str, Any] | None,
+    now_iso: str,
+) -> None:
+    conn.execute(
+        _UPSERT_CONVERSATION_SQL,
+        (
+            conversation_id,
+            now_iso,
+            now_iso,
+            json.dumps(metadata or {}, ensure_ascii=False),
+        ),
+    )
+
+
+def _message_params(record: ChildSupportMessageRecord) -> tuple[object, ...]:
+    return (
+        record.message_id,
+        record.conversation_id,
+        record.schema_version,
+        record.role,
+        record.text,
+        record.created_at.isoformat(),
+        record.safety_level,
+        record.assistant_mode,
+        record.scope_status,
+        json.dumps(record.metadata, ensure_ascii=False),
+    )
+
+
+def _proactive_claim_params(
+    record: ChildSupportProactivePromptClaimRecord,
+) -> tuple[object, ...]:
+    return (
+        record.prompt_id,
+        record.conversation_id,
+        record.message_id,
+        record.claimed_at.isoformat(),
+        record.prompt_text,
+        record.safety_level,
+        json.dumps(record.metadata, ensure_ascii=False),
+    )
+
+
+def _row_to_proactive_claim(
+    row: sqlite3.Row,
+) -> ChildSupportProactivePromptClaimRecord:
+    metadata = json.loads(row["metadata"])
+    if not isinstance(metadata, dict):
+        metadata = {}
+    return ChildSupportProactivePromptClaimRecord(
+        prompt_id=str(row["prompt_id"]),
+        conversation_id=str(row["conversation_id"]),
+        message_id=str(row["message_id"]),
+        claimed_at=datetime.fromisoformat(str(row["claimed_at"])),
+        prompt_text=str(row["prompt_text"]),
+        safety_level=row["safety_level"],
         metadata=metadata,
     )

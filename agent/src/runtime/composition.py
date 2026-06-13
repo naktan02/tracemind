@@ -149,6 +149,7 @@ def build_agent_runtime_state(
     wellbeing_projection_service = WellbeingSignalProjectionService(
         analysis_event_repository=analysis_repo,
         snapshot_repository=wellbeing_snapshot_repo,
+        captured_text_repository=captured_repo,
     )
     wellbeing_summary_service = WellbeingSummaryService(
         repository=wellbeing_snapshot_repo,

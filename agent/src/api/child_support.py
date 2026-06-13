@@ -8,6 +8,7 @@ from agent.src.api.dependencies import ChildSupportCoachServiceDep
 from agent.src.contracts.child_support_contracts import (
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,
+    ChildSupportProactivePromptClaimRequestPayload,
     ChildSupportProactivePromptPayload,
 )
 from agent.src.features.wellbeing.child_support.service import (
@@ -46,3 +47,16 @@ def get_child_support_proactive_prompt(
     """아이 화면 진입 시 먼저 건넬 말이 필요한지 반환한다."""
 
     return service.build_proactive_prompt()
+
+
+@router.post(
+    "/proactive-prompt/claim",
+    response_model=ChildSupportProactivePromptPayload,
+)
+def claim_child_support_proactive_prompt(
+    request: ChildSupportProactivePromptClaimRequestPayload,
+    service: ChildSupportCoachServiceDep,
+) -> ChildSupportProactivePromptPayload:
+    """선제 발화를 실제 표시 직전에 대화로 claim한다."""
+
+    return service.claim_proactive_prompt(request)

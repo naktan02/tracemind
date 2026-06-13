@@ -255,10 +255,13 @@ function createInitialState(
 }
 
 function shouldDeferPendingCompositionFlush(state: SegmentState): boolean {
+  const finalText = readFinalText(state);
   return (
-    state.pendingCompositionFlushDeferralCount === 0 &&
+    state.pendingCompositionFlushDeferralCount < 2 &&
     state.surfaceType !== "input" &&
-    endsWithPendingKoreanComposition(state.lastText)
+    (endsWithPendingKoreanComposition(state.lastText) ||
+      endsWithPendingKoreanComposition(state.bestText) ||
+      endsWithPendingKoreanComposition(finalText))
   );
 }
 
