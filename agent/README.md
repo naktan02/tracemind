@@ -8,8 +8,7 @@ classifier/prototype scoring은 scorer backend와 local asset provider로 분리
 코드 읽기 시작점:
 
 - `agent/src/contracts/`
-- `agent/src/services/README.md`
-- `agent/src/features/README.md` — feature module 전환 목표 경계와 migration 순서
+- `agent/src/features/README.md`
 - `agent/src/runtime/README.md`
 - `agent/REFACTOR_ROADMAP.md` — agent 폴더 구조 리팩터링 phase gate
 - 로컬 추론 rail: `agent/src/features/inference/`

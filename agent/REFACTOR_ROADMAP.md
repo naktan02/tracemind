@@ -122,7 +122,7 @@ Gate:
 목표 구조:
 
 ```text
-agent/src/services/wellbeing/
+wellbeing/
   signal/
   space_web/
   family_access/
@@ -146,7 +146,7 @@ Gate:
 목표 구조:
 
 ```text
-agent/src/services/captured_text/
+captured_text/
   ingest.py
   lifecycle.py
   debug_jobs.py
@@ -434,6 +434,9 @@ Gate:
 - route smoke tests가 통과한다.
 
 ### Feature Phase 8. legacy 표면 제거와 guard 고정
+
+Status: 완료. `agent/src/services/` source package와 빈 infrastructure placeholder를
+제거하고, 남은 runtime registry primitive는 `agent/src/runtime/`으로 이동한다.
 
 목표:
 

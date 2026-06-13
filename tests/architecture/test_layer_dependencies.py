@@ -2502,6 +2502,22 @@ def test_cross_runtime_features_own_service_paths() -> None:
     )
 
 
+def test_agent_services_source_package_is_removed() -> None:
+    package_root = AGENT_SRC / "services"
+    ignored_parts = {"__pycache__"}
+    violations = [
+        _relative_repo_path(path)
+        for path in package_root.rglob("*")
+        if path.is_file() and not any(part in ignored_parts for part in path.parts)
+    ]
+
+    assert not violations, (
+        "agent/src/services는 더 이상 source of truth가 아니다. runtime primitive는 "
+        "agent.src.runtime, 기능 구현은 agent.src.features 아래에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_main_server_layer_does_not_import_scripts() -> None:
     violations = _find_forbidden_imports(
         root=MAIN_SERVER_SRC,
@@ -2631,8 +2647,10 @@ def test_apps_do_not_import_agent_service_implementations() -> None:
         snippets=(
             "agent.src.features",
             "agent.src.services",
+            "agent.src.runtime",
             "agent/src/features",
             "agent/src/services",
+            "agent/src/runtime",
         ),
     )
 

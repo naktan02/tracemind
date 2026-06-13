@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Generic, TypeVar
 
-from agent.src.services.runtime_registry_imports import (
+from agent.src.runtime.registry_imports import (
     import_runtime_module_for_name,
     import_runtime_package_modules,
 )

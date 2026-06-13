@@ -7,8 +7,8 @@
 ## 먼저 읽을 것
 
 1. `agent/README.md`
-2. `agent/src/services/README.md`
-3. 작업 축에 맞는 feature/service 경로
+2. `agent/src/features/README.md`
+3. 작업 축에 맞는 feature 경로
    - 추론: `agent/src/features/inference/`
    - 학습: `agent/src/features/training_runtime/`
    - FL 참여: `agent/src/features/federation/`

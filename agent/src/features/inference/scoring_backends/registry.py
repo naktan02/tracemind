@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from agent.src.services.runtime_registry import RuntimeRegistry
+from agent.src.runtime.registry import RuntimeRegistry
 from methods.adaptation.scoring_registry import (
     build_shared_adapter_scoring_backend,
     list_shared_adapter_scoring_backend_catalog_entries,

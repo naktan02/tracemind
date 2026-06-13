@@ -44,7 +44,7 @@ central fixed embedding + classifier seed
 | Shared contract/domain | agent, main_server, scripts가 함께 읽는 canonical payload와 domain entity | `shared/src/contracts/*`, `shared/src/domain/entities/*` |
 | Methods | SSL, adaptation, evaluation, FL aggregation의 교체 가능한 계산 core | `methods/*` |
 | Hydra config | 실행 조합, strategy axis, track preset | `conf/*` |
-| Agent API/runtime | 로컬 inference, captured text, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
+| Agent API/runtime | 로컬 inference, captured text, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/features/*`, `agent/src/runtime/*` |
 | Main server API/runtime | FL round, aggregation, publication | `main_server/src/api/*`, `main_server/src/services/*` |
 | Scripts | dataset/PEFT/FL simulation entrypoint와 thin wrapper | `scripts/experiments/*`, `scripts/workflows/*` |
 | Apps | family extension UI, experiment dashboard, future 제품 UI shell | `apps/family_extension/*`, `apps/experiment_dashboard/*` |
