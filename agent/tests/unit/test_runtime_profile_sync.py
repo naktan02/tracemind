@@ -14,6 +14,10 @@ from fastapi.testclient import TestClient
 from agent.src.api.main import create_app
 from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
 from agent.src.features.runtime_profile.sync_service import RuntimeProfileSyncService
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
+from agent.src.runtime.composition import build_agent_runtime_state
 from shared.src.contracts.agent_runtime_profile_contracts import (
     AgentRuntimeProfilePayload,
     make_agent_runtime_profile_payload,
@@ -75,9 +79,10 @@ def test_runtime_profile_sync_fetches_profile_and_pulls_shared_state(
     assert active is not None
     assert active.profile.identity_matches(profile)
     assert active.server_validated_at is not None
+    assert active.server_base_url == "http://server.test"
 
 
-def test_runtime_profile_sync_marks_up_to_date_without_pull(
+def test_runtime_profile_sync_refreshes_shared_state_when_up_to_date(
     tmp_path: Path,
 ) -> None:
     repository = RuntimeProfileRepository(db_path=tmp_path / "agent_local.db")
@@ -105,10 +110,13 @@ def test_runtime_profile_sync_marks_up_to_date_without_pull(
     result = service.sync_current(server_base_url="http://server.test")
 
     assert result.status == "up_to_date"
-    shared_adapter_sync_service.pull_current.assert_not_called()
+    shared_adapter_sync_service.pull_current.assert_called_once_with(
+        server_base_url="http://server.test"
+    )
     active = repository.load_active()
     assert active is not None
     assert active.server_validated_at is not None
+    assert active.server_base_url == "http://server.test"
 
 
 def test_runtime_profile_sync_api_updates_agent_local_status(
@@ -161,3 +169,47 @@ def test_runtime_profile_sync_api_updates_agent_local_status(
         == profile.profile_revision
     )
     assert app.state.pipeline_service is pipeline_service
+
+
+def test_startup_auto_configure_validates_profile_and_rebuilds_pipeline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = RuntimeProfileRepository(db_path=tmp_path / "agent_local.db")
+    repository.save_profile(
+        _profile(),
+        source="server",
+        activate=True,
+        server_base_url="http://server.test",
+    )
+    sync_service = MagicMock()
+    pipeline_service = MagicMock()
+    captured_text_view_generation_service = MagicMock()
+    captured_text_view_generation_service.translation_provider = None
+    observed_server_base_urls = []
+
+    def _build_pipeline(**kwargs):
+        observed_server_base_urls.append(kwargs["server_base_url"])
+        return pipeline_service
+
+    monkeypatch.setattr(
+        "agent.src.runtime.composition.build_pipeline_service_from_runtime_profile",
+        _build_pipeline,
+    )
+
+    runtime_state = build_agent_runtime_state(
+        analysis_event_repository=AnalysisEventRepository(
+            db_path=tmp_path / "events.db"
+        ),
+        runtime_profile_repository=repository,
+        runtime_profile_sync_service=sync_service,
+        shared_adapter_runtime_service=MagicMock(),
+        captured_text_view_generation_service=captured_text_view_generation_service,
+        auto_configure_pipeline=True,
+    )
+
+    sync_service.sync_current.assert_called_once_with(
+        server_base_url="http://server.test"
+    )
+    assert observed_server_base_urls == ["http://server.test"]
+    assert runtime_state.pipeline_service is pipeline_service

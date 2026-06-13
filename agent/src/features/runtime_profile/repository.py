@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS agent_runtime_profiles (
     received_at         TEXT NOT NULL,
     activated_at        TEXT,
     server_validated_at TEXT,
+    server_base_url     TEXT,
     is_active           INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (profile_id, profile_revision, payload_checksum)
 );
@@ -47,7 +48,7 @@ WHERE is_active = 1;
 
 SELECT_ACTIVE_SQL = """
 SELECT profile_id, profile_revision, payload_checksum, source, payload_json,
-       received_at, activated_at, server_validated_at
+       received_at, activated_at, server_validated_at, server_base_url
 FROM agent_runtime_profiles
 WHERE is_active = 1
 LIMIT 1;
@@ -58,8 +59,9 @@ INSERT INTO agent_runtime_profiles
     (profile_id, profile_revision, payload_checksum, source, model_id,
      model_revision, runtime_family, adapter_mechanism, scorer_backend_name,
      embedding_backend, embedding_model_id, training_scope, required_state_kind,
-     payload_json, received_at, activated_at, server_validated_at, is_active)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     payload_json, received_at, activated_at, server_validated_at, server_base_url,
+     is_active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(profile_id, profile_revision, payload_checksum) DO UPDATE SET
     source = excluded.source,
     model_id = excluded.model_id,
@@ -78,6 +80,10 @@ ON CONFLICT(profile_id, profile_revision, payload_checksum) DO UPDATE SET
         excluded.server_validated_at,
         agent_runtime_profiles.server_validated_at
     ),
+    server_base_url = COALESCE(
+        excluded.server_base_url,
+        agent_runtime_profiles.server_base_url
+    ),
     is_active = excluded.is_active;
 """
 
@@ -91,6 +97,7 @@ class RuntimeProfileRecord:
     received_at: datetime
     activated_at: datetime | None
     server_validated_at: datetime | None
+    server_base_url: str | None
 
 
 @dataclass(slots=True)
@@ -113,6 +120,7 @@ class RuntimeProfileRepository:
         received_at: datetime | None = None,
         activated_at: datetime | None = None,
         server_validated_at: datetime | None = None,
+        server_base_url: str | None = None,
     ) -> RuntimeProfileRecord:
         """profile을 저장하고 필요하면 active profile로 전환한다."""
 
@@ -146,6 +154,7 @@ class RuntimeProfileRepository:
                     effective_received_at.isoformat(),
                     _datetime_json(effective_activated_at),
                     _datetime_json(server_validated_at),
+                    _optional_server_base_url(server_base_url),
                     1 if activate else 0,
                 ),
             )
@@ -155,6 +164,7 @@ class RuntimeProfileRepository:
             received_at=effective_received_at,
             activated_at=effective_activated_at,
             server_validated_at=server_validated_at,
+            server_base_url=_optional_server_base_url(server_base_url),
         )
 
     def load_active(self) -> RuntimeProfileRecord | None:
@@ -171,6 +181,7 @@ class RuntimeProfileRepository:
         profile_revision: str,
         payload_checksum: str,
         validated_at: datetime | None = None,
+        server_base_url: str | None = None,
     ) -> RuntimeProfileRecord:
         """서버 최신성 확인 시각을 저장한다."""
 
@@ -179,13 +190,15 @@ class RuntimeProfileRepository:
             cursor = conn.execute(
                 """
                 UPDATE agent_runtime_profiles
-                SET server_validated_at = ?
+                SET server_validated_at = ?,
+                    server_base_url = COALESCE(?, server_base_url)
                 WHERE profile_id = ?
                   AND profile_revision = ?
                   AND payload_checksum = ?;
                 """,
                 (
                     effective_validated_at.isoformat(),
+                    _optional_server_base_url(server_base_url),
                     profile_id,
                     profile_revision,
                     payload_checksum,
@@ -204,6 +217,12 @@ class RuntimeProfileRepository:
 
 def ensure_runtime_profile_schema(conn: sqlite3.Connection) -> None:
     conn.execute(CREATE_RUNTIME_PROFILE_TABLE_SQL)
+    _ensure_column(
+        conn,
+        table_name="agent_runtime_profiles",
+        column_name="server_base_url",
+        column_sql="server_base_url TEXT",
+    )
     conn.execute(CREATE_ACTIVE_RUNTIME_PROFILE_INDEX_SQL)
 
 
@@ -217,6 +236,7 @@ def _row_to_record(row: tuple[object, ...]) -> RuntimeProfileRecord:
         received_at,
         activated_at,
         server_validated_at,
+        server_base_url,
     ) = row
     return RuntimeProfileRecord(
         profile=AgentRuntimeProfilePayload.model_validate_json(str(payload_json)),
@@ -224,7 +244,20 @@ def _row_to_record(row: tuple[object, ...]) -> RuntimeProfileRecord:
         received_at=datetime.fromisoformat(str(received_at)),
         activated_at=_optional_datetime(activated_at),
         server_validated_at=_optional_datetime(server_validated_at),
+        server_base_url=_optional_server_base_url(server_base_url),
     )
+
+
+def _ensure_column(
+    conn: sqlite3.Connection,
+    *,
+    table_name: str,
+    column_name: str,
+    column_sql: str,
+) -> None:
+    columns = {row[1] for row in conn.execute(f"PRAGMA table_info({table_name})")}
+    if column_name not in columns:
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_sql};")
 
 
 def _required_source(source: str) -> str:
@@ -240,3 +273,10 @@ def _datetime_json(value: datetime | None) -> str | None:
 
 def _optional_datetime(value: object) -> datetime | None:
     return None if value is None else datetime.fromisoformat(str(value))
+
+
+def _optional_server_base_url(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip().rstrip("/")
+    return normalized or None

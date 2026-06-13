@@ -50,11 +50,15 @@ class RuntimeProfileSyncService:
             active=active,
         )
         if latest is None and active is not None:
+            self.shared_adapter_sync_service.pull_current(
+                server_base_url=server_base_url
+            )
             self.repository.mark_server_validated(
                 profile_id=active.profile.profile_id,
                 profile_revision=active.profile.profile_revision,
                 payload_checksum=active.profile.payload_checksum,
                 validated_at=datetime.now(tz=timezone.utc),
+                server_base_url=server_base_url,
             )
             return RuntimeProfileSyncResult(
                 status="up_to_date",
@@ -75,6 +79,7 @@ class RuntimeProfileSyncService:
             source="server",
             activate=True,
             server_validated_at=datetime.now(tz=timezone.utc),
+            server_base_url=server_base_url,
         )
         return RuntimeProfileSyncResult(
             status="updated",

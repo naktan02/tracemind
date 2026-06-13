@@ -71,6 +71,7 @@ from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
+from agent.src.runtime.env import load_runtime_profile_server_base_url_from_env
 from agent.src.runtime.state import AgentRuntimeState, RoundClientFactory
 
 
@@ -184,6 +185,7 @@ def build_agent_runtime_state(
         analysis_event_repository=analysis_repo,
         shared_adapter_runtime_service=shared_runtime_service,
         runtime_profile_repository=runtime_profile_repo,
+        runtime_profile_sync_service=runtime_profile_sync,
         captured_text_view_generation_service=view_generation_service,
     )
 
@@ -220,17 +222,22 @@ def _resolve_pipeline_service(
     analysis_event_repository: AnalysisEventRepository,
     shared_adapter_runtime_service: SharedAdapterRuntimeService,
     runtime_profile_repository: RuntimeProfileRepository,
+    runtime_profile_sync_service: RuntimeProfileSyncService,
     captured_text_view_generation_service: CapturedTextViewGenerationService,
 ) -> InferencePipelineService | None:
     if pipeline_service is not None:
         return pipeline_service
     if not auto_configure_pipeline:
         return None
+    server_base_url = _runtime_profile_server_base_url(runtime_profile_repository)
+    if server_base_url is not None:
+        runtime_profile_sync_service.sync_current(server_base_url=server_base_url)
     profile_pipeline = build_pipeline_service_from_runtime_profile(
         runtime_profile_repository=runtime_profile_repository,
         analysis_event_repository=analysis_event_repository,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         translation_service=captured_text_view_generation_service.translation_provider,
+        server_base_url=server_base_url,
     )
     if profile_pipeline is not None:
         return profile_pipeline
@@ -241,3 +248,12 @@ def _resolve_pipeline_service(
             captured_text_view_generation_service.translation_provider
         ),
     )
+
+
+def _runtime_profile_server_base_url(
+    runtime_profile_repository: RuntimeProfileRepository,
+) -> str | None:
+    active = runtime_profile_repository.load_active()
+    if active is not None and active.server_base_url is not None:
+        return active.server_base_url
+    return load_runtime_profile_server_base_url_from_env()
