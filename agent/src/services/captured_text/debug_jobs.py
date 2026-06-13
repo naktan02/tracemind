@@ -11,13 +11,13 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextAnalysisSourceRecord,
     CapturedTextRepository,
 )
-from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.ingest.captured_text_lifecycle_service import (
+from agent.src.services.captured_text.lifecycle import (
     CapturedTextLifecycleService,
 )
-from agent.src.services.ingest.captured_text_view_generation_service import (
+from agent.src.services.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.services.inference.pipeline_service import InferencePipelineService
 from shared.src.domain.entities.inference.events import QueryEvent
 
 

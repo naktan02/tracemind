@@ -22,19 +22,19 @@ from agent.src.contracts.captured_text_contracts import (
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
 )
-from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.ingest.captured_text_debug_job_service import (
+from agent.src.services.captured_text.debug_jobs import (
     CapturedTextDebugJobService,
 )
-from agent.src.services.ingest.captured_text_ingest_service import (
+from agent.src.services.captured_text.ingest import (
     CapturedTextIngestService,
 )
-from agent.src.services.ingest.captured_text_lifecycle_service import (
+from agent.src.services.captured_text.lifecycle import (
     CapturedTextLifecycleService,
 )
-from agent.src.services.ingest.captured_text_view_generation_service import (
+from agent.src.services.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.services.inference.pipeline_service import InferencePipelineService
 
 router = APIRouter(prefix="/api/v1/captured-text", tags=["captured-text"])
 

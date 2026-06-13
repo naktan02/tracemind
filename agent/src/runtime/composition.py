@@ -30,19 +30,19 @@ from agent.src.services.assets.shared_adapters.runtime_service import (
 from agent.src.services.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
 )
-from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.inference.pipeline_factory import build_default_pipeline_service
-from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.ingest.captured_text_lifecycle_service import (
+from agent.src.services.captured_text.lifecycle import (
     CapturedTextLifecycleService,
     build_captured_text_lifecycle_service_from_env,
 )
-from agent.src.services.ingest.captured_text_view_generation_service import (
-    CapturedTextViewGenerationService,
-)
-from agent.src.services.ingest.captured_text_view_provider_factory import (
+from agent.src.services.captured_text.view_generation.provider_factory import (
     build_captured_text_view_generation_service_from_env,
 )
+from agent.src.services.captured_text.view_generation.service import (
+    CapturedTextViewGenerationService,
+)
+from agent.src.services.federation.rounds.round_client import RoundClient
+from agent.src.services.inference.pipeline_factory import build_default_pipeline_service
+from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.wellbeing.child_support.context_provider import (
     ChildSupportContextProvider,
 )

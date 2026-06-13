@@ -7,7 +7,7 @@ from pathlib import Path
 from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
 )
-from agent.src.services.ingest.captured_text_view_provider_factory import (
+from agent.src.services.captured_text.view_generation.provider_factory import (
     build_captured_text_view_generation_service_from_env,
     load_captured_text_view_provider_config,
 )

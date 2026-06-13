@@ -145,7 +145,7 @@ Reddit Labeled Data
 | 중앙/FL 공통 text encoder SSL runtime support | `scripts/support/query_ssl_text_encoder/*` |
 | trainer core | `methods/adaptation/query_text_views/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | evaluation metric core | `methods/evaluation/*` |
-| captured generated view source | `agent/src/services/training_runtime/training_sources/captured_text_source.py` |
+| captured generated view source | `agent/src/services/captured_text/training_source/service.py` |
 | training source usage ledger | `agent/src/infrastructure/repositories/training_usage_ledger_repository.py` |
 
 주의:

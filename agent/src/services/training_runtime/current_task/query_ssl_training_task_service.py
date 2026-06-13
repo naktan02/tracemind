@@ -27,6 +27,9 @@ from agent.src.infrastructure.repositories.training_usage_ledger_repository impo
     TrainingUsageRowRecord,
     TrainingUsageRunRecord,
 )
+from agent.src.services.captured_text.training_source.service import (
+    CapturedTextTrainingSourceService,
+)
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.training_runtime.current_task.result import (
     TrainingTaskRunResult,
@@ -36,9 +39,6 @@ from agent.src.services.training_runtime.query_ssl_peft.local_training_service i
     QuerySslLocalTrainingService,
     QuerySslPeftEncoderClientTrainingResult,
     QuerySslPeftEncoderLocalTrainingRequest,
-)
-from agent.src.services.training_runtime.training_sources.captured_text_source import (
-    CapturedTextTrainingSourceService,
 )
 from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
 from methods.adaptation.peft_text_encoder.federated_ssl.method_owned_training import (

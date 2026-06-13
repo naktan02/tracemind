@@ -27,17 +27,17 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
     captured_text_record_from_payload,
 )
-from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.ingest.captured_text_ingest_service import (
+from agent.src.services.captured_text.ingest import (
     CapturedTextIngestService,
 )
-from agent.src.services.ingest.captured_text_lifecycle_service import (
+from agent.src.services.captured_text.lifecycle import (
     CapturedTextLifecycleConfig,
     CapturedTextLifecycleService,
 )
-from agent.src.services.ingest.captured_text_view_generation_service import (
+from agent.src.services.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.language.preprocess_service import PreprocessService
 
 

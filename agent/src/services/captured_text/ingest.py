@@ -13,7 +13,7 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
     captured_text_record_from_payload,
 )
-from agent.src.services.ingest.captured_text_lifecycle_service import (
+from agent.src.services.captured_text.lifecycle import (
     CapturedTextLifecycleService,
 )
 

@@ -23,16 +23,16 @@ from agent.src.infrastructure.repositories.captured_text_repository import (
     CapturedTextRepository,
     captured_text_record_from_payload,
 )
-from agent.src.services.ingest.captured_text_lifecycle_service import (
+from agent.src.services.captured_text.lifecycle import (
     CapturedTextLifecycleConfig,
     CapturedTextLifecycleService,
     build_captured_text_lifecycle_service_from_env,
 )
-from agent.src.services.ingest.captured_text_view_generation_service import (
-    CapturedTextViewGenerationService,
-)
-from agent.src.services.training_runtime.training_sources.captured_text_source import (
+from agent.src.services.captured_text.training_source.service import (
     CapturedTextTrainingSourceService,
+)
+from agent.src.services.captured_text.view_generation.service import (
+    CapturedTextViewGenerationService,
 )
 
 

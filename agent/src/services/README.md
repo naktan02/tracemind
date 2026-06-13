@@ -60,7 +60,7 @@
 2. `training_runtime/current_task/agent_training_task_runner_service.py`
 3. `training_runtime/current_task/query_ssl_training_task_service.py`
 4. `training_runtime/query_ssl_peft/local_training_service.py`
-5. `training_runtime/training_sources/captured_text_source.py`
+5. `captured_text/training_source/service.py`
 
 ### 3. agent가 서버 round에 참여하는 흐름을 보고 싶을 때
 
@@ -95,7 +95,7 @@
 - `language/backtranslation_service.py`
   - 운영 translation 코어와 같은 층에서 재사용하는 backtranslation service
   - strict USB NLP input용 `aug_0`, `aug_1` strong candidate 생성에 재사용한다
-- `ingest/captured_text_view_provider_factory.py`
+- `captured_text/view_generation/provider_factory.py`
   - captured text weak/strong view generation provider를 agent env에서 조립한다
   - 기본은 identity fallback이며, NLLB provider를 켜면 모델은 실제 view generation
     실행 시 lazy-load된다
@@ -104,7 +104,7 @@
   - debug job은 generated weak text를 inference pipeline에 넣어 analysis event까지
     저장한다. captured text 학습 입력은 generated weak/strong view source에서
     시작한다
-- `training_runtime/training_sources/captured_text_source.py`
+- `captured_text/training_source/service.py`
   - agent-local `CapturedTextGeneratedViewRecord`를 training backend가 읽는
     Query SSL unlabeled row로 정규화한다
   - captured text는 raw string이나 임의 JSON으로 학습에 직접 들어가지 않고,
