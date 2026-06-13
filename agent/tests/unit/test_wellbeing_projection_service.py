@@ -180,7 +180,7 @@ def test_projection_service_replays_when_projection_version_is_legacy(
     assert latest_summary.summary != "legacy snapshot"
     assert (
         snapshot_repository.load_latest_projection_version()
-        == "wellbeing_projection.evidence_signal.v1"
+        == "wellbeing_projection.evidence_signal.v2"
     )
 
 
@@ -233,6 +233,83 @@ def test_projection_service_uses_direct_risk_source_text_as_evidence(
     assert latest_summary.signal_level == WellbeingSignalLevel.VERY_HIGH
     assert latest_summary.signal_score == 95.0
     assert latest_summary.low_data is False
+
+
+def test_projection_service_keeps_recent_direct_risk_from_dropping_to_low(
+    tmp_path: Path,
+) -> None:
+    analysis_event_repository = AnalysisEventRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    captured_text_repository = CapturedTextRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+    projection_service = WellbeingSignalProjectionService(
+        analysis_event_repository=analysis_event_repository,
+        snapshot_repository=snapshot_repository,
+        captured_text_repository=captured_text_repository,
+        lookback_days=60,
+    )
+    direct_risk_at = datetime(2026, 6, 14, 9, tzinfo=timezone.utc)
+    followup_at = datetime(2026, 6, 14, 9, 5, tzinfo=timezone.utc)
+    captured_text_repository.save(
+        CapturedTextRecord(
+            event_id="captured-risk-1",
+            occurred_at=direct_risk_at,
+            received_at=direct_risk_at,
+            text="죽고싶어",
+            locale="ko",
+            source_type="browser",
+            surface_type="rich_editor",
+        )
+    )
+    captured_text_repository.save(
+        CapturedTextRecord(
+            event_id="captured-followup-1",
+            occurred_at=followup_at,
+            received_at=followup_at,
+            text="내 상황 어떤지 알아?",
+            locale="ko",
+            source_type="browser",
+            surface_type="rich_editor",
+        )
+    )
+    analysis_event_repository.save(
+        AnalysisEvent(
+            query_id="captured-risk-1",
+            occurred_at=direct_risk_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.01, "suicidal": 0.02},
+        ),
+        source_event_id="captured-risk-1",
+        scorer_name="test-scorer",
+        model_revision="test-revision",
+    )
+    analysis_event_repository.save(
+        AnalysisEvent(
+            query_id="captured-followup-1",
+            occurred_at=followup_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.90, "suicidal": 0.01},
+        ),
+        source_event_id="captured-followup-1",
+        scorer_name="test-scorer",
+        model_revision="test-revision",
+    )
+
+    projection_service.refresh_from_runtime()
+
+    latest_summary = snapshot_repository.load_latest_summary()
+    assert latest_summary is not None
+    assert latest_summary.computed_at == followup_at
+    assert latest_summary.signal_level == WellbeingSignalLevel.VERY_HIGH
+    assert latest_summary.signal_score == 95.0
+    assert "직접적인 자해나 자살 관련 표현 이후" in latest_summary.summary
 
 
 def test_wellbeing_services_refresh_projection_before_read(

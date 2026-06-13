@@ -26,6 +26,7 @@ export type CollectorContentStatusMessage = {
 
 export type ProactivePromptAvailableMessage = {
   type: typeof PROACTIVE_PROMPT_AVAILABLE_MESSAGE;
+  promptId: string;
   conversationId: string | null;
   promptText: string;
   suggestedPrompts: ChildSupportSuggestionPayload[];
@@ -33,6 +34,7 @@ export type ProactivePromptAvailableMessage = {
 
 export type ProactivePromptDismissedMessage = {
   type: typeof PROACTIVE_PROMPT_DISMISSED_MESSAGE;
+  promptId: string | null;
 };
 
 export type ChildSupportMessageRequestedMessage = {
@@ -93,6 +95,7 @@ export function isProactivePromptAvailableMessage(
   const candidate = value as Partial<ProactivePromptAvailableMessage>;
   return (
     candidate.type === PROACTIVE_PROMPT_AVAILABLE_MESSAGE &&
+    typeof candidate.promptId === "string" &&
     (typeof candidate.conversationId === "string" ||
       candidate.conversationId === null) &&
     typeof candidate.promptText === "string" &&
@@ -107,7 +110,10 @@ export function isProactivePromptDismissedMessage(
     return false;
   }
   const candidate = value as Partial<ProactivePromptDismissedMessage>;
-  return candidate.type === PROACTIVE_PROMPT_DISMISSED_MESSAGE;
+  return (
+    candidate.type === PROACTIVE_PROMPT_DISMISSED_MESSAGE &&
+    (typeof candidate.promptId === "string" || candidate.promptId === null)
+  );
 }
 
 export function isChildSupportMessageRequestedMessage(

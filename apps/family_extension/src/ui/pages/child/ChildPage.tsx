@@ -26,12 +26,16 @@ const PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY =
   "tracemind.childSupport.proactivePromptDismissedUntil";
 const PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS = 30 * 60 * 1000;
 
+type ProactivePromptDismissalRecord = {
+  prompt_id: string;
+  dismissed_until: string;
+};
+
 export function ChildPage({ activeTab }: ChildPageProps) {
   const [selectedRange, setSelectedRange] = useState<WellbeingSignalRange>("7d");
   const [proactivePrompt, setProactivePrompt] =
     useState<ChildSupportProactivePromptPayload | null>(null);
-  const [isProactivePromptDismissed, setIsProactivePromptDismissed] =
-    useState(false);
+  const [dismissedPromptId, setDismissedPromptId] = useState<string | null>(null);
   const summaryState = useWellbeingSummary();
   const timeseriesState = useWellbeingTimeseries({
     enabled: activeTab === "analysis",
@@ -43,14 +47,7 @@ export function ChildPage({ activeTab }: ChildPageProps) {
   });
   useEffect(() => {
     setProactivePrompt(null);
-    const dismissedUntil = window.localStorage.getItem(
-      PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY,
-    );
-    setIsProactivePromptDismissed(
-      dismissedUntil !== null &&
-        Number.isFinite(Date.parse(dismissedUntil)) &&
-        Date.now() < Date.parse(dismissedUntil),
-    );
+    setDismissedPromptId(readDismissedPromptId());
   }, [summaryState.status]);
 
   useEffect(() => {
@@ -59,7 +56,6 @@ export function ChildPage({ activeTab }: ChildPageProps) {
     async function loadPrompt() {
       if (
         activeTab !== "analysis" ||
-        isProactivePromptDismissed ||
         proactivePrompt !== null ||
         summaryState.status !== "loaded" ||
         summaryState.summary.low_data
@@ -72,8 +68,11 @@ export function ChildPage({ activeTab }: ChildPageProps) {
           cancelled ||
           !prompt.should_prompt ||
           prompt.prompt_id === null ||
-          prompt.prompt_text === null
+          isPromptDismissed(prompt.prompt_id)
         ) {
+          if (prompt.prompt_id !== null && isPromptDismissed(prompt.prompt_id)) {
+            setDismissedPromptId(prompt.prompt_id);
+          }
           return;
         }
         const claimedPrompt = await claimChildSupportProactivePrompt({
@@ -97,14 +96,14 @@ export function ChildPage({ activeTab }: ChildPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, isProactivePromptDismissed, proactivePrompt, summaryState]);
+  }, [activeTab, proactivePrompt, summaryState]);
 
   function dismissProactivePrompt() {
-    window.localStorage.setItem(
-      PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY,
-      new Date(Date.now() + PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS).toISOString(),
-    );
-    setIsProactivePromptDismissed(true);
+    if (proactivePrompt?.prompt_id === null || proactivePrompt?.prompt_id == null) {
+      return;
+    }
+    savePromptDismissal(proactivePrompt.prompt_id);
+    setDismissedPromptId(proactivePrompt.prompt_id);
   }
 
   return (
@@ -112,7 +111,7 @@ export function ChildPage({ activeTab }: ChildPageProps) {
       {activeTab === "analysis" &&
         proactivePrompt != null &&
         proactivePrompt.prompt_text != null &&
-        !isProactivePromptDismissed && (
+        proactivePrompt.prompt_id !== dismissedPromptId && (
           <ProactiveCoachPopup
             prompt={proactivePrompt}
             onDismiss={dismissProactivePrompt}
@@ -254,5 +253,55 @@ export function ChildPage({ activeTab }: ChildPageProps) {
         </section>
       )}
     </div>
+  );
+}
+
+function savePromptDismissal(promptId: string): void {
+  const record: ProactivePromptDismissalRecord = {
+    prompt_id: promptId,
+    dismissed_until: new Date(
+      Date.now() + PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS,
+    ).toISOString(),
+  };
+  window.localStorage.setItem(
+    PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY,
+    JSON.stringify(record),
+  );
+}
+
+function readDismissedPromptId(): string | null {
+  const raw = window.localStorage.getItem(PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY);
+  if (raw === null) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isPromptDismissalRecord(parsed)) {
+      return null;
+    }
+    const dismissedUntilTime = Date.parse(parsed.dismissed_until);
+    if (!Number.isFinite(dismissedUntilTime) || Date.now() >= dismissedUntilTime) {
+      return null;
+    }
+    return parsed.prompt_id;
+  } catch {
+    return null;
+  }
+}
+
+function isPromptDismissed(promptId: string): boolean {
+  return readDismissedPromptId() === promptId;
+}
+
+function isPromptDismissalRecord(
+  value: unknown,
+): value is ProactivePromptDismissalRecord {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<ProactivePromptDismissalRecord>;
+  return (
+    typeof candidate.prompt_id === "string" &&
+    typeof candidate.dismissed_until === "string"
   );
 }

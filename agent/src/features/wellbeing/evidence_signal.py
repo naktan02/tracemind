@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
 DIRECT_RISK_REASON = "direct_self_harm_or_suicide_expression"
+RECENT_DIRECT_RISK_REASON = "recent_direct_self_harm_or_suicide_expression"
 _DIRECT_RISK_PHRASES = (
     "죽고 싶",
     "죽고싶",
@@ -34,14 +35,19 @@ def build_wellbeing_evidence_signal(
     *,
     analysis_event: AnalysisEvent,
     source_text: str,
+    recent_direct_risk_context_active: bool = False,
 ) -> WellbeingEvidenceSignal:
     """analysis event와 agent-local 원문에서 canonical evidence signal을 만든다."""
 
     direct_risk = contains_direct_risk_expression(source_text)
+    effective_direct_risk = direct_risk or recent_direct_risk_context_active
     return WellbeingEvidenceSignal(
         max_non_normal_score=_max_non_normal_score(analysis_event.category_scores),
-        direct_risk=direct_risk,
-        reason=DIRECT_RISK_REASON if direct_risk else None,
+        direct_risk=effective_direct_risk,
+        reason=_direct_risk_reason(
+            direct_risk=direct_risk,
+            recent_direct_risk_context_active=recent_direct_risk_context_active,
+        ),
     )
 
 
@@ -50,6 +56,18 @@ def contains_direct_risk_expression(text: str) -> bool:
 
     lowered = text.lower()
     return any(phrase in lowered for phrase in _DIRECT_RISK_PHRASES)
+
+
+def _direct_risk_reason(
+    *,
+    direct_risk: bool,
+    recent_direct_risk_context_active: bool,
+) -> str | None:
+    if direct_risk:
+        return DIRECT_RISK_REASON
+    if recent_direct_risk_context_active:
+        return RECENT_DIRECT_RISK_REASON
+    return None
 
 
 def _max_non_normal_score(category_scores: dict[str, float]) -> float:

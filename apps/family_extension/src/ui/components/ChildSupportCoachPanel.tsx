@@ -85,6 +85,7 @@ export function ChildSupportCoachPanel() {
       <ChildSupportChatSurface
         initialMessage={INITIAL_MESSAGE}
         promptSeed={promptSeed}
+        replaceInitialWithPromptSeed
         onAssistantModeChange={setAssistantMode}
       />
 

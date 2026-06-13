@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -29,6 +31,14 @@ from agent.src.features.wellbeing.child_support.context_provider import (
 from agent.src.features.wellbeing.child_support.evidence_summary import (
     ChildSupportEvidenceSummaryBuilder,
 )
+from agent.src.features.wellbeing.child_support.llm_prompt import (
+    is_child_support_answer_first_request,
+    is_child_support_self_state_question,
+)
+from agent.src.features.wellbeing.child_support.llm_provider import (
+    ChildSupportLlmMessage,
+    OllamaChildSupportLlmProvider,
+)
 from agent.src.features.wellbeing.child_support.service import (
     ChildSupportCoachService,
     ChildSupportReplyUnavailable,
@@ -50,9 +60,16 @@ class StubChildSupportLlmProvider:
 
     def __init__(self) -> None:
         self.last_prompt = ""
+        self.last_messages: tuple[ChildSupportLlmMessage, ...] = ()
 
-    def generate_reply(self, *, prompt: str) -> str:
+    def generate_reply(
+        self,
+        *,
+        prompt: str,
+        messages: tuple[ChildSupportLlmMessage, ...] = (),
+    ) -> str:
         self.last_prompt = prompt
+        self.last_messages = messages
         return (
             "지금 정말 많이 버거워 보이네요. 말이 잘 안 나와도 괜찮아요. "
             "이 힘듦이 오늘 갑자기 커진 건지, 아니면 오래 쌓여 있다가 "
@@ -65,19 +82,126 @@ class ContextualChildSupportLlmProvider:
 
     def __init__(self) -> None:
         self.last_prompt = ""
+        self.last_messages: tuple[ChildSupportLlmMessage, ...] = ()
 
-    def generate_reply(self, *, prompt: str) -> str:
+    def generate_reply(
+        self,
+        *,
+        prompt: str,
+        messages: tuple[ChildSupportLlmMessage, ...] = (),
+    ) -> str:
         self.last_prompt = prompt
+        self.last_messages = messages
         return (
             "AI가 로컬 맥락을 보고 이어서 답합니다. "
             "지금 제일 크게 남은 느낌은 무엇인가요?"
         )
 
 
+class RepairingChildSupportLlmProvider:
+    assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
+
+    def __init__(self) -> None:
+        self.prompts: list[str] = []
+        self.messages: list[tuple[ChildSupportLlmMessage, ...]] = []
+
+    def generate_reply(
+        self,
+        *,
+        prompt: str,
+        messages: tuple[ChildSupportLlmMessage, ...] = (),
+    ) -> str:
+        self.prompts.append(prompt)
+        self.messages.append(messages)
+        if len(self.prompts) == 1:
+            return (
+                "지금 어떤 감정들이 가장 크게 느껴지는지 좀 더 구체적으로 "
+                "이야기해줄 수 있을까요?"
+            )
+        return (
+            "제가 보기에는 지금 많이 지치고 고립된 상태에 가까워 보여요. "
+            "혼자 버티고 있다는 말이 계속 이어져서, 마음이 꽤 오래 버거웠을 "
+            "가능성이 커 보여요. 지금은 그 무게를 혼자 들고 있지 않게 만드는 "
+            "쪽부터 같이 생각해 보고 싶어요."
+        )
+
+
+class AnswerThenQuestionsChildSupportLlmProvider:
+    assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
+
+    def __init__(self) -> None:
+        self.call_count = 0
+
+    def generate_reply(
+        self,
+        *,
+        prompt: str,
+        messages: tuple[ChildSupportLlmMessage, ...] = (),
+    ) -> str:
+        self.call_count += 1
+        return (
+            "제가 보기에는 지금 많이 지치고 고립된 상태에 가까워 보여요. "
+            "혼자 버티는 느낌이 오래 이어져서 마음의 여유가 거의 바닥난 것 같아요. "
+            "지금 어떤 부분이 가장 힘든지 더 자세히 말해줄 수 있을까요?"
+        )
+
+
+class StyleRepairingChildSupportLlmProvider:
+    assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
+
+    def __init__(self) -> None:
+        self.prompts: list[str] = []
+
+    def generate_reply(
+        self,
+        *,
+        prompt: str,
+        messages: tuple[ChildSupportLlmMessage, ...] = (),
+    ) -> str:
+        self.prompts.append(prompt)
+        if len(self.prompts) == 1:
+            return (
+                "당신이 지금 많이 힘들어하시는 마음이 느껴져요. "
+                "제가 곁에서 도와드릴게요."
+            )
+        return (
+            "지금 많이 힘든 마음이 느껴져요. 혼자 버티느라 지친 상태에 가까워 보여요."
+        )
+
+
+class MixedSpeechRepairingChildSupportLlmProvider:
+    assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
+
+    def __init__(self) -> None:
+        self.prompts: list[str] = []
+
+    def generate_reply(
+        self,
+        *,
+        prompt: str,
+        messages: tuple[ChildSupportLlmMessage, ...] = (),
+    ) -> str:
+        self.prompts.append(prompt)
+        if len(self.prompts) == 1:
+            return (
+                "지금 마음이 많이 지쳐 있는 것 같아요. "
+                "그래도 도움을 받을 수 있다는 걸 믿어봐."
+            )
+        return (
+            "지금 마음이 많이 지쳐 있는 것 같아요. 도움을 받을 수 있다는 "
+            "가능성을 같이 붙잡아 볼까."
+        )
+
+
 class ValidUrgentSafetyLlmProvider:
     assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
 
-    def generate_reply(self, *, prompt: str) -> str:
+    def generate_reply(
+        self,
+        *,
+        prompt: str,
+        messages: tuple[ChildSupportLlmMessage, ...] = (),
+    ) -> str:
         return (
             "그 말을 꺼내준 건 정말 중요한 신호예요. 먼저 지금 안전한 곳에 "
             "있는지 확인하고 싶어요. 가까운 어른에게 같이 있어달라고 "
@@ -129,6 +253,172 @@ def test_child_support_passes_contextual_violence_question_to_llm() -> None:
     assert response.reply_text.startswith("AI가 로컬 맥락을 보고")
     assert "아이의 새 메시지: 친구들한테 맞아서 힘들어" in provider.last_prompt
     assert "설명이나 판단을 요청하면 곧바로 짧게 답" in provider.last_prompt
+    assert "묻거나 요청한 내용에 대한 직접 답" in provider.last_prompt
+    assert (
+        "자신의 상태나 상황을 묻는다면 질문으로 되돌리지 말고" in provider.last_prompt
+    )
+    assert "질문에 맞게 먼저 답" in provider.last_prompt
+    assert "근거 목록이나 요약문 형식이 아니라" in provider.last_prompt
+    assert "message_intent_hint: self_state_reflection" in provider.last_prompt
+    assert "turn_goal: reflect_known_state" in provider.last_prompt
+
+
+def test_child_support_detects_natural_self_state_questions() -> None:
+    assert is_child_support_self_state_question(
+        "내가 어떤 기분일 거 같아? 너의 생각을 말해줘"
+    )
+    assert is_child_support_self_state_question(
+        "나에게 질문하지 말고 내 상태에 대해서 말해줘"
+    )
+    assert is_child_support_self_state_question("너가 볼 때 나는 어떤 상태야?")
+    assert not is_child_support_self_state_question("파이썬 for문 알려줘")
+
+
+def test_child_support_detects_answer_first_requests() -> None:
+    assert is_child_support_answer_first_request(
+        "나에게 질문하지 말고 네 생각을 먼저 말해줘"
+    )
+    assert is_child_support_answer_first_request("너가 볼 때 지금 나는 어때?")
+    assert not is_child_support_answer_first_request("파이썬 for문 알려줘")
+
+
+def test_child_support_passes_structured_messages_to_provider() -> None:
+    provider = StubChildSupportLlmProvider()
+    ChildSupportCoachService(llm_provider=provider).create_response(
+        ChildSupportConversationRequestPayload(
+            message="내가 어떤 기분일 거 같아? 너의 생각을 말해줘"
+        )
+    )
+
+    assert provider.last_messages
+    assert provider.last_messages[0].role == "system"
+    assert provider.last_messages[-1].role == "user"
+    assert "아이의 새 메시지" in provider.last_messages[-1].content
+    assert "message_intent_hint: self_state_reflection" in provider.last_prompt
+    assert "response_policy: answer_first_no_followup_question" in provider.last_prompt
+    assert "상담사의 현재 이해:" in provider.last_prompt
+
+
+def test_ollama_child_support_provider_uses_chat_messages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class StubResponse:
+        def __enter__(self) -> StubResponse:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "구조화된 메시지로 답합니다.",
+                    }
+                }
+            ).encode("utf-8")
+
+    def fake_urlopen(request: Any, *, timeout: float) -> StubResponse:
+        captured["url"] = request.full_url
+        captured["timeout"] = timeout
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return StubResponse()
+
+    monkeypatch.setattr(
+        "agent.src.features.wellbeing.child_support.llm_provider."
+        "urllib.request.urlopen",
+        fake_urlopen,
+    )
+
+    response = OllamaChildSupportLlmProvider(
+        model="exaone3.5:2.4b",
+        base_url="http://ollama.local",
+        timeout_seconds=3.0,
+    ).generate_reply(
+        prompt="fallback prompt",
+        messages=(
+            ChildSupportLlmMessage(role="system", content="system prompt"),
+            ChildSupportLlmMessage(role="user", content="user prompt"),
+        ),
+    )
+
+    assert response == "구조화된 메시지로 답합니다."
+    assert captured["url"] == "http://ollama.local/api/chat"
+    assert captured["timeout"] == 3.0
+    assert captured["body"]["messages"] == [
+        {"role": "system", "content": "system prompt"},
+        {"role": "user", "content": "user prompt"},
+    ]
+    assert "prompt" not in captured["body"]
+
+
+def test_child_support_repairs_self_state_question_followup_reply() -> None:
+    provider = RepairingChildSupportLlmProvider()
+    response = ChildSupportCoachService(llm_provider=provider).create_response(
+        ChildSupportConversationRequestPayload(
+            message="너가 볼 때는 내가 지금 어떤 상태인것 같아?"
+        )
+    )
+
+    assert len(provider.prompts) == 2
+    assert "이전 답변은 아이의 질문에 직접 답하지 않고" in provider.prompts[1]
+    assert response.reply_text.startswith("제가 보기에는")
+    assert "좀 더 구체적으로" not in response.reply_text
+
+
+def test_child_support_repairs_question_ending_answer_first_reply() -> None:
+    provider = RepairingChildSupportLlmProvider()
+    response = ChildSupportCoachService(llm_provider=provider).create_response(
+        ChildSupportConversationRequestPayload(
+            message="나에게 질문하지 말고 지금 내 상태에 대해서 말해줘"
+        )
+    )
+
+    assert len(provider.prompts) == 2
+    assert "response_policy가 질문을 금지하면" in provider.prompts[1]
+    assert response.reply_text.startswith("제가 보기에는")
+
+
+def test_child_support_removes_followup_questions_for_answer_first_turn() -> None:
+    provider = AnswerThenQuestionsChildSupportLlmProvider()
+    response = ChildSupportCoachService(llm_provider=provider).create_response(
+        ChildSupportConversationRequestPayload(
+            message="나에게 질문하지 말고 지금 내 상태에 대해서 말해줘"
+        )
+    )
+
+    assert provider.call_count == 1
+    assert response.reply_text.startswith("제가 보기에는")
+    assert "말해줄 수 있을까요" not in response.reply_text
+    assert "?" not in response.reply_text
+
+
+def test_child_support_repairs_institutional_speech_style() -> None:
+    provider = StyleRepairingChildSupportLlmProvider()
+    response = ChildSupportCoachService(llm_provider=provider).create_response(
+        ChildSupportConversationRequestPayload(message="요즘 너무 지쳐")
+    )
+
+    assert len(provider.prompts) == 2
+    assert "말투가 어색했다" in provider.prompts[1]
+    assert "당신" not in response.reply_text
+    assert "도와드릴" not in response.reply_text
+    assert response.reply_text.startswith("지금 많이 힘든 마음")
+
+
+def test_child_support_repairs_mixed_speech_level() -> None:
+    provider = MixedSpeechRepairingChildSupportLlmProvider()
+    response = ChildSupportCoachService(llm_provider=provider).create_response(
+        ChildSupportConversationRequestPayload(message="요즘 너무 지쳐")
+    )
+
+    assert len(provider.prompts) == 2
+    assert "반말과 존댓말을 섞지 않는다" in provider.prompts[1]
+    assert "믿어봐." not in response.reply_text
+    assert response.reply_text.endswith("볼까요.")
 
 
 def test_child_support_service_passes_high_summary_to_llm_context() -> None:
@@ -484,6 +774,10 @@ def test_child_support_llm_prompt_includes_profile_context_and_current_question(
     assert "최근 상태가 평소보다 높습니다." in provider.last_prompt
     assert "최근 캡처/검색 근거" in provider.last_prompt
     assert "친구 관계 때문에 불안해서 잠이 안 온다는 검색" in provider.last_prompt
+    assert "상담사의 현재 이해:" in provider.last_prompt
+    assert "아이가 직접 말한 내용: 친구랑 싸워서 힘들어" in provider.last_prompt
+    assert "최근 흐름으로 보이는 것:" in provider.last_prompt
+    assert "현재 상태로 추정되는 것:" in provider.last_prompt
     assert "현재 대화 최근 히스토리:" in provider.last_prompt
     assert "- child: 친구랑 싸워서 힘들어" in provider.last_prompt
     assert "아이의 새 메시지: 내가 왜 이렇게 불안한지 알아?" in provider.last_prompt
@@ -602,6 +896,48 @@ def test_child_support_proactive_prompt_passes_context_to_llm(
     assert "최근 wellbeing context notes:" in provider.last_prompt
     assert "반복 주제:" in provider.last_prompt
     assert "친구/관계 갈등" in provider.last_prompt
+    assert "현재 상태에 자연스럽게 말을 거는 문장" in provider.last_prompt
+    assert "첫 문장을 안부 인사" in provider.last_prompt
+
+
+def test_child_support_evidence_topic_detects_bullying_text(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "agent_local.db"
+    analysis_repository = AnalysisEventRepository(db_path=db_path)
+    captured_repository = CapturedTextRepository(db_path=db_path)
+    occurred_at = datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc)
+    captured_repository.save(
+        CapturedTextRecord(
+            event_id="captured-bullying-1",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="왕따 당하고 있어. 친구들이 계속 괴롭혀.",
+            locale="ko",
+            source_type="browser",
+            surface_type="rich_editor",
+        )
+    )
+    analysis_repository.save(
+        AnalysisEvent(
+            query_id="captured-bullying-1",
+            occurred_at=occurred_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.01, "depression": 0.02},
+        ),
+        source_event_id="captured-bullying-1",
+        scorer_name="test_scorer",
+        model_revision="test-revision",
+    )
+    summary = ChildSupportEvidenceSummaryBuilder(
+        analysis_event_repository=analysis_repository,
+        captured_text_repository=captured_repository,
+    ).build()
+
+    assert "친구/관계 갈등" in summary.topics
+    assert any("왕따 당하고 있어" in line for line in summary.to_prompt_lines())
 
 
 def test_child_support_proactive_prompt_uses_high_risk_local_evidence(
@@ -709,6 +1045,7 @@ def test_child_support_urgent_llm_prompt_reflects_high_risk_local_evidence(
 
     assert response.safety_level == ChildSupportSafetyLevel.URGENT
     assert "safety_level_hint: urgent" in provider.last_prompt
+    assert "turn_goal: safety_check_and_emotional_support" in provider.last_prompt
     assert "자해/죽음 관련 표현" in provider.last_prompt
     assert "최근 원문 일부: 죽고 싶어. 자살 생각이 계속 나." in provider.last_prompt
 

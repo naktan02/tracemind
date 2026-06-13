@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalConfidence,
@@ -21,8 +21,10 @@ from agent.src.features.inference.interpretation.state import (
     TimeSeriesState,
 )
 from agent.src.features.wellbeing.evidence_signal import (
+    RECENT_DIRECT_RISK_REASON,
     WellbeingEvidenceSignal,
     build_wellbeing_evidence_signal,
+    contains_direct_risk_expression,
 )
 from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
@@ -32,7 +34,8 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
 )
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
-WELLBEING_PROJECTION_VERSION = "wellbeing_projection.evidence_signal.v1"
+WELLBEING_PROJECTION_VERSION = "wellbeing_projection.evidence_signal.v2"
+DIRECT_RISK_PERSISTENCE_WINDOW = timedelta(hours=2)
 
 
 @dataclass(slots=True)
@@ -62,8 +65,15 @@ class WellbeingSignalProjectionService:
 
         previous_state: TimeSeriesState | None = None
         history: list = []
+        direct_risk_active_until: datetime | None = None
 
         for analysis_event in analysis_events:
+            source_text = self._load_source_text(analysis_event)
+            has_direct_risk_text = contains_direct_risk_expression(source_text)
+            recent_direct_risk_context_active = (
+                direct_risk_active_until is not None
+                and analysis_event.occurred_at <= direct_risk_active_until
+            )
             baseline_profile = self.baseline_service.build_profile(
                 history,
                 as_of=analysis_event.occurred_at,
@@ -76,8 +86,15 @@ class WellbeingSignalProjectionService:
             )
             evidence_signal = build_wellbeing_evidence_signal(
                 analysis_event=analysis_event,
-                source_text=self._load_source_text(analysis_event),
+                source_text=source_text,
+                recent_direct_risk_context_active=(
+                    recent_direct_risk_context_active and not has_direct_risk_text
+                ),
             )
+            if has_direct_risk_text:
+                direct_risk_active_until = (
+                    analysis_event.occurred_at + DIRECT_RISK_PERSISTENCE_WINDOW
+                )
             payload = _translate_to_wellbeing_summary(
                 assessment_result=evaluation.assessment_result,
                 baseline_profile=baseline_profile,
@@ -237,6 +254,11 @@ def _build_summary_text(
     evidence_signal: WellbeingEvidenceSignal,
 ) -> str:
     if evidence_signal.direct_risk:
+        if evidence_signal.reason == RECENT_DIRECT_RISK_REASON:
+            return (
+                "최근 직접적인 자해나 자살 관련 표현 이후 상태를 보수적으로 "
+                "확인하고 있습니다."
+            )
         return (
             "최근 입력에서 직접적인 자해나 자살 관련 표현이 확인되어 "
             "빠른 확인이 필요합니다."
@@ -269,6 +291,11 @@ def _build_action_tip(
     evidence_signal: WellbeingEvidenceSignal,
 ) -> str:
     if evidence_signal.direct_risk:
+        if evidence_signal.reason == RECENT_DIRECT_RISK_REASON:
+            return (
+                "최근 위험 신호가 바로 낮아졌다고 단정하지 말고, 지금 상태를 "
+                "직접 확인해 주세요."
+            )
         return (
             "혼자 두지 말고 바로 가까운 보호자나 믿을 수 있는 어른과 "
             "함께 확인해 주세요."

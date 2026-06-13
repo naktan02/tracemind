@@ -141,7 +141,7 @@ Ollama 자체는 별도 터미널에서 실행한다.
 
 ```bash
 ollama serve
-ollama pull exaone3.5:2.4b
+ollama pull exaone3.5:7.8b
 ```
 
 App build:

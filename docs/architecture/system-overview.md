@@ -80,6 +80,9 @@ wellbeing projection은 classifier score를 기본 입력으로 쓰되,
 낮은 classifier score라도 원문에 직접적인 자해/자살 표현이 확인되면 agent-local
 summary는 `very_high`로 보수적으로 투영한다. projection logic이 바뀌면 snapshot
 저장소의 projection version으로 기존 snapshot을 stale 처리해 다음 조회 때 재계산한다.
+직접 위험 표현 직후의 짧은 일반 입력은 위험 상태를 즉시 `low`로 낮추지 않고,
+최근 위험 context를 일정 시간 유지해 child-support LLM context가 안정 상태로
+잘못 전달되지 않게 한다.
 
 ### 3.2 Child Support Rail
 

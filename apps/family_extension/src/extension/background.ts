@@ -19,6 +19,7 @@ import {
   isTypingSegmentCapturedMessage,
 } from "./messages";
 import {
+  CHILD_SUPPORT_PROACTIVE_ACTIVE_UNTIL_STORAGE_KEY,
   CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY,
   CHILD_SUPPORT_PROACTIVE_TAB_IDS_STORAGE_KEY,
   COLLECTOR_DEBUG_PIPELINE_ENABLED_STORAGE_KEY,
@@ -90,6 +91,13 @@ const MAX_PROACTIVE_CONTENT_TABS = 12;
 const PROACTIVE_PROMPT_ALARM_NAME = "tracemind.childSupportPromptPoll";
 const PROACTIVE_PROMPT_POLL_MINUTES = 0.5;
 const PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS = 30 * 60 * 1000;
+const PROACTIVE_PROMPT_ACTIVE_WINDOW_MS = 10 * 60 * 1000;
+
+type ProactivePromptDismissalRecord = {
+  prompt_id: string;
+  dismissed_until: string;
+  global_dismissed_until?: string;
+};
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (isCollectorContentStatusMessage(message)) {
@@ -111,7 +119,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (isProactivePromptDismissedMessage(message)) {
-    void saveProactivePromptDismissal();
+    void saveProactivePromptDismissal(message.promptId);
     return;
   }
   if (!isTypingSegmentCapturedMessage(message)) {
@@ -279,6 +287,17 @@ async function pollProactivePrompt({
       });
       return;
     }
+    if (await isProactivePromptActive()) {
+      await saveStatusPatch({
+        last_proactive_prompt_checked_at: checkedAt,
+        last_proactive_prompt_should_prompt: true,
+        last_proactive_prompt_id: prompt.prompt_id,
+        last_proactive_prompt_delivered_count: 0,
+        last_proactive_prompt_error: null,
+        last_proactive_prompt_suppressed_reason: "active_popup",
+      });
+      return;
+    }
     const tabIds = await loadContentTabIds(preferredTabId);
     if (tabIds.length === 0) {
       await saveStatusPatch({
@@ -291,7 +310,7 @@ async function pollProactivePrompt({
       });
       return;
     }
-    if (await isProactivePromptDismissed()) {
+    if (await isProactivePromptDismissed(prompt.prompt_id)) {
       await saveStatusPatch({
         last_proactive_prompt_checked_at: checkedAt,
         last_proactive_prompt_should_prompt: true,
@@ -306,6 +325,7 @@ async function pollProactivePrompt({
     const claimedPrompt = await postProactivePromptClaim(prompt.prompt_id);
     if (
       !claimedPrompt.should_prompt ||
+      claimedPrompt.prompt_id === null ||
       claimedPrompt.prompt_text === null ||
       claimedPrompt.conversation_id === null
     ) {
@@ -321,6 +341,7 @@ async function pollProactivePrompt({
     }
     const message = {
       type: PROACTIVE_PROMPT_AVAILABLE_MESSAGE,
+      promptId: claimedPrompt.prompt_id,
       conversationId: claimedPrompt.conversation_id,
       promptText: claimedPrompt.prompt_text,
       suggestedPrompts: claimedPrompt.suggested_prompts,
@@ -350,6 +371,9 @@ async function pollProactivePrompt({
       last_proactive_prompt_suppressed_reason:
         deliveredCount > 0 ? null : "content_script_unreachable",
     });
+    if (deliveredCount > 0) {
+      await saveProactivePromptActiveWindow();
+    }
   } catch (error) {
     await saveStatusPatch({
       last_proactive_prompt_checked_at: checkedAt,
@@ -496,30 +520,83 @@ function saveContentTabIds(tabIds: number[]): Promise<void> {
   });
 }
 
-async function saveProactivePromptDismissal(): Promise<void> {
+async function saveProactivePromptDismissal(promptId: string | null): Promise<void> {
+  if (promptId === null) {
+    return;
+  }
   const dismissedUntil = new Date(
     Date.now() + PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS,
   ).toISOString();
+  const record: ProactivePromptDismissalRecord = {
+    prompt_id: promptId,
+    dismissed_until: dismissedUntil,
+    global_dismissed_until: dismissedUntil,
+  };
   await storageSet({
-    [CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY]: dismissedUntil,
+    [CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY]: record,
+    [CHILD_SUPPORT_PROACTIVE_ACTIVE_UNTIL_STORAGE_KEY]: null,
   });
   await saveStatusPatch({
     last_proactive_prompt_dismissed_at: new Date().toISOString(),
+    last_proactive_prompt_dismissed_id: promptId,
     last_proactive_prompt_dismissed_until: dismissedUntil,
   });
 }
 
-async function isProactivePromptDismissed(): Promise<boolean> {
+async function saveProactivePromptActiveWindow(): Promise<void> {
+  await storageSet({
+    [CHILD_SUPPORT_PROACTIVE_ACTIVE_UNTIL_STORAGE_KEY]: new Date(
+      Date.now() + PROACTIVE_PROMPT_ACTIVE_WINDOW_MS,
+    ).toISOString(),
+  });
+}
+
+async function isProactivePromptActive(): Promise<boolean> {
+  const items = await storageGet([CHILD_SUPPORT_PROACTIVE_ACTIVE_UNTIL_STORAGE_KEY]);
+  const activeUntil = items[CHILD_SUPPORT_PROACTIVE_ACTIVE_UNTIL_STORAGE_KEY];
+  if (typeof activeUntil !== "string") {
+    return false;
+  }
+  const activeUntilTime = Date.parse(activeUntil);
+  return Number.isFinite(activeUntilTime) && Date.now() < activeUntilTime;
+}
+
+async function isProactivePromptDismissed(promptId: string): Promise<boolean> {
   const items = await storageGet([
     CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY,
   ]);
-  const dismissedUntil =
+  const dismissal =
     items[CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY];
-  if (typeof dismissedUntil !== "string") {
+  if (!isProactivePromptDismissalRecord(dismissal)) {
     return false;
   }
-  const dismissedUntilTime = Date.parse(dismissedUntil);
-  return Number.isFinite(dismissedUntilTime) && Date.now() < dismissedUntilTime;
+  const globalDismissedUntilTime = Date.parse(
+    dismissal.global_dismissed_until ?? "",
+  );
+  if (
+    Number.isFinite(globalDismissedUntilTime) &&
+    Date.now() < globalDismissedUntilTime
+  ) {
+    return true;
+  }
+  if (dismissal.prompt_id === promptId) {
+    const dismissedUntilTime = Date.parse(dismissal.dismissed_until);
+    return Number.isFinite(dismissedUntilTime) && Date.now() < dismissedUntilTime;
+  }
+  return false;
+}
+
+function isProactivePromptDismissalRecord(
+  value: unknown,
+): value is ProactivePromptDismissalRecord {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<ProactivePromptDismissalRecord>;
+  return (
+    typeof candidate.prompt_id === "string" &&
+    typeof candidate.dismissed_until === "string"
+  );
 }
 
 function sendTabMessage(tabId: number, message: unknown): Promise<boolean> {

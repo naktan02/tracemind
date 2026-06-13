@@ -7,7 +7,7 @@ import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from typing import Mapping, Protocol
+from typing import Literal, Mapping, Protocol
 
 from agent.src.contracts.child_support_contracts import (
     ChildSupportAssistantMode,
@@ -20,9 +20,25 @@ CHILD_SUPPORT_OLLAMA_MODEL_ENV = "TRACEMIND_CHILD_SUPPORT_OLLAMA_MODEL"
 DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 DEFAULT_OLLAMA_MODEL = "llama3.1:8b"
 
+ChildSupportLlmRole = Literal["system", "user", "assistant"]
+
 
 class ChildSupportLlmError(RuntimeError):
     """LLM provider 호출 실패."""
+
+
+@dataclass(frozen=True, slots=True)
+class ChildSupportLlmMessage:
+    """provider에 전달할 구조화된 대화 메시지."""
+
+    role: ChildSupportLlmRole
+    content: str
+
+    def to_ollama_message(self) -> dict[str, str]:
+        return {
+            "role": self.role,
+            "content": self.content,
+        }
 
 
 class ChildSupportLlmProvider(Protocol):
@@ -33,8 +49,13 @@ class ChildSupportLlmProvider(Protocol):
         """응답 payload에 기록할 assistant mode."""
         ...
 
-    def generate_reply(self, *, prompt: str) -> str:
-        """prompt를 받아 아이에게 보여줄 한국어 응답을 생성한다."""
+    def generate_reply(
+        self,
+        *,
+        prompt: str,
+        messages: tuple[ChildSupportLlmMessage, ...] = (),
+    ) -> str:
+        """prompt 또는 구조화 message를 받아 아이에게 보여줄 응답을 생성한다."""
         ...
 
 
@@ -50,10 +71,20 @@ class OllamaChildSupportLlmProvider:
     def assistant_mode(self) -> ChildSupportAssistantMode:
         return ChildSupportAssistantMode.LOCAL_LLM
 
-    def generate_reply(self, *, prompt: str) -> str:
+    def generate_reply(
+        self,
+        *,
+        prompt: str,
+        messages: tuple[ChildSupportLlmMessage, ...] = (),
+    ) -> str:
+        ollama_messages = (
+            [message.to_ollama_message() for message in messages]
+            if messages
+            else [{"role": "user", "content": prompt}]
+        )
         payload = {
             "model": self.model,
-            "prompt": prompt,
+            "messages": ollama_messages,
             "stream": False,
             "options": {
                 "temperature": 0.35,
@@ -61,7 +92,7 @@ class OllamaChildSupportLlmProvider:
             },
         }
         request = urllib.request.Request(
-            f"{self.base_url.rstrip('/')}/api/generate",
+            f"{self.base_url.rstrip('/')}/api/chat",
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",
@@ -82,9 +113,9 @@ class OllamaChildSupportLlmProvider:
                 "Ollama 응답을 JSON으로 읽지 못했습니다."
             ) from exc
 
-        reply = body.get("response")
+        reply = _extract_ollama_chat_content(body)
         if not isinstance(reply, str) or not reply.strip():
-            raise ChildSupportLlmError("Ollama 응답에 response가 없습니다.")
+            raise ChildSupportLlmError("Ollama 응답에 message.content가 없습니다.")
         return reply.strip()
 
 
@@ -114,3 +145,13 @@ def build_child_support_llm_provider_from_env(
         ).strip()
         or DEFAULT_OLLAMA_MODEL,
     )
+
+
+def _extract_ollama_chat_content(body: object) -> str | None:
+    if not isinstance(body, dict):
+        return None
+    message = body.get("message")
+    if not isinstance(message, dict):
+        return None
+    content = message.get("content")
+    return content if isinstance(content, str) else None

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -23,8 +24,12 @@ from agent.src.features.wellbeing.child_support.context_provider import (
     ChildSupportConversationContext,
 )
 from agent.src.features.wellbeing.child_support.llm_prompt import (
+    build_child_support_conversation_messages,
     build_child_support_conversation_prompt,
+    build_child_support_conversation_repair_prompt,
+    build_child_support_conversation_style_repair_prompt,
     build_child_support_proactive_prompt,
+    is_child_support_answer_first_request,
 )
 from agent.src.features.wellbeing.child_support.llm_provider import (
     ChildSupportLlmError,
@@ -43,6 +48,7 @@ DISCLOSURE_NOTICE = (
 )
 PROACTIVE_PROMPT_SCORE_THRESHOLD = 70.0
 PROACTIVE_HIGH_RISK_EVIDENCE_TOPIC = "자해/죽음 관련 표현"
+CHILD_SUPPORT_PROACTIVE_PROMPT_POLICY_VERSION = "child_support_proactive_prompt.v2"
 NO_STATIC_FALLBACK_MESSAGE = "AI 응답을 만들지 못했습니다. LLM 설정을 확인하세요."
 URGENT_RISK = "urgent_risk"
 GENERAL_SUPPORT = "general_support"
@@ -298,17 +304,90 @@ class ChildSupportCoachService:
             context=context,
             assessment=assessment,
         )
+        messages = build_child_support_conversation_messages(
+            message=message,
+            context=context,
+            assessment=assessment,
+        )
         try:
-            reply = self.llm_provider.generate_reply(prompt=prompt)
+            reply = self.llm_provider.generate_reply(
+                prompt=prompt,
+                messages=messages,
+            )
         except (ChildSupportLlmError, OSError, RuntimeError):
             raise ChildSupportReplyUnavailable(NO_STATIC_FALLBACK_MESSAGE)
         processed_reply = _normalize_llm_reply(reply, max_chars=900)
+        answer_first_request = is_child_support_answer_first_request(message)
+        if answer_first_request:
+            processed_reply = (
+                _remove_followup_questions(processed_reply) or processed_reply
+            )
+        if _should_repair_conversation_reply(
+            message=message,
+            reply=processed_reply,
+        ):
+            processed_reply = self._repair_reply(
+                prompt=prompt,
+                previous_reply=processed_reply,
+            )
+            if answer_first_request:
+                processed_reply = (
+                    _remove_followup_questions(processed_reply) or processed_reply
+                )
+        if _should_repair_reply_style(processed_reply):
+            processed_reply = self._repair_reply_style(
+                prompt=prompt,
+                previous_reply=processed_reply,
+            )
+            if answer_first_request:
+                processed_reply = (
+                    _remove_followup_questions(processed_reply) or processed_reply
+                )
+        processed_reply = _normalize_casual_sentence_endings(processed_reply)
         if not processed_reply:
             raise ChildSupportReplyUnavailable(NO_STATIC_FALLBACK_MESSAGE)
         return (
             processed_reply,
             self.llm_provider.assistant_mode,
         )
+
+    def _repair_reply(
+        self,
+        *,
+        prompt: str,
+        previous_reply: str,
+    ) -> str:
+        if self.llm_provider is None:
+            return previous_reply
+        repair_prompt = build_child_support_conversation_repair_prompt(
+            original_prompt=prompt,
+            previous_reply=previous_reply,
+        )
+        try:
+            repaired = self.llm_provider.generate_reply(prompt=repair_prompt)
+        except (ChildSupportLlmError, OSError, RuntimeError):
+            return previous_reply
+        processed = _normalize_llm_reply(repaired, max_chars=900)
+        return processed or previous_reply
+
+    def _repair_reply_style(
+        self,
+        *,
+        prompt: str,
+        previous_reply: str,
+    ) -> str:
+        if self.llm_provider is None:
+            return previous_reply
+        repair_prompt = build_child_support_conversation_style_repair_prompt(
+            original_prompt=prompt,
+            previous_reply=previous_reply,
+        )
+        try:
+            repaired = self.llm_provider.generate_reply(prompt=repair_prompt)
+        except (ChildSupportLlmError, OSError, RuntimeError):
+            return previous_reply
+        processed = _normalize_llm_reply(repaired, max_chars=900)
+        return processed or previous_reply
 
     def _save_message(self, record: ChildSupportMessageRecord) -> None:
         if self.conversation_repository is None:
@@ -404,6 +483,155 @@ def _normalize_llm_reply(reply: str, *, max_chars: int) -> str:
     return normalized
 
 
+def _should_repair_conversation_reply(*, message: str, reply: str) -> bool:
+    if not is_child_support_answer_first_request(message):
+        return False
+    normalized = " ".join(reply.lower().split())
+    if not normalized:
+        return True
+    if normalized.endswith(("?", "까요?", "나요?", "니?", "니", "까?")):
+        return True
+    generic_followups = (
+        "어떤 감정",
+        "어떤 기분",
+        "좀 더 구체적으로",
+        "자세히 이야기",
+        "자세히 알려",
+        "더 자세히",
+        "무엇인지 이야기",
+        "무엇인지 좀 더",
+        "어떤 생각",
+        "들려줄 수",
+        "말해줄 수",
+        "알려줄 수",
+    )
+    return any(phrase in normalized for phrase in generic_followups)
+
+
+def _should_repair_reply_style(reply: str) -> bool:
+    normalized = " ".join(reply.split())
+    if not normalized:
+        return False
+    institutional_phrases = (
+        "당신",
+        "말씀",
+        "도와드리",
+        "느끼시는",
+        "힘들어하시는",
+        "드시는",
+        "하시는",
+        "계시는",
+        "계신",
+    )
+    if any(phrase in normalized for phrase in institutional_phrases):
+        return True
+    return _has_casual_sentence_ending(normalized)
+
+
+def _has_casual_sentence_ending(reply: str) -> bool:
+    sentences = _split_reply_sentences(reply)
+    return any(
+        sentence.rstrip(".!?。！？").endswith(
+            (
+                "좋겠어",
+                "괜찮아",
+                "알겠어",
+                "있어",
+                "같아",
+                "돼",
+                "야",
+                "봐",
+                "줘",
+                "어떨까",
+            )
+        )
+        for sentence in sentences
+    )
+
+
+def _normalize_casual_sentence_endings(reply: str) -> str:
+    sentences = _split_reply_sentences(reply)
+    if not sentences:
+        return reply
+    return " ".join(_normalize_casual_sentence(sentence) for sentence in sentences)
+
+
+def _normalize_casual_sentence(sentence: str) -> str:
+    stripped = sentence.strip()
+    punctuation = ""
+    if stripped.endswith(tuple(".!?。！？")):
+        punctuation = stripped[-1]
+        body = stripped[:-1].rstrip()
+    else:
+        body = stripped
+    replacements = (
+        ("어떨까", "어떨까요"),
+        ("있을까", "있을까요"),
+        ("볼까", "볼까요"),
+        ("할까", "할까요"),
+        ("안 돼", "안 돼요"),
+        ("안돼", "안 돼요"),
+        ("기억해줘", "기억해줘요"),
+        ("알려줘", "알려줘요"),
+        ("믿어봐", "믿어봐요"),
+        ("해봐", "해봐요"),
+        ("이해해", "이해해요"),
+        ("알겠어", "알겠어요"),
+        ("좋겠어", "좋겠어요"),
+        ("괜찮아", "괜찮아요"),
+        ("같아", "같아요"),
+        ("있어", "있어요"),
+        ("보여", "보여요"),
+        ("거야", "거예요"),
+        ("이야", "이에요"),
+        ("봐", "봐요"),
+        ("줘", "줘요"),
+        ("돼", "돼요"),
+    )
+    for source, target in replacements:
+        if body.endswith(source) and not body.endswith(target):
+            body = f"{body[: -len(source)]}{target}"
+            break
+    return f"{body}{punctuation}".strip()
+
+
+def _remove_followup_questions(reply: str) -> str:
+    """직접 답변 요청 턴에서 LLM이 뒤에 붙인 질문 문장을 제거한다."""
+
+    sentences = _split_reply_sentences(reply)
+    if not sentences:
+        return reply
+    kept = [sentence for sentence in sentences if not _is_question_sentence(sentence)]
+    return " ".join(kept).strip()
+
+
+def _split_reply_sentences(reply: str) -> list[str]:
+    parts = re.split(r"([.!?。！？])", reply)
+    sentences: list[str] = []
+    for index in range(0, len(parts), 2):
+        body = parts[index].strip()
+        if not body:
+            continue
+        punctuation = parts[index + 1] if index + 1 < len(parts) else ""
+        sentences.append(f"{body}{punctuation}".strip())
+    return sentences
+
+
+def _is_question_sentence(sentence: str) -> bool:
+    compact = "".join(sentence.split())
+    return "?" in compact or compact.endswith(
+        (
+            "까요",
+            "나요",
+            "니",
+            "습니까",
+            "있을까",
+            "줄래",
+            "해볼까",
+        )
+    )
+
+
 def _build_proactive_prompt_id(
     *,
     context: ChildSupportConversationContext,
@@ -411,6 +639,7 @@ def _build_proactive_prompt_id(
 ) -> str:
     summary = context.wellbeing_summary
     stable_parts = {
+        "prompt_policy_version": CHILD_SUPPORT_PROACTIVE_PROMPT_POLICY_VERSION,
         "safety_level": safety_level.value,
         "summary_computed_at": None
         if summary is None

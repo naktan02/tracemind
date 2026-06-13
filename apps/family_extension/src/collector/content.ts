@@ -29,6 +29,7 @@ const CONTENT_SCRIPT_VERSION = "family_extension_content.v1";
 const surfaceElementIds = new WeakMap<HTMLElement, string>();
 let proactivePopupRoot: HTMLDivElement | null = null;
 let proactiveConversationId: string | null = null;
+let proactivePromptId: string | null = null;
 let lastPromptText: string | null = null;
 
 const segmentBuffer = new SegmentBuffer(
@@ -67,6 +68,7 @@ chrome.runtime?.onMessage?.addListener((message) => {
     return;
   }
   showProactiveCoachPopup({
+    promptId: message.promptId,
     conversationId: message.conversationId,
     promptText: message.promptText,
     suggestedPrompts: message.suggestedPrompts,
@@ -284,10 +286,12 @@ function sendCollectorStatus(status: Record<string, unknown>): void {
 }
 
 function showProactiveCoachPopup({
+  promptId,
   conversationId,
   promptText,
   suggestedPrompts,
 }: {
+  promptId: string;
   conversationId: string | null;
   promptText: string;
   suggestedPrompts: ChildSupportSuggestionPayload[];
@@ -300,6 +304,7 @@ function showProactiveCoachPopup({
     return;
   }
   lastPromptText = promptText;
+  proactivePromptId = promptId;
   proactiveConversationId = conversationId;
   proactivePopupRoot?.remove();
 
@@ -513,6 +518,7 @@ function showProactiveCoachPopup({
 function notifyProactivePromptDismissed(): void {
   chrome.runtime?.sendMessage({
     type: PROACTIVE_PROMPT_DISMISSED_MESSAGE,
+    promptId: proactivePromptId,
   });
 }
 
@@ -637,6 +643,7 @@ function isChildSupportMessageResponse(
 
 type ProactivePromptAvailableMessage = {
   type: typeof PROACTIVE_PROMPT_AVAILABLE_MESSAGE;
+  promptId: string;
   conversationId: string | null;
   promptText: string;
   suggestedPrompts: ChildSupportSuggestionPayload[];
@@ -665,6 +672,7 @@ function isProactivePromptAvailableMessage(
   const candidate = value as Partial<ProactivePromptAvailableMessage>;
   return (
     candidate.type === PROACTIVE_PROMPT_AVAILABLE_MESSAGE &&
+    typeof candidate.promptId === "string" &&
     (typeof candidate.conversationId === "string" ||
       candidate.conversationId === null) &&
     typeof candidate.promptText === "string" &&

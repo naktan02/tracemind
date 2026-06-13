@@ -12,3 +12,5 @@ export const CHILD_SUPPORT_PROACTIVE_TAB_IDS_STORAGE_KEY =
   "tracemind.childSupportProactiveTabIds";
 export const CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY =
   "tracemind.childSupportProactiveDismissedUntil";
+export const CHILD_SUPPORT_PROACTIVE_ACTIVE_UNTIL_STORAGE_KEY =
+  "tracemind.childSupportProactiveActiveUntil";

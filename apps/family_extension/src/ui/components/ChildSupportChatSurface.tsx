@@ -44,6 +44,7 @@ type ChildSupportChatSurfaceProps = {
   initialSuggestions?: ChildSupportSuggestionPayload[];
   initialConversationId?: string | null;
   promptSeed?: AssistantPromptSeed | null;
+  replaceInitialWithPromptSeed?: boolean;
   compact?: boolean;
   onAssistantModeChange?: (assistantMode: string) => void;
 };
@@ -82,6 +83,7 @@ export function ChildSupportChatSurface({
   initialSuggestions = STARTER_SUGGESTIONS,
   initialConversationId = null,
   promptSeed,
+  replaceInitialWithPromptSeed = false,
   compact = false,
   onAssistantModeChange,
 }: ChildSupportChatSurfaceProps) {
@@ -114,14 +116,21 @@ export function ChildSupportChatSurface({
     }
     consumedSeedIdsRef.current.add(promptSeed.id);
     setConversationId(promptSeed.conversationId ?? null);
-    setMessages((current) => [
-      ...current,
-      createLocalMessage("assistant", promptSeed.text),
-    ]);
+    setMessages((current) => {
+      const seededMessage = createLocalMessage("assistant", promptSeed.text);
+      if (
+        replaceInitialWithPromptSeed &&
+        current.length === 1 &&
+        current[0].id === initialMessage.id
+      ) {
+        return [seededMessage];
+      }
+      return [...current, seededMessage];
+    });
     if (promptSeed.suggestions && promptSeed.suggestions.length > 0) {
       setSuggestions(promptSeed.suggestions);
     }
-  }, [promptSeed]);
+  }, [initialMessage.id, promptSeed, replaceInitialWithPromptSeed]);
 
   async function submitMessage(seedPrompt?: string) {
     const message = (seedPrompt ?? draft).trim();
