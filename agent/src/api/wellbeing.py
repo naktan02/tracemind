@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
+from agent.src.api.dependencies import (
+    ParentAuthServiceDep,
+    WellbeingSpaceWebServiceDep,
+    WellbeingSummaryServiceDep,
+    WellbeingTimeseriesServiceDep,
+)
 from agent.src.contracts.wellbeing_signal_contracts import (
     ParentUnlockRequestPayload,
     ParentUnlockResponsePayload,
@@ -17,15 +21,8 @@ from agent.src.contracts.wellbeing_signal_contracts import (
 from agent.src.contracts.wellbeing_space_web_contracts import (
     WellbeingSpaceWebPayload,
 )
-from agent.src.features.wellbeing.family_access.parent_auth_adapter import (
+from agent.src.features.wellbeing.family_access.parent_auth_adapter import (  # noqa: F401
     ParentAuthService,
-)
-from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
-from agent.src.features.wellbeing.signal.timeseries_service import (
-    WellbeingTimeseriesService,
-)
-from agent.src.features.wellbeing.space_web.projection_service import (
-    WellbeingSpaceWebProjectionService,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["wellbeing"])
@@ -41,74 +38,12 @@ class SystemHealthResponse(BaseModel):
     wellbeing_api_ready: bool
 
 
-def get_wellbeing_summary_service(request: Request) -> WellbeingSummaryService:
-    service = getattr(request.app.state, "wellbeing_summary_service", None)
-    if service is None:
-        raise RuntimeError(
-            "WellbeingSummaryService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.wellbeing_summary_service를 설정하세요."
-        )
-    return service
-
-
-def get_wellbeing_timeseries_service(
-    request: Request,
-) -> WellbeingTimeseriesService:
-    service = getattr(request.app.state, "wellbeing_timeseries_service", None)
-    if service is None:
-        raise RuntimeError(
-            "WellbeingTimeseriesService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.wellbeing_timeseries_service를 설정하세요."
-        )
-    return service
-
-
-def get_wellbeing_space_web_service(
-    request: Request,
-) -> WellbeingSpaceWebProjectionService:
-    service = getattr(request.app.state, "wellbeing_space_web_service", None)
-    if service is None:
-        raise RuntimeError(
-            "WellbeingSpaceWebProjectionService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.wellbeing_space_web_service를 설정하세요."
-        )
-    return service
-
-
-def get_parent_auth_service(request: Request) -> ParentAuthService:
-    service = getattr(request.app.state, "parent_auth_service", None)
-    if service is None:
-        raise RuntimeError(
-            "ParentAuthService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.parent_auth_service를 설정하세요."
-        )
-    return service
-
-
-SummaryServiceDep = Annotated[
-    WellbeingSummaryService,
-    Depends(get_wellbeing_summary_service),
-]
-TimeseriesServiceDep = Annotated[
-    WellbeingTimeseriesService,
-    Depends(get_wellbeing_timeseries_service),
-]
-SpaceWebServiceDep = Annotated[
-    WellbeingSpaceWebProjectionService,
-    Depends(get_wellbeing_space_web_service),
-]
-ParentAuthServiceDep = Annotated[
-    ParentAuthService,
-    Depends(get_parent_auth_service),
-]
-
-
 @router.get(
     "/wellbeing/summary",
     response_model=WellbeingSignalSummaryPayload,
 )
 def get_wellbeing_summary(
-    summary_service: SummaryServiceDep,
+    summary_service: WellbeingSummaryServiceDep,
 ) -> WellbeingSignalSummaryPayload:
     """현재 wellbeing signal 한 건을 반환한다."""
     return summary_service.get_current_summary()
@@ -120,7 +55,7 @@ def get_wellbeing_summary(
 )
 def get_wellbeing_timeseries(
     range: WellbeingSignalRange,
-    timeseries_service: TimeseriesServiceDep,
+    timeseries_service: WellbeingTimeseriesServiceDep,
 ) -> WellbeingSignalTimeseriesPayload:
     """부모용 상세 화면의 전체 wellbeing signal 추이를 반환한다."""
     return timeseries_service.get_timeseries(requested_range=range)
@@ -132,7 +67,7 @@ def get_wellbeing_timeseries(
 )
 def get_wellbeing_space_web(
     range: WellbeingSignalRange,
-    space_web_service: SpaceWebServiceDep,
+    space_web_service: WellbeingSpaceWebServiceDep,
 ) -> WellbeingSpaceWebPayload:
     """아이용 분석 화면의 wellbeing space-web graph를 반환한다."""
     return space_web_service.get_space_web(requested_range=range)

@@ -418,6 +418,10 @@ Gate:
 
 ### Feature Phase 7. FastAPI router와 dependency wiring 정리
 
+Status: 완료. `agent/src/api/dependencies.py`가 FastAPI dependency glue와
+`app.state` runtime lookup을 소유하고, route module은 endpoint payload 변환과 feature
+service 호출 흐름만 남긴다.
+
 목표:
 
 - `api/routers/`와 `api/dependencies/`를 feature route registration 중심으로 정리한다.

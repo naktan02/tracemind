@@ -64,12 +64,13 @@ Agent runtime:
 
 1. `agent/AGENTS.md`
 2. `agent/README.md`
-3. `agent/src/runtime/README.md`
-4. `agent/src/runtime/composition.py` for process object graph wiring
-5. `agent/src/features/README.md`
-6. `agent/src/services/README.md`
-7. `agent/src/features/{assets,captured_text,federation,inference,language,training_runtime,typing_segments,wellbeing}/**`
-8. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
+3. `agent/src/api/README.md`
+4. `agent/src/runtime/README.md`
+5. `agent/src/runtime/composition.py` for process object graph wiring
+6. `agent/src/features/README.md`
+7. `agent/src/services/README.md`
+8. `agent/src/features/{assets,captured_text,federation,inference,language,training_runtime,typing_segments,wellbeing}/**`
+9. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
 
 Main server FL:
 

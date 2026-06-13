@@ -6,14 +6,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from agent.src.features.inference.pipeline_service import (
-    InferencePipelineService,
-)
+from agent.src.api.dependencies import PipelineServiceDep
 from shared.src.domain.entities.inference.events import QueryEvent
 
 router = APIRouter(prefix="/api/v1/ingest", tags=["ingest"])
@@ -60,32 +57,6 @@ class IngestBatchResponse(BaseModel):
 
 
 # ------------------------------------------------------------------ #
-# ------------------------------------------------------------------ #
-# 의존성 주입                                                            #
-# ------------------------------------------------------------------ #
-
-
-def get_pipeline_service(request: Request) -> InferencePipelineService:
-    """app.state에서 InferencePipelineService를 읽는다.
-
-    서비스는 앱 시작 시 main.py의 lifespan 또는 startup 이벤트에서
-    app.state.pipeline_service = InferencePipelineService(...) 로 설정한다.
-
-    테스트에서는 app.dependency_overrides[get_pipeline_service]로 교체한다.
-    """
-    service = getattr(request.app.state, "pipeline_service", None)
-    if service is None:
-        raise RuntimeError(
-            "InferencePipelineService가 app.state에 설정되지 않았습니다. "
-            "앱 startup 시 app.state.pipeline_service를 설정하세요."
-        )
-    return service
-
-
-PipelineDep = Annotated[InferencePipelineService, Depends(get_pipeline_service)]
-
-
-# ------------------------------------------------------------------ #
 # 엔드포인트                                                            #
 # ------------------------------------------------------------------ #
 
@@ -97,7 +68,7 @@ PipelineDep = Annotated[InferencePipelineService, Depends(get_pipeline_service)]
 )
 def ingest_event(
     request: IngestEventRequest,
-    pipeline: PipelineDep,
+    pipeline: PipelineServiceDep,
 ) -> IngestEventResponse:
     """단일 텍스트 이벤트를 받아 inference pipeline을 실행한다."""
     event = QueryEvent(
@@ -133,7 +104,7 @@ def ingest_event(
 )
 def ingest_batch(
     request: IngestBatchRequest,
-    pipeline: PipelineDep,
+    pipeline: PipelineServiceDep,
 ) -> IngestBatchResponse:
     """복수 이벤트를 일괄 처리한다."""
     events = [
@@ -171,7 +142,7 @@ def ingest_batch(
 
 
 @router.get("/status", status_code=status.HTTP_200_OK)
-def ingest_status(pipeline: PipelineDep) -> dict:
+def ingest_status(pipeline: PipelineServiceDep) -> dict:
     """저장된 이벤트 수를 반환한다."""
     return {"stored_event_count": pipeline.event_repository.count()}
 

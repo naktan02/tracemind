@@ -9,6 +9,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from agent.src.api.dependencies import (
+    CapturedTextLifecycleServiceDep,
+    CapturedTextRepositoryDep,
+    CapturedTextViewGenerationServiceDep,
+    OptionalPipelineServiceDep,
+    get_or_create_app_state,
+)
 from agent.src.contracts.captured_text_contracts import (
     CapturedTextBatchIngestRequestPayload,
     CapturedTextBatchIngestResponsePayload,
@@ -53,136 +60,38 @@ class CapturedTextDebugJobState:
 
 def get_captured_text_ingest_service(
     request: Request,
+    repository: CapturedTextRepositoryDep,
+    lifecycle_service: CapturedTextLifecycleServiceDep,
 ) -> CapturedTextIngestService:
     """app.state에서 captured text ingest service를 읽거나 조립한다."""
 
-    service = getattr(request.app.state, "captured_text_ingest_service", None)
-    if service is not None:
-        return service
-    captured_text_repository = getattr(
-        request.app.state,
-        "captured_text_repository",
-        None,
-    )
-    if captured_text_repository is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "CapturedTextIngestService를 만들 captured_text_repository가 "
-                "없습니다. 앱 시작 시 app.state.captured_text_repository를 "
-                "설정하세요."
-            ),
-        )
-    service = CapturedTextIngestService(
-        captured_text_repository=captured_text_repository,
-        lifecycle_service=getattr(
-            request.app.state,
-            "captured_text_lifecycle_service",
-            None,
+    return get_or_create_app_state(
+        request,
+        "captured_text_ingest_service",
+        lambda: CapturedTextIngestService(
+            captured_text_repository=repository,
+            lifecycle_service=lifecycle_service,
         ),
     )
-    request.app.state.captured_text_ingest_service = service
-    return service
-
-
-def get_captured_text_repository(request: Request) -> CapturedTextRepository:
-    """app.state에서 captured text repository를 읽는다."""
-
-    repository = getattr(request.app.state, "captured_text_repository", None)
-    if repository is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "captured_text_repository가 없습니다. 앱 시작 시 "
-                "app.state.captured_text_repository를 설정하세요."
-            ),
-        )
-    return repository
-
-
-def get_captured_text_lifecycle_service(
-    request: Request,
-) -> CapturedTextLifecycleService:
-    """app.state에서 captured text lifecycle service를 읽는다."""
-
-    service = getattr(request.app.state, "captured_text_lifecycle_service", None)
-    if service is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "captured_text_lifecycle_service가 없습니다. 앱 시작 시 "
-                "app.state.captured_text_lifecycle_service를 설정하세요."
-            ),
-        )
-    return service
-
-
-def get_captured_text_view_generation_service(
-    request: Request,
-) -> CapturedTextViewGenerationService:
-    """app.state에서 view generation service를 읽거나 조립한다."""
-
-    service = getattr(request.app.state, "captured_text_view_generation_service", None)
-    if service is not None:
-        return service
-    repository = get_captured_text_repository(request)
-    service = CapturedTextViewGenerationService(
-        repository=repository,
-        translation_provider=getattr(
-            request.app.state,
-            "captured_text_translation_service",
-            None,
-        ),
-        strong_view_provider=getattr(
-            request.app.state,
-            "captured_text_strong_view_service",
-            None,
-        ),
-    )
-    request.app.state.captured_text_view_generation_service = service
-    return service
 
 
 def get_captured_text_debug_job_state(request: Request) -> CapturedTextDebugJobState:
     """app.state에서 debug job state를 읽거나 생성한다."""
 
-    job_state = getattr(request.app.state, "captured_text_debug_job_state", None)
-    if job_state is None:
-        job_state = CapturedTextDebugJobState()
-        request.app.state.captured_text_debug_job_state = job_state
-    return job_state
-
-
-def get_optional_pipeline_service(request: Request) -> InferencePipelineService | None:
-    """app.state에서 pipeline service를 읽되, 없으면 view-only debug를 허용한다."""
-
-    service = getattr(request.app.state, "pipeline_service", None)
-    return service if isinstance(service, InferencePipelineService) else service
+    return get_or_create_app_state(
+        request,
+        "captured_text_debug_job_state",
+        CapturedTextDebugJobState,
+    )
 
 
 CapturedTextIngestServiceDep = Annotated[
     CapturedTextIngestService,
     Depends(get_captured_text_ingest_service),
 ]
-CapturedTextRepoDep = Annotated[
-    CapturedTextRepository,
-    Depends(get_captured_text_repository),
-]
-CapturedTextViewGenerationServiceDep = Annotated[
-    CapturedTextViewGenerationService,
-    Depends(get_captured_text_view_generation_service),
-]
-CapturedTextLifecycleServiceDep = Annotated[
-    CapturedTextLifecycleService,
-    Depends(get_captured_text_lifecycle_service),
-]
 CapturedTextDebugJobStateDep = Annotated[
     CapturedTextDebugJobState,
     Depends(get_captured_text_debug_job_state),
-]
-OptionalPipelineServiceDep = Annotated[
-    InferencePipelineService | None,
-    Depends(get_optional_pipeline_service),
 ]
 
 
@@ -250,7 +159,7 @@ def captured_text_status(
 )
 def captured_text_debug_job_status(
     request: Request,
-    repository: CapturedTextRepoDep,
+    repository: CapturedTextRepositoryDep,
     service: CapturedTextViewGenerationServiceDep,
     job_state: CapturedTextDebugJobStateDep,
 ) -> CapturedTextDebugJobStatusPayload:
@@ -272,7 +181,7 @@ def captured_text_debug_job_status(
 async def configure_captured_text_debug_job(
     config: CapturedTextDebugJobConfigRequestPayload,
     request: Request,
-    repository: CapturedTextRepoDep,
+    repository: CapturedTextRepositoryDep,
     service: CapturedTextViewGenerationServiceDep,
     lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,

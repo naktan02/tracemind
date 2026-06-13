@@ -2,34 +2,28 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from agent.src.features.assets.shared_adapters.runtime_service import (
-    SharedAdapterRuntimeService,
-)
-from agent.src.features.assets.shared_adapters.sync_service import (
-    SharedAdapterSyncService,
+from agent.src.api.dependencies import (
+    AnalysisEventRepositoryDep,
+    RoundClientFactoryDep,
+    SharedAdapterRuntimeServiceDep,
+    SharedAdapterSyncServiceDep,
+    TrainingUsageLedgerRepositoryDep,
+    get_optional_app_state,
 )
 from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
-from agent.src.features.federation.rounds.round_client import RoundClient
 from agent.src.features.training_runtime.current_task.runner import (  # noqa: E501
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
 )
 from agent.src.features.training_runtime.query_ssl.task_service import (  # noqa: E501
     AgentQuerySslTrainingTaskService,
-)
-from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
-    TrainingUsageLedgerRepository,
-)
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
 )
 from shared.src.contracts.training_contracts import TrainingTaskPayload
 
@@ -81,97 +75,14 @@ class TrainingStatusResponse(BaseModel):
 
 router = APIRouter(prefix="/api/v1/training", tags=["training"])
 
-RoundClientFactory = Callable[[str], RoundClient]
-
-
-# ------------------------------------------------------------------ #
-# 의존성 providers                                                      #
-# ------------------------------------------------------------------ #
-
-
-def get_analysis_event_repository(request: Request) -> AnalysisEventRepository:
-    """app.state에서 AnalysisEventRepository를 읽는다."""
-    repo = getattr(request.app.state, "analysis_event_repository", None)
-    if repo is None:
-        raise RuntimeError(
-            "AnalysisEventRepository가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.analysis_event_repository를 설정하세요."
-        )
-    return repo
-
-
-def get_shared_adapter_runtime_service(request: Request) -> SharedAdapterRuntimeService:
-    """app.state에서 SharedAdapterRuntimeService를 읽는다."""
-    service = getattr(request.app.state, "shared_adapter_runtime_service", None)
-    if service is None:
-        raise RuntimeError(
-            "SharedAdapterRuntimeService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.shared_adapter_runtime_service를 설정하세요."
-        )
-    return service
-
-
-def get_shared_adapter_sync_service(request: Request) -> SharedAdapterSyncService:
-    """app.state에서 SharedAdapterSyncService를 읽는다."""
-    service = getattr(request.app.state, "shared_adapter_sync_service", None)
-    if service is None:
-        raise RuntimeError(
-            "SharedAdapterSyncService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.shared_adapter_sync_service를 설정하세요."
-        )
-    return service
-
-
-def get_round_client_factory(request: Request) -> RoundClientFactory:
-    """app.state에서 RoundClient factory를 읽는다."""
-    factory = getattr(request.app.state, "round_client_factory", None)
-    if factory is None:
-        raise RuntimeError(
-            "RoundClient factory가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.round_client_factory를 설정하세요."
-        )
-    return factory
-
-
-def get_training_usage_ledger_repository(
-    request: Request,
-) -> TrainingUsageLedgerRepository:
-    """app.state에서 TrainingUsageLedgerRepository를 읽는다."""
-    repository = getattr(request.app.state, "training_usage_ledger_repository", None)
-    if repository is None:
-        raise RuntimeError(
-            "TrainingUsageLedgerRepository가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.training_usage_ledger_repository를 설정하세요."
-        )
-    return repository
-
-
-AnalysisEventRepoDep = Annotated[
-    AnalysisEventRepository,
-    Depends(get_analysis_event_repository),
-]
-SharedAdapterRuntimeServiceDep = Annotated[
-    SharedAdapterRuntimeService,
-    Depends(get_shared_adapter_runtime_service),
-]
-SharedAdapterSyncServiceDep = Annotated[
-    SharedAdapterSyncService,
-    Depends(get_shared_adapter_sync_service),
-]
-RoundClientFactoryDep = Annotated[RoundClientFactory, Depends(get_round_client_factory)]
-TrainingUsageLedgerRepoDep = Annotated[
-    TrainingUsageLedgerRepository,
-    Depends(get_training_usage_ledger_repository),
-]
-
 
 def get_training_task_runner_service(
     request: Request,
-    repo: AnalysisEventRepoDep,
+    repo: AnalysisEventRepositoryDep,
     shared_adapter_runtime_service: SharedAdapterRuntimeServiceDep,
     shared_adapter_sync_service: SharedAdapterSyncServiceDep,
     round_client_factory: RoundClientFactoryDep,
-    training_usage_ledger_repository: TrainingUsageLedgerRepoDep,
+    training_usage_ledger_repository: TrainingUsageLedgerRepositoryDep,
 ) -> AgentTrainingTaskRunnerService:
     """run-current-task application service를 조립한다."""
 
@@ -270,7 +181,4 @@ def get_training_status(
 def _get_optional_captured_text_repository(
     request: Request,
 ) -> CapturedTextRepository | None:
-    repository = getattr(request.app.state, "captured_text_repository", None)
-    if repository is None:
-        return None
-    return repository
+    return get_optional_app_state(request, "captured_text_repository")

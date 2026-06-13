@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from agent.src.api.dependencies import PipelineServiceDep, get_or_create_app_state
 from agent.src.contracts.typing_segment_contracts import (
     TypingSegmentBatchIngestRequestPayload,
     TypingSegmentBatchIngestResponsePayload,
@@ -21,24 +22,15 @@ router = APIRouter(prefix="/api/v1/typing-segments", tags=["typing-segments"])
 
 def get_typing_segment_ingest_service(
     request: Request,
+    pipeline_service: PipelineServiceDep,
 ) -> TypingSegmentIngestService:
     """app.state에서 typing segment ingest service를 읽거나 조립한다."""
 
-    service = getattr(request.app.state, "typing_segment_ingest_service", None)
-    if service is not None:
-        return service
-    pipeline_service = getattr(request.app.state, "pipeline_service", None)
-    if pipeline_service is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "TypingSegmentIngestService를 만들 pipeline_service가 없습니다. "
-                "앱 시작 시 app.state.pipeline_service를 설정하세요."
-            ),
-        )
-    service = TypingSegmentIngestService(pipeline_service=pipeline_service)
-    request.app.state.typing_segment_ingest_service = service
-    return service
+    return get_or_create_app_state(
+        request,
+        "typing_segment_ingest_service",
+        lambda: TypingSegmentIngestService(pipeline_service=pipeline_service),
+    )
 
 
 TypingSegmentIngestServiceDep = Annotated[

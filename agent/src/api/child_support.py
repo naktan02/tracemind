@@ -2,38 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends, Request
-
+from agent.src.api.dependencies import ChildSupportCoachServiceDep
 from agent.src.contracts.child_support_contracts import (
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,
     ChildSupportProactivePromptPayload,
 )
-from agent.src.features.wellbeing.child_support.service import (
-    ChildSupportCoachService,
-)
 
 router = APIRouter(prefix="/api/v1/child-support", tags=["child-support"])
-
-
-def get_child_support_coach_service(request: Request) -> ChildSupportCoachService:
-    """app.state에서 ChildSupportCoachService를 읽는다."""
-
-    service = getattr(request.app.state, "child_support_coach_service", None)
-    if service is None:
-        raise RuntimeError(
-            "ChildSupportCoachService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.child_support_coach_service를 설정하세요."
-        )
-    return service
-
-
-ChildSupportCoachServiceDep = Annotated[
-    ChildSupportCoachService,
-    Depends(get_child_support_coach_service),
-]
 
 
 @router.post(
