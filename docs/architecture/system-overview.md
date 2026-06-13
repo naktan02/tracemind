@@ -81,7 +81,7 @@ Raw Event
 Child Message
 -> Agent-local Conversation Store
 -> LocalContextProvider
--> SafetyPolicy / Scope Redirect
+-> Urgent Message Hint
 -> Local Context Prompt
 -> Local LLM Provider Execution
 -> LLM Reply Normalization
@@ -96,7 +96,6 @@ Child Message
 | service 조합 | `agent/src/features/wellbeing/child_support/service.py` |
 | local conversation store | `agent/src/features/wellbeing/storage/child_support_repository.py` |
 | local context provider | `agent/src/features/wellbeing/child_support/context_provider.py` |
-| safety/scope policy | `agent/src/features/wellbeing/child_support/safety_policy.py` |
 | local LLM prompt builder | `agent/src/features/wellbeing/child_support/llm_prompt.py` |
 | local evidence summary | `agent/src/features/wellbeing/child_support/evidence_summary.py` |
 | local LLM adapter | `agent/src/features/wellbeing/child_support/llm_provider.py` |
@@ -107,15 +106,14 @@ Child Message
 - child-support raw message와 query context는 agent-local boundary에 남긴다.
 - 같은 `conversation_id`에서는 agent-local conversation store의 최근 메시지를 prompt
   history로 전달해 LLM이 대화 흐름을 이어가게 한다.
-- message safety routing은 직접적인 자해/타해 위험 표현만 `urgent`로 잡는다.
-  괴롭힘, 폭력 경험, 불안, 우울, 관계 갈등 같은 상황 해석은 recent message,
-  wellbeing summary, evidence summary를 받은 LLM이 처리한다.
+- message safety hint는 직접적인 자해/타해 위험 표현만 `urgent`로 표시한다.
+  off-topic redirect, 괴롭힘, 폭력 경험, 불안, 우울, 관계 갈등 같은 상황 해석은
+  recent message, wellbeing summary, evidence summary를 받은 LLM이 처리한다.
 - child-support 답변 기본값은 LLM-first다. LLM provider가 없거나 LLM 응답을 만들지
   못하면 agent API는 정적 상담 답변을 대신 만들지 않고 실패를 반환한다.
 - agent service는 wellbeing summary, recent conversation, evidence summary와
-  최근 원문 일부를 local context prompt로 묶어 LLM에 전달한다. safety policy는
-  emergency brake에 가깝게 유지하고, 응답 문장 구조를 required move로 강제하지
-  않는다.
+  최근 원문 일부를 local context prompt로 묶어 LLM에 전달한다. 응답 문장 구조를
+  required move로 강제하지 않는다.
 - main_server는 child-support 원문을 읽지 않고 FL aggregation 경계만 소유한다.
 
 ### 3.3 Query Adaptation Rail

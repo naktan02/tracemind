@@ -13,7 +13,6 @@ from agent.src.contracts.child_support_contracts import (
     ChildSupportAssistantMode,
     ChildSupportConversationRequestPayload,
     ChildSupportSafetyLevel,
-    ChildSupportScopeStatus,
 )
 from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalConfidence,
@@ -341,15 +340,15 @@ def test_child_support_service_flags_direct_other_harm_method_request(
     assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
 
 
-def test_child_support_service_redirects_off_topic_question() -> None:
-    response = ChildSupportCoachService(
-        llm_provider=StubChildSupportLlmProvider()
-    ).create_response(
+def test_child_support_service_passes_off_topic_question_to_llm() -> None:
+    provider = StubChildSupportLlmProvider()
+    response = ChildSupportCoachService(llm_provider=provider).create_response(
         ChildSupportConversationRequestPayload(message="파이썬 for문 알려줘")
     )
 
-    assert response.scope_status == ChildSupportScopeStatus.REDIRECTED
+    assert response.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
     assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
+    assert "아이의 새 메시지: 파이썬 for문 알려줘" in provider.last_prompt
 
 
 def test_child_support_service_uses_local_llm_provider() -> None:

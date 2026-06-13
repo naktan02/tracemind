@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from agent.src.contracts.child_support_contracts import (
@@ -12,6 +12,7 @@ from agent.src.contracts.child_support_contracts import (
     ChildSupportConversationResponsePayload,
     ChildSupportProactivePromptPayload,
     ChildSupportSafetyLevel,
+    ChildSupportScopeStatus,
 )
 from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 from agent.src.features.wellbeing.child_support.context_provider import (
@@ -26,10 +27,6 @@ from agent.src.features.wellbeing.child_support.llm_provider import (
     ChildSupportLlmError,
     ChildSupportLlmProvider,
 )
-from agent.src.features.wellbeing.child_support.safety_policy import (
-    ChildSupportSafetyAssessment,
-    ChildSupportSafetyPolicy,
-)
 from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
 from agent.src.features.wellbeing.storage.child_support_repository import (
     ChildSupportConversationRepository,
@@ -43,10 +40,58 @@ DISCLOSURE_NOTICE = (
 PROACTIVE_PROMPT_SCORE_THRESHOLD = 35.0
 PROACTIVE_HIGH_RISK_EVIDENCE_TOPIC = "자해/죽음 관련 표현"
 NO_STATIC_FALLBACK_MESSAGE = "AI 응답을 만들지 못했습니다. LLM 설정을 확인하세요."
+URGENT_RISK = "urgent_risk"
+GENERAL_SUPPORT = "general_support"
+_URGENT_RISK_PHRASES = (
+    "죽고 싶",
+    "죽고싶",
+    "자살",
+    "자해",
+    "죽여",
+    "죽일",
+    "죽이",
+    "살해",
+    "kill myself",
+    "suicide",
+    "self harm",
+    "kill him",
+    "kill her",
+    "kill them",
+    "murder",
+)
+_IMMEDIATE_DANGER_PHRASES = (
+    "지금 할",
+    "오늘 할",
+    "어떻게",
+    "방법",
+    "계획",
+    "칼",
+    "약",
+    "옥상",
+    "줄",
+    "피",
+    "how to",
+    "plan",
+    "tonight",
+)
 
 
 class ChildSupportReplyUnavailable(RuntimeError):
     """정해진 fallback 없이 LLM 응답을 만들 수 없을 때 발생한다."""
+
+
+@dataclass(frozen=True, slots=True)
+class ChildSupportMessageSafety:
+    """대화 중 즉시 위험 표현만 표시하는 최소 safety hint."""
+
+    safety_level: ChildSupportSafetyLevel = ChildSupportSafetyLevel.SUPPORTIVE
+    scope_status: ChildSupportScopeStatus = ChildSupportScopeStatus.IN_SCOPE
+    reason: str = GENERAL_SUPPORT
+    immediate_danger: bool = False
+
+    @property
+    def parent_handoff_suggested(self) -> bool:
+        return self.safety_level == ChildSupportSafetyLevel.URGENT
 
 
 @dataclass(slots=True)
@@ -61,9 +106,6 @@ class ChildSupportCoachService:
     conversation_repository: ChildSupportConversationRepository | None = None
     context_provider: ChildSupportContextProvider | None = None
     llm_provider: ChildSupportLlmProvider | None = None
-    safety_policy: ChildSupportSafetyPolicy = field(
-        default_factory=ChildSupportSafetyPolicy
-    )
 
     def __post_init__(self) -> None:
         if self.context_provider is None:
@@ -80,10 +122,7 @@ class ChildSupportCoachService:
 
         conversation_id = request.conversation_id or _new_conversation_id()
         context = self.context_provider.build(conversation_id)
-        assessment = self._assess(
-            message=request.message,
-            context=context,
-        )
+        assessment = _assess_message_safety(request.message)
         child_message_id = _new_message_id("child")
         self._save_message(
             ChildSupportMessageRecord(
@@ -181,7 +220,7 @@ class ChildSupportCoachService:
         *,
         message: str,
         context: ChildSupportConversationContext,
-        assessment: ChildSupportSafetyAssessment,
+        assessment: ChildSupportMessageSafety,
     ) -> tuple[str, ChildSupportAssistantMode]:
         if self.llm_provider is None:
             raise ChildSupportReplyUnavailable(NO_STATIC_FALLBACK_MESSAGE)
@@ -213,8 +252,8 @@ class ChildSupportCoachService:
         *,
         message: str,
         context: ChildSupportConversationContext,
-    ) -> ChildSupportSafetyAssessment:
-        return self.safety_policy.assess(message=message, context=context)
+    ) -> ChildSupportMessageSafety:
+        return _assess_message_safety(message)
 
     def _build_proactive_reply(
         self,
@@ -253,6 +292,21 @@ def _normalize_llm_reply(reply: str, *, max_chars: int) -> str:
     if len(normalized) > max_chars:
         normalized = f"{normalized[:max_chars].rstrip()}..."
     return normalized
+
+
+def _assess_message_safety(message: str) -> ChildSupportMessageSafety:
+    normalized = message.lower()
+    if not _has_any(normalized, _URGENT_RISK_PHRASES):
+        return ChildSupportMessageSafety()
+    return ChildSupportMessageSafety(
+        safety_level=ChildSupportSafetyLevel.URGENT,
+        reason=URGENT_RISK,
+        immediate_danger=_has_any(normalized, _IMMEDIATE_DANGER_PHRASES),
+    )
+
+
+def _has_any(text: str, phrases: tuple[str, ...]) -> bool:
+    return any(phrase in text for phrase in phrases)
 
 
 def _new_conversation_id() -> str:

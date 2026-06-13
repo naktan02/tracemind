@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from agent.src.contracts.child_support_contracts import ChildSupportSafetyLevel
 from agent.src.features.wellbeing.child_support.context_provider import (
     ChildSupportConversationContext,
 )
-from agent.src.features.wellbeing.child_support.safety_policy import (
-    ChildSupportSafetyAssessment,
-)
+
+
+class ChildSupportSafetyHint(Protocol):
+    safety_level: ChildSupportSafetyLevel
+    reason: str
+    immediate_danger: bool
 
 
 def build_child_support_conversation_prompt(
     *,
     message: str,
     context: ChildSupportConversationContext,
-    assessment: ChildSupportSafetyAssessment,
+    assessment: ChildSupportSafetyHint,
 ) -> str:
     """아이 메시지에 바로 답하기 위한 LLM prompt를 만든다."""
 
@@ -30,6 +35,13 @@ def build_child_support_conversation_prompt(
     return (
         "너는 TraceMind의 아이용 마음 도움 로컬 AI 코치다.\n"
         "아래 로컬 context를 바탕으로 아이의 새 메시지에 자연스럽게 답한다.\n"
+        "지원 범위:\n"
+        "- 이 AI는 마음 도움, 감정, 관계, 안전, 현재 상황을 다루는 대화만 한다.\n"
+        "- 공부, 코딩, 일반 지식, 취미, 검색 대신 풀어주기처럼 마음 도움과 직접 "
+        "관련 없는 질문은 지원 범위 밖이다.\n"
+        "- 지원 범위 밖 질문에는 절대 내용을 풀이하거나 정답을 주지 않는다.\n"
+        "- 지원 범위 밖 질문이면 그 질문을 하게 된 마음, 지금 기분, 현재 상황으로 "
+        "부드럽게 되돌린다.\n"
         "원칙:\n"
         "- 한국어 해요체로 3~6문장만 답한다.\n"
         "- 로컬 context의 캡처/검색 원문은 아이 상태를 이해하기 위해 참고한다.\n"
