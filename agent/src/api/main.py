@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import os
-from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,92 +17,63 @@ from agent.src.api.training import router as training_router
 from agent.src.api.typing_segments import router as typing_segments_router
 from agent.src.api.wellbeing import router as wellbeing_router
 from agent.src.config.env_file import load_agent_env_files
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
+from agent.src.runtime import env as runtime_env
+from agent.src.runtime.composition import (
+    build_agent_runtime_state,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
-    CapturedTextRepository,
-)
-from agent.src.infrastructure.repositories.child_support_repository import (
-    ChildSupportConversationRepository,
-)
-from agent.src.infrastructure.repositories.family_access_repository import (
-    FamilyAccessRepository,
-)
-from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
-    TrainingUsageLedgerRepository,
-)
-from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
-    WellbeingSettingsRepository,
-)
-from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
-    WellbeingSnapshotRepository,
-)
-from agent.src.services.assets.shared_adapters.runtime_service import (
-    SharedAdapterRuntimeService,
-)
-from agent.src.services.assets.shared_adapters.sync_service import (
-    SharedAdapterSyncService,
-)
-from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.inference.pipeline_factory import build_default_pipeline_service
-from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.ingest.captured_text_lifecycle_service import (
-    CapturedTextLifecycleService,
-    build_captured_text_lifecycle_service_from_env,
-)
-from agent.src.services.ingest.captured_text_view_generation_service import (
-    CapturedTextViewGenerationService,
-)
-from agent.src.services.ingest.captured_text_view_provider_factory import (
-    build_captured_text_view_generation_service_from_env,
-)
-from agent.src.services.wellbeing.auth_service import ParentAuthService
-from agent.src.services.wellbeing.child_support_context_provider import (
-    ChildSupportContextProvider,
-)
-from agent.src.services.wellbeing.child_support_llm_provider import (
-    ChildSupportLlmProvider,
-    build_child_support_llm_provider_from_env,
-)
-from agent.src.services.wellbeing.child_support_service import (
-    ChildSupportCoachService,
-)
-from agent.src.services.wellbeing.family_access_service import FamilyAccessService
-from agent.src.services.wellbeing.projection_service import (
-    WellbeingSignalProjectionService,
-)
-from agent.src.services.wellbeing.space_web.projection_service import (
-    WellbeingSpaceWebProjectionService,
-)
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.timeseries_service import (
-    WellbeingTimeseriesService,
-)
+from agent.src.runtime.state import RoundClientFactory, install_agent_runtime_state
 
-RoundClientFactory = Callable[[str], RoundClient]
-FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV = "FAMILY_EXTENSION_ALLOWED_ORIGINS"
-DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS = (
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-)
+if TYPE_CHECKING:
+    from agent.src.infrastructure.repositories.analysis_event_repository import (
+        AnalysisEventRepository,
+    )
+    from agent.src.infrastructure.repositories.captured_text_repository import (
+        CapturedTextRepository,
+    )
+    from agent.src.infrastructure.repositories.child_support_repository import (
+        ChildSupportConversationRepository,
+    )
+    from agent.src.infrastructure.repositories.family_access_repository import (
+        FamilyAccessRepository,
+    )
+    from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
+        TrainingUsageLedgerRepository,
+    )
+    from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
+        WellbeingSettingsRepository,
+    )
+    from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
+        WellbeingSnapshotRepository,
+    )
+    from agent.src.services.assets.shared_adapters.runtime_service import (
+        SharedAdapterRuntimeService,
+    )
+    from agent.src.services.assets.shared_adapters.sync_service import (
+        SharedAdapterSyncService,
+    )
+    from agent.src.services.inference.pipeline_service import InferencePipelineService
+    from agent.src.services.ingest.captured_text_lifecycle_service import (
+        CapturedTextLifecycleService,
+    )
+    from agent.src.services.ingest.captured_text_view_generation_service import (
+        CapturedTextViewGenerationService,
+    )
+    from agent.src.services.wellbeing.child_support_llm_provider import (
+        ChildSupportLlmProvider,
+    )
+    from agent.src.services.wellbeing.child_support_service import (
+        ChildSupportCoachService,
+    )
 
 load_agent_env_files()
 
-
-def load_family_extension_allowed_origins_from_env(
-    environ: Mapping[str, str] | None = None,
-) -> tuple[str, ...]:
-    """family_extension dev server가 접근할 수 있는 origin 목록을 읽는다."""
-
-    effective_environ = os.environ if environ is None else environ
-    raw_value = effective_environ.get(FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV, "")
-    origins = tuple(origin.strip() for origin in raw_value.split(",") if origin.strip())
-    return origins or DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS
-
-
-def _default_round_client_factory(server_base_url: str) -> RoundClient:
-    return RoundClient(server_base_url=server_base_url)
+FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV = runtime_env.FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV
+DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS = (
+    runtime_env.DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS
+)
+load_family_extension_allowed_origins_from_env = (
+    runtime_env.load_family_extension_allowed_origins_from_env
+)
 
 
 def create_app(
@@ -143,94 +113,25 @@ def create_app(
         allow_headers=["*"],
     )
 
-    app.state.analysis_event_repository = (
-        analysis_event_repository or AnalysisEventRepository()
+    runtime_state = build_agent_runtime_state(
+        pipeline_service=pipeline_service,
+        analysis_event_repository=analysis_event_repository,
+        captured_text_repository=captured_text_repository,
+        training_usage_ledger_repository=training_usage_ledger_repository,
+        captured_text_view_generation_service=captured_text_view_generation_service,
+        captured_text_lifecycle_service=captured_text_lifecycle_service,
+        child_support_conversation_repository=child_support_conversation_repository,
+        wellbeing_snapshot_repository=wellbeing_snapshot_repository,
+        family_access_repository=family_access_repository,
+        wellbeing_settings_repository=wellbeing_settings_repository,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        child_support_coach_service=child_support_coach_service,
+        child_support_llm_provider=child_support_llm_provider,
+        round_client_factory=round_client_factory,
+        auto_configure_pipeline=auto_configure_pipeline,
     )
-    app.state.captured_text_repository = (
-        captured_text_repository or CapturedTextRepository()
-    )
-    app.state.training_usage_ledger_repository = (
-        training_usage_ledger_repository or TrainingUsageLedgerRepository()
-    )
-    app.state.captured_text_lifecycle_service = (
-        captured_text_lifecycle_service
-        or build_captured_text_lifecycle_service_from_env()
-    )
-    app.state.captured_text_view_generation_service = (
-        captured_text_view_generation_service
-        or build_captured_text_view_generation_service_from_env(
-            repository=app.state.captured_text_repository,
-        )
-    )
-    app.state.child_support_conversation_repository = (
-        child_support_conversation_repository or ChildSupportConversationRepository()
-    )
-    app.state.wellbeing_snapshot_repository = (
-        wellbeing_snapshot_repository or WellbeingSnapshotRepository()
-    )
-    app.state.family_access_repository = (
-        family_access_repository or FamilyAccessRepository()
-    )
-    app.state.wellbeing_settings_repository = (
-        wellbeing_settings_repository or WellbeingSettingsRepository()
-    )
-    app.state.shared_adapter_runtime_service = (
-        shared_adapter_runtime_service or SharedAdapterRuntimeService()
-    )
-    app.state.shared_adapter_sync_service = (
-        shared_adapter_sync_service or SharedAdapterSyncService()
-    )
-    app.state.wellbeing_projection_service = WellbeingSignalProjectionService(
-        analysis_event_repository=app.state.analysis_event_repository,
-        snapshot_repository=app.state.wellbeing_snapshot_repository,
-    )
-    app.state.wellbeing_summary_service = WellbeingSummaryService(
-        repository=app.state.wellbeing_snapshot_repository,
-        projection_service=app.state.wellbeing_projection_service,
-    )
-    app.state.wellbeing_timeseries_service = WellbeingTimeseriesService(
-        repository=app.state.wellbeing_snapshot_repository,
-        projection_service=app.state.wellbeing_projection_service,
-    )
-    app.state.wellbeing_space_web_service = WellbeingSpaceWebProjectionService(
-        analysis_event_repository=app.state.analysis_event_repository,
-    )
-    app.state.family_access_service = FamilyAccessService(
-        repository=app.state.family_access_repository,
-        settings_repository=app.state.wellbeing_settings_repository,
-    )
-    app.state.parent_auth_service = ParentAuthService(
-        family_access_service=app.state.family_access_service,
-    )
-    app.state.child_support_coach_service = (
-        child_support_coach_service
-        or ChildSupportCoachService(
-            conversation_repository=(app.state.child_support_conversation_repository),
-            context_provider=ChildSupportContextProvider(
-                summary_service=app.state.wellbeing_summary_service,
-                conversation_repository=(
-                    app.state.child_support_conversation_repository
-                ),
-            ),
-            llm_provider=(
-                child_support_llm_provider
-                or build_child_support_llm_provider_from_env()
-            ),
-        )
-    )
-    app.state.round_client_factory = (
-        round_client_factory or _default_round_client_factory
-    )
-    if pipeline_service is not None:
-        app.state.pipeline_service = pipeline_service
-    elif auto_configure_pipeline:
-        app.state.pipeline_service = build_default_pipeline_service(
-            analysis_event_repository=app.state.analysis_event_repository,
-            shared_adapter_runtime_service=app.state.shared_adapter_runtime_service,
-            translation_service=(
-                app.state.captured_text_view_generation_service.translation_provider
-            ),
-        )
+    install_agent_runtime_state(app.state, runtime_state)
 
     app.include_router(health_router)
     app.include_router(captured_text_router)

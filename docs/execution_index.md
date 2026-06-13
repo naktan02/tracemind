@@ -63,11 +63,14 @@ FL SSL:
 Agent runtime:
 
 1. `agent/AGENTS.md`
-2. `agent/src/services/README.md`
-3. `agent/src/services/inference/**`
-4. `agent/src/services/training_runtime/**`
-5. `agent/src/services/federation/**`
-6. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
+2. `agent/README.md`
+3. `agent/src/runtime/README.md`
+4. `agent/src/runtime/composition.py` for process object graph wiring
+5. `agent/src/services/README.md`
+6. `agent/src/services/inference/**`
+7. `agent/src/services/training_runtime/**`
+8. `agent/src/services/federation/**`
+9. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
 
 Main server FL:
 

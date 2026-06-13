@@ -1,6 +1,7 @@
 # Agent Services
 
 이 디렉터리는 agent가 소유하는 로컬 runtime 서비스 모음이다.
+프로세스 시작 시 service graph를 조립하는 책임은 `agent/src/runtime/`이 소유한다.
 
 핵심 원칙:
 
@@ -8,6 +9,8 @@
 - 서버와 통신하는 orchestration은 `federation/`에 두고,
   실제 scoring/training adapter는 `inference/`, `training_runtime/`에 둔다.
 - asset cache/sync와 language helper는 각각 `assets/`, `language/`로 분리한다.
+- FastAPI shell과 service graph 조립은 `api/`와 `runtime/`에 두고, 이 디렉터리의
+  Module은 실제 local behavior를 소유한다.
 - `services/*/__init__.py`는 기본적으로 marker만 두고 direct-file import를 우선한다.
 - newcomer는 `__init__.py`보다 아래 읽기 순서로 시작하는 편이 빠르다.
 - 구조 리팩터링은 `agent/REFACTOR_ROADMAP.md`의 phase gate를 따른다.

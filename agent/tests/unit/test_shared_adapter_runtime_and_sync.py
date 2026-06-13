@@ -51,6 +51,7 @@ def _current_payload() -> dict:
         model_revision="rev_001",
         auxiliary_artifact_versions={"calibration_set": "calib_001"},
         artifact_ref="/server/state/rev_001.json",
+        training_scope=state.training_scope,
     )
     return make_current_shared_adapter_state_payload(
         manifest=manifest,
@@ -61,14 +62,16 @@ def _current_payload() -> dict:
 def test_shared_adapter_runtime_reads_active_state(tmp_path: Path) -> None:
     repository = SharedAdapterStateRepository(state_root=tmp_path / "shared_states")
     current = _current_payload()
+    state = _peft_state(model_revision="rev_001")
     repository.save_current(
         manifest=make_embedding_manifest(
             model_id="model",
             model_revision="rev_001",
             auxiliary_artifact_versions={"calibration_set": "calib_001"},
             artifact_ref="/server/state/rev_001.json",
+            training_scope=state.training_scope,
         ),
-        state=_peft_state(model_revision="rev_001"),
+        state=state,
     )
 
     runtime = SharedAdapterRuntimeService(repository=repository)

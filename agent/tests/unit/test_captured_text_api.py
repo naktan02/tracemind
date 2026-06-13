@@ -41,10 +41,14 @@ from agent.src.services.ingest.captured_text_view_generation_service import (
 from agent.src.services.language.preprocess_service import PreprocessService
 
 
-def _event(event_id: str = "event_1") -> CapturedTextEventPayload:
+def _event(
+    event_id: str = "event_1",
+    *,
+    occurred_at: datetime | None = None,
+) -> CapturedTextEventPayload:
     return CapturedTextEventPayload(
         event_id=event_id,
-        occurred_at=datetime(2026, 6, 6, 1, 0, tzinfo=timezone.utc),
+        occurred_at=occurred_at or datetime.now(tz=timezone.utc),
         text="오늘 너무 불안해",
         locale="ko",
         source_type=CapturedTextSourceType.SEARCH,
@@ -239,17 +243,21 @@ def test_captured_text_debug_job_run_generates_views(
 ) -> None:
     repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
     repository.save(captured_text_record_from_payload(_event("event_1")))
-    client = TestClient(
+    with TestClient(
         create_app(
             captured_text_repository=repository,
+            captured_text_view_generation_service=CapturedTextViewGenerationService(
+                repository=repository
+            ),
             auto_configure_pipeline=False,
         )
-    )
-
-    response = client.post(
-        "/api/v1/captured-text/debug-job/run-view-generation",
-        json=CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(mode="json"),
-    )
+    ) as client:
+        response = client.post(
+            "/api/v1/captured-text/debug-job/run-view-generation",
+            json=CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(
+                mode="json"
+            ),
+        )
 
     assert response.status_code == 200
     payload = response.json()
