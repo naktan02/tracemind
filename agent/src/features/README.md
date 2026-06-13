@@ -11,6 +11,8 @@
   source projection, captured text 전용 SQLite storage.
 - `inference/`: preprocess 이후 embedding, scorer backend, local interpretation,
   pipeline orchestration.
+- `training_runtime/`: current TrainingTask 실행, Query SSL/FSSL local update adapter,
+  학습 artifact/usage ledger storage.
 - `wellbeing/`: family extension wellbeing output, family access, child support,
   wellbeing 전용 SQLite storage.
 

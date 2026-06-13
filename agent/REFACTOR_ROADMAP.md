@@ -222,7 +222,7 @@ Gate:
 목표 구조:
 
 ```text
-agent/src/services/training_runtime/
+agent/src/features/training_runtime/
   current_task/
     runner.py
     dispatch.py
@@ -384,6 +384,10 @@ Gate:
 - scorer backend 교체가 feature route나 wellbeing projection을 건드리지 않는다.
 
 ### Feature Phase 5. training_runtime 이동
+
+Status: 완료. 현재 source of truth는 `agent/src/features/training_runtime/`이며,
+training artifact와 usage ledger 저장소는
+`agent/src/features/training_runtime/storage/`가 소유한다.
 
 목표:
 

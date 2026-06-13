@@ -7,8 +7,7 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 핵심 원칙:
 
 - `shared` 계약을 읽어 local inference와 local training을 실행한다.
-- 서버와 통신하는 orchestration은 `federation/`에 두고,
-  실제 training adapter는 `training_runtime/`에 둔다.
+- 서버와 통신하는 orchestration은 `federation/`에 둔다.
 - asset cache/sync와 language helper는 각각 `assets/`, `language/`로 분리한다.
 - FastAPI shell과 service graph 조립은 `api/`와 `runtime/`에 두고, 이 디렉터리의
   Module은 실제 local behavior를 소유한다.
@@ -20,10 +19,6 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 
 ## 하위 패키지 역할
 
-- `training_runtime/`
-  - 로컬 학습 runtime rail
-  - current TrainingTask 실행, Query SSL/FSSL local objective adapter,
-    feature-owned captured text generated view source projection 연결 담당
 - `federation/`
   - agent와 서버 사이 round orchestration rail
   - current round fetch/upload 담당
@@ -40,6 +35,8 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
   - raw text ingest, generated view, training source projection, 전용 storage
 - `agent/src/features/inference/`
   - 로컬 추론 pipeline, scorer backend adapter, agent-local 개인 기준 해석
+- `agent/src/features/training_runtime/`
+  - 로컬 학습 runtime rail, current TrainingTask 실행, Query SSL/FSSL adapter, 전용 storage
 - `agent/src/features/wellbeing/`
   - 가족용 확장 프로그램이 읽는 전체 상태/추이/잠금용 local output과 전용 storage
 
@@ -61,17 +58,17 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 
 ### 2. 로컬 학습 흐름을 보고 싶을 때
 
-1. `training_runtime/README.md`
-2. `training_runtime/current_task/runner.py`
-3. `training_runtime/query_ssl/task_service.py`
-4. `training_runtime/query_ssl_peft/local_training_service.py`
+1. `agent/src/features/training_runtime/README.md`
+2. `agent/src/features/training_runtime/current_task/runner.py`
+3. `agent/src/features/training_runtime/query_ssl/task_service.py`
+4. `agent/src/features/training_runtime/query_ssl_peft/local_training_service.py`
 5. `agent/src/features/captured_text/training_source/service.py`
 
 ### 3. agent가 서버 round에 참여하는 흐름을 보고 싶을 때
 
 1. `federation/rounds/round_client.py`
-2. `training_runtime/current_task/runner.py`
-3. `training_runtime/query_ssl/task_service.py`
+2. `agent/src/features/training_runtime/current_task/runner.py`
+3. `agent/src/features/training_runtime/query_ssl/task_service.py`
 4. `assets/shared_adapters/sync_service.py`
 5. `assets/adapters/composition_service.py`
 
@@ -114,12 +111,12 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
     Query SSL unlabeled row로 정규화한다
   - captured text는 raw string이나 임의 JSON으로 학습에 직접 들어가지 않고,
     captured event -> generated view -> source row 단계를 거친다
-- `infrastructure/repositories/training_usage_ledger_repository.py`
+- `agent/src/features/training_runtime/storage/training_usage_ledger_repository.py`
   - generated view나 analysis event가 어떤 round/task/update의 학습 입력으로
     사용됐는지 source id와 recorded_at 기준으로 기록한다
-- `training_runtime/query_ssl_peft/local_training_service.py`
+- `agent/src/features/training_runtime/query_ssl_peft/local_training_service.py`
   - Query SSL raw-row local training을 agent-local artifact 저장과 submission envelope에 연결
-- `training_runtime/current_task/runner.py`
+- `agent/src/features/training_runtime/current_task/runner.py`
   - active task 조회, shared adapter sync, Query SSL task 실행, update upload까지의
     agent application flow 소유
   - stored-event self-training rebuild는 지원하지 않는다
@@ -138,7 +135,7 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
   - fixed embedding을 쓰는 family와 raw text/tokenized batch를 쓰는 family를 같은
     adapter 내부에서 섞지 않는다.
 - Query SSL/FSSL 학습 입력 추가: 해당 method core와
-  `training_runtime/training_sources/`
+  `agent/src/features/training_runtime/training_sources/`
 - scorer backend 추가: method core를 먼저 추가하고,
   `inference/scoring_backends/`에는 agent runtime adapter만 둔다
 - pseudo-label acceptance/selection 정책 추가: 해당 SSL/FSSL method package

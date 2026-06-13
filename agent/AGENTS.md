@@ -10,7 +10,7 @@
 2. `agent/src/services/README.md`
 3. 작업 축에 맞는 feature/service 경로
    - 추론: `agent/src/features/inference/`
-   - 학습: `agent/src/services/training_runtime/`
+   - 학습: `agent/src/features/training_runtime/`
    - FL 참여: `agent/src/services/federation/`
 4. 관련 shared contract와 domain entity
 

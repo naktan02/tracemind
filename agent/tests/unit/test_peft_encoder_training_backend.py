@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from agent.src.infrastructure.repositories.training_artifact_repository import (
-    TrainingArtifactRepository,
-)
-from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (
+from agent.src.features.training_runtime.query_ssl_peft.local_training_service import (
     QuerySslLocalTrainingService,
     QuerySslPeftEncoderLocalTrainingRequest,
+)
+from agent.src.features.training_runtime.storage.training_artifact_repository import (
+    TrainingArtifactRepository,
 )
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,

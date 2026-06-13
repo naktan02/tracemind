@@ -7,7 +7,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any, Protocol, cast
 
-from agent.src.infrastructure.repositories.training_artifact_repository import (
+from agent.src.features.training_runtime.storage.training_artifact_repository import (
     TrainingArtifactRepository,
 )
 from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend

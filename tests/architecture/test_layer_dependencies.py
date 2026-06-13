@@ -2422,6 +2422,48 @@ def test_inference_feature_owns_pipeline_and_interpretation_paths() -> None:
     )
 
 
+def test_training_runtime_feature_owns_runtime_and_storage_paths() -> None:
+    legacy_paths = (
+        AGENT_SRC / "services" / "training_runtime",
+        AGENT_SRC
+        / "infrastructure"
+        / "repositories"
+        / "training_artifact_repository.py",
+        AGENT_SRC
+        / "infrastructure"
+        / "repositories"
+        / "training_usage_ledger_repository.py",
+    )
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (
+        AGENT_SRC,
+        REPO_ROOT / "agent" / "tests",
+        REPO_ROOT / "tests",
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
+    ):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(
+                    "agent.src.services.training_runtime",
+                    "agent.src.infrastructure.repositories.training_artifact_repository",
+                    "agent.src.infrastructure.repositories.training_usage_ledger_repository",
+                ),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "training_runtime은 feature module로 이동됐다. current task/query SSL "
+        "runtime은 agent.src.features.training_runtime, training 전용 storage는 "
+        "agent.src.features.training_runtime.storage를 직접 import한다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
 def test_main_server_layer_does_not_import_scripts() -> None:
     violations = _find_forbidden_imports(
         root=MAIN_SERVER_SRC,
@@ -2539,7 +2581,7 @@ def test_agent_api_does_not_import_methods_directly() -> None:
 
     assert not violations, (
         "agent API layer는 HTTP request/response 변환만 소유한다. methods-owned "
-        "algorithm/runtime surface는 services/training_runtime 또는 inference "
+        "algorithm/runtime surface는 features/training_runtime 또는 inference "
         "adapter 경계에서만 연결한다.\n"
         f"{_format_violations(violations)}"
     )
@@ -2579,7 +2621,12 @@ def test_shared_layer_does_not_import_agent_local_contracts() -> None:
 def test_methods_do_not_import_agent_local_repositories() -> None:
     violations = _find_forbidden_imports(
         root=METHODS_SRC,
-        forbidden_prefixes=("agent.src.infrastructure.repositories",),
+        forbidden_prefixes=(
+            "agent.src.features.captured_text.storage",
+            "agent.src.features.training_runtime.storage",
+            "agent.src.features.wellbeing.storage",
+            "agent.src.infrastructure.repositories",
+        ),
     )
 
     assert not violations, (
@@ -2598,12 +2645,12 @@ def test_method_owned_training_core_imports_stay_inside_training_runtime() -> No
             "methods.federated_ssl",
             "methods.ssl.runtime",
         ),
-        ignored_roots=(AGENT_SRC / "services" / "training_runtime",),
+        ignored_roots=(AGENT_SRC / "features" / "training_runtime",),
     )
 
     assert not violations, (
         "agent에서 method-owned local training core를 직접 연결하는 곳은 "
-        "services/training_runtime이어야 한다. 다른 feature/runtime 모듈이 "
+        "features/training_runtime이어야 한다. 다른 feature/runtime 모듈이 "
         "method 의미를 흡수하면 새 method 추가 시 import drift가 생긴다.\n"
         f"{_format_violations(violations)}"
     )
@@ -3751,7 +3798,7 @@ def test_agent_legacy_training_package_is_not_reintroduced() -> None:
 
     assert not package_root.exists(), (
         "agent/src/services/training은 stored-event pseudo-label self-training "
-        "legacy package다. 현재 runtime은 services/training_runtime에서 current "
+        "legacy package다. 현재 runtime은 features/training_runtime에서 current "
         "TrainingTask와 Query SSL/FSSL local objective adapter만 소유한다.\n"
         f"path={_relative_repo_path(package_root)}"
     )

@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from agent.src.api import training as training_api
-from agent.src.services.training_runtime.current_task.runner import (  # noqa: E501
+from agent.src.features.training_runtime.current_task.runner import (  # noqa: E501
     AgentTrainingTaskRunRequest,
     AgentTrainingTaskRunResult,
 )

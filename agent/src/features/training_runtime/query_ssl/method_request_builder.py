@@ -6,11 +6,11 @@ from collections.abc import Callable, Sequence
 from datetime import datetime
 from types import SimpleNamespace
 
-from agent.src.services.training_runtime.query_ssl.task_identity import (
+from agent.src.features.training_runtime.query_ssl.task_identity import (
     optional_method_name,
     seed_from_task,
 )
-from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (
+from agent.src.features.training_runtime.query_ssl_peft.local_training_service import (
     QuerySslLocalTrainingService,
     QuerySslPeftEncoderClientTrainingResult,
     QuerySslPeftEncoderLocalTrainingRequest,

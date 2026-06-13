@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from agent.src.infrastructure.repositories.local_agent_database import (
-    DEFAULT_AGENT_LOCAL_DB_PATH,
-)
-from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
+from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
     TRAINING_USAGE_ROLE_LABELED_ANCHOR,
     TRAINING_USAGE_STAGE_QUERY_SSL_INPUT,
     TRAINING_USAGE_STATUS_UPLOADED,
     TrainingUsageLedgerRepository,
     TrainingUsageRowRecord,
     TrainingUsageRunRecord,
+)
+from agent.src.infrastructure.repositories.local_agent_database import (
+    DEFAULT_AGENT_LOCAL_DB_PATH,
 )
 
 

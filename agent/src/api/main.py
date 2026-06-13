@@ -34,6 +34,9 @@ if TYPE_CHECKING:
         CapturedTextViewGenerationService,
     )
     from agent.src.features.inference.pipeline_service import InferencePipelineService
+    from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
+        TrainingUsageLedgerRepository,
+    )
     from agent.src.features.wellbeing.child_support.llm_provider import (
         ChildSupportLlmProvider,
     )
@@ -54,9 +57,6 @@ if TYPE_CHECKING:
     )
     from agent.src.infrastructure.repositories.analysis_event_repository import (
         AnalysisEventRepository,
-    )
-    from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
-        TrainingUsageLedgerRepository,
     )
     from agent.src.services.assets.shared_adapters.runtime_service import (
         SharedAdapterRuntimeService,

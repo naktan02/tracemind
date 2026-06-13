@@ -13,11 +13,11 @@ def build_query_ssl_local_training_service(
 ) -> Any:
     """simulation client state root 기준 Query SSL local training service를 만든다."""
 
-    from agent.src.infrastructure.repositories.training_artifact_repository import (
-        TrainingArtifactRepository,
-    )
-    from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (  # noqa: E501
+    from agent.src.features.training_runtime.query_ssl_peft.local_training_service import (  # noqa: E501
         QuerySslLocalTrainingService,
+    )
+    from agent.src.features.training_runtime.storage.training_artifact_repository import (  # noqa: E501
+        TrainingArtifactRepository,
     )
 
     return QuerySslLocalTrainingService(

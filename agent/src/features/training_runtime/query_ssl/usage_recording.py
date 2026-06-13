@@ -5,7 +5,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 
-from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
+from agent.src.features.training_runtime.query_ssl.task_identity import (
+    optional_method_name,
+)
+from agent.src.features.training_runtime.query_ssl_peft.local_training_service import (
+    QuerySslPeftEncoderClientTrainingResult,
+)
+from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
     TRAINING_USAGE_ROLE_LABELED_ANCHOR,
     TRAINING_USAGE_ROLE_UNLABELED_GENERATED_VIEW,
     TRAINING_USAGE_STAGE_QUERY_SSL_INPUT,
@@ -13,12 +19,6 @@ from agent.src.infrastructure.repositories.training_usage_ledger_repository impo
     TrainingUsageLedgerRepository,
     TrainingUsageRowRecord,
     TrainingUsageRunRecord,
-)
-from agent.src.services.training_runtime.query_ssl.task_identity import (
-    optional_method_name,
-)
-from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (
-    QuerySslPeftEncoderClientTrainingResult,
 )
 from methods.ssl.runtime.objective_config import QuerySslObjectiveRuntimeConfig
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

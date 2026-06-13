@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from agent.src.services.training_runtime.current_task.result import (
+from agent.src.features.training_runtime.current_task.result import (
     TrainingTaskRunResult,
     TrainingTaskRunStatus,
 )
-from agent.src.services.training_runtime.current_task.runner import (  # noqa: E501
+from agent.src.features.training_runtime.current_task.runner import (  # noqa: E501
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
 )

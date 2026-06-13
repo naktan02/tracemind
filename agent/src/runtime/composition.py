@@ -17,6 +17,9 @@ from agent.src.features.captured_text.view_generation.service import (
 )
 from agent.src.features.inference.pipeline_factory import build_default_pipeline_service
 from agent.src.features.inference.pipeline_service import InferencePipelineService
+from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
+    TrainingUsageLedgerRepository,
+)
 from agent.src.features.wellbeing.child_support.context_provider import (
     ChildSupportContextProvider,
 )
@@ -55,9 +58,6 @@ from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
 )
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
-    TrainingUsageLedgerRepository,
 )
 from agent.src.runtime.state import AgentRuntimeState, RoundClientFactory
 from agent.src.services.assets.shared_adapters.runtime_service import (

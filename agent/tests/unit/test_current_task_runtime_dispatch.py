@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent.src.services.training_runtime.current_task.dispatch import (
+from agent.src.features.training_runtime.current_task.dispatch import (
     AGENT_RUNTIME_QUERY_SSL_PEFT,
     resolve_current_task_runtime,
 )

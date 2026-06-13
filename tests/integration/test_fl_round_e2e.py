@@ -37,15 +37,15 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.training_runtime.current_task.result import (
+from agent.src.features.training_runtime.current_task.result import (
     TrainingTaskRunResult,
     TrainingTaskRunStatus,
 )
-from agent.src.services.training_runtime.current_task.runner import (  # noqa: E501
+from agent.src.features.training_runtime.current_task.runner import (  # noqa: E501
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
 )
-from agent.src.services.training_runtime.query_ssl.task_service import (  # noqa: E501
+from agent.src.features.training_runtime.query_ssl.task_service import (  # noqa: E501
     AgentQuerySslTrainingTaskRunRequest,
     AgentQuerySslTrainingTaskService,
 )

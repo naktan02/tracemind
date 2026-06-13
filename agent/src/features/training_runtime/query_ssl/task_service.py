@@ -7,36 +7,36 @@ from dataclasses import dataclass, field
 from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.training_artifact_repository import (
-    TrainingArtifactRepository,
-)
-from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
-    TrainingUsageLedgerRepository,
-)
-from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.training_runtime.current_task.result import (
+from agent.src.features.training_runtime.current_task.result import (
     TrainingTaskRunResult,
     TrainingTaskRunStatus,
 )
-from agent.src.services.training_runtime.query_ssl.method_request_builder import (
+from agent.src.features.training_runtime.query_ssl.method_request_builder import (
     MethodOwnedPeftEncoderTrainingCore,
     run_query_ssl_local_update,
 )
-from agent.src.services.training_runtime.query_ssl.source_selection import (
+from agent.src.features.training_runtime.query_ssl.source_selection import (
     select_query_ssl_training_sources,
 )
-from agent.src.services.training_runtime.query_ssl.upload_flow import (
+from agent.src.features.training_runtime.query_ssl.upload_flow import (
     upload_query_ssl_update,
 )
-from agent.src.services.training_runtime.query_ssl.usage_recording import (
+from agent.src.features.training_runtime.query_ssl.usage_recording import (
     record_query_ssl_training_usage,
 )
-from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (
+from agent.src.features.training_runtime.query_ssl_peft.local_training_service import (
     QuerySslLocalTrainingService,
 )
+from agent.src.features.training_runtime.storage.training_artifact_repository import (  # noqa: E501
+    TrainingArtifactRepository,
+)
+from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
+    TrainingUsageLedgerRepository,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
+from agent.src.services.federation.rounds.round_client import RoundClient
 from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
 from methods.adaptation.peft_text_encoder.federated_ssl.method_owned_training import (
     run_method_owned_peft_encoder_training_request,

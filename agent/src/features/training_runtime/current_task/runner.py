@@ -8,6 +8,10 @@ from dataclasses import dataclass, field
 from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
+from agent.src.features.training_runtime.query_ssl.task_service import (
+    AgentQuerySslTrainingTaskRunRequest,
+    AgentQuerySslTrainingTaskService,
+)
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
@@ -22,10 +26,6 @@ from agent.src.services.assets.shared_adapters.sync_service import (
 )
 from agent.src.services.federation.rounds.artifact_client import RoundArtifactClient
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.training_runtime.query_ssl.task_service import (
-    AgentQuerySslTrainingTaskRunRequest,
-    AgentQuerySslTrainingTaskService,
-)
 
 from .dispatch import (
     AGENT_RUNTIME_QUERY_SSL_PEFT,
