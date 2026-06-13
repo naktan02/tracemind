@@ -53,7 +53,7 @@ class AgentRuntimeProfileService:
         try:
             return self.repository.load_active()
         except FileNotFoundError:
-            return self._profile_from_env_and_manifest()
+            return self.repository.save_active(self._profile_from_env_and_manifest())
 
     def save_active_profile(
         self,

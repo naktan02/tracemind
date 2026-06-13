@@ -127,10 +127,11 @@ def test_admin_runtime_profile_api_switches_active_profile(
 def test_runtime_profile_service_can_build_profile_from_env_and_manifest(
     tmp_path: Path,
 ) -> None:
+    repository = AgentRuntimeProfileRepository(
+        state_root=tmp_path / "agent_runtime_profiles"
+    )
     service = AgentRuntimeProfileService(
-        repository=AgentRuntimeProfileRepository(
-            state_root=tmp_path / "agent_runtime_profiles"
-        ),
+        repository=repository,
         active_manifest_service=_ActiveManifestService(),
         clock=FixedClock(datetime(2026, 6, 13, 9, 0, tzinfo=timezone.utc)),
         environ={
@@ -149,3 +150,4 @@ def test_runtime_profile_service_can_build_profile_from_env_and_manifest(
     assert profile.profile_revision == "clf_2026_04_11_143138"
     assert profile.adapter_mechanism == "dora"
     assert profile.training_scope == "adapter_and_head"
+    assert repository.load_active().identity_matches(profile)
