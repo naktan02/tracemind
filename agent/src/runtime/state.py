@@ -8,7 +8,7 @@ from dataclasses import dataclass, fields
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.infrastructure.repositories.captured_text.repository import (
     CapturedTextRepository,
 )
 from agent.src.infrastructure.repositories.child_support_repository import (

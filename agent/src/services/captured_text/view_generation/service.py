@@ -10,12 +10,14 @@ from typing import Protocol
 from agent.src.contracts.captured_text_contracts import (
     CapturedTextDebugJobRunResultPayload,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.infrastructure.repositories.captured_text.records import (
     CAPTURED_TEXT_VIEW_STATUS_FAILED,
     CAPTURED_TEXT_VIEW_STATUS_PENDING,
     CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
+)
+from agent.src.infrastructure.repositories.captured_text.repository import (
     CapturedTextRepository,
 )
 

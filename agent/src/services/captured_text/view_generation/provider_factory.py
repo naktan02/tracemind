@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from agent.src.infrastructure.model_adapters.translation.nllb import (
     NllbTranslationAdapter,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.infrastructure.repositories.captured_text.repository import (
     CapturedTextRepository,
 )
 from agent.src.services.captured_text.view_generation.service import (

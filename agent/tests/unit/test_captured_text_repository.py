@@ -13,15 +13,17 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextSourceType,
     CapturedTextSurfaceType,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.infrastructure.repositories.captured_text.records import (
     CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
     CAPTURED_TEXT_VIEW_STATUS_FAILED,
     CAPTURED_TEXT_VIEW_STATUS_PENDING,
     CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
-    CapturedTextRepository,
     captured_text_record_from_payload,
+)
+from agent.src.infrastructure.repositories.captured_text.repository import (
+    CapturedTextRepository,
 )
 from agent.src.services.captured_text.lifecycle import (
     CapturedTextLifecycleConfig,

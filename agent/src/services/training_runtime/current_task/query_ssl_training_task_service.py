@@ -12,7 +12,7 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
     StoredAnalysisEvent,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.infrastructure.repositories.captured_text.repository import (
     CapturedTextRepository,
 )
 from agent.src.infrastructure.repositories.training_artifact_repository import (

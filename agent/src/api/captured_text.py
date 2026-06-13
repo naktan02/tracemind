@@ -19,7 +19,7 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextEventPayload,
     CapturedTextIngestResponsePayload,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.infrastructure.repositories.captured_text.repository import (
     CapturedTextRepository,
 )
 from agent.src.services.captured_text.debug_jobs import (

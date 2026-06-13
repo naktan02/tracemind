@@ -1,0 +1,1 @@
+"""Captured text repository package."""

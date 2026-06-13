@@ -9,9 +9,11 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextEventPayload,
     CapturedTextIngestResponsePayload,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
-    CapturedTextRepository,
+from agent.src.infrastructure.repositories.captured_text.records import (
     captured_text_record_from_payload,
+)
+from agent.src.infrastructure.repositories.captured_text.repository import (
+    CapturedTextRepository,
 )
 from agent.src.services.captured_text.lifecycle import (
     CapturedTextLifecycleService,

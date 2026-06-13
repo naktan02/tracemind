@@ -32,7 +32,7 @@
 | local run/smoke 절차 | `docs/operations/local-runbook.md` |
 | 테스트 전략 | `docs/quality/test-strategy.md` |
 | 알고리즘/전략 추가 절차 | `docs/architecture/target-method-runtime-structure.md`, `methods/README.md`, 해당 `methods/**/NEW_METHOD.md`, `conf/README.md` |
-| captured text local boundary | `agent/src/contracts/captured_text_contracts.py`, `agent/src/infrastructure/repositories/captured_text_repository.py` |
+| captured text local boundary | `agent/src/contracts/captured_text_contracts.py`, `agent/src/infrastructure/repositories/captured_text/repository.py` |
 | training source usage ledger | `agent/src/infrastructure/repositories/training_usage_ledger_repository.py` |
 | child-support local boundary | `agent/src/contracts/child_support_contracts.py`, `agent/src/services/wellbeing/child_support/service.py` |
 | family extension surface | `apps/family_extension/README.md`, `apps/family_extension/AGENTS.md`, `agent/src/contracts/wellbeing_signal_contracts.py` |

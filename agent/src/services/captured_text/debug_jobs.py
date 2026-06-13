@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from agent.src.contracts.captured_text_contracts import (
     CapturedTextDebugJobRunResultPayload,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.infrastructure.repositories.captured_text.records import (
     CapturedTextAnalysisSourceRecord,
+)
+from agent.src.infrastructure.repositories.captured_text.repository import (
     CapturedTextRepository,
 )
 from agent.src.services.captured_text.lifecycle import (
