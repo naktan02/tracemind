@@ -11,11 +11,11 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
 )
+from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
+    WellbeingSnapshotRepository,
+)
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
-    WellbeingSnapshotRepository,
 )
 from agent.src.services.inference.interpretation.baseline import BaselineService
 from agent.src.services.inference.interpretation.decision import DecisionService

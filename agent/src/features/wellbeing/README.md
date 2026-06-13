@@ -9,6 +9,7 @@
 - `space_web/`: category score coactivation을 아이용 공간웹 payload로 투영한다.
 - `family_access/`: child/parent setup, unlock, legacy parent auth adapter를 소유한다.
 - `child_support/`: 아이용 지원 대화 context, safety routing, response policy, LLM adapter를 소유한다.
+- `storage/`: family access, child-support conversation, wellbeing settings/snapshot 저장소.
 
-raw text, conversation state, PIN state 같은 개인 상태는 agent-local repository 경계에
-남기고, UI는 `agent/src/contracts/`의 payload만 소비한다.
+raw text, conversation state, PIN state 같은 개인 상태는 agent-local feature storage
+경계에 남기고, UI는 `agent/src/contracts/`의 payload만 소비한다.

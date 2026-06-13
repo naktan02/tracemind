@@ -13,21 +13,21 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
 )
-from agent.src.infrastructure.repositories.family_access_repository import (
+from agent.src.features.wellbeing.family_access.service import FamilyAccessService
+from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.signal.timeseries_service import (
+    WellbeingTimeseriesService,
+)
+from agent.src.features.wellbeing.storage.family_access_repository import (
     FamilyAccessRepository,
     FamilyAccessState,
 )
-from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
+from agent.src.features.wellbeing.storage.wellbeing_settings_repository import (
     WellbeingSettingsRecord,
     WellbeingSettingsRepository,
 )
-from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
+from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
-)
-from agent.src.services.wellbeing.family_access.service import FamilyAccessService
-from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.signal.timeseries_service import (
-    WellbeingTimeseriesService,
 )
 
 

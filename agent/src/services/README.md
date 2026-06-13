@@ -38,8 +38,13 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
   - global shared state와 future agent-private local state의 조합 경계
 - `language/`
   - preprocess, translation, backtranslation helper
-- `wellbeing/`
-  - 가족용 확장 프로그램이 읽는 전체 상태/추이/잠금용 local output service
+
+이동 완료 feature:
+
+- `agent/src/features/captured_text/`
+  - raw text ingest, generated view, training source projection, 전용 storage
+- `agent/src/features/wellbeing/`
+  - 가족용 확장 프로그램이 읽는 전체 상태/추이/잠금용 local output과 전용 storage
 
 ## 먼저 읽을 파일
 
@@ -75,17 +80,17 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 
 ### 4. 가족용 확장 출력 surface를 보고 싶을 때
 
-1. `wellbeing/README.md`
-2. `wellbeing/family_access/service.py`
-3. `wellbeing/signal/summary_service.py`
-4. `wellbeing/signal/timeseries_service.py`
-5. `wellbeing/signal/projection_service.py`
-6. `wellbeing/space_web/README.md`
-7. `wellbeing/family_access/parent_auth_adapter.py`
-8. `wellbeing/child_support/service.py`
-9. `wellbeing/child_support/context_provider.py`
-10. `wellbeing/child_support/safety_policy.py`
-11. `wellbeing/child_support/llm_provider.py`
+1. `agent/src/features/wellbeing/README.md`
+2. `agent/src/features/wellbeing/family_access/service.py`
+3. `agent/src/features/wellbeing/signal/summary_service.py`
+4. `agent/src/features/wellbeing/signal/timeseries_service.py`
+5. `agent/src/features/wellbeing/signal/projection_service.py`
+6. `agent/src/features/wellbeing/space_web/README.md`
+7. `agent/src/features/wellbeing/family_access/parent_auth_adapter.py`
+8. `agent/src/features/wellbeing/child_support/service.py`
+9. `agent/src/features/wellbeing/child_support/context_provider.py`
+10. `agent/src/features/wellbeing/child_support/safety_policy.py`
+11. `agent/src/features/wellbeing/child_support/llm_provider.py`
 12. `agent/src/api/family_access.py`
 13. `agent/src/api/child_support.py`
 14. `agent/src/api/wellbeing.py`

@@ -350,6 +350,10 @@ Gate:
 
 ### Feature Phase 3. wellbeing 이동
 
+Status: 완료. 현재 source of truth는 `agent/src/features/wellbeing/`이며, family access,
+child-support, wellbeing settings/snapshot 전용 storage는
+`agent/src/features/wellbeing/storage/`가 소유한다.
+
 목표:
 
 - wellbeing signal, space-web, family access, child support를

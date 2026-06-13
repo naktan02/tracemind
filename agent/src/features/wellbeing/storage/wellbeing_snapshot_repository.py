@@ -13,7 +13,7 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
 )
-from agent.src.infrastructure.repositories.wellbeing_storage import (
+from agent.src.features.wellbeing.storage.wellbeing_storage import (
     DEFAULT_WELLBEING_DB_PATH,
     connect_wellbeing_db,
 )

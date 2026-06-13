@@ -6,18 +6,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
-    WellbeingSnapshotRepository,
-)
-from agent.src.services.wellbeing.signal.projection_service import (
+from agent.src.features.wellbeing.signal.projection_service import (
     WellbeingSignalProjectionService,
 )
-from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.signal.timeseries_service import (
+from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.signal.timeseries_service import (
     WellbeingTimeseriesService,
+)
+from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
+    WellbeingSnapshotRepository,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
 from shared.src.domain.entities.inference.events import AnalysisEvent
 

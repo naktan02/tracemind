@@ -2351,6 +2351,49 @@ def test_captured_text_feature_owns_runtime_and_storage_paths() -> None:
     )
 
 
+def test_wellbeing_feature_owns_runtime_and_storage_paths() -> None:
+    legacy_paths = (
+        AGENT_SRC / "services" / "wellbeing",
+        AGENT_SRC / "infrastructure" / "repositories" / "child_support_repository.py",
+        AGENT_SRC / "infrastructure" / "repositories" / "family_access_repository.py",
+        AGENT_SRC
+        / "infrastructure"
+        / "repositories"
+        / "wellbeing_settings_repository.py",
+        AGENT_SRC
+        / "infrastructure"
+        / "repositories"
+        / "wellbeing_snapshot_repository.py",
+        AGENT_SRC / "infrastructure" / "repositories" / "wellbeing_storage.py",
+    )
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (AGENT_SRC, REPO_ROOT / "agent" / "tests", REPO_ROOT / "tests"):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(
+                    "agent.src.services.wellbeing",
+                    "agent.src.infrastructure.repositories.child_support_repository",
+                    "agent.src.infrastructure.repositories.family_access_repository",
+                    "agent.src.infrastructure.repositories.wellbeing_settings_repository",
+                    "agent.src.infrastructure.repositories.wellbeing_snapshot_repository",
+                    "agent.src.infrastructure.repositories.wellbeing_storage",
+                ),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "wellbeing은 feature module로 이동됐다. signal/family/child-support runtime은 "
+        "agent.src.features.wellbeing, 전용 storage는 "
+        "agent.src.features.wellbeing.storage를 직접 import한다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
 def test_main_server_layer_does_not_import_scripts() -> None:
     violations = _find_forbidden_imports(
         root=MAIN_SERVER_SRC,
@@ -2477,11 +2520,16 @@ def test_agent_api_does_not_import_methods_directly() -> None:
 def test_apps_do_not_import_agent_service_implementations() -> None:
     violations = _find_forbidden_text_snippets(
         root=APPS_SRC,
-        snippets=("agent.src.services", "agent/src/services"),
+        snippets=(
+            "agent.src.features",
+            "agent.src.services",
+            "agent/src/features",
+            "agent/src/services",
+        ),
     )
 
     assert not violations, (
-        "apps는 API/contract consumer다. agent service implementation 경로를 "
+        "apps는 API/contract consumer다. agent feature/service implementation 경로를 "
         "직접 참조하지 않고 generated contract/API client를 통해 통신한다.\n"
         f"{_format_violations(violations)}"
     )

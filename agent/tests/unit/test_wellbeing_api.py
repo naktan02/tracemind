@@ -29,19 +29,19 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
 )
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.family_access_repository import (
-    FamilyAccessRepository,
-)
-from agent.src.services.wellbeing.family_access.service import FamilyAccessService
-from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.signal.timeseries_service import (
+from agent.src.features.wellbeing.family_access.service import FamilyAccessService
+from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.signal.timeseries_service import (
     WellbeingTimeseriesService,
 )
-from agent.src.services.wellbeing.space_web.projection_service import (
+from agent.src.features.wellbeing.space_web.projection_service import (
     WellbeingSpaceWebProjectionService,
+)
+from agent.src.features.wellbeing.storage.family_access_repository import (
+    FamilyAccessRepository,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
 
 

@@ -17,14 +17,14 @@ from agent.src.contracts.wellbeing_signal_contracts import (
 from agent.src.contracts.wellbeing_space_web_contracts import (
     WellbeingSpaceWebPayload,
 )
-from agent.src.services.wellbeing.family_access.parent_auth_adapter import (
+from agent.src.features.wellbeing.family_access.parent_auth_adapter import (
     ParentAuthService,
 )
-from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.signal.timeseries_service import (
+from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.signal.timeseries_service import (
     WellbeingTimeseriesService,
 )
-from agent.src.services.wellbeing.space_web.projection_service import (
+from agent.src.features.wellbeing.space_web.projection_service import (
     WellbeingSpaceWebProjectionService,
 )
 

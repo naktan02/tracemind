@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent.src.contracts.child_support_contracts import ChildSupportSafetyLevel
-from agent.src.infrastructure.repositories.child_support_repository import (
-    ChildSupportMessageRecord,
-)
-from agent.src.services.wellbeing.child_support.safety_intent import (
+from agent.src.features.wellbeing.child_support.safety_intent import (
     ChildSupportSafetyIntent,
+)
+from agent.src.features.wellbeing.storage.child_support_repository import (
+    ChildSupportMessageRecord,
 )
 
 _OTHER_HARM_INTENTS = {

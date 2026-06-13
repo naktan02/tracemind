@@ -73,7 +73,7 @@ Raw Event
 | scoring backend adapter | `agent/src/services/inference/scoring_backends/*` |
 | local baseline/time-series state | `agent/src/services/inference/interpretation/state.py`, `agent/src/services/inference/interpretation/time_series.py` |
 | final decision | `agent/src/services/inference/interpretation/decision.py` |
-| wellbeing projection | `agent/src/services/wellbeing/signal/*`, `agent/src/services/wellbeing/space_web/*` |
+| wellbeing projection | `agent/src/features/wellbeing/signal/*`, `agent/src/features/wellbeing/space_web/*` |
 
 ### 3.2 Child Support Rail
 
@@ -94,14 +94,14 @@ Child Message
 | 책임 | 파일 |
 |---|---|
 | API route | `agent/src/api/child_support.py` |
-| service 조합 | `agent/src/services/wellbeing/child_support/service.py` |
-| local conversation store | `agent/src/infrastructure/repositories/child_support_repository.py` |
-| local context provider | `agent/src/services/wellbeing/child_support/context_provider.py` |
-| conversation state extractor | `agent/src/services/wellbeing/child_support/conversation_state.py` |
-| agent-local safety intent | `agent/src/services/wellbeing/child_support/safety_intent.py` |
-| safety/scope policy | `agent/src/services/wellbeing/child_support/safety_policy.py` |
-| response plan/validation policy | `agent/src/services/wellbeing/child_support/response_policy.py` |
-| local LLM adapter | `agent/src/services/wellbeing/child_support/llm_provider.py` |
+| service 조합 | `agent/src/features/wellbeing/child_support/service.py` |
+| local conversation store | `agent/src/features/wellbeing/storage/child_support_repository.py` |
+| local context provider | `agent/src/features/wellbeing/child_support/context_provider.py` |
+| conversation state extractor | `agent/src/features/wellbeing/child_support/conversation_state.py` |
+| agent-local safety intent | `agent/src/features/wellbeing/child_support/safety_intent.py` |
+| safety/scope policy | `agent/src/features/wellbeing/child_support/safety_policy.py` |
+| response plan/validation policy | `agent/src/features/wellbeing/child_support/response_policy.py` |
+| local LLM adapter | `agent/src/features/wellbeing/child_support/llm_provider.py` |
 | UI panel | `apps/family_extension/src/components/ChildSupportCoachPanel.tsx` |
 
 중요:

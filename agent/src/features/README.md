@@ -9,6 +9,8 @@
 
 - `captured_text/`: raw text ingest, generated view, debug analysis job, training
   source projection, captured text 전용 SQLite storage.
+- `wellbeing/`: family extension wellbeing output, family access, child support,
+  wellbeing 전용 SQLite storage.
 
 ## 소유 원칙
 

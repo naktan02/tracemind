@@ -33,23 +33,29 @@ if TYPE_CHECKING:
     from agent.src.features.captured_text.view_generation.service import (
         CapturedTextViewGenerationService,
     )
+    from agent.src.features.wellbeing.child_support.llm_provider import (
+        ChildSupportLlmProvider,
+    )
+    from agent.src.features.wellbeing.child_support.service import (
+        ChildSupportCoachService,
+    )
+    from agent.src.features.wellbeing.storage.child_support_repository import (
+        ChildSupportConversationRepository,
+    )
+    from agent.src.features.wellbeing.storage.family_access_repository import (
+        FamilyAccessRepository,
+    )
+    from agent.src.features.wellbeing.storage.wellbeing_settings_repository import (
+        WellbeingSettingsRepository,
+    )
+    from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
+        WellbeingSnapshotRepository,
+    )
     from agent.src.infrastructure.repositories.analysis_event_repository import (
         AnalysisEventRepository,
     )
-    from agent.src.infrastructure.repositories.child_support_repository import (
-        ChildSupportConversationRepository,
-    )
-    from agent.src.infrastructure.repositories.family_access_repository import (
-        FamilyAccessRepository,
-    )
     from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
         TrainingUsageLedgerRepository,
-    )
-    from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
-        WellbeingSettingsRepository,
-    )
-    from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
-        WellbeingSnapshotRepository,
     )
     from agent.src.services.assets.shared_adapters.runtime_service import (
         SharedAdapterRuntimeService,
@@ -58,12 +64,6 @@ if TYPE_CHECKING:
         SharedAdapterSyncService,
     )
     from agent.src.services.inference.pipeline_service import InferencePipelineService
-    from agent.src.services.wellbeing.child_support.llm_provider import (
-        ChildSupportLlmProvider,
-    )
-    from agent.src.services.wellbeing.child_support.service import (
-        ChildSupportCoachService,
-    )
 
 load_agent_env_files()
 

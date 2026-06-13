@@ -17,6 +17,7 @@ classifier/prototype scoring은 scorer backend와 local asset provider로 분리
 - 로컬 학습 rail: `agent/src/services/training_runtime/`
 - 서버 참여 orchestration: `agent/src/services/federation/rounds/`
 - language helper: `agent/src/services/language/`
+- 가족/아이 wellbeing feature: `agent/src/features/wellbeing/`
 
 모델 교체 시작점:
 

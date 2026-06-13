@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from agent.src.contracts.family_access_contracts import FamilyAccessRole
-from agent.src.infrastructure.repositories.wellbeing_storage import (
+from agent.src.features.wellbeing.storage.wellbeing_storage import (
     DEFAULT_WELLBEING_DB_PATH,
     connect_wellbeing_db,
 )

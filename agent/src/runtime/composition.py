@@ -15,23 +15,47 @@ from agent.src.features.captured_text.view_generation.provider_factory import (
 from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.features.wellbeing.child_support.context_provider import (
+    ChildSupportContextProvider,
+)
+from agent.src.features.wellbeing.child_support.llm_provider import (
+    ChildSupportLlmProvider,
+    build_child_support_llm_provider_from_env,
+)
+from agent.src.features.wellbeing.child_support.service import (
+    ChildSupportCoachService,
+)
+from agent.src.features.wellbeing.family_access.parent_auth_adapter import (
+    ParentAuthService,
+)
+from agent.src.features.wellbeing.family_access.service import FamilyAccessService
+from agent.src.features.wellbeing.signal.projection_service import (
+    WellbeingSignalProjectionService,
+)
+from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.signal.timeseries_service import (
+    WellbeingTimeseriesService,
+)
+from agent.src.features.wellbeing.space_web.projection_service import (
+    WellbeingSpaceWebProjectionService,
+)
+from agent.src.features.wellbeing.storage.child_support_repository import (
+    ChildSupportConversationRepository,
+)
+from agent.src.features.wellbeing.storage.family_access_repository import (
+    FamilyAccessRepository,
+)
+from agent.src.features.wellbeing.storage.wellbeing_settings_repository import (
+    WellbeingSettingsRepository,
+)
+from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
+    WellbeingSnapshotRepository,
+)
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.infrastructure.repositories.child_support_repository import (
-    ChildSupportConversationRepository,
-)
-from agent.src.infrastructure.repositories.family_access_repository import (
-    FamilyAccessRepository,
-)
 from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
     TrainingUsageLedgerRepository,
-)
-from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
-    WellbeingSettingsRepository,
-)
-from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
-    WellbeingSnapshotRepository,
 )
 from agent.src.runtime.state import AgentRuntimeState, RoundClientFactory
 from agent.src.services.assets.shared_adapters.runtime_service import (
@@ -43,30 +67,6 @@ from agent.src.services.assets.shared_adapters.sync_service import (
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.inference.pipeline_factory import build_default_pipeline_service
 from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.wellbeing.child_support.context_provider import (
-    ChildSupportContextProvider,
-)
-from agent.src.services.wellbeing.child_support.llm_provider import (
-    ChildSupportLlmProvider,
-    build_child_support_llm_provider_from_env,
-)
-from agent.src.services.wellbeing.child_support.service import (
-    ChildSupportCoachService,
-)
-from agent.src.services.wellbeing.family_access.parent_auth_adapter import (
-    ParentAuthService,
-)
-from agent.src.services.wellbeing.family_access.service import FamilyAccessService
-from agent.src.services.wellbeing.signal.projection_service import (
-    WellbeingSignalProjectionService,
-)
-from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.signal.timeseries_service import (
-    WellbeingTimeseriesService,
-)
-from agent.src.services.wellbeing.space_web.projection_service import (
-    WellbeingSpaceWebProjectionService,
-)
 
 
 def default_round_client_factory(server_base_url: str) -> RoundClient:

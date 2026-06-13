@@ -11,7 +11,7 @@ from agent.src.contracts.child_support_contracts import (
     ChildSupportConversationResponsePayload,
     ChildSupportProactivePromptPayload,
 )
-from agent.src.services.wellbeing.child_support.service import (
+from agent.src.features.wellbeing.child_support.service import (
     ChildSupportCoachService,
 )
 

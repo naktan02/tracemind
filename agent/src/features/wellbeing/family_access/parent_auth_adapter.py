@@ -9,7 +9,7 @@ from agent.src.contracts.family_access_contracts import FamilyAccessRole
 from agent.src.contracts.wellbeing_signal_contracts import (
     ParentUnlockResponsePayload,
 )
-from agent.src.services.wellbeing.family_access.service import FamilyAccessService
+from agent.src.features.wellbeing.family_access.service import FamilyAccessService
 
 
 @dataclass(slots=True)

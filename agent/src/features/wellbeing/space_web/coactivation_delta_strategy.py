@@ -15,7 +15,7 @@ from agent.src.contracts.wellbeing_space_web_contracts import (
     WellbeingSpaceWebNodePayload,
     WellbeingSpaceWebRelationType,
 )
-from agent.src.services.wellbeing.space_web.projection_strategy import (
+from agent.src.features.wellbeing.space_web.projection_strategy import (
     SpaceWebProjectionContext,
     SpaceWebProjectionResult,
 )

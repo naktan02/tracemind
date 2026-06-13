@@ -16,30 +16,30 @@ from agent.src.contracts.child_support_contracts import (
     ChildSupportSuggestionPayload,
 )
 from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
-from agent.src.infrastructure.repositories.child_support_repository import (
-    ChildSupportConversationRepository,
-    ChildSupportMessageRecord,
-)
-from agent.src.services.wellbeing.child_support.context_provider import (
+from agent.src.features.wellbeing.child_support.context_provider import (
     ChildSupportContextProvider,
     ChildSupportConversationContext,
 )
-from agent.src.services.wellbeing.child_support.llm_provider import (
+from agent.src.features.wellbeing.child_support.llm_provider import (
     ChildSupportLlmError,
     ChildSupportLlmProvider,
 )
-from agent.src.services.wellbeing.child_support.response_policy import (
+from agent.src.features.wellbeing.child_support.response_policy import (
     ChildSupportResponsePlan,
     ChildSupportResponsePolicy,
 )
-from agent.src.services.wellbeing.child_support.safety_intent import (
+from agent.src.features.wellbeing.child_support.safety_intent import (
     ChildSupportSafetyIntent,
 )
-from agent.src.services.wellbeing.child_support.safety_policy import (
+from agent.src.features.wellbeing.child_support.safety_policy import (
     ChildSupportSafetyAssessment,
     ChildSupportSafetyPolicy,
 )
-from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.storage.child_support_repository import (
+    ChildSupportConversationRepository,
+    ChildSupportMessageRecord,
+)
 
 DISCLOSURE_NOTICE = (
     "TraceMind는 진단이나 상담을 대신하지 않습니다. 위험하거나 혼자 감당하기 "

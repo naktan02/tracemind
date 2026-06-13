@@ -13,7 +13,7 @@ from agent.src.contracts.family_access_contracts import (
     FamilyUnlockRequestPayload,
     FamilyUnlockResponsePayload,
 )
-from agent.src.services.wellbeing.family_access.service import (
+from agent.src.features.wellbeing.family_access.service import (
     FamilyAccessService,
     FamilyAccessSetupAlreadyCompletedError,
 )

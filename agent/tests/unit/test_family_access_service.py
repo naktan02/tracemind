@@ -7,16 +7,16 @@ from pathlib import Path
 import pytest
 
 from agent.src.contracts.family_access_contracts import FamilyAccessRole
-from agent.src.infrastructure.repositories.family_access_repository import (
-    FamilyAccessRepository,
-)
-from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
-    WellbeingSettingsRecord,
-    WellbeingSettingsRepository,
-)
-from agent.src.services.wellbeing.family_access.service import (
+from agent.src.features.wellbeing.family_access.service import (
     FamilyAccessService,
     FamilyAccessSetupAlreadyCompletedError,
+)
+from agent.src.features.wellbeing.storage.family_access_repository import (
+    FamilyAccessRepository,
+)
+from agent.src.features.wellbeing.storage.wellbeing_settings_repository import (
+    WellbeingSettingsRecord,
+    WellbeingSettingsRepository,
 )
 
 
