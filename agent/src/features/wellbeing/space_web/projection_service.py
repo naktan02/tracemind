@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
 from agent.src.contracts.wellbeing_space_web_contracts import WellbeingSpaceWebPayload
+from agent.src.features.inference.interpretation.baseline import BaselineService
 from agent.src.features.wellbeing.space_web.coactivation_delta_strategy import (
     CoactivationDeltaSpaceWebStrategy,
 )
@@ -18,7 +19,6 @@ from agent.src.features.wellbeing.space_web.projection_strategy import (
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.inference.interpretation.baseline import BaselineService
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
 _RANGE_TO_DAYS: dict[WellbeingSignalRange, int] = {

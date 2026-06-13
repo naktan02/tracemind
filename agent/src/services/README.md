@@ -8,7 +8,7 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 
 - `shared` 계약을 읽어 local inference와 local training을 실행한다.
 - 서버와 통신하는 orchestration은 `federation/`에 두고,
-  실제 scoring/training adapter는 `inference/`, `training_runtime/`에 둔다.
+  실제 training adapter는 `training_runtime/`에 둔다.
 - asset cache/sync와 language helper는 각각 `assets/`, `language/`로 분리한다.
 - FastAPI shell과 service graph 조립은 `api/`와 `runtime/`에 두고, 이 디렉터리의
   Module은 실제 local behavior를 소유한다.
@@ -20,11 +20,6 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 
 ## 하위 패키지 역할
 
-- `inference/`
-  - 로컬 추론 rail
-  - scorer backend별 분석 계산과 agent-local 개인 기준 해석 담당
-  - score 계산은 `scoring_service.py`/`scoring_backends/`, 개인 기준 해석은
-    `interpretation/`가 소유한다
 - `training_runtime/`
   - 로컬 학습 runtime rail
   - current TrainingTask 실행, Query SSL/FSSL local objective adapter,
@@ -43,6 +38,8 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 
 - `agent/src/features/captured_text/`
   - raw text ingest, generated view, training source projection, 전용 storage
+- `agent/src/features/inference/`
+  - 로컬 추론 pipeline, scorer backend adapter, agent-local 개인 기준 해석
 - `agent/src/features/wellbeing/`
   - 가족용 확장 프로그램이 읽는 전체 상태/추이/잠금용 local output과 전용 storage
 
@@ -56,10 +53,10 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 
 ### 1. 로컬 추론 흐름을 보고 싶을 때
 
-1. `inference/pipeline_service.py`
-2. `inference/scoring_service.py`
-3. `inference/interpretation/decision.py`
-4. `inference/interpretation/time_series.py`
+1. `agent/src/features/inference/pipeline_service.py`
+2. `agent/src/features/inference/scoring_service.py`
+3. `agent/src/features/inference/interpretation/decision.py`
+4. `agent/src/features/inference/interpretation/time_series.py`
 5. `language/translation_service.py`
 
 ### 2. 로컬 학습 흐름을 보고 싶을 때
@@ -97,7 +94,7 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 
 ## 파일 역할 빠른 맵
 
-- `inference/scoring_backends/`
+- `agent/src/features/inference/scoring_backends/`
   - scorer backend registry와 agent runtime adapter 구현
   - backend 구현 옆 catalog entry와 decorator 등록을 둔다
 - `language/backtranslation_service.py`

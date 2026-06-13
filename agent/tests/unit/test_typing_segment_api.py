@@ -14,7 +14,7 @@ from agent.src.contracts.typing_segment_contracts import (
     TypingSegmentPayload,
     TypingSurfaceType,
 )
-from agent.src.services.inference.pipeline_service import InferencePipelineResult
+from agent.src.features.inference.pipeline_service import InferencePipelineResult
 from agent.src.services.typing_segments.ingest_service import (
     TypingSegmentIngestService,
 )

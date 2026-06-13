@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from agent.src.services.inference.interpretation.state import BaselineProfile
+from agent.src.features.inference.interpretation.state import BaselineProfile
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
 

@@ -5,6 +5,9 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 
+from agent.src.features.inference.embedding_service import EmbeddingService
+from agent.src.features.inference.pipeline_service import InferencePipelineService
+from agent.src.features.inference.scoring_service import ScoringService
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
 )
@@ -14,9 +17,6 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
 from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
-from agent.src.services.inference.embedding_service import EmbeddingService
-from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.language.translation_service import TranslationService
 from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec

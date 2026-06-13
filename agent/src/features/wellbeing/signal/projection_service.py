@@ -11,18 +11,18 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
 )
+from agent.src.features.inference.interpretation.baseline import BaselineService
+from agent.src.features.inference.interpretation.decision import DecisionService
+from agent.src.features.inference.interpretation.result import AssessmentResult
+from agent.src.features.inference.interpretation.state import (
+    BaselineProfile,
+    TimeSeriesState,
+)
 from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
-)
-from agent.src.services.inference.interpretation.baseline import BaselineService
-from agent.src.services.inference.interpretation.decision import DecisionService
-from agent.src.services.inference.interpretation.result import AssessmentResult
-from agent.src.services.inference.interpretation.state import (
-    BaselineProfile,
-    TimeSeriesState,
 )
 
 

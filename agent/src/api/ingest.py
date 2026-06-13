@@ -11,7 +11,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from agent.src.services.inference.pipeline_service import (
+from agent.src.features.inference.pipeline_service import (
     InferencePipelineService,
 )
 from shared.src.domain.entities.inference.events import QueryEvent

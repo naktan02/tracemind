@@ -2394,6 +2394,34 @@ def test_wellbeing_feature_owns_runtime_and_storage_paths() -> None:
     )
 
 
+def test_inference_feature_owns_pipeline_and_interpretation_paths() -> None:
+    legacy_paths = (AGENT_SRC / "services" / "inference",)
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (
+        AGENT_SRC,
+        REPO_ROOT / "agent" / "tests",
+        REPO_ROOT / "tests",
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
+    ):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=("agent.src.services.inference",),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "inference는 feature module로 이동됐다. pipeline/scoring/interpretation은 "
+        "agent.src.features.inference를 직접 import하고, model adapter mechanism은 "
+        "agent.src.infrastructure.model_adapters에 남긴다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
 def test_main_server_layer_does_not_import_scripts() -> None:
     violations = _find_forbidden_imports(
         root=MAIN_SERVER_SRC,

@@ -13,7 +13,7 @@ def build_federated_scoring_service(
 ) -> Any:
     """agent ScoringService를 simulation 경계 뒤에서 조립한다."""
 
-    from agent.src.services.inference.scoring_service import ScoringService
+    from agent.src.features.inference.scoring_service import ScoringService
 
     return ScoringService.from_scoring_config(
         scoring_config,

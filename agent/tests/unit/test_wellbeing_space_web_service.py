@@ -12,6 +12,7 @@ from agent.src.contracts.wellbeing_signal_contracts import (
 from agent.src.contracts.wellbeing_space_web_contracts import (
     WellbeingSpaceWebRelationType,
 )
+from agent.src.features.inference.interpretation.state import BaselineProfile
 from agent.src.features.wellbeing.space_web.coactivation_delta_strategy import (
     CoactivationDeltaSpaceWebStrategy,
 )
@@ -24,7 +25,6 @@ from agent.src.features.wellbeing.space_web.projection_strategy import (
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.inference.interpretation.state import BaselineProfile
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
 

@@ -5,7 +5,7 @@
 세부 payload 필드의 source of truth는 문서가 아니라 `shared/src/contracts/*.py`,
 `shared/src/domain/entities/*`, agent-local API/UI payload의 경우
 `agent/src/contracts/*.py`, agent-local inference state/result의 경우
-`agent/src/services/inference/interpretation/*`다.
+`agent/src/features/inference/interpretation/*`다.
 
 ## 1. 현재 목표
 
@@ -69,10 +69,10 @@ Raw Event
 | 책임 | 파일 |
 |---|---|
 | API 수집 | `agent/src/api/ingest.py` |
-| pipeline 조합 | `agent/src/services/inference/pipeline_service.py` |
-| scoring backend adapter | `agent/src/services/inference/scoring_backends/*` |
-| local baseline/time-series state | `agent/src/services/inference/interpretation/state.py`, `agent/src/services/inference/interpretation/time_series.py` |
-| final decision | `agent/src/services/inference/interpretation/decision.py` |
+| pipeline 조합 | `agent/src/features/inference/pipeline_service.py` |
+| scoring backend adapter | `agent/src/features/inference/scoring_backends/*` |
+| local baseline/time-series state | `agent/src/features/inference/interpretation/state.py`, `agent/src/features/inference/interpretation/time_series.py` |
+| final decision | `agent/src/features/inference/interpretation/decision.py` |
 | wellbeing projection | `agent/src/features/wellbeing/signal/*`, `agent/src/features/wellbeing/space_web/*` |
 
 ### 3.2 Child Support Rail

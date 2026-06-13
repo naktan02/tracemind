@@ -15,6 +15,8 @@ from agent.src.features.captured_text.view_generation.provider_factory import (
 from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.features.inference.pipeline_factory import build_default_pipeline_service
+from agent.src.features.inference.pipeline_service import InferencePipelineService
 from agent.src.features.wellbeing.child_support.context_provider import (
     ChildSupportContextProvider,
 )
@@ -65,8 +67,6 @@ from agent.src.services.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.inference.pipeline_factory import build_default_pipeline_service
-from agent.src.services.inference.pipeline_service import InferencePipelineService
 
 
 def default_round_client_factory(server_base_url: str) -> RoundClient:

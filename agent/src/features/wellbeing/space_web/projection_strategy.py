@@ -11,7 +11,7 @@ from agent.src.contracts.wellbeing_space_web_contracts import (
     WellbeingSpaceWebEdgePayload,
     WellbeingSpaceWebNodePayload,
 )
-from agent.src.services.inference.interpretation.state import BaselineProfile
+from agent.src.features.inference.interpretation.state import BaselineProfile
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
 

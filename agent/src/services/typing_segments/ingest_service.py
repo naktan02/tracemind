@@ -9,7 +9,7 @@ from agent.src.contracts.typing_segment_contracts import (
     TypingSegmentIngestResponsePayload,
     TypingSegmentPayload,
 )
-from agent.src.services.inference.pipeline_service import (
+from agent.src.features.inference.pipeline_service import (
     InferencePipelineResult,
     InferencePipelineService,
 )

@@ -10,15 +10,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.services.inference.pipeline_factory import (
+from agent.src.features.inference.pipeline_factory import (
     AGENT_SCORING_BACKEND_ENV,
     build_default_pipeline_service,
 )
-from agent.src.services.inference.pipeline_service import (
+from agent.src.features.inference.pipeline_service import (
     InferencePipelineService,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
 from agent.src.services.language.preprocess_service import PreprocessService
 from shared.src.contracts.model_contracts import make_embedding_manifest
@@ -244,7 +244,7 @@ def test_default_pipeline_uses_configured_scoring_backend(
 
     monkeypatch.setenv(AGENT_SCORING_BACKEND_ENV, "classifier_head_logits")
     monkeypatch.setattr(
-        "agent.src.services.inference.pipeline_factory.EmbeddingAdapterFactory.create",
+        "agent.src.features.inference.pipeline_factory.EmbeddingAdapterFactory.create",
         lambda _spec: _FakeEmbeddingAdapter(),
     )
 

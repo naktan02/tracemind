@@ -1,7 +1,7 @@
 # Inference Interpretation
 
 이 package는 scorer backend가 만든 category score를 agent-local 개인 기준으로 해석한다.
-raw score 계산은 `agent/src/services/inference/scoring_service.py`와
+raw score 계산은 `agent/src/features/inference/scoring_service.py`와
 `scoring_backends/`가 소유하고, 이 package는 baseline, time-series 누적, 최종 decision
 policy와 결과 value object를 소유한다.
 

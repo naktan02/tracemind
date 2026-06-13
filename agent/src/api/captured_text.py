@@ -34,7 +34,7 @@ from agent.src.features.captured_text.storage.repository import (
 from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
-from agent.src.services.inference.pipeline_service import InferencePipelineService
+from agent.src.features.inference.pipeline_service import InferencePipelineService
 
 router = APIRouter(prefix="/api/v1/captured-text", tags=["captured-text"])
 

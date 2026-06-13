@@ -18,7 +18,7 @@ from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from .base import ScoringBackend, ScoringBackendFactory
 
 _SCORING_BACKEND_REGISTRY = RuntimeRegistry[ScoringBackendFactory](
-    package_name="agent.src.services.inference.scoring_backends",
+    package_name="agent.src.features.inference.scoring_backends",
     item_kind="scoring backend",
 )
 

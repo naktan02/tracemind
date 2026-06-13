@@ -36,10 +36,10 @@ from agent.src.features.captured_text.storage.repository import (
 from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.features.inference.pipeline_service import InferencePipelineService
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.language.preprocess_service import PreprocessService
 
 

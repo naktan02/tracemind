@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from agent.src.services.inference.scoring_backends.base import (
+from agent.src.features.inference.scoring_backends.base import (
     ScoringAssets,
     ScoringBackend,
 )
-from agent.src.services.inference.scoring_backends.helpers import (
+from agent.src.features.inference.scoring_backends.helpers import (
     resolve_scoring_backend_name,
 )
-from agent.src.services.inference.scoring_backends.registry import (
+from agent.src.features.inference.scoring_backends.registry import (
     build_scoring_backend,
 )
 from shared.src.contracts.scoring_contracts import ScoringConfigPayload

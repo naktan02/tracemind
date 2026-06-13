@@ -7,11 +7,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from agent.src.services.inference.scoring_backends.registry import (
+from agent.src.features.inference.scoring_backends.registry import (
     list_scoring_backend_catalog_entries,
     register_scoring_backend,
 )
-from agent.src.services.inference.scoring_service import ScoringService
+from agent.src.features.inference.scoring_service import ScoringService
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     ClassifierHeadState,
 )

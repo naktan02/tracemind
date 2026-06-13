@@ -28,7 +28,7 @@
 | Hydra config group 경계 | `conf/README.md` |
 | 활성 연구/시스템 계획 | `docs/project_execution_plan.md` |
 | API endpoint 표면 | `docs/api/api-surface.md`, `agent/src/api/*`, `main_server/src/api/*` |
-| payload 필드와 의미 | `shared/src/contracts/*.py`, `shared/src/contracts/README.md`, `agent/src/contracts/*.py`, `agent/src/services/inference/{state,result}.py` |
+| payload 필드와 의미 | `shared/src/contracts/*.py`, `shared/src/contracts/README.md`, `agent/src/contracts/*.py`, `agent/src/features/inference/interpretation/{state,result}.py` |
 | local run/smoke 절차 | `docs/operations/local-runbook.md` |
 | 테스트 전략 | `docs/quality/test-strategy.md` |
 | 알고리즘/전략 추가 절차 | `docs/architecture/target-method-runtime-structure.md`, `methods/README.md`, 해당 `methods/**/NEW_METHOD.md`, `conf/README.md` |

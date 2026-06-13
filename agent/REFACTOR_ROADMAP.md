@@ -193,7 +193,7 @@ Gate:
 목표 구조:
 
 ```text
-agent/src/services/inference/
+agent/src/features/inference/
   pipeline.py
   scoring.py
   embedding.py
@@ -367,6 +367,9 @@ Gate:
 - 부모 surface에 raw text나 category detail이 새지 않는다.
 
 ### Feature Phase 4. inference 이동
+
+Status: 완료. 현재 source of truth는 `agent/src/features/inference/`이며, model
+adapter mechanism은 `agent/src/infrastructure/model_adapters/`에 남긴다.
 
 목표:
 
