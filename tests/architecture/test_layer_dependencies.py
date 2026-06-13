@@ -24,6 +24,7 @@ CONF_FL_PEER_CONTEXT_POLICY_SRC = (
 AGENT_SRC = REPO_ROOT / "agent" / "src"
 AGENT_CONF = REPO_ROOT / "agent" / "conf"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
+APPS_SRC = REPO_ROOT / "apps"
 SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
 FL_SIMULATION_IO_SRC = (
@@ -82,6 +83,19 @@ def _iter_python_files(root: Path) -> list[Path]:
     )
 
 
+def _iter_app_source_files(root: Path) -> list[Path]:
+    suffixes = {".js", ".jsx", ".ts", ".tsx"}
+    ignored_parts = {"dist", "node_modules", ".tmp"}
+    return sorted(
+        path
+        for path in root.rglob("*")
+        if path.is_file()
+        and path.suffix in suffixes
+        and "src" in path.parts
+        and not any(part in ignored_parts for part in path.parts)
+    )
+
+
 def _collect_absolute_imports(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     imports: set[str] = set()
@@ -111,6 +125,20 @@ def _find_forbidden_imports(
         for imported_module in sorted(imports):
             if imported_module.startswith(forbidden_prefixes):
                 violations.append((_relative_repo_path(path), imported_module))
+    return violations
+
+
+def _find_forbidden_text_snippets(
+    *,
+    root: Path,
+    snippets: tuple[str, ...],
+) -> list[tuple[Path, str]]:
+    violations: list[tuple[Path, str]] = []
+    for path in _iter_app_source_files(root):
+        source = path.read_text(encoding="utf-8")
+        for snippet in snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
     return violations
 
 
@@ -2400,6 +2428,79 @@ def test_agent_query_ssl_service_delegates_live_fssl_context_parsing() -> None:
         "agent query SSL service는 학습 실행만 조립한다. live FSSL context payload "
         "해석은 methods/federated_ssl/live_task_context.py가 소유한다.\n"
         f"violations={violations}"
+    )
+
+
+def test_agent_api_does_not_import_methods_directly() -> None:
+    violations = _find_forbidden_imports(
+        root=AGENT_SRC / "api",
+        forbidden_prefixes=("methods.",),
+    )
+
+    assert not violations, (
+        "agent API layer는 HTTP request/response 변환만 소유한다. methods-owned "
+        "algorithm/runtime surface는 services/training_runtime 또는 inference "
+        "adapter 경계에서만 연결한다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_apps_do_not_import_agent_service_implementations() -> None:
+    violations = _find_forbidden_text_snippets(
+        root=APPS_SRC,
+        snippets=("agent.src.services", "agent/src/services"),
+    )
+
+    assert not violations, (
+        "apps는 API/contract consumer다. agent service implementation 경로를 "
+        "직접 참조하지 않고 generated contract/API client를 통해 통신한다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_shared_layer_does_not_import_agent_local_contracts() -> None:
+    violations = _find_forbidden_imports(
+        root=SHARED_SRC,
+        forbidden_prefixes=("agent.src",),
+    )
+
+    assert not violations, (
+        "shared는 공통 contract/domain source of truth다. agent-local contract나 "
+        "runtime에 의존하면 shared payload 의미가 local product 표면에 묶인다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_methods_do_not_import_agent_local_repositories() -> None:
+    violations = _find_forbidden_imports(
+        root=METHODS_SRC,
+        forbidden_prefixes=("agent.src.infrastructure.repositories",),
+    )
+
+    assert not violations, (
+        "methods는 교체 가능한 algorithm core를 소유한다. raw text/private state "
+        "저장소 접근은 agent runtime adapter 경계에 남긴다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_method_owned_training_core_imports_stay_inside_training_runtime() -> None:
+    violations = _find_forbidden_imports(
+        root=AGENT_SRC,
+        forbidden_prefixes=(
+            "methods.adaptation.peft_text_encoder.federated_ssl",
+            "methods.adaptation.peft_text_encoder.training",
+            "methods.federated_ssl",
+            "methods.ssl.runtime",
+        ),
+        ignored_roots=(AGENT_SRC / "services" / "training_runtime",),
+    )
+
+    assert not violations, (
+        "agent에서 method-owned local training core를 직접 연결하는 곳은 "
+        "services/training_runtime이어야 한다. 다른 feature/runtime 모듈이 "
+        "method 의미를 흡수하면 새 method 추가 시 import drift가 생긴다.\n"
+        f"{_format_violations(violations)}"
     )
 
 
