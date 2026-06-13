@@ -89,7 +89,7 @@ def test_child_support_api_returns_llm_response() -> None:
         service=ChildSupportCoachService(llm_provider=StubChildSupportLlmProvider()),
     )
 
-    assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert response.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
     assert response.conversation_id
     assert response.reply_text
     assert response.suggested_prompts == ()
@@ -129,7 +129,7 @@ def test_child_support_passes_contextual_violence_question_to_llm() -> None:
     assert "가능한 이유" in provider.last_prompt
 
 
-def test_child_support_service_uses_high_summary_as_check_in_context() -> None:
+def test_child_support_service_passes_high_summary_to_llm_context() -> None:
     service = ChildSupportCoachService(
         llm_provider=StubChildSupportLlmProvider(),
         summary_service=WellbeingSummaryService(
@@ -151,19 +151,19 @@ def test_child_support_service_uses_high_summary_as_check_in_context() -> None:
         ChildSupportConversationRequestPayload(message="그냥 얘기하고 싶어")
     )
 
-    assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert response.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
 
 
-def test_child_support_service_flags_explicit_safety_handoff_signal() -> None:
-    response = ChildSupportCoachService(
-        llm_provider=StubChildSupportLlmProvider()
-    ).create_response(
+def test_child_support_service_passes_bullying_signal_to_llm() -> None:
+    provider = StubChildSupportLlmProvider()
+    response = ChildSupportCoachService(llm_provider=provider).create_response(
         ChildSupportConversationRequestPayload(message="친구가 계속 괴롭혀서 무서워")
     )
 
-    assert response.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF
-    assert response.parent_handoff_suggested is True
+    assert response.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
+    assert response.parent_handoff_suggested is False
     assert response.parent_handoff_label is None
+    assert "친구가 계속 괴롭혀서 무서워" in provider.last_prompt
 
 
 def test_child_support_service_keeps_violence_flow_open() -> None:
@@ -173,7 +173,7 @@ def test_child_support_service_keeps_violence_flow_open() -> None:
         ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
     )
 
-    assert response.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF
+    assert response.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
     assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
 
 
@@ -223,7 +223,7 @@ def test_child_support_service_uses_violence_context_for_safe_followup(
         )
     )
 
-    assert second.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert second.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
     assert second.parent_handoff_suggested is False
     assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
     assert second.suggested_prompts == ()
@@ -250,7 +250,7 @@ def test_child_support_service_passes_recent_violence_context_to_llm(
         )
     )
 
-    assert second.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert second.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
     assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
     assert second.suggested_prompts == ()
 
@@ -310,7 +310,7 @@ def test_child_support_service_keeps_recent_urgent_history_in_llm_context(
     )
 
     assert second.safety_level == ChildSupportSafetyLevel.URGENT
-    assert third.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert third.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
     assert third.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
     assert third.suggested_prompts == ()
 
@@ -358,10 +358,10 @@ def test_child_support_service_uses_local_llm_provider() -> None:
         ChildSupportConversationRequestPayload(message="요즘 계속 힘들어")
     )
 
-    assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert response.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
     assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
     assert "wellbeing summary" in provider.last_prompt
-    assert "safety_reason_hint: elevated_signal" in provider.last_prompt
+    assert "safety_reason_hint: general_support" in provider.last_prompt
     assert "아이의 새 메시지: 요즘 계속 힘들어" in provider.last_prompt
 
 
@@ -628,12 +628,12 @@ def test_child_support_urgent_llm_prompt_reflects_high_risk_local_evidence(
     assert "최근 원문 일부: 죽고 싶어. 자살 생각이 계속 나." in provider.last_prompt
 
 
-def test_child_support_service_keeps_general_distress_in_check_in() -> None:
+def test_child_support_service_leaves_general_distress_to_llm() -> None:
     response = ChildSupportCoachService(
         llm_provider=StubChildSupportLlmProvider()
     ).create_response(ChildSupportConversationRequestPayload(message="나 너무 힘들어"))
 
-    assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert response.safety_level == ChildSupportSafetyLevel.SUPPORTIVE
     assert response.parent_handoff_suggested is False
 
 

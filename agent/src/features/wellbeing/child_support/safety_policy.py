@@ -8,29 +8,23 @@ from agent.src.contracts.child_support_contracts import (
     ChildSupportSafetyLevel,
     ChildSupportScopeStatus,
 )
-from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 from agent.src.features.wellbeing.child_support.context_provider import (
     ChildSupportConversationContext,
 )
 
 OFF_TOPIC = "off_topic"
 URGENT_RISK = "urgent_risk"
-SAFETY_HANDOFF = "safety_handoff"
-ELEVATED_SIGNAL = "elevated_signal"
 GENERAL_SUPPORT = "general_support"
 
-_URGENT_RISK_KEYWORDS = (
-    "죽고",
+_URGENT_RISK_PHRASES = (
+    "죽고 싶",
+    "죽고싶",
     "자살",
     "자해",
     "죽여",
     "죽일",
     "죽이",
     "살해",
-    "사라지고",
-    "끝내고",
-    "못 살",
-    "죽어버",
     "kill myself",
     "suicide",
     "self harm",
@@ -39,7 +33,7 @@ _URGENT_RISK_KEYWORDS = (
     "kill them",
     "murder",
 )
-_IMMEDIATE_DANGER_KEYWORDS = (
+_IMMEDIATE_DANGER_PHRASES = (
     "지금 할",
     "오늘 할",
     "어떻게",
@@ -53,36 +47,6 @@ _IMMEDIATE_DANGER_KEYWORDS = (
     "how to",
     "plan",
     "tonight",
-)
-_SAFETY_HANDOFF_KEYWORDS = (
-    "협박",
-    "괴롭",
-    "따돌림",
-    "폭력",
-    "폭행",
-    "때렸",
-    "맞았",
-    "맞아서",
-    "맞고",
-    "bully",
-    "violence",
-)
-_CHECK_IN_KEYWORDS = (
-    "불안",
-    "떨려",
-    "화나",
-    "미워",
-    "울고",
-    "답답",
-    "힘들",
-    "힘든",
-    "속상",
-    "억울",
-    "무기력",
-    "외로",
-    "panic",
-    "anxious",
-    "angry",
 )
 _SUPPORT_DOMAIN_KEYWORDS = (
     "마음",
@@ -175,37 +139,12 @@ class ChildSupportSafetyPolicy:
                 intent=OFF_TOPIC,
             )
 
-        if _has_any(normalized, _URGENT_RISK_KEYWORDS):
+        if _has_any(normalized, _URGENT_RISK_PHRASES):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.URGENT,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
                 intent=URGENT_RISK,
-                immediate_danger=_has_any(normalized, _IMMEDIATE_DANGER_KEYWORDS),
-            )
-
-        if _has_any(normalized, _SAFETY_HANDOFF_KEYWORDS):
-            return ChildSupportSafetyAssessment(
-                safety_level=ChildSupportSafetyLevel.PARENT_HANDOFF,
-                scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=SAFETY_HANDOFF,
-            )
-
-        if _has_any(normalized, _CHECK_IN_KEYWORDS):
-            return ChildSupportSafetyAssessment(
-                safety_level=ChildSupportSafetyLevel.CHECK_IN,
-                scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=ELEVATED_SIGNAL,
-            )
-
-        summary = context.wellbeing_summary
-        if summary is not None and summary.signal_level in {
-            WellbeingSignalLevel.HIGH,
-            WellbeingSignalLevel.VERY_HIGH,
-        }:
-            return ChildSupportSafetyAssessment(
-                safety_level=ChildSupportSafetyLevel.CHECK_IN,
-                scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=ELEVATED_SIGNAL,
+                immediate_danger=_has_any(normalized, _IMMEDIATE_DANGER_PHRASES),
             )
 
         return ChildSupportSafetyAssessment(
