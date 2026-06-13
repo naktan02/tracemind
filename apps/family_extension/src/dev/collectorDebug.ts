@@ -15,6 +15,7 @@ import type {
 } from "../contracts/generated";
 import {
   COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
+  COLLECTOR_DEBUG_PIPELINE_ENABLED_STORAGE_KEY,
   COLLECTOR_STATUS_STORAGE_KEY,
   LAST_TYPING_SEGMENT_STORAGE_KEY,
   TYPING_SEGMENT_HISTORY_STORAGE_KEY,
@@ -210,6 +211,23 @@ if (extensionApi === null) {
       font-size: 13px;
     }
 
+    .state-pill {
+      border: 1px solid #bac4d2;
+      border-radius: 6px;
+      padding: 9px 11px;
+      background: #f8fafc;
+      color: #17202a;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .state-pill.enabled {
+      border-color: #0f766e;
+      background: #ecfdf5;
+      color: #0f5132;
+    }
+
     pre {
       min-height: 180px;
       margin: 0;
@@ -271,6 +289,8 @@ if (extensionApi === null) {
             <input id="job-batch-size" class="numeric" type="number" min="1" max="500" value="100" />
           </label>
           <button id="toggle-job" type="button">job 켜기</button>
+          <button id="toggle-debug-pipeline" class="secondary" type="button">입력마다 분석 켜기</button>
+          <span id="debug-pipeline-state" class="state-pill">debug_pipeline_enabled=false</span>
           <button id="run-view-generation" class="secondary" type="button">번역/view 생성</button>
           <button id="run-analysis" class="secondary" type="button">분석 실행</button>
         </div>
@@ -301,6 +321,14 @@ const toggleButton = getElement("toggle-debug", HTMLButtonElement);
 const refreshButton = getElement("refresh-debug", HTMLButtonElement);
 const refreshJobButton = getElement("refresh-job", HTMLButtonElement);
 const toggleJobButton = getElement("toggle-job", HTMLButtonElement);
+const toggleDebugPipelineButton = getElement(
+  "toggle-debug-pipeline",
+  HTMLButtonElement,
+);
+const debugPipelineStateText = getElement(
+  "debug-pipeline-state",
+  HTMLSpanElement,
+);
 const runViewGenerationButton = getElement(
   "run-view-generation",
   HTMLButtonElement,
@@ -343,6 +371,9 @@ refreshJobButton.addEventListener("click", () => {
 toggleJobButton.addEventListener("click", () => {
   void togglePipelineJob();
 });
+toggleDebugPipelineButton.addEventListener("click", () => {
+  void toggleDebugPipeline();
+});
 runViewGenerationButton.addEventListener("click", () => {
   void runViewGenerationNow();
 });
@@ -384,17 +415,31 @@ async function toggleDebug(): Promise<void> {
 async function refreshDebugView(): Promise<void> {
   const items = await storageGet([
     COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
+    COLLECTOR_DEBUG_PIPELINE_ENABLED_STORAGE_KEY,
     LAST_TYPING_SEGMENT_STORAGE_KEY,
     TYPING_SEGMENT_HISTORY_STORAGE_KEY,
     COLLECTOR_STATUS_STORAGE_KEY,
   ]);
   const enabled = items[COLLECTOR_DEBUG_ENABLED_STORAGE_KEY] === true;
+  const pipelineEnabled =
+    items[COLLECTOR_DEBUG_PIPELINE_ENABLED_STORAGE_KEY] === true;
   toggleButton.textContent = enabled ? "debug 끄기" : "debug 켜기";
   toggleButton.className = enabled ? "secondary" : "";
+  toggleDebugPipelineButton.textContent = pipelineEnabled
+    ? "입력마다 분석 끄기 (true)"
+    : "입력마다 분석 켜기 (false)";
+  toggleDebugPipelineButton.className = pipelineEnabled ? "" : "secondary";
+  debugPipelineStateText.textContent = `debug_pipeline_enabled=${String(
+    pipelineEnabled,
+  )}`;
+  debugPipelineStateText.className = pipelineEnabled
+    ? "state-pill enabled"
+    : "state-pill";
 
   statusPre.textContent = JSON.stringify(
     {
       debug_enabled: enabled,
+      debug_pipeline_enabled: pipelineEnabled,
       ...(isRecord(items[COLLECTOR_STATUS_STORAGE_KEY])
         ? (items[COLLECTOR_STATUS_STORAGE_KEY] as Record<string, unknown>)
         : {}),
@@ -421,6 +466,13 @@ async function refreshDebugView(): Promise<void> {
         2,
       )
     : "아직 저장된 history가 없습니다.";
+}
+
+async function toggleDebugPipeline(): Promise<void> {
+  const items = await storageGet([COLLECTOR_DEBUG_PIPELINE_ENABLED_STORAGE_KEY]);
+  const enabled = items[COLLECTOR_DEBUG_PIPELINE_ENABLED_STORAGE_KEY] === true;
+  await storageSet({ [COLLECTOR_DEBUG_PIPELINE_ENABLED_STORAGE_KEY]: !enabled });
+  await refreshDebugView();
 }
 
 async function refreshJobStatus(): Promise<void> {

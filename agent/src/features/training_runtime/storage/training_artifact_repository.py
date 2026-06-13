@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from agent.src.config.paths import DEFAULT_AGENT_STATE_DIR
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
 )
@@ -13,14 +14,12 @@ from shared.src.contracts.adapter_contract_families.io import (
     load_shared_adapter_update_payload,
 )
 
-AGENT_ROOT = Path(__file__).resolve().parents[3]
-
 
 @dataclass(slots=True)
 class TrainingArtifactRepository:
     """로컬 shared adapter update payload를 버전형 파일로 저장한다."""
 
-    state_root: Path = field(default_factory=lambda: AGENT_ROOT / "state")
+    state_root: Path = field(default_factory=lambda: DEFAULT_AGENT_STATE_DIR)
 
     @property
     def shared_update_dir(self) -> Path:

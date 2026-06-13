@@ -25,7 +25,7 @@
     "page": "parent.html",
     "open_in_tab": true
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "alarms"],
   "host_permissions": [
     "http://127.0.0.1:8001/*",
     "http://localhost:8001/*",

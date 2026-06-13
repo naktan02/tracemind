@@ -91,6 +91,10 @@ export function shouldKeepPendingComposition(
   );
 }
 
+export function endsWithPendingKoreanComposition(text: string): boolean {
+  return endsWithKoreanCompositionPlaceholder(text);
+}
+
 export function readObservedStableText(
   context: ImeEventContext,
   state: ImeStateSnapshot,

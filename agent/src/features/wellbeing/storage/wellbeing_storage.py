@@ -5,8 +5,9 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-AGENT_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_WELLBEING_DB_PATH = AGENT_ROOT / "data" / "wellbeing_signal.db"
+from agent.src.config.paths import DEFAULT_AGENT_DATA_DIR
+
+DEFAULT_WELLBEING_DB_PATH = DEFAULT_AGENT_DATA_DIR / "wellbeing_signal.db"
 
 
 def connect_wellbeing_db(db_path: Path) -> sqlite3.Connection:

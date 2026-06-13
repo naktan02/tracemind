@@ -13,9 +13,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent.src.config.paths import DEFAULT_AGENT_DATA_DIR
+
 CHILD_SUPPORT_MESSAGE_V1 = "child_support_message.v1"
 
-_DEFAULT_DB_PATH = Path(__file__).parents[3] / "data" / "child_support_conversations.db"
+_DEFAULT_DB_PATH = DEFAULT_AGENT_DATA_DIR / "child_support_conversations.db"
 
 _CREATE_CONVERSATIONS_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS child_support_conversations (

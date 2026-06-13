@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agent.src.config.paths import (
+    DEFAULT_AGENT_DATA_DIR,
+)
 from agent.src.contracts.family_access_contracts import FamilyAccessRole
 from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalConfidence,
@@ -18,6 +21,9 @@ from agent.src.features.wellbeing.signal.summary_service import WellbeingSummary
 from agent.src.features.wellbeing.signal.timeseries_service import (
     WellbeingTimeseriesService,
 )
+from agent.src.features.wellbeing.storage.child_support_repository import (
+    ChildSupportConversationRepository,
+)
 from agent.src.features.wellbeing.storage.family_access_repository import (
     FamilyAccessRepository,
     FamilyAccessState,
@@ -28,6 +34,9 @@ from agent.src.features.wellbeing.storage.wellbeing_settings_repository import (
 )
 from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
+)
+from agent.src.features.wellbeing.storage.wellbeing_storage import (
+    DEFAULT_WELLBEING_DB_PATH,
 )
 
 
@@ -69,6 +78,17 @@ def test_wellbeing_snapshot_repository_round_trips_latest_and_since(
     assert repository.list_summaries_since(
         cutoff=datetime(2026, 4, 23, tzinfo=timezone.utc)
     ) == (latest,)
+
+
+def test_wellbeing_default_storage_paths_use_agent_data_dir() -> None:
+    child_support_repository = ChildSupportConversationRepository()
+    wellbeing_repository = WellbeingSnapshotRepository()
+
+    assert DEFAULT_WELLBEING_DB_PATH == DEFAULT_AGENT_DATA_DIR / "wellbeing_signal.db"
+    assert child_support_repository.db_path == (
+        DEFAULT_AGENT_DATA_DIR / "child_support_conversations.db"
+    )
+    assert wellbeing_repository.db_path == DEFAULT_WELLBEING_DB_PATH
 
 
 def test_family_access_repository_round_trips_state(tmp_path: Path) -> None:

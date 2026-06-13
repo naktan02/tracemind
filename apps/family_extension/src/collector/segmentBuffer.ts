@@ -5,6 +5,7 @@ import type {
 } from "../contracts/generated";
 import { normalizeEditorSnapshotText } from "./canonicalText";
 import {
+  endsWithPendingKoreanComposition,
   isCompositionCommit,
   isLikelyImePhantomDeletion,
   readCompositionCommitText,
@@ -44,6 +45,7 @@ type SegmentState = {
   compositionDraftText: string | null;
   lastCompositionText: string | null;
   lastCompositionAtMs: number | null;
+  pendingCompositionFlushDeferralCount: number;
   deletedTextParts: string[];
   surfaceType: TypingSurfaceType;
   captureConfidence: TypingSegmentPayload["capture_confidence"];
@@ -72,6 +74,7 @@ export class SegmentBuffer {
         this.baselineTexts.get(context.elementId) ?? "",
       );
     updateStateMetadata(state, context);
+    state.pendingCompositionFlushDeferralCount = 0;
     if (context.isCompositionUpdate) {
       state.compositionDraftText = snapshotText;
       state.stats.composition_count += 1;
@@ -177,6 +180,11 @@ export class SegmentBuffer {
       this.reschedule(elementId, state);
       return;
     }
+    if (shouldDeferPendingCompositionFlush(state)) {
+      state.pendingCompositionFlushDeferralCount += 1;
+      this.reschedule(elementId, state);
+      return;
+    }
     this.states.delete(elementId);
     const finalText = readFinalText(state);
     const deletedText = state.deletedTextParts.join(" ").trim();
@@ -230,6 +238,7 @@ function createInitialState(
     compositionDraftText: null,
     lastCompositionText: null,
     lastCompositionAtMs: null,
+    pendingCompositionFlushDeferralCount: 0,
     deletedTextParts: [],
     surfaceType: context.snapshot.surfaceType,
     captureConfidence: context.snapshot.captureConfidence,
@@ -243,6 +252,14 @@ function createInitialState(
     },
     timerId: null,
   };
+}
+
+function shouldDeferPendingCompositionFlush(state: SegmentState): boolean {
+  return (
+    state.pendingCompositionFlushDeferralCount === 0 &&
+    state.surfaceType !== "input" &&
+    endsWithPendingKoreanComposition(state.lastText)
+  );
 }
 
 function updateStateMetadata(
