@@ -41,6 +41,11 @@ export function WellbeingSignalTrendChart({
     timeseries.points.length === 0
       ? null
       : timeseries.points[timeseries.points.length - 1];
+  const firstPoint = timeseries.points.length === 0 ? null : timeseries.points[0];
+  const scoreDelta =
+    firstPoint == null || latestPoint == null
+      ? null
+      : latestPoint.signal_score - firstPoint.signal_score;
 
   return (
     <section className="surface-card trend-card">
@@ -106,6 +111,20 @@ export function WellbeingSignalTrendChart({
           </span>
         )}
       </div>
+      {firstPoint != null && latestPoint != null && (
+        <div className="trend-range-summary">
+          <span>
+            {formatComputedAtLabel(firstPoint.ts)} -{" "}
+            {formatComputedAtLabel(latestPoint.ts)}
+          </span>
+          {scoreDelta != null && (
+            <span>
+              변화량 {scoreDelta >= 0 ? "+" : ""}
+              {Math.round(scoreDelta)}
+            </span>
+          )}
+        </div>
+      )}
     </section>
   );
 }

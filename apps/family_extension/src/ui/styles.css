@@ -487,33 +487,33 @@ button:disabled {
 }
 
 .space-web-node.level-low,
-.space-web-legend-index.level-low {
+.space-web-legend-dot.level-low {
   fill: var(--teal-700);
   background: var(--teal-700);
 }
 
 .space-web-node.level-moderate,
-.space-web-legend-index.level-moderate {
+.space-web-legend-dot.level-moderate {
   fill: var(--blue-700);
   background: var(--blue-700);
 }
 
 .space-web-node.level-high,
-.space-web-legend-index.level-high {
+.space-web-legend-dot.level-high {
   fill: var(--amber-600);
   background: var(--amber-600);
 }
 
 .space-web-node.level-very-high,
-.space-web-legend-index.level-very-high {
+.space-web-legend-dot.level-very-high {
   fill: var(--red-700);
   background: var(--red-700);
 }
 
-.space-web-node-index {
-  fill: #ffffff;
-  font-size: 0.35rem;
-  font-weight: 900;
+.space-web-node-label {
+  fill: var(--ink-800);
+  font-size: 0.21rem;
+  font-weight: 850;
   text-anchor: middle;
   dominant-baseline: middle;
   pointer-events: none;
@@ -528,7 +528,7 @@ button:disabled {
 .space-web-legend-row {
   min-height: 58px;
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 18px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   border-bottom: 1px solid var(--line);
@@ -538,15 +538,11 @@ button:disabled {
   border-bottom: 0;
 }
 
-.space-web-legend-index {
-  width: 32px;
-  height: 32px;
+.space-web-legend-dot {
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-weight: 900;
+  display: inline-block;
 }
 
 .space-web-legend-main {
@@ -567,17 +563,29 @@ button:disabled {
   font-size: 0.9rem;
 }
 
-.space-web-score {
-  min-width: 44px;
-  min-height: 34px;
+.space-web-edge-panel {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-950);
   background: var(--paper-soft);
-  font-weight: 900;
+  color: var(--ink-700);
+  font-size: 0.9rem;
+}
+
+.space-web-edge-panel strong {
+  color: var(--ink-950);
+  font-size: 0.92rem;
+}
+
+.trend-range-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ink-650);
+  font-size: 0.88rem;
 }
 
 .bullet-list,

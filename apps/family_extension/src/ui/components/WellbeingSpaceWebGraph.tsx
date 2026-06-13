@@ -17,7 +17,6 @@ type PositionedNode = {
   node: WellbeingSpaceWebNodePayload;
   x: number;
   y: number;
-  index: number;
 };
 
 function buildNodePositions(
@@ -27,7 +26,7 @@ function buildNodePositions(
     return [];
   }
   if (nodes.length === 1) {
-    return [{ node: nodes[0], x: 50, y: 50, index: 1 }];
+    return [{ node: nodes[0], x: 50, y: 50 }];
   }
 
   const radius = 33;
@@ -37,7 +36,6 @@ function buildNodePositions(
       node,
       x: 50 + radius * Math.cos(angle),
       y: 50 + radius * Math.sin(angle),
-      index: index + 1,
     };
   });
 }
@@ -58,12 +56,26 @@ function levelClass(level: WellbeingSignalLevel): string {
   return `level-${level.replace("_", "-")}`;
 }
 
+function edgeStrengthLabel(weight: number): string {
+  if (weight >= 70) {
+    return "강하게 함께 움직임";
+  }
+  if (weight >= 35) {
+    return "함께 움직임";
+  }
+  return "약하게 함께 움직임";
+}
+
 export function WellbeingSpaceWebGraph({
   spaceWeb,
 }: WellbeingSpaceWebGraphProps) {
   const positionedNodes = buildNodePositions(spaceWeb.nodes);
   const nodePositions = new Map(
     positionedNodes.map((positioned) => [positioned.node.id, positioned]),
+  );
+  const nodeLabels = new Map(spaceWeb.nodes.map((node) => [node.id, node.label]));
+  const visibleEdges = [...spaceWeb.edges].sort(
+    (left, right) => right.weight - left.weight,
   );
 
   return (
@@ -105,7 +117,7 @@ export function WellbeingSpaceWebGraph({
                   />
                 );
               })}
-              {positionedNodes.map(({ node, x, y, index }) => (
+              {positionedNodes.map(({ node, x, y }) => (
                 <g key={node.id}>
                   <circle
                     className={`space-web-node ${levelClass(node.level)}`}
@@ -113,8 +125,12 @@ export function WellbeingSpaceWebGraph({
                     cy={y}
                     r={nodeRadius(node.intensity)}
                   />
-                  <text className="space-web-node-index" x={x} y={y + 1.5}>
-                    {index}
+                  <text
+                    className="space-web-node-label"
+                    x={x}
+                    y={y + nodeRadius(node.intensity) + 5}
+                  >
+                    {node.label}
                   </text>
                 </g>
               ))}
@@ -122,11 +138,9 @@ export function WellbeingSpaceWebGraph({
           </div>
 
           <div className="space-web-legend">
-            {positionedNodes.map(({ node, index }) => (
+            {positionedNodes.map(({ node }) => (
               <div className="space-web-legend-row" key={node.id}>
-                <span className={`space-web-legend-index ${levelClass(node.level)}`}>
-                  {index}
-                </span>
+                <span className={`space-web-legend-dot ${levelClass(node.level)}`} />
                 <span className="space-web-legend-main">
                   <strong>{node.label}</strong>
                   <span>
@@ -134,11 +148,22 @@ export function WellbeingSpaceWebGraph({
                     {formatTrendLabel(node.trend)}
                   </span>
                 </span>
-                <span className="space-web-score">
-                  {Math.round(node.intensity)}
-                </span>
               </div>
             ))}
+            <div className="space-web-edge-panel">
+              <strong>같이 움직인 축</strong>
+              {visibleEdges.length === 0 ? (
+                <span>아직 뚜렷한 연결은 보이지 않습니다.</span>
+              ) : (
+                visibleEdges.slice(0, 4).map((edge) => (
+                  <span key={`${edge.source}-${edge.target}`}>
+                    {nodeLabels.get(edge.source) ?? edge.source} -{" "}
+                    {nodeLabels.get(edge.target) ?? edge.target}:{" "}
+                    {edgeStrengthLabel(edge.weight)}
+                  </span>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
