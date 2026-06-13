@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from agent.src.api.dependencies import (
+    AnalysisEventRepositoryDep,
+    CapturedTextViewGenerationServiceDep,
     RuntimeProfileRepositoryDep,
     RuntimeProfileSyncServiceDep,
+    SharedAdapterRuntimeServiceDep,
+)
+from agent.src.features.inference.pipeline_factory import (
+    build_pipeline_service_from_runtime_profile,
 )
 from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
 from shared.src.contracts.agent_runtime_profile_contracts import (
@@ -68,11 +74,28 @@ def get_runtime_profile_status(
 )
 def sync_runtime_profile(
     request: RuntimeProfileSyncRequest,
+    app_request: Request,
     service: RuntimeProfileSyncServiceDep,
     repository: RuntimeProfileRepositoryDep,
+    analysis_event_repository: AnalysisEventRepositoryDep,
+    shared_adapter_runtime_service: SharedAdapterRuntimeServiceDep,
+    captured_text_view_generation_service: CapturedTextViewGenerationServiceDep,
 ) -> RuntimeProfileSyncResponse:
     try:
         result = service.sync_current(server_base_url=request.server_base_url)
+        active_profile = _profile_status(repository)
+        if active_profile.has_active_profile:
+            pipeline_service = build_pipeline_service_from_runtime_profile(
+                runtime_profile_repository=repository,
+                analysis_event_repository=analysis_event_repository,
+                shared_adapter_runtime_service=shared_adapter_runtime_service,
+                translation_service=(
+                    captured_text_view_generation_service.translation_provider
+                ),
+                server_base_url=request.server_base_url,
+            )
+            if pipeline_service is not None:
+                app_request.app.state.pipeline_service = pipeline_service
     except Exception as error:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -81,7 +104,7 @@ def sync_runtime_profile(
     return RuntimeProfileSyncResponse(
         status=result.status,
         message=result.message,
-        active_profile=_profile_status(repository),
+        active_profile=active_profile,
     )
 
 

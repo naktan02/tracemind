@@ -23,6 +23,12 @@ from agent.src.features.runtime_profile.repository import RuntimeProfileReposito
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    build_classifier_head_state_tensor_artifact,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_peft_classifier_state_payload,
+)
 from shared.src.contracts.agent_runtime_profile_contracts import (
     make_agent_runtime_profile_payload,
 )
@@ -509,7 +515,7 @@ def test_pipeline_stores_runtime_profile_metadata(tmp_path: Path) -> None:
         model_revision="clf_2026_04_11_143138",
         runtime_family="peft_classifier",
         adapter_mechanism="lora",
-        scorer_backend_name="classifier_head_logits",
+        scorer_backend_name="peft_classifier_head_logits",
         embedding_backend="transformers_mxbai",
         embedding_model_id="mixedbread-ai/mxbai-embed-large-v1",
         training_scope="adapter_and_head",
@@ -549,6 +555,7 @@ def test_pipeline_factory_uses_active_runtime_profile(
         def embed_texts(self, texts: list[str]) -> list[list[float]]:
             return [[0.0] for _text in texts]
 
+    created_specs = []
     runtime_profile_repository = RuntimeProfileRepository(
         db_path=tmp_path / "agent_local.db"
     )
@@ -559,7 +566,7 @@ def test_pipeline_factory_uses_active_runtime_profile(
         model_revision="clf_2026_04_11_143138",
         runtime_family="peft_classifier",
         adapter_mechanism="lora",
-        scorer_backend_name="classifier_head_logits",
+        scorer_backend_name="peft_classifier_head_logits",
         embedding_backend="hashing",
         embedding_model_id="runtime-profile-embedding",
         training_scope="adapter_and_head",
@@ -579,12 +586,56 @@ def test_pipeline_factory_uses_active_runtime_profile(
             artifact_ref="shared_adapter_state::clf_2026_04_11_143138",
         )
     )
-    active_state = MagicMock()
-    active_state.schema_version = "peft_classifier_state.v2"
+    active_state = make_peft_classifier_state_payload(
+        model_id=profile.model_id,
+        model_revision=profile.model_revision,
+        backbone={
+            "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "tokenizer_revision": "main",
+            "max_length": 256,
+        },
+        peft_adapter_config={
+            "peft_adapter_name": "lora",
+            "parameters": {"rank": 8},
+        },
+        label_schema=("anxiety", "normal"),
+        classifier_head_artifact_ref=(
+            "server-aggregate://peft_classifier/clf_2026_04_11_143138/classifier_head"
+        ),
+    )
     shared_adapter_runtime_service.get_active_state.return_value = active_state
     monkeypatch.setattr(
         "agent.src.features.inference.pipeline_factory.EmbeddingAdapterFactory.create",
-        lambda _spec: _FakeEmbeddingAdapter(),
+        lambda spec: created_specs.append(spec) or _FakeEmbeddingAdapter(),
+    )
+    loaded_refs = []
+
+    class _FakeRoundArtifactClient:
+        def __init__(self, *, server_base_url: str) -> None:
+            assert server_base_url == "http://server.test"
+
+        def load_safetensors_artifact(self, *, artifact_ref: str):
+            loaded_refs.append(artifact_ref)
+            return build_classifier_head_state_tensor_artifact(
+                classifier_head_weights={
+                    "anxiety": [0.2],
+                    "normal": [-0.1],
+                },
+                classifier_head_biases={
+                    "anxiety": 0.01,
+                    "normal": -0.02,
+                },
+                label_schema=("anxiety", "normal"),
+            )
+
+        def load_json_artifact(self, *, artifact_ref: str) -> dict[str, object]:
+            raise AssertionError(f"unexpected JSON fallback: {artifact_ref}")
+
+    monkeypatch.setattr(
+        "agent.src.features.inference.pipeline_factory.RoundArtifactClient",
+        _FakeRoundArtifactClient,
     )
 
     pipeline = build_pipeline_service_from_runtime_profile(
@@ -592,12 +643,24 @@ def test_pipeline_factory_uses_active_runtime_profile(
         analysis_event_repository=tmp_repo,
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         translation_service=None,
+        server_base_url="http://server.test",
     )
 
     assert pipeline is not None
     assert pipeline.embedding_model_id == "runtime-profile-embedding"
     assert pipeline.model_revision == "clf_2026_04_11_143138"
-    assert pipeline.scoring_service.backend_name == "classifier_head_logits"
+    assert pipeline.scoring_service.backend_name == "peft_classifier_head_logits"
+    assert created_specs[0].revision == "main"
+    assert loaded_refs == [
+        "server-aggregate://peft_classifier/clf_2026_04_11_143138/classifier_head"
+    ]
+    assert pipeline.scoring_asset_provider is not None
+    assets = pipeline.scoring_asset_provider.get_scoring_assets()
+    weights = assets["classifier_head_weights"]
+    assert len(weights) == 2
+    assert weights[0] == pytest.approx([0.2])
+    assert weights[1] == pytest.approx([-0.1])
+    assert assets["classifier_head_biases"] == pytest.approx([0.01, -0.02])
 
 
 def test_pipeline_uses_active_shared_adapter_state_for_scoring(

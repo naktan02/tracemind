@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Sequence
+
+import httpx
 
 from agent.src.features.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
+from agent.src.features.federation.rounds.artifact_client import RoundArtifactClient
 from agent.src.features.inference.embedding_service import EmbeddingService
 from agent.src.features.inference.pipeline_service import InferencePipelineService
 from agent.src.features.inference.scoring_service import ScoringService
@@ -18,6 +23,16 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (
 )
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
+)
+from methods.adaptation.peft_text_encoder.scoring import (
+    PEFT_CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
+    build_peft_classifier_head_scoring_assets,
+)
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    parse_classifier_head_state_tensor_artifact,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierAdapterStatePayload,
 )
 from shared.src.contracts.scoring_contracts import ScoringConfigPayload
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
@@ -61,6 +76,7 @@ def build_pipeline_service_from_runtime_profile(
     analysis_event_repository: AnalysisEventRepository,
     shared_adapter_runtime_service: SharedAdapterRuntimeService,
     translation_service: TranslationService | None,
+    server_base_url: str | None = None,
 ) -> InferencePipelineService | None:
     """active runtime profile이 있으면 profile 기준 pipeline을 조립한다."""
 
@@ -87,7 +103,7 @@ def build_pipeline_service_from_runtime_profile(
     embedding_spec = EmbeddingAdapterSpec(
         backend=profile.embedding_backend,
         model_id=profile.embedding_model_id,
-        revision=profile.model_revision,
+        revision=env_spec.revision,
         device=env_spec.device,
         batch_size=env_spec.batch_size,
         cache_dir=env_spec.cache_dir,
@@ -104,6 +120,11 @@ def build_pipeline_service_from_runtime_profile(
         embedding_spec=embedding_spec,
         scoring_backend_name=profile.scorer_backend_name,
         model_revision=profile.model_revision,
+        scoring_asset_provider=_build_profile_scoring_asset_provider(
+            scoring_backend_name=profile.scorer_backend_name,
+            state=state,
+            server_base_url=server_base_url,
+        ),
     )
 
 
@@ -116,6 +137,7 @@ def _build_pipeline_service(
     embedding_spec: EmbeddingAdapterSpec,
     scoring_backend_name: str,
     model_revision: str,
+    scoring_asset_provider: _StaticScoringAssetProvider | None = None,
 ) -> InferencePipelineService:
     return InferencePipelineService(
         embedding_service=EmbeddingService(
@@ -127,12 +149,78 @@ def _build_pipeline_service(
             )
         ),
         event_repository=analysis_event_repository,
+        scoring_asset_provider=scoring_asset_provider,
         shared_adapter_provider=shared_adapter_runtime_service,
         runtime_profile_repository=runtime_profile_repository,
         translation_service=translation_service,
         embedding_model_id=embedding_spec.model_id,
         model_revision=model_revision,
     )
+
+
+@dataclass(slots=True)
+class _StaticScoringAssetProvider:
+    assets: Mapping[str, Sequence[float] | Sequence[Sequence[float]]]
+
+    def get_scoring_assets(
+        self,
+    ) -> Mapping[str, Sequence[float] | Sequence[Sequence[float]]]:
+        return self.assets
+
+
+def _build_profile_scoring_asset_provider(
+    *,
+    scoring_backend_name: str,
+    state: object,
+    server_base_url: str | None,
+) -> _StaticScoringAssetProvider | None:
+    if scoring_backend_name != PEFT_CLASSIFIER_HEAD_LOGITS_BACKEND_NAME:
+        return None
+    if not isinstance(state, PeftClassifierAdapterStatePayload):
+        raise ValueError(
+            "peft_classifier_head_logits requires active peft_classifier state."
+        )
+    if state.classifier_head_artifact_ref is None:
+        raise ValueError(
+            "active peft_classifier state does not provide "
+            "classifier_head_artifact_ref."
+        )
+    if server_base_url is None:
+        raise ValueError(
+            "server_base_url is required to materialize PEFT classifier head artifacts."
+        )
+    artifact = _load_peft_classifier_head_artifact(
+        server_base_url=server_base_url,
+        artifact_ref=state.classifier_head_artifact_ref,
+    )
+    return _StaticScoringAssetProvider(
+        build_peft_classifier_head_scoring_assets(
+            classifier_head_artifact=artifact,
+            label_schema=state.labels,
+        )
+    )
+
+
+def _load_peft_classifier_head_artifact(
+    *,
+    server_base_url: str,
+    artifact_ref: str,
+) -> Mapping[str, object]:
+    client = RoundArtifactClient(server_base_url=server_base_url)
+    try:
+        tensors, metadata = client.load_safetensors_artifact(artifact_ref=artifact_ref)
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code != 404:
+            raise
+        return client.load_json_artifact(artifact_ref=artifact_ref)
+    head_state = parse_classifier_head_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+    return {
+        "classifier_head_weights": head_state.classifier_head_weights,
+        "classifier_head_biases": head_state.classifier_head_biases,
+    }
 
 
 def load_agent_embedding_spec_from_env(

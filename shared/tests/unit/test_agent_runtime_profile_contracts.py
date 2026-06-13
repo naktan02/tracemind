@@ -25,7 +25,7 @@ def _profile(
         model_revision=model_revision,
         runtime_family="peft_classifier",
         adapter_mechanism="lora",
-        scorer_backend_name="classifier_head_logits",
+        scorer_backend_name="peft_classifier_head_logits",
         embedding_backend="transformers_mxbai",
         embedding_model_id="mixedbread-ai/mxbai-embed-large-v1",
         training_scope="adapter_and_head",

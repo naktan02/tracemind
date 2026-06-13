@@ -158,6 +158,10 @@ def create_app(
 try:
     app = create_app(auto_configure_pipeline=True)
 except ValueError as exc:
-    if "TRACEMIND_AGENT_SCORING_BACKEND" not in str(exc):
+    message = str(exc)
+    if (
+        "TRACEMIND_AGENT_SCORING_BACKEND" not in message
+        and "server_base_url is required to materialize PEFT" not in message
+    ):
         raise
     app = create_app(auto_configure_pipeline=False)

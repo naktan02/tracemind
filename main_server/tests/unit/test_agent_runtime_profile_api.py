@@ -27,7 +27,7 @@ def _profile(
     *,
     profile_revision: str = "runtime_rev_001",
     model_revision: str = "clf_2026_04_11_143138",
-    scorer_backend_name: str = "classifier_head_logits",
+    scorer_backend_name: str = "peft_classifier_head_logits",
 ) -> AgentRuntimeProfilePayload:
     return make_agent_runtime_profile_payload(
         profile_id="profile_peft_classifier_lora",

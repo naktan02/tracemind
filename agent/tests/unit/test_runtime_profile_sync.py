@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from agent.src.api.main import create_app
@@ -30,7 +31,7 @@ def _profile(
         model_revision="clf_2026_04_11_143138",
         runtime_family="peft_classifier",
         adapter_mechanism="lora",
-        scorer_backend_name="classifier_head_logits",
+        scorer_backend_name="peft_classifier_head_logits",
         embedding_backend="transformers_mxbai",
         embedding_model_id="mixedbread-ai/mxbai-embed-large-v1",
         training_scope="adapter_and_head",
@@ -112,10 +113,16 @@ def test_runtime_profile_sync_marks_up_to_date_without_pull(
 
 def test_runtime_profile_sync_api_updates_agent_local_status(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = RuntimeProfileRepository(db_path=tmp_path / "agent_local.db")
     profile = _profile()
     shared_adapter_sync_service = MagicMock()
+    pipeline_service = MagicMock()
+    monkeypatch.setattr(
+        "agent.src.api.runtime_profile.build_pipeline_service_from_runtime_profile",
+        lambda **_kwargs: pipeline_service,
+    )
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -153,3 +160,4 @@ def test_runtime_profile_sync_api_updates_agent_local_status(
         payload["active_profile"]["profile"]["profile_revision"]
         == profile.profile_revision
     )
+    assert app.state.pipeline_service is pipeline_service
