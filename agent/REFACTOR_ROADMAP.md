@@ -302,3 +302,128 @@ cd apps/family_extension && npm run build
 
 전체 format check는 기존 미포맷 파일이 있는 동안 phase 변경 파일 범위로 먼저 닫고,
 별도 cleanup phase에서 전체 format을 맞춘다.
+
+## Feature Module Migration Plan
+
+이 섹션은 위 Phase 0-8 cleanup 이후 `agent/src/features/`를 실제 운영 구조로 여는
+후속 계획이다. 기존 cleanup phase는 `services/`와 `infrastructure/` 안의 의미를 먼저
+정리했고, 이 계획은 그 결과를 일반 백엔드형 feature module 구조로 옮기는 단계다.
+
+공통 gate:
+
+- 한 phase는 하나의 feature 또는 하나의 wiring concern만 다룬다.
+- 기존 위치와 새 위치에 같은 의미의 구현을 복사하지 않는다.
+- route, service, repository를 한 번에 옮길 수 없으면 source of truth를 한 곳으로
+  유지하고 남은 import만 다음 phase의 제거 대상으로 기록한다.
+- `__init__.py` re-export facade를 만들지 않고 direct-file import를 유지한다.
+- phase 종료 시 변경 범위 `ruff`, 관련 unit test, architecture guard를 실행한다.
+
+### Feature Phase 1. 기준선과 목표 경계 고정
+
+목표:
+
+- `agent/src/features/`를 열고, feature module에 들어갈 것과 남길 것을 명시한다.
+- 후속 2-8단계의 순서와 검증 gate를 code-adjacent 문서로 남긴다.
+- 운영 import와 런타임 wiring은 아직 변경하지 않는다.
+
+Gate:
+
+- `agent/src/features/README.md`가 migration 원칙과 순서를 설명한다.
+- 기존 runtime test가 그대로 통과한다.
+
+### Feature Phase 2. captured_text pilot 이동
+
+목표:
+
+- raw text lifecycle의 첫 pilot을 `features/captured_text/`로 이동한다.
+- ingest, lifecycle, debug jobs, view generation, training source, captured text
+  repository를 한 읽기 경로로 묶는다.
+- raw text를 읽는 caller가 feature boundary 밖에서 storage 내부를 직접 보지 않게 한다.
+
+Gate:
+
+- captured text API, repository, training source tests가 통과한다.
+- compatibility import가 남으면 제거 phase와 제거 조건을 같은 변경에 기록한다.
+
+### Feature Phase 3. wellbeing 이동
+
+목표:
+
+- wellbeing signal, space-web, family access, child support를
+  `features/wellbeing/`으로 이동한다.
+- 부모 UI payload와 child support 내부 상태가 같은 feature 안에 있더라도 계약과
+  private state 경계를 유지한다.
+
+Gate:
+
+- family extension payload generation과 wellbeing API/unit tests가 통과한다.
+- 부모 surface에 raw text나 category detail이 새지 않는다.
+
+### Feature Phase 4. inference 이동
+
+목표:
+
+- `features/inference/`를 local inference pipeline feature로 연다.
+- preprocess/translation/embedding/scoring/interpretation 흐름을 유지하되, model
+  adapter mechanism은 `infrastructure/model_adapters/`에 남긴다.
+- wellbeing은 inference storage 내부가 아니라 interpretation result boundary를 읽는다.
+
+Gate:
+
+- inference pipeline, scoring backend, interpretation tests가 통과한다.
+- scorer backend 교체가 feature route나 wellbeing projection을 건드리지 않는다.
+
+### Feature Phase 5. training_runtime 이동
+
+목표:
+
+- `features/training_runtime/`로 current task runner, Query SSL task, method request
+  build, upload, usage recording을 옮긴다.
+- local update 실행은 agent-local capability로 남기고, objective/method 의미는
+  `methods/`가 계속 소유한다.
+
+Gate:
+
+- training task/API tests가 통과한다.
+- `methods/`가 agent repository를 import하지 않는 guard가 유지된다.
+
+### Feature Phase 6. federation, assets, language, typing_segments 이동
+
+목표:
+
+- 서버 라운드 참여, scorer asset sync/composition, language helper, typing segment ingest를
+  각각 feature module로 옮긴다.
+- 여러 feature가 공유하는 transport/model adapter mechanism은 `infrastructure/`에 둔다.
+
+Gate:
+
+- federation upload/round client tests와 asset/language 관련 tests가 통과한다.
+- method-specific runtime 파일이 agent feature 아래에 새로 생기지 않는다.
+
+### Feature Phase 7. FastAPI router와 dependency wiring 정리
+
+목표:
+
+- `api/routers/`와 `api/dependencies/`를 feature route registration 중심으로 정리한다.
+- `dependencies.py` 계열은 FastAPI dependency glue와 runtime object lookup만 맡기고
+  business rule을 소유하지 않는다.
+
+Gate:
+
+- `api/main.py`는 app shell과 router 등록 흐름만 보여준다.
+- route smoke tests가 통과한다.
+
+### Feature Phase 8. legacy 표면 제거와 guard 고정
+
+목표:
+
+- 남은 `services/` compatibility import, 비어 있는 repository placeholder, 중복 README를
+  제거한다.
+- feature module 의존 방향을 architecture guard로 고정한다.
+
+Gate:
+
+- `services/`가 source of truth로 남지 않는다.
+- import guard가 feature-to-infrastructure, feature-to-feature, methods-to-agent
+  의존 방향을 검증한다.
+- 전체 agent unit test와 architecture guard가 통과한다.
