@@ -606,6 +606,32 @@ button:disabled {
   gap: 10px;
 }
 
+.proactive-support-popup {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--teal-800);
+  border-radius: 6px;
+  background: #f0faf8;
+  box-shadow: 0 14px 32px rgba(23, 33, 29, 0.12);
+}
+
+.proactive-support-popup > div:first-child {
+  min-width: 240px;
+  flex: 1;
+}
+
+.proactive-support-popup p {
+  margin: 0;
+}
+
+.proactive-support-popup .card-label {
+  margin-bottom: 4px;
+}
+
 .primary-button,
 .ghost-button {
   min-height: 44px;

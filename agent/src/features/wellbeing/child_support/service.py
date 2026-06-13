@@ -45,6 +45,7 @@ DISCLOSURE_NOTICE = (
     "TraceMind는 진단이나 상담을 대신하지 않습니다. 위험하거나 혼자 감당하기 "
     "어려운 상황이면 지금 바로 보호자나 믿을 수 있는 어른에게 알려 주세요."
 )
+PROACTIVE_PROMPT_SCORE_THRESHOLD = 35.0
 
 
 @dataclass(slots=True)
@@ -154,20 +155,14 @@ class ChildSupportCoachService:
             or not context.wellbeing_summary_is_observed
         ):
             return ChildSupportProactivePromptPayload(should_prompt=False)
-        if summary.signal_level not in {
-            WellbeingSignalLevel.HIGH,
-            WellbeingSignalLevel.VERY_HIGH,
-        }:
+        if summary.signal_score < PROACTIVE_PROMPT_SCORE_THRESHOLD:
             return ChildSupportProactivePromptPayload(should_prompt=False)
         safety_level = (
             ChildSupportSafetyLevel.PARENT_HANDOFF
             if summary.signal_level == WellbeingSignalLevel.VERY_HIGH
             else ChildSupportSafetyLevel.CHECK_IN
         )
-        prompt_text = (
-            "오늘 마음 신호가 평소보다 높게 보여요. 바로 해결책을 말하기보다, "
-            "지금 제일 크게 느껴지는 감정 하나만 같이 확인해볼까요?"
-        )
+        prompt_text = _build_proactive_prompt_text(summary.signal_level)
         return ChildSupportProactivePromptPayload(
             should_prompt=True,
             safety_level=safety_level,
@@ -224,6 +219,18 @@ class ChildSupportCoachService:
         if self.conversation_repository is None:
             return
         self.conversation_repository.save_message(record)
+
+
+def _build_proactive_prompt_text(signal_level: WellbeingSignalLevel) -> str:
+    if signal_level == WellbeingSignalLevel.VERY_HIGH:
+        return (
+            "오늘 마음 신호가 많이 높게 보여요. 지금 안전한 곳에 있는지, "
+            "그리고 혼자 있지 않아도 되는지 먼저 같이 확인해볼까요?"
+        )
+    return (
+        "오늘 마음 신호가 평소보다 올라간 것 같아요. 바로 해결책을 말하기보다, "
+        "지금 제일 크게 느껴지는 감정 하나만 같이 확인해볼까요?"
+    )
 
 
 def _build_llm_prompt(

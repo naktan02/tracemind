@@ -527,6 +527,30 @@ def test_child_support_service_builds_proactive_prompt_for_high_summary() -> Non
     assert prompt.prompt_text is not None
 
 
+def test_child_support_service_builds_proactive_prompt_from_watch_score() -> None:
+    service = ChildSupportCoachService(
+        summary_service=WellbeingSummaryService(
+            _mock_payload=WellbeingSignalSummaryPayload(
+                computed_at=datetime(2026, 4, 25, 10, 30, tzinfo=timezone.utc),
+                signal_score=35.0,
+                signal_level=WellbeingSignalLevel.MODERATE,
+                signal_label="관찰 필요",
+                trend=WellbeingSignalTrend.RISING,
+                summary="최근 상태가 조금 올라갔습니다.",
+                action_tip="짧게 상태를 확인해 보세요.",
+                confidence=WellbeingSignalConfidence.MEDIUM,
+                low_data=False,
+            )
+        )
+    )
+
+    prompt = service.build_proactive_prompt()
+
+    assert prompt.should_prompt is True
+    assert prompt.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert prompt.prompt_text is not None
+
+
 def test_child_support_service_skips_proactive_prompt_for_low_data() -> None:
     service = ChildSupportCoachService(
         summary_service=WellbeingSummaryService(

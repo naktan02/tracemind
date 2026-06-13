@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import type { WellbeingSignalRange } from "../../../contracts/generated";
+import type {
+  ChildSupportProactivePromptPayload,
+  WellbeingSignalRange,
+} from "../../../contracts/generated";
+import { getChildSupportProactivePrompt } from "../../api/childSupport";
 import { ChildSupportCoachPanel } from "../../components/ChildSupportCoachPanel";
 import { WellbeingSpaceWebGraph } from "../../components/WellbeingSpaceWebGraph";
 import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
@@ -11,12 +15,18 @@ import { useWellbeingTimeseries } from "../../hooks/useWellbeingTimeseries";
 
 type ChildPageProps = {
   activeTab: ChildTab;
+  onOpenCoach?: () => void;
 };
 
 export type ChildTab = "ai" | "analysis" | "checkin";
+const PROACTIVE_PROMPT_SCORE_THRESHOLD = 35;
 
-export function ChildPage({ activeTab }: ChildPageProps) {
+export function ChildPage({ activeTab, onOpenCoach }: ChildPageProps) {
   const [selectedRange, setSelectedRange] = useState<WellbeingSignalRange>("7d");
+  const [proactivePrompt, setProactivePrompt] =
+    useState<ChildSupportProactivePromptPayload | null>(null);
+  const [isProactivePromptDismissed, setIsProactivePromptDismissed] =
+    useState(false);
   const summaryState = useWellbeingSummary();
   const timeseriesState = useWellbeingTimeseries({
     enabled: activeTab === "analysis",
@@ -27,8 +37,76 @@ export function ChildPage({ activeTab }: ChildPageProps) {
     requestedRange: selectedRange,
   });
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPrompt() {
+      if (
+        activeTab !== "analysis" ||
+        isProactivePromptDismissed ||
+        proactivePrompt !== null ||
+        summaryState.status !== "loaded" ||
+        summaryState.summary.low_data ||
+        summaryState.summary.signal_score < PROACTIVE_PROMPT_SCORE_THRESHOLD
+      ) {
+        return;
+      }
+      try {
+        const prompt = await getChildSupportProactivePrompt();
+        if (
+          cancelled ||
+          !prompt.should_prompt ||
+          prompt.prompt_text === null
+        ) {
+          return;
+        }
+        setProactivePrompt(prompt);
+      } catch {
+        // 선제 질문은 실패해도 분석 화면을 막지 않는다.
+      }
+    }
+
+    void loadPrompt();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, isProactivePromptDismissed, proactivePrompt, summaryState]);
+
   return (
     <div className="page-stack">
+      {activeTab === "analysis" &&
+        proactivePrompt?.prompt_text != null &&
+        !isProactivePromptDismissed && (
+          <section
+            className="proactive-support-popup"
+            aria-label="AI 마음 도움 선제 질문"
+          >
+            <div>
+              <p className="card-label">AI 마음 도움</p>
+              <p>{proactivePrompt.prompt_text}</p>
+            </div>
+            <div className="button-row">
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => {
+                  setIsProactivePromptDismissed(true);
+                  onOpenCoach?.();
+                }}
+              >
+                지금 답해보기
+              </button>
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() => setIsProactivePromptDismissed(true)}
+              >
+                나중에
+              </button>
+            </div>
+          </section>
+        )}
+
       {summaryState.status === "loaded" && (
         <WellbeingSignalCard summary={summaryState.summary} />
       )}
