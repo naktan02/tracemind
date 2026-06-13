@@ -81,11 +81,11 @@ Raw Event
 Child Message
 -> Agent-local Conversation Store
 -> LocalContextProvider
--> ConversationState / SafetyIntent
+-> ConversationState
 -> SafetyPolicy / Scope Redirect
--> ResponsePolicy Plan / Required Moves
--> Local Guarded Reply or Local LLM Provider Execution
--> Plan Validation / Fallback
+-> Local Context Prompt
+-> Local LLM Provider Execution
+-> LLM Reply Normalization
 -> Child UI Response
 ```
 
@@ -98,9 +98,9 @@ Child Message
 | local conversation store | `agent/src/features/wellbeing/storage/child_support_repository.py` |
 | local context provider | `agent/src/features/wellbeing/child_support/context_provider.py` |
 | conversation state extractor | `agent/src/features/wellbeing/child_support/conversation_state.py` |
-| agent-local safety intent | `agent/src/features/wellbeing/child_support/safety_intent.py` |
 | safety/scope policy | `agent/src/features/wellbeing/child_support/safety_policy.py` |
-| response plan/validation policy | `agent/src/features/wellbeing/child_support/response_policy.py` |
+| local LLM prompt builder | `agent/src/features/wellbeing/child_support/llm_prompt.py` |
+| local evidence summary | `agent/src/features/wellbeing/child_support/evidence_summary.py` |
 | local LLM adapter | `agent/src/features/wellbeing/child_support/llm_provider.py` |
 | UI panel | `apps/family_extension/src/components/ChildSupportCoachPanel.tsx` |
 
@@ -109,16 +109,16 @@ Child Message
 - child-support raw message와 query context는 agent-local boundary에 남긴다.
 - 같은 `conversation_id`에서는 agent-local conversation store의 최근 메시지를 읽어
   폭력 사건 후속 대화를 감정 정리나 친구 대응 계획으로 이어간다.
-- 타인 위해 intent 직후의 일반 힘듦 표현은 일반 check-in으로 리셋하지 않고,
+- 타인 위해 신호 직후의 일반 힘듦 표현은 일반 check-in으로 리셋하지 않고,
   감정 수용과 위해 행동 경계를 함께 담은 de-escalation 응답으로 이어간다.
-- safety routing은 shared contract의 화면 노출용 `safety_level`과 agent 내부용
-  typed `SafetyIntent`를 분리해서, 타인 위해 의도 같은 새 케이스를 UI 계약 변경
-  없이 확장할 수 있게 한다.
-- 기본값은 deterministic `local_guarded`이고, Ollama를 켠 경우에도 agent가
-  `ResponsePolicy` plan과 required move를 먼저 정한다.
-- LLM은 plan의 required move를 순서대로 수행하는 실행 adapter이며, 응답이 필수
-  의미를 잃거나 종료/회피 문구로 흐르면 plan validation에서 버리고 guarded
-  fallback을 쓴다.
+- safety routing은 shared contract의 화면 노출용 `safety_level`과 agent-local
+  `reason` 문자열을 함께 저장한다. 세부 reason은 UI 계약을 늘리지 않고 대화
+  history와 LLM prompt hint에만 쓴다.
+- child-support 답변 기본값은 LLM-first다. LLM provider가 없거나 LLM 응답을 만들지
+  못하면 agent API는 정적 상담 답변을 대신 만들지 않고 실패를 반환한다.
+- agent service는 wellbeing summary, recent conversation, evidence summary와
+  최근 원문 일부를 local context prompt로 묶어 LLM에 전달한다. safety policy는
+  routing hint에 쓰고, 응답 문장 구조를 required move로 강제하지 않는다.
 - main_server는 child-support 원문을 읽지 않고 FL aggregation 경계만 소유한다.
 
 ### 3.3 Query Adaptation Rail

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 
 from agent.src.api.dependencies import ChildSupportCoachServiceDep
 from agent.src.contracts.child_support_contracts import (
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,
     ChildSupportProactivePromptPayload,
+)
+from agent.src.features.wellbeing.child_support.service import (
+    ChildSupportReplyUnavailable,
 )
 
 router = APIRouter(prefix="/api/v1/child-support", tags=["child-support"])
@@ -24,7 +27,13 @@ def create_child_support_message(
 ) -> ChildSupportConversationResponsePayload:
     """아이용 지원 대화 단일 turn 응답을 만든다."""
 
-    return service.create_response(request)
+    try:
+        return service.create_response(request)
+    except ChildSupportReplyUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(

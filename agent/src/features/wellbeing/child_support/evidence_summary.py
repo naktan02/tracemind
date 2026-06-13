@@ -59,6 +59,7 @@ _TOPIC_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("수면/생활 리듬", ("잠", "수면", "불면", "sleep")),
     ("신체/식사 걱정", ("몸", "체중", "먹기", "식사", "살", "다이어트")),
 )
+_HIGH_RISK_TOPIC_LABEL = "자해/죽음 관련 표현"
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +72,8 @@ class ChildSupportEvidenceSummaryConfig:
     category_limit: int = 4
     topic_limit: int = 6
     keyword_limit: int = 8
+    snippet_limit: int = 4
+    snippet_max_chars: int = 140
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +95,7 @@ class ChildSupportEvidenceSummary:
     top_categories: tuple[str, ...] = field(default_factory=tuple)
     topics: tuple[str, ...] = field(default_factory=tuple)
     keywords: tuple[str, ...] = field(default_factory=tuple)
+    snippets: tuple[str, ...] = field(default_factory=tuple)
 
     def to_prompt_lines(self) -> tuple[str, ...]:
         if self.selected_event_count == 0:
@@ -107,6 +111,8 @@ class ChildSupportEvidenceSummary:
             lines.append("반복 주제: " + ", ".join(self.topics))
         if self.keywords:
             lines.append("반복 표현 힌트: " + ", ".join(self.keywords))
+        if self.snippets:
+            lines.append("최근 원문 일부: " + " / ".join(self.snippets))
         return tuple(lines)
 
 
@@ -170,6 +176,11 @@ class HeuristicChildSupportEvidenceSummarizer:
                 token
                 for token, _ in token_counter.most_common(self.config.keyword_limit)
             ),
+            snippets=tuple(
+                _shorten_snippet(_sanitize_for_local_summary(item.text), self.config)
+                for item in selected[: self.config.snippet_limit]
+                if _sanitize_for_local_summary(item.text)
+            ),
         )
 
 
@@ -190,11 +201,6 @@ class ChildSupportEvidenceSummaryBuilder:
         events = self.analysis_event_repository.get_recent(
             days=self.config.lookback_days
         )
-        selected_events = _select_relevant_events(
-            events,
-            min_relevant_score=self.config.min_relevant_score,
-            limit=self.config.candidate_limit,
-        )
         items = [
             ChildSupportEvidenceItem(
                 source_event_id=event.source_event_id or event.query_id,
@@ -202,10 +208,15 @@ class ChildSupportEvidenceSummaryBuilder:
                 category_scores=dict(event.category_scores),
                 text=self._load_text(event),
             )
-            for event in selected_events
+            for event in events
         ]
-        return self.summarizer.summarize(
+        selected_items = _select_relevant_items(
             items,
+            min_relevant_score=self.config.min_relevant_score,
+            limit=self.config.candidate_limit,
+        )
+        return self.summarizer.summarize(
+            selected_items,
             observed_event_count=len(events),
         )
 
@@ -221,37 +232,50 @@ class ChildSupportEvidenceSummaryBuilder:
         return event.translated_text or ""
 
 
-def _select_relevant_events(
-    events: Sequence[AnalysisEvent],
+def _select_relevant_items(
+    items: Sequence[ChildSupportEvidenceItem],
     *,
     min_relevant_score: float,
     limit: int,
-) -> list[AnalysisEvent]:
+) -> list[ChildSupportEvidenceItem]:
     scored = sorted(
-        events,
-        key=lambda event: (
-            _max_non_normal_score(event),
-            event.occurred_at,
+        items,
+        key=lambda item: (
+            _contains_high_risk_topic(item.text),
+            _max_non_normal_score(item.category_scores),
+            item.occurred_at,
         ),
         reverse=True,
     )
     relevant = [
-        event for event in scored if _max_non_normal_score(event) >= min_relevant_score
+        item
+        for item in scored
+        if _max_non_normal_score(item.category_scores) >= min_relevant_score
+        or _contains_high_risk_topic(item.text)
     ]
     if not relevant:
         relevant = scored
     return relevant[:limit]
 
 
-def _max_non_normal_score(event: AnalysisEvent) -> float:
+def _max_non_normal_score(category_scores: dict[str, float]) -> float:
     return max(
         (
             float(score)
-            for category, score in event.category_scores.items()
+            for category, score in category_scores.items()
             if category != _NORMAL_CATEGORY
         ),
         default=0.0,
     )
+
+
+def _contains_high_risk_topic(text: str) -> bool:
+    lowered = text.lower()
+    for label, keywords in _TOPIC_KEYWORDS:
+        if label != _HIGH_RISK_TOPIC_LABEL:
+            continue
+        return any(keyword in lowered for keyword in keywords)
+    return False
 
 
 def _sanitize_for_local_summary(text: str) -> str:
@@ -259,6 +283,15 @@ def _sanitize_for_local_summary(text: str) -> str:
     text = _EMAIL_PATTERN.sub(" ", text)
     text = _NUMBER_PATTERN.sub(" ", text)
     return " ".join(text.split())
+
+
+def _shorten_snippet(
+    text: str,
+    config: ChildSupportEvidenceSummaryConfig,
+) -> str:
+    if len(text) <= config.snippet_max_chars:
+        return text
+    return f"{text[: config.snippet_max_chars].rstrip()}..."
 
 
 def _extract_tokens(text: str) -> list[str]:

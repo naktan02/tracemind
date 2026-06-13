@@ -12,9 +12,18 @@ from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 from agent.src.features.wellbeing.child_support.context_provider import (
     ChildSupportConversationContext,
 )
-from agent.src.features.wellbeing.child_support.safety_intent import (
-    ChildSupportSafetyIntent,
-)
+
+OFF_TOPIC = "off_topic"
+SELF_HARM_SIGNAL = "self_harm_signal"
+OTHER_HARM_IDEATION = "other_harm_ideation"
+OTHER_HARM_METHOD_REQUEST = "other_harm_method_request"
+POST_URGENT_DEESCALATION = "post_urgent_deescalation"
+PARENT_HANDOFF_KEYWORD = "parent_handoff_keyword"
+POST_HANDOFF_EMOTIONAL_FOLLOWUP = "post_handoff_emotional_followup"
+PEER_RESPONSE_PLANNING = "peer_response_planning"
+CALMING_KEYWORD = "calming_keyword"
+HIGH_WELLBEING_SUMMARY = "high_wellbeing_summary"
+SUPPORTIVE = "supportive"
 
 _SELF_HARM_KEYWORDS = (
     "죽고",
@@ -139,13 +148,13 @@ class ChildSupportSafetyAssessment:
 
     safety_level: ChildSupportSafetyLevel
     scope_status: ChildSupportScopeStatus
-    intent: ChildSupportSafetyIntent = ChildSupportSafetyIntent.SUPPORTIVE
+    intent: str = SUPPORTIVE
     immediate_danger: bool = False
     reason: str = ""
 
     def __post_init__(self) -> None:
         if not self.reason:
-            object.__setattr__(self, "reason", self.intent.value)
+            object.__setattr__(self, "reason", self.intent)
 
     @property
     def parent_handoff_suggested(self) -> bool:
@@ -175,7 +184,7 @@ class ChildSupportSafetyPolicy:
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.SUPPORTIVE,
                 scope_status=ChildSupportScopeStatus.REDIRECTED,
-                intent=ChildSupportSafetyIntent.OFF_TOPIC,
+                intent=OFF_TOPIC,
             )
 
         if any(keyword in normalized for keyword in _OTHER_HARM_KEYWORDS):
@@ -186,9 +195,9 @@ class ChildSupportSafetyPolicy:
                 safety_level=ChildSupportSafetyLevel.URGENT,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
                 intent=(
-                    ChildSupportSafetyIntent.OTHER_HARM_METHOD_REQUEST
+                    OTHER_HARM_METHOD_REQUEST
                     if immediate_danger
-                    else ChildSupportSafetyIntent.OTHER_HARM_IDEATION
+                    else OTHER_HARM_IDEATION
                 ),
                 immediate_danger=immediate_danger,
             )
@@ -197,7 +206,7 @@ class ChildSupportSafetyPolicy:
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.URGENT,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=ChildSupportSafetyIntent.SELF_HARM_SIGNAL,
+                intent=SELF_HARM_SIGNAL,
                 immediate_danger=any(
                     keyword in normalized for keyword in _IMMEDIATE_DANGER_KEYWORDS
                 ),
@@ -210,14 +219,14 @@ class ChildSupportSafetyPolicy:
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.CHECK_IN,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=ChildSupportSafetyIntent.POST_URGENT_DEESCALATION,
+                intent=POST_URGENT_DEESCALATION,
             )
 
         if any(keyword in normalized for keyword in _PARENT_HANDOFF_KEYWORDS):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.PARENT_HANDOFF,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=ChildSupportSafetyIntent.PARENT_HANDOFF_KEYWORD,
+                intent=PARENT_HANDOFF_KEYWORD,
             )
 
         if context.conversation_state.has_recent_parent_handoff:
@@ -225,20 +234,20 @@ class ChildSupportSafetyPolicy:
                 return ChildSupportSafetyAssessment(
                     safety_level=ChildSupportSafetyLevel.CHECK_IN,
                     scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                    intent=ChildSupportSafetyIntent.PEER_RESPONSE_PLANNING,
+                    intent=PEER_RESPONSE_PLANNING,
                 )
             if _is_post_handoff_followup(normalized):
                 return ChildSupportSafetyAssessment(
                     safety_level=ChildSupportSafetyLevel.CHECK_IN,
                     scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                    intent=ChildSupportSafetyIntent.POST_HANDOFF_EMOTIONAL_FOLLOWUP,
+                    intent=POST_HANDOFF_EMOTIONAL_FOLLOWUP,
                 )
 
         if any(keyword in normalized for keyword in _CALMING_KEYWORDS):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.CHECK_IN,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=ChildSupportSafetyIntent.CALMING_KEYWORD,
+                intent=CALMING_KEYWORD,
             )
 
         summary = context.wellbeing_summary
@@ -249,13 +258,13 @@ class ChildSupportSafetyPolicy:
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.CHECK_IN,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=ChildSupportSafetyIntent.HIGH_WELLBEING_SUMMARY,
+                intent=HIGH_WELLBEING_SUMMARY,
             )
 
         return ChildSupportSafetyAssessment(
             safety_level=ChildSupportSafetyLevel.SUPPORTIVE,
             scope_status=ChildSupportScopeStatus.IN_SCOPE,
-            intent=ChildSupportSafetyIntent.SUPPORTIVE,
+            intent=SUPPORTIVE,
         )
 
 

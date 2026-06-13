@@ -5,16 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent.src.contracts.child_support_contracts import ChildSupportSafetyLevel
-from agent.src.features.wellbeing.child_support.safety_intent import (
-    ChildSupportSafetyIntent,
-)
 from agent.src.features.wellbeing.storage.child_support_repository import (
     ChildSupportMessageRecord,
 )
 
 _OTHER_HARM_INTENTS = {
-    ChildSupportSafetyIntent.OTHER_HARM_IDEATION,
-    ChildSupportSafetyIntent.OTHER_HARM_METHOD_REQUEST,
+    "other_harm_ideation",
+    "other_harm_method_request",
 }
 
 
@@ -28,7 +25,7 @@ class ChildSupportConversationState:
     has_recent_parent_handoff: bool = False
     has_recent_urgent: bool = False
     has_recent_other_harm_risk: bool = False
-    last_safety_intent: ChildSupportSafetyIntent | None = None
+    last_safety_reason: str | None = None
     turns_since_urgent: int | None = None
 
 
@@ -38,10 +35,10 @@ def derive_child_support_conversation_state(
     """최근 메시지 snapshot에서 안전 routing에 필요한 상태만 추출한다."""
 
     recent_records = records[-6:]
-    recent_intents = tuple(
-        intent for record in recent_records if (intent := _extract_intent(record))
+    recent_reasons = tuple(
+        reason for record in recent_records if (reason := _extract_reason(record))
     )
-    last_safety_intent = recent_intents[-1] if recent_intents else None
+    last_safety_reason = recent_reasons[-1] if recent_reasons else None
     last_urgent_index = _find_last_urgent_index(recent_records)
     return ChildSupportConversationState(
         has_recent_parent_handoff=any(
@@ -53,9 +50,9 @@ def derive_child_support_conversation_state(
             for record in recent_records
         ),
         has_recent_other_harm_risk=any(
-            intent in _OTHER_HARM_INTENTS for intent in recent_intents
+            reason in _OTHER_HARM_INTENTS for reason in recent_reasons
         ),
-        last_safety_intent=last_safety_intent,
+        last_safety_reason=last_safety_reason,
         turns_since_urgent=(
             None
             if last_urgent_index is None
@@ -64,16 +61,11 @@ def derive_child_support_conversation_state(
     )
 
 
-def _extract_intent(
+def _extract_reason(
     record: ChildSupportMessageRecord,
-) -> ChildSupportSafetyIntent | None:
-    raw_intent = record.metadata.get("assessment_intent")
-    if not isinstance(raw_intent, str):
-        return None
-    try:
-        return ChildSupportSafetyIntent(raw_intent)
-    except ValueError:
-        return None
+) -> str | None:
+    raw_reason = record.metadata.get("assessment_reason")
+    return raw_reason if isinstance(raw_reason, str) else None
 
 
 def _find_last_urgent_index(

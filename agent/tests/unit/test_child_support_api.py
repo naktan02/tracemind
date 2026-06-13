@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from agent.src.api import child_support as child_support_api
 from agent.src.api.main import app
 from agent.src.contracts.child_support_contracts import (
@@ -27,17 +29,9 @@ from agent.src.features.wellbeing.child_support.context_provider import (
 from agent.src.features.wellbeing.child_support.evidence_summary import (
     ChildSupportEvidenceSummaryBuilder,
 )
-from agent.src.features.wellbeing.child_support.response_policy import (
-    ChildSupportResponsePolicy,
-)
-from agent.src.features.wellbeing.child_support.safety_intent import (
-    ChildSupportSafetyIntent,
-)
-from agent.src.features.wellbeing.child_support.safety_policy import (
-    ChildSupportSafetyAssessment,
-)
 from agent.src.features.wellbeing.child_support.service import (
     ChildSupportCoachService,
+    ChildSupportReplyUnavailable,
 )
 from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
 from agent.src.features.wellbeing.storage.child_support_repository import (
@@ -64,119 +58,80 @@ class StubChildSupportLlmProvider:
         )
 
 
-class ParentHandoffLeakingLlmProvider:
+class ContextualChildSupportLlmProvider:
+    assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
+
+    def __init__(self) -> None:
+        self.last_prompt = ""
+
+    def generate_reply(self, *, prompt: str) -> str:
+        self.last_prompt = prompt
+        return (
+            "AI가 로컬 맥락을 보고 이어서 답합니다. "
+            "지금 제일 크게 남은 느낌은 무엇인가요?"
+        )
+
+
+class ValidUrgentSafetyLlmProvider:
     assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
 
     def generate_reply(self, *, prompt: str) -> str:
         return (
-            "많이 힘들었겠어요. 가족이나 친구와 이야기해보세요. "
-            "어른에게 말하는 것도 도움이 돼요. 어떤 부분이 제일 무거웠나요?"
+            "그 말을 꺼내준 건 정말 중요한 신호예요. 먼저 지금 안전한 곳에 "
+            "있는지 확인하고 싶어요. 가까운 어른에게 같이 있어달라고 "
+            "보여줄 문장을 만들 수 있어요. 말이 잘 안 나와도 괜찮아요."
         )
 
 
-class ClosingViolenceLlmProvider:
-    assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
-
-    def generate_reply(self, *, prompt: str) -> str:
-        return (
-            "친구한테 맞았다니 정말 힘들겠구나. "
-            "엄마나 아빠에게 이야기해도 돼. "
-            "안전하고 편안한 시간 보내길 바라."
-        )
-
-
-class UnsafeSoothingViolenceLlmProvider:
-    assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
-
-    def generate_reply(self, *, prompt: str) -> str:
-        return (
-            "친구 때문에 힘들어 보이는데, 지금 혼자 조용히 시간을 가지며 "
-            "마음을 진정해 보는 건 어떨까? 편안한 음악을 들으며 쉬어보자."
-        )
-
-
-class MixedToneFollowupLlmProvider:
-    assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
-
-    def generate_reply(self, *, prompt: str) -> str:
-        return (
-            "몸의 어떤 부분이 가장 많이 무거워지거나 답답하게 느껴지는지 "
-            "말해보면 좋겠어. 천천히 깊게 숨을 들이마시고 내쉬는 걸 "
-            "해보는 건 어떨까? 안전하게 집에 도착하신 거 같으니 "
-            "언제든지 말해줘."
-        )
-
-
-def test_child_support_response_plans_avoid_meta_counseling_language() -> None:
-    policy = ChildSupportResponsePolicy()
-    blocked_meta_phrases = (
-        "뭘 고르라고",
-        "고르라고",
-        "받아줄게요",
-        "바로 해결책",
-        "굳이 정확히 설명",
-        "어디에 가까운지",
-        "골라볼까요",
-    )
-    assessments = (
-        ChildSupportSafetyAssessment(
-            safety_level=ChildSupportSafetyLevel.CHECK_IN,
-            scope_status=ChildSupportScopeStatus.IN_SCOPE,
-            intent=ChildSupportSafetyIntent.CALMING_KEYWORD,
-        ),
-        ChildSupportSafetyAssessment(
-            safety_level=ChildSupportSafetyLevel.CHECK_IN,
-            scope_status=ChildSupportScopeStatus.IN_SCOPE,
-            intent=ChildSupportSafetyIntent.POST_URGENT_DEESCALATION,
-        ),
-        ChildSupportSafetyAssessment(
-            safety_level=ChildSupportSafetyLevel.CHECK_IN,
-            scope_status=ChildSupportScopeStatus.IN_SCOPE,
-            intent=ChildSupportSafetyIntent.POST_HANDOFF_EMOTIONAL_FOLLOWUP,
-        ),
-        ChildSupportSafetyAssessment(
-            safety_level=ChildSupportSafetyLevel.CHECK_IN,
-            scope_status=ChildSupportScopeStatus.IN_SCOPE,
-            intent=ChildSupportSafetyIntent.PEER_RESPONSE_PLANNING,
-        ),
-    )
-
-    for assessment in assessments:
-        plan = policy.build_plan(message="너무 힘들어", assessment=assessment)
-
-        assert plan.moves
-        assert plan.accepts(plan.fallback_text)
-        assert not any(phrase in plan.fallback_text for phrase in blocked_meta_phrases)
-
-
-def test_child_support_response_plan_rejects_missing_required_move() -> None:
-    policy = ChildSupportResponsePolicy()
-    assessment = ChildSupportSafetyAssessment(
-        safety_level=ChildSupportSafetyLevel.CHECK_IN,
-        scope_status=ChildSupportScopeStatus.IN_SCOPE,
-        intent=ChildSupportSafetyIntent.POST_URGENT_DEESCALATION,
-    )
-
-    plan = policy.build_plan(message="너무 힘들어", assessment=assessment)
-
-    assert plan.accepts(plan.fallback_text)
-    assert not plan.accepts("정말 많이 힘들었겠다. 말이 잘 안 나와도 괜찮아요.")
-
-
-def test_child_support_api_returns_guarded_response() -> None:
+def test_child_support_api_returns_llm_response() -> None:
     response = child_support_api.create_child_support_message(
         ChildSupportConversationRequestPayload(message="오늘 너무 불안해"),
-        service=ChildSupportCoachService(),
+        service=ChildSupportCoachService(llm_provider=StubChildSupportLlmProvider()),
     )
 
     assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
     assert response.conversation_id
     assert response.reply_text
-    assert response.suggested_prompts
+    assert response.suggested_prompts == ()
+
+
+def test_child_support_service_requires_llm_provider() -> None:
+    service = ChildSupportCoachService()
+
+    with pytest.raises(ChildSupportReplyUnavailable):
+        service.create_response(
+            ChildSupportConversationRequestPayload(message="오늘 너무 불안해")
+        )
+
+
+def test_child_support_urgent_path_uses_llm_when_static_fallback_is_disabled() -> None:
+    response = ChildSupportCoachService(
+        llm_provider=ValidUrgentSafetyLlmProvider(),
+    ).create_response(ChildSupportConversationRequestPayload(message="죽고 싶어"))
+
+    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
+    assert response.safety_level == ChildSupportSafetyLevel.URGENT
+    assert "안전한 곳" in response.reply_text
+    assert "어른" in response.reply_text
+
+
+def test_child_support_passes_contextual_violence_question_to_llm() -> None:
+    provider = ContextualChildSupportLlmProvider()
+    response = ChildSupportCoachService(llm_provider=provider).create_response(
+        ChildSupportConversationRequestPayload(
+            message="친구들한테 맞아서 힘들어. 나 왜 힘든지 알아?"
+        )
+    )
+
+    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
+    assert response.reply_text.startswith("AI가 로컬 맥락을 보고")
+    assert "아이의 새 메시지: 친구들한테 맞아서 힘들어" in provider.last_prompt
+    assert "가능한 이유" in provider.last_prompt
 
 
 def test_child_support_service_uses_high_summary_as_check_in_context() -> None:
     service = ChildSupportCoachService(
+        llm_provider=StubChildSupportLlmProvider(),
         summary_service=WellbeingSummaryService(
             _mock_payload=WellbeingSignalSummaryPayload(
                 computed_at=datetime(2026, 4, 25, 10, 30, tzinfo=timezone.utc),
@@ -189,7 +144,7 @@ def test_child_support_service_uses_high_summary_as_check_in_context() -> None:
                 confidence=WellbeingSignalConfidence.MEDIUM,
                 low_data=False,
             )
-        )
+        ),
     )
 
     response = service.create_response(
@@ -200,51 +155,26 @@ def test_child_support_service_uses_high_summary_as_check_in_context() -> None:
 
 
 def test_child_support_service_flags_parent_handoff_keywords() -> None:
-    response = ChildSupportCoachService().create_response(
+    response = ChildSupportCoachService(
+        llm_provider=StubChildSupportLlmProvider()
+    ).create_response(
         ChildSupportConversationRequestPayload(message="친구가 계속 괴롭혀서 무서워")
     )
 
     assert response.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF
     assert response.parent_handoff_suggested is True
-    assert response.parent_handoff_label is not None
+    assert response.parent_handoff_label is None
 
 
 def test_child_support_service_keeps_violence_flow_open() -> None:
-    response = ChildSupportCoachService().create_response(
-        ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
-    )
-
-    assert response.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF
-    assert "다친 곳" in response.reply_text
-    assert "말해줄 수 있을까요" in response.reply_text
-
-
-def test_child_support_service_removes_closing_from_violence_llm() -> None:
     response = ChildSupportCoachService(
-        llm_provider=ClosingViolenceLlmProvider()
+        llm_provider=StubChildSupportLlmProvider()
     ).create_response(
         ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
     )
 
     assert response.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF
-    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
-    assert "편안한 시간 보내" not in response.reply_text
-    assert "다친 곳" in response.reply_text
-
-
-def test_child_support_service_rejects_unsafe_soothing_violence_llm() -> None:
-    response = ChildSupportCoachService(
-        llm_provider=UnsafeSoothingViolenceLlmProvider()
-    ).create_response(
-        ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
-    )
-
-    assert response.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF
-    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
-    assert "편안한 음악" not in response.reply_text
-    assert "혼자 조용히" not in response.reply_text
-    assert "안전한 곳" in response.reply_text
-    assert "다친 곳" in response.reply_text
+    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
 
 
 def test_child_support_service_persists_local_conversation(
@@ -253,7 +183,10 @@ def test_child_support_service_persists_local_conversation(
     repository = ChildSupportConversationRepository(
         db_path=tmp_path / "child_support.db"
     )
-    service = ChildSupportCoachService(conversation_repository=repository)
+    service = ChildSupportCoachService(
+        conversation_repository=repository,
+        llm_provider=StubChildSupportLlmProvider(),
+    )
 
     first = service.create_response(
         ChildSupportConversationRequestPayload(message="오늘 마음이 답답해")
@@ -275,7 +208,10 @@ def test_child_support_service_uses_violence_context_for_safe_followup(
     repository = ChildSupportConversationRepository(
         db_path=tmp_path / "child_support.db"
     )
-    service = ChildSupportCoachService(conversation_repository=repository)
+    service = ChildSupportCoachService(
+        conversation_repository=repository,
+        llm_provider=StubChildSupportLlmProvider(),
+    )
 
     first = service.create_response(
         ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
@@ -289,41 +225,8 @@ def test_child_support_service_uses_violence_context_for_safe_followup(
 
     assert second.safety_level == ChildSupportSafetyLevel.CHECK_IN
     assert second.parent_handoff_suggested is False
-    assert "정말 많이 흔들렸겠어요" in second.reply_text
-    assert "마음이 이렇게 흔들리는 것도 이상한 일이 아니에요" in second.reply_text
-    assert "다친 곳" not in second.reply_text
-    assert "몸 상태" not in second.reply_text
-    assert "몸의 어디" not in second.reply_text
-    assert second.suggested_prompts[0].id == "name-post-incident-feeling"
-
-
-def test_child_support_service_rejects_mixed_tone_followup_llm(
-    tmp_path: Path,
-) -> None:
-    repository = ChildSupportConversationRepository(
-        db_path=tmp_path / "child_support.db"
-    )
-    service = ChildSupportCoachService(
-        conversation_repository=repository,
-        llm_provider=MixedToneFollowupLlmProvider(),
-    )
-
-    first = service.create_response(
-        ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
-    )
-    second = service.create_response(
-        ChildSupportConversationRequestPayload(
-            message="떨어졌고 집에 왔는데 속상해",
-            conversation_id=first.conversation_id,
-        )
-    )
-
-    assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
-    assert "좋겠어" not in second.reply_text
-    assert "어떨까" not in second.reply_text
-    assert "도착하신" not in second.reply_text
-    assert "몸의 어떤 부분" not in second.reply_text
-    assert "정말 많이 흔들렸겠어요" in second.reply_text
+    assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
+    assert second.suggested_prompts == ()
 
 
 def test_child_support_service_uses_violence_context_for_peer_response_planning(
@@ -332,7 +235,10 @@ def test_child_support_service_uses_violence_context_for_peer_response_planning(
     repository = ChildSupportConversationRepository(
         db_path=tmp_path / "child_support.db"
     )
-    service = ChildSupportCoachService(conversation_repository=repository)
+    service = ChildSupportCoachService(
+        conversation_repository=repository,
+        llm_provider=StubChildSupportLlmProvider(),
+    )
 
     first = service.create_response(
         ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
@@ -345,12 +251,8 @@ def test_child_support_service_uses_violence_context_for_peer_response_planning(
     )
 
     assert second.safety_level == ChildSupportSafetyLevel.CHECK_IN
-    assert "복수하고 싶을 만큼 억울하고 화가 났구나" in second.reply_text
-    assert "되갚는 행동은 너를 더 위험하게 만들 수 있어요" in second.reply_text
-    assert "상대에게 할 말" in second.reply_text
-    assert "골라볼까요" not in second.reply_text
-    assert "다친 곳" not in second.reply_text
-    assert second.suggested_prompts[0].id == "peer-boundary-line"
+    assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
+    assert second.suggested_prompts == ()
 
 
 def test_child_support_service_escalates_other_harm_ideation_after_violence(
@@ -359,7 +261,10 @@ def test_child_support_service_escalates_other_harm_ideation_after_violence(
     repository = ChildSupportConversationRepository(
         db_path=tmp_path / "child_support.db"
     )
-    service = ChildSupportCoachService(conversation_repository=repository)
+    service = ChildSupportCoachService(
+        conversation_repository=repository,
+        llm_provider=StubChildSupportLlmProvider(),
+    )
 
     first = service.create_response(
         ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
@@ -373,11 +278,8 @@ def test_child_support_service_escalates_other_harm_ideation_after_violence(
 
     assert second.safety_level == ChildSupportSafetyLevel.URGENT
     assert second.parent_handoff_suggested is True
-    assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
-    assert "해치거나 찾아가는 행동은 하면 안 돼요" in second.reply_text
-    assert "어른" in second.reply_text
-    assert "골라볼까요" not in second.reply_text
-    assert second.suggested_prompts[0].id == "show-adult-harm-risk"
+    assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
+    assert second.suggested_prompts == ()
 
 
 def test_child_support_service_uses_warm_deescalation_after_other_harm_urgent(
@@ -386,7 +288,10 @@ def test_child_support_service_uses_warm_deescalation_after_other_harm_urgent(
     repository = ChildSupportConversationRepository(
         db_path=tmp_path / "child_support.db"
     )
-    service = ChildSupportCoachService(conversation_repository=repository)
+    service = ChildSupportCoachService(
+        conversation_repository=repository,
+        llm_provider=StubChildSupportLlmProvider(),
+    )
 
     first = service.create_response(
         ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
@@ -406,16 +311,8 @@ def test_child_support_service_uses_warm_deescalation_after_other_harm_urgent(
 
     assert second.safety_level == ChildSupportSafetyLevel.URGENT
     assert third.safety_level == ChildSupportSafetyLevel.CHECK_IN
-    assert third.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
-    assert "정말 많이 힘들었겠다" in third.reply_text
-    assert "네가 나쁜 아이인 건 아니에요" in third.reply_text
-    assert "해치는 쪽으로는 가지 않게" in third.reply_text
-    assert "말이 잘 안 나와도 괜찮아요" in third.reply_text
-    assert "뭘 고르라고" not in third.reply_text
-    assert "받아줄게요" not in third.reply_text
-    assert "골라볼까요" not in third.reply_text
-    assert "가고 싶은 마음" not in third.reply_text
-    assert third.suggested_prompts[0].id == "continue-after-anger"
+    assert third.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
+    assert third.suggested_prompts == ()
 
 
 def test_child_support_service_refuses_other_harm_method_request_after_violence(
@@ -424,7 +321,10 @@ def test_child_support_service_refuses_other_harm_method_request_after_violence(
     repository = ChildSupportConversationRepository(
         db_path=tmp_path / "child_support.db"
     )
-    service = ChildSupportCoachService(conversation_repository=repository)
+    service = ChildSupportCoachService(
+        conversation_repository=repository,
+        llm_provider=StubChildSupportLlmProvider(),
+    )
 
     first = service.create_response(
         ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
@@ -438,20 +338,18 @@ def test_child_support_service_refuses_other_harm_method_request_after_violence(
 
     assert second.safety_level == ChildSupportSafetyLevel.URGENT
     assert second.parent_handoff_suggested is True
-    assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
-    assert "해치는 방법은 알려줄 수 없어요" in second.reply_text
-    assert "그 행동은 하면 안 되고" in second.reply_text
-    assert "상대에게 할 말" not in second.reply_text
-    assert "골라볼까요" not in second.reply_text
+    assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
 
 
 def test_child_support_service_redirects_off_topic_question() -> None:
-    response = ChildSupportCoachService().create_response(
+    response = ChildSupportCoachService(
+        llm_provider=StubChildSupportLlmProvider()
+    ).create_response(
         ChildSupportConversationRequestPayload(message="파이썬 for문 알려줘")
     )
 
     assert response.scope_status == ChildSupportScopeStatus.REDIRECTED
-    assert "마음" in response.reply_text
+    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
 
 
 def test_child_support_service_uses_local_llm_provider() -> None:
@@ -463,10 +361,8 @@ def test_child_support_service_uses_local_llm_provider() -> None:
     assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
     assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
     assert "wellbeing summary" in provider.last_prompt
-    assert "safety_intent: calming_keyword" in provider.last_prompt
-    assert "response_plan: check_in" in provider.last_prompt
-    assert "required_moves:" in provider.last_prompt
-    assert "fallback_reference:" in provider.last_prompt
+    assert "safety_reason_hint: calming_keyword" in provider.last_prompt
+    assert "아이의 새 메시지: 요즘 계속 힘들어" in provider.last_prompt
 
 
 def test_child_support_llm_prompt_includes_local_evidence_summary(
@@ -521,6 +417,7 @@ def test_child_support_llm_prompt_includes_local_evidence_summary(
     assert "반복 주제:" in provider.last_prompt
     assert "불안/공포" in provider.last_prompt
     assert "친구/관계 갈등" in provider.last_prompt
+    assert "최근 원문 일부:" in provider.last_prompt
 
 
 def test_child_support_proactive_prompt_uses_evidence_topic(
@@ -554,71 +451,216 @@ def test_child_support_proactive_prompt_uses_evidence_topic(
         scorer_name="test_scorer",
         model_revision="test-revision",
     )
+    provider = StubChildSupportLlmProvider()
     service = ChildSupportCoachService(
+        llm_provider=provider,
         context_provider=ChildSupportContextProvider(
             summary_service=_high_summary_service(),
             evidence_summary_builder=ChildSupportEvidenceSummaryBuilder(
                 analysis_event_repository=analysis_repository,
                 captured_text_repository=captured_repository,
             ),
-        )
+        ),
     )
 
     prompt = service.build_proactive_prompt()
 
     assert prompt.should_prompt is True
     assert prompt.prompt_text is not None
-    assert "학교/성적 부담" in prompt.prompt_text
+    assert "학교/성적 부담" in provider.last_prompt
 
 
-def test_child_support_service_keeps_general_distress_in_check_in() -> None:
-    response = ChildSupportCoachService().create_response(
-        ChildSupportConversationRequestPayload(message="나 너무 힘들어")
+def test_child_support_proactive_prompt_passes_context_to_llm(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "agent_local.db"
+    analysis_repository = AnalysisEventRepository(db_path=db_path)
+    captured_repository = CapturedTextRepository(db_path=db_path)
+    occurred_at = datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc)
+    captured_repository.save(
+        CapturedTextRecord(
+            event_id="captured-evidence-3",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="친구랑 싸우고 불안해서 잠이 안 온다는 검색",
+            locale="ko",
+            source_type="browser",
+            surface_type="search",
+        )
+    )
+    analysis_repository.save(
+        AnalysisEvent(
+            query_id="captured-evidence-3",
+            occurred_at=occurred_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 10.0, "anxiety": 84.0},
+        ),
+        source_event_id="captured-evidence-3",
+        scorer_name="test_scorer",
+        model_revision="test-revision",
+    )
+    provider = StubChildSupportLlmProvider()
+    service = ChildSupportCoachService(
+        llm_provider=provider,
+        context_provider=ChildSupportContextProvider(
+            summary_service=_high_summary_service(),
+            evidence_summary_builder=ChildSupportEvidenceSummaryBuilder(
+                analysis_event_repository=analysis_repository,
+                captured_text_repository=captured_repository,
+            ),
+        ),
     )
 
-    assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
-    assert response.parent_handoff_suggested is False
-    assert "어른" not in response.reply_text
-    assert "골라볼까요" not in response.reply_text
-    assert "고르라고" not in response.reply_text
+    prompt = service.build_proactive_prompt()
+
+    assert prompt.should_prompt is True
+    assert prompt.prompt_text is not None
+    assert "지금 정말 많이 버거워 보이네요" in prompt.prompt_text
+    assert "짧은 한 문장이어도 괜찮아요" in prompt.prompt_text
+    assert "최근 wellbeing context notes:" in provider.last_prompt
+    assert "반복 주제:" in provider.last_prompt
+    assert "친구/관계 갈등" in provider.last_prompt
 
 
-def test_child_support_service_filters_parent_handoff_from_check_in_llm() -> None:
-    response = ChildSupportCoachService(
-        llm_provider=ParentHandoffLeakingLlmProvider()
-    ).create_response(ChildSupportConversationRequestPayload(message="나 너무 힘들어"))
+def test_child_support_proactive_prompt_uses_high_risk_local_evidence(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "agent_local.db"
+    analysis_repository = AnalysisEventRepository(db_path=db_path)
+    captured_repository = CapturedTextRepository(db_path=db_path)
+    occurred_at = datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc)
+    captured_repository.save(
+        CapturedTextRecord(
+            event_id="captured-evidence-4",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="죽고 싶어. 자살 생각이 계속 나.",
+            locale="ko",
+            source_type="browser",
+            surface_type="search",
+        )
+    )
+    analysis_repository.save(
+        AnalysisEvent(
+            query_id="captured-evidence-4",
+            occurred_at=occurred_at,
+            translated_text="I want to die. I keep thinking about suicide.",
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.0, "suicidal": 0.09},
+        ),
+        source_event_id="captured-evidence-4",
+        scorer_name="test_scorer",
+        model_revision="test-revision",
+    )
+    provider = StubChildSupportLlmProvider()
+    service = ChildSupportCoachService(
+        llm_provider=provider,
+        context_provider=ChildSupportContextProvider(
+            summary_service=_low_summary_service(),
+            evidence_summary_builder=ChildSupportEvidenceSummaryBuilder(
+                analysis_event_repository=analysis_repository,
+                captured_text_repository=captured_repository,
+            ),
+        ),
+    )
 
-    assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
-    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
-    assert "가족" not in response.reply_text
-    assert "어른" not in response.reply_text
-    assert "말이 잘 안 나와도 괜찮아요" in response.reply_text
-    assert "짧은 한 문장이어도 괜찮아요" in response.reply_text
+    prompt = service.build_proactive_prompt()
+
+    assert prompt.should_prompt is True
+    assert prompt.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF
+    assert prompt.prompt_text is not None
+    assert "자해/죽음 관련 표현" in provider.last_prompt
 
 
-def test_child_support_service_handles_self_harm_as_counseling_flow() -> None:
-    response = ChildSupportCoachService().create_response(
-        ChildSupportConversationRequestPayload(message="죽고싶어")
+def test_child_support_urgent_llm_prompt_reflects_high_risk_local_evidence(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "agent_local.db"
+    analysis_repository = AnalysisEventRepository(db_path=db_path)
+    captured_repository = CapturedTextRepository(db_path=db_path)
+    occurred_at = datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc)
+    captured_repository.save(
+        CapturedTextRecord(
+            event_id="captured-evidence-5",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="죽고 싶어. 자살 생각이 계속 나.",
+            locale="ko",
+            source_type="browser",
+            surface_type="search",
+        )
+    )
+    analysis_repository.save(
+        AnalysisEvent(
+            query_id="captured-evidence-5",
+            occurred_at=occurred_at,
+            translated_text="I want to die. I keep thinking about suicide.",
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.0, "suicidal": 0.09},
+        ),
+        source_event_id="captured-evidence-5",
+        scorer_name="test_scorer",
+        model_revision="test-revision",
+    )
+    provider = StubChildSupportLlmProvider()
+    service = ChildSupportCoachService(
+        llm_provider=provider,
+        context_provider=ChildSupportContextProvider(
+            summary_service=_low_summary_service(),
+            evidence_summary_builder=ChildSupportEvidenceSummaryBuilder(
+                analysis_event_repository=analysis_repository,
+                captured_text_repository=captured_repository,
+            ),
+        ),
+    )
+
+    response = service.create_response(
+        ChildSupportConversationRequestPayload(message="죽고 싶어")
     )
 
     assert response.safety_level == ChildSupportSafetyLevel.URGENT
+    assert "safety_level_hint: urgent" in provider.last_prompt
+    assert "자해/죽음 관련 표현" in provider.last_prompt
+    assert "최근 원문 일부: 죽고 싶어. 자살 생각이 계속 나." in provider.last_prompt
+
+
+def test_child_support_service_keeps_general_distress_in_check_in() -> None:
+    response = ChildSupportCoachService(
+        llm_provider=StubChildSupportLlmProvider()
+    ).create_response(ChildSupportConversationRequestPayload(message="나 너무 힘들어"))
+
+    assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert response.parent_handoff_suggested is False
+
+
+def test_child_support_service_handles_self_harm_as_counseling_flow() -> None:
+    response = ChildSupportCoachService(
+        llm_provider=StubChildSupportLlmProvider()
+    ).create_response(ChildSupportConversationRequestPayload(message="죽고싶어"))
+
+    assert response.safety_level == ChildSupportSafetyLevel.URGENT
     assert response.parent_handoff_suggested is True
-    assert "지금 안전한 곳" in response.reply_text
+    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
 
 
-def test_child_support_service_bypasses_llm_for_urgent_flow() -> None:
+def test_child_support_service_attempts_llm_for_urgent_flow() -> None:
     provider = StubChildSupportLlmProvider()
     response = ChildSupportCoachService(llm_provider=provider).create_response(
         ChildSupportConversationRequestPayload(message="죽고싶어")
     )
 
     assert response.safety_level == ChildSupportSafetyLevel.URGENT
-    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
-    assert provider.last_prompt == ""
+    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
+    assert "safety_level_hint: urgent" in provider.last_prompt
 
 
 def test_child_support_service_builds_proactive_prompt_for_high_summary() -> None:
     service = ChildSupportCoachService(
+        llm_provider=StubChildSupportLlmProvider(),
         summary_service=WellbeingSummaryService(
             _mock_payload=WellbeingSignalSummaryPayload(
                 computed_at=datetime(2026, 4, 25, 10, 30, tzinfo=timezone.utc),
@@ -631,7 +673,7 @@ def test_child_support_service_builds_proactive_prompt_for_high_summary() -> Non
                 confidence=WellbeingSignalConfidence.MEDIUM,
                 low_data=False,
             )
-        )
+        ),
     )
 
     prompt = service.build_proactive_prompt()
@@ -643,6 +685,7 @@ def test_child_support_service_builds_proactive_prompt_for_high_summary() -> Non
 
 def test_child_support_service_builds_proactive_prompt_from_watch_score() -> None:
     service = ChildSupportCoachService(
+        llm_provider=StubChildSupportLlmProvider(),
         summary_service=WellbeingSummaryService(
             _mock_payload=WellbeingSignalSummaryPayload(
                 computed_at=datetime(2026, 4, 25, 10, 30, tzinfo=timezone.utc),
@@ -655,7 +698,7 @@ def test_child_support_service_builds_proactive_prompt_from_watch_score() -> Non
                 confidence=WellbeingSignalConfidence.MEDIUM,
                 low_data=False,
             )
-        )
+        ),
     )
 
     prompt = service.build_proactive_prompt()
@@ -706,6 +749,22 @@ def _high_summary_service() -> WellbeingSummaryService:
             summary="최근 상태가 평소보다 높습니다.",
             action_tip="짧게 안부를 물어보세요.",
             confidence=WellbeingSignalConfidence.MEDIUM,
+            low_data=False,
+        )
+    )
+
+
+def _low_summary_service() -> WellbeingSummaryService:
+    return WellbeingSummaryService(
+        _mock_payload=WellbeingSignalSummaryPayload(
+            computed_at=datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc),
+            signal_score=0.0,
+            signal_level=WellbeingSignalLevel.LOW,
+            signal_label="안정",
+            trend=WellbeingSignalTrend.UNKNOWN,
+            summary="최근 상태가 비교적 안정적으로 보입니다.",
+            action_tip="짧게 상태를 확인해 보세요.",
+            confidence=WellbeingSignalConfidence.LOW,
             low_data=False,
         )
     )
