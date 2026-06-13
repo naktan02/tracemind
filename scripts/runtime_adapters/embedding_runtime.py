@@ -19,6 +19,8 @@ def create_embedding_adapter(spec: EmbeddingAdapterSpec) -> EmbeddingAdapter:
 def resolve_runtime_device_name(device: str) -> str:
     """agent runtime device resolver를 scripts 경계에서 호출한다."""
 
-    from agent.src.infrastructure.runtime import resolve_runtime_device
+    from agent.src.infrastructure.model_adapters.runtime_device import (
+        resolve_runtime_device,
+    )
 
     return resolve_runtime_device(device)
