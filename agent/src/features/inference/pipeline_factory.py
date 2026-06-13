@@ -12,6 +12,7 @@ from agent.src.features.inference.embedding_service import EmbeddingService
 from agent.src.features.inference.pipeline_service import InferencePipelineService
 from agent.src.features.inference.scoring_service import ScoringService
 from agent.src.features.language.translation_service import TranslationService
+from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
 )
@@ -37,11 +38,85 @@ def build_default_pipeline_service(
     analysis_event_repository: AnalysisEventRepository,
     shared_adapter_runtime_service: SharedAdapterRuntimeService,
     translation_service: TranslationService | None,
+    runtime_profile_repository: RuntimeProfileRepository | None = None,
 ) -> InferencePipelineService:
     """agent runtime 기본 inference pipeline을 조립한다."""
 
     embedding_spec = load_agent_embedding_spec_from_env()
     scoring_backend_name = _required_env_value(os.environ, AGENT_SCORING_BACKEND_ENV)
+    return _build_pipeline_service(
+        analysis_event_repository=analysis_event_repository,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        translation_service=translation_service,
+        runtime_profile_repository=runtime_profile_repository,
+        embedding_spec=embedding_spec,
+        scoring_backend_name=scoring_backend_name,
+        model_revision="agent_local_runtime",
+    )
+
+
+def build_pipeline_service_from_runtime_profile(
+    *,
+    runtime_profile_repository: RuntimeProfileRepository,
+    analysis_event_repository: AnalysisEventRepository,
+    shared_adapter_runtime_service: SharedAdapterRuntimeService,
+    translation_service: TranslationService | None,
+) -> InferencePipelineService | None:
+    """active runtime profile이 있으면 profile 기준 pipeline을 조립한다."""
+
+    record = runtime_profile_repository.load_active()
+    if record is None:
+        return None
+    profile = record.profile
+    manifest = shared_adapter_runtime_service.get_active_manifest()
+    state = shared_adapter_runtime_service.get_active_state()
+    if manifest.model_revision != profile.model_revision:
+        raise ValueError(
+            "active runtime profile model_revision does not match shared manifest: "
+            f"{profile.model_revision!r} != {manifest.model_revision!r}."
+        )
+    if profile.required_state_kind is not None:
+        state_schema_version = str(getattr(state, "schema_version", ""))
+        if state_schema_version != profile.required_state_kind:
+            raise ValueError(
+                "active runtime profile required_state_kind does not match "
+                f"shared state: {profile.required_state_kind!r} != "
+                f"{state_schema_version!r}."
+            )
+    env_spec = load_agent_embedding_spec_from_env()
+    embedding_spec = EmbeddingAdapterSpec(
+        backend=profile.embedding_backend,
+        model_id=profile.embedding_model_id,
+        revision=profile.model_revision,
+        device=env_spec.device,
+        batch_size=env_spec.batch_size,
+        cache_dir=env_spec.cache_dir,
+        task_prefix=env_spec.task_prefix,
+        normalize_embeddings=env_spec.normalize_embeddings,
+        hash_dim=env_spec.hash_dim,
+        local_files_only=env_spec.local_files_only,
+    )
+    return _build_pipeline_service(
+        analysis_event_repository=analysis_event_repository,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        translation_service=translation_service,
+        runtime_profile_repository=runtime_profile_repository,
+        embedding_spec=embedding_spec,
+        scoring_backend_name=profile.scorer_backend_name,
+        model_revision=profile.model_revision,
+    )
+
+
+def _build_pipeline_service(
+    *,
+    analysis_event_repository: AnalysisEventRepository,
+    shared_adapter_runtime_service: SharedAdapterRuntimeService,
+    translation_service: TranslationService | None,
+    runtime_profile_repository: RuntimeProfileRepository | None,
+    embedding_spec: EmbeddingAdapterSpec,
+    scoring_backend_name: str,
+    model_revision: str,
+) -> InferencePipelineService:
     return InferencePipelineService(
         embedding_service=EmbeddingService(
             adapter=EmbeddingAdapterFactory.create(embedding_spec)
@@ -53,9 +128,10 @@ def build_default_pipeline_service(
         ),
         event_repository=analysis_event_repository,
         shared_adapter_provider=shared_adapter_runtime_service,
+        runtime_profile_repository=runtime_profile_repository,
         translation_service=translation_service,
         embedding_model_id=embedding_spec.model_id,
-        model_revision="agent_local_runtime",
+        model_revision=model_revision,
     )
 
 

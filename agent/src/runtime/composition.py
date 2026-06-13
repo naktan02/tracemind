@@ -22,8 +22,13 @@ from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
 from agent.src.features.federation.rounds.round_client import RoundClient
-from agent.src.features.inference.pipeline_factory import build_default_pipeline_service
+from agent.src.features.inference.pipeline_factory import (
+    build_default_pipeline_service,
+    build_pipeline_service_from_runtime_profile,
+)
 from agent.src.features.inference.pipeline_service import InferencePipelineService
+from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
+from agent.src.features.runtime_profile.sync_service import RuntimeProfileSyncService
 from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
     TrainingUsageLedgerRepository,
 )
@@ -85,6 +90,8 @@ def build_agent_runtime_state(
         CapturedTextViewGenerationService | None
     ) = None,
     captured_text_lifecycle_service: CapturedTextLifecycleService | None = None,
+    runtime_profile_repository: RuntimeProfileRepository | None = None,
+    runtime_profile_sync_service: RuntimeProfileSyncService | None = None,
     child_support_conversation_repository: (
         ChildSupportConversationRepository | None
     ) = None,
@@ -109,6 +116,7 @@ def build_agent_runtime_state(
         captured_text_lifecycle_service
         or build_captured_text_lifecycle_service_from_env()
     )
+    runtime_profile_repo = runtime_profile_repository or RuntimeProfileRepository()
     view_generation_service = (
         captured_text_view_generation_service
         or build_captured_text_view_generation_service_from_env(
@@ -129,6 +137,10 @@ def build_agent_runtime_state(
         shared_adapter_runtime_service or SharedAdapterRuntimeService()
     )
     shared_sync_service = shared_adapter_sync_service or SharedAdapterSyncService()
+    runtime_profile_sync = runtime_profile_sync_service or RuntimeProfileSyncService(
+        repository=runtime_profile_repo,
+        shared_adapter_sync_service=shared_sync_service,
+    )
 
     wellbeing_projection_service = WellbeingSignalProjectionService(
         analysis_event_repository=analysis_repo,
@@ -171,6 +183,7 @@ def build_agent_runtime_state(
         auto_configure_pipeline=auto_configure_pipeline,
         analysis_event_repository=analysis_repo,
         shared_adapter_runtime_service=shared_runtime_service,
+        runtime_profile_repository=runtime_profile_repo,
         captured_text_view_generation_service=view_generation_service,
     )
 
@@ -180,6 +193,8 @@ def build_agent_runtime_state(
         training_usage_ledger_repository=usage_ledger_repo,
         captured_text_lifecycle_service=lifecycle_service,
         captured_text_view_generation_service=view_generation_service,
+        runtime_profile_repository=runtime_profile_repo,
+        runtime_profile_sync_service=runtime_profile_sync,
         child_support_conversation_repository=child_support_repo,
         wellbeing_snapshot_repository=wellbeing_snapshot_repo,
         family_access_repository=family_access_repo,
@@ -204,12 +219,21 @@ def _resolve_pipeline_service(
     auto_configure_pipeline: bool,
     analysis_event_repository: AnalysisEventRepository,
     shared_adapter_runtime_service: SharedAdapterRuntimeService,
+    runtime_profile_repository: RuntimeProfileRepository,
     captured_text_view_generation_service: CapturedTextViewGenerationService,
 ) -> InferencePipelineService | None:
     if pipeline_service is not None:
         return pipeline_service
     if not auto_configure_pipeline:
         return None
+    profile_pipeline = build_pipeline_service_from_runtime_profile(
+        runtime_profile_repository=runtime_profile_repository,
+        analysis_event_repository=analysis_event_repository,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        translation_service=captured_text_view_generation_service.translation_provider,
+    )
+    if profile_pipeline is not None:
+        return profile_pipeline
     return build_default_pipeline_service(
         analysis_event_repository=analysis_event_repository,
         shared_adapter_runtime_service=shared_adapter_runtime_service,

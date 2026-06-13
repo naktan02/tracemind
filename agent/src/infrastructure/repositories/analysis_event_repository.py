@@ -226,6 +226,7 @@ def ensure_analysis_event_schema(conn: sqlite3.Connection) -> None:
     conn.execute(_CREATE_ANALYSIS_EVENTS_TABLE_SQL)
     _drop_legacy_confidence_kind_column(conn)
     conn.execute(_CREATE_ANALYSIS_CATEGORY_SCORES_TABLE_SQL)
+    _repair_category_scores_legacy_fk(conn)
     conn.execute(_CREATE_ANALYSIS_OCCURRED_AT_INDEX_SQL)
     conn.execute(_CREATE_ANALYSIS_SCORER_FAMILY_INDEX_SQL)
     conn.execute(_CREATE_ANALYSIS_CATEGORY_INDEX_SQL)
@@ -334,3 +335,36 @@ def _drop_legacy_confidence_kind_column(conn: sqlite3.Connection) -> None:
     if category_table_exists is not None:
         conn.execute(_CREATE_ANALYSIS_CATEGORY_SCORES_TABLE_SQL)
         conn.executemany(_INSERT_CATEGORY_SCORE_SQL, category_rows)
+
+
+def _repair_category_scores_legacy_fk(conn: sqlite3.Connection) -> None:
+    table_exists = conn.execute(
+        """
+        SELECT 1
+        FROM sqlite_master
+        WHERE type = 'table' AND name = 'analysis_category_scores'
+        LIMIT 1;
+        """
+    ).fetchone()
+    if table_exists is None:
+        return
+
+    fk_parent_tables = {
+        str(row[2])
+        for row in conn.execute(
+            "PRAGMA foreign_key_list(analysis_category_scores)"
+        ).fetchall()
+    }
+    if "analysis_events_legacy" not in fk_parent_tables:
+        return
+
+    rows = conn.execute(
+        """
+        SELECT s.analysis_id, s.category, s.score
+        FROM analysis_category_scores s
+        JOIN analysis_events e ON e.analysis_id = s.analysis_id;
+        """
+    ).fetchall()
+    conn.execute("DROP TABLE analysis_category_scores;")
+    conn.execute(_CREATE_ANALYSIS_CATEGORY_SCORES_TABLE_SQL)
+    conn.executemany(_INSERT_CATEGORY_SCORE_SQL, rows)

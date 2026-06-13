@@ -162,6 +162,7 @@ def captured_text_debug_job_status(
     repository: CapturedTextRepositoryDep,
     service: CapturedTextViewGenerationServiceDep,
     job_state: CapturedTextDebugJobStateDep,
+    pipeline_service: OptionalPipelineServiceDep,
 ) -> CapturedTextDebugJobStatusPayload:
     """debug page가 읽는 captured text pipeline 상태."""
 
@@ -170,6 +171,7 @@ def captured_text_debug_job_status(
         repository=repository,
         service=service,
         job_state=job_state,
+        pipeline_service=pipeline_service,
     )
 
 
@@ -213,6 +215,7 @@ async def configure_captured_text_debug_job(
         repository=repository,
         service=service,
         job_state=job_state,
+        pipeline_service=pipeline_service,
     )
 
 
@@ -223,13 +226,44 @@ async def configure_captured_text_debug_job(
 )
 async def run_captured_text_view_generation_once(
     run_request: CapturedTextDebugJobRunRequestPayload,
-    request: Request,
+    service: CapturedTextViewGenerationServiceDep,
+    lifecycle_service: CapturedTextLifecycleServiceDep,
+    job_state: CapturedTextDebugJobStateDep,
+) -> CapturedTextDebugJobRunResultPayload:
+    """pending captured text view generation만 즉시 실행한다."""
+
+    if job_state.run_lock.locked():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="captured text debug job이 이미 실행 중입니다.",
+        )
+
+    async with job_state.run_lock:
+        result = await asyncio.to_thread(
+            _run_view_generation_only,
+            service,
+            lifecycle_service,
+            limit=run_request.limit,
+        )
+        job_state.last_run_at = datetime.now(tz=timezone.utc)
+        job_state.last_run_result = result
+        return job_state.last_run_result
+
+
+@router.post(
+    "/debug-job/run-analysis",
+    response_model=CapturedTextDebugJobRunResultPayload,
+    status_code=status.HTTP_200_OK,
+)
+async def run_captured_text_analysis_once(
+    run_request: CapturedTextDebugJobRunRequestPayload,
+    repository: CapturedTextRepositoryDep,
     service: CapturedTextViewGenerationServiceDep,
     lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,
     pipeline_service: OptionalPipelineServiceDep,
 ) -> CapturedTextDebugJobRunResultPayload:
-    """pending captured text view generation과 weak text 분석을 즉시 실행한다."""
+    """ready generated view의 weak text 분석만 즉시 실행한다."""
 
     if job_state.run_lock.locked():
         raise HTTPException(
@@ -240,11 +274,11 @@ async def run_captured_text_view_generation_once(
     async with job_state.run_lock:
         result = await asyncio.to_thread(
             _debug_job_service(
-                repository=service.repository,
+                repository=repository,
                 view_generation_service=service,
                 lifecycle_service=lifecycle_service,
                 pipeline_service=pipeline_service,
-            ).run_once,
+            ).run_pending_analysis,
             limit=run_request.limit,
         )
         job_state.last_run_at = datetime.now(tz=timezone.utc)
@@ -274,6 +308,7 @@ def _build_debug_job_status(
     repository: CapturedTextRepository,
     service: CapturedTextViewGenerationService,
     job_state: CapturedTextDebugJobState,
+    pipeline_service: InferencePipelineService | None,
 ) -> CapturedTextDebugJobStatusPayload:
     task = getattr(request.app.state, "captured_text_debug_job_task", None)
     is_running = (
@@ -288,6 +323,20 @@ def _build_debug_job_status(
         strong_text_provider_name=service.strong_text_provider_name,
         weak_text_identity_fallback=service.weak_text_identity_fallback,
         strong_text_identity_fallback=service.strong_text_identity_fallback,
+        analysis_pipeline_configured=pipeline_service is not None,
+        scorer_backend_name=(
+            pipeline_service.scoring_service.backend_name
+            if pipeline_service is not None
+            else None
+        ),
+        embedding_model_id=(
+            pipeline_service.embedding_model_id
+            if pipeline_service is not None
+            else None
+        ),
+        model_revision=(
+            pipeline_service.model_revision if pipeline_service is not None else None
+        ),
         captured_text_event_count=repository.count(),
         generated_view_count=repository.count_generated_views(),
         view_generation_status_counts=repository.count_by_view_generation_status(),
@@ -310,3 +359,13 @@ def _debug_job_service(
         lifecycle_service=lifecycle_service,
         pipeline_service=pipeline_service,
     )
+
+
+def _run_view_generation_only(
+    service: CapturedTextViewGenerationService,
+    lifecycle_service: CapturedTextLifecycleService,
+    *,
+    limit: int,
+) -> CapturedTextDebugJobRunResultPayload:
+    lifecycle_service.purge(repository=service.repository)
+    return service.generate_pending_views(limit=limit)

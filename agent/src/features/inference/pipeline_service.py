@@ -22,6 +22,7 @@ from agent.src.features.inference.embedding_service import EmbeddingService
 from agent.src.features.inference.scoring_service import ScoringService
 from agent.src.features.language.preprocess_service import PreprocessService
 from agent.src.features.language.translation_service import TranslationService
+from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
@@ -59,6 +60,7 @@ class InferencePipelineService:
     scoring_service: ScoringService
     event_repository: AnalysisEventRepository
     scoring_asset_provider: ScoringAssetProvider | None = None
+    runtime_profile_repository: RuntimeProfileRepository | None = None
     adapter_composition_service: AdapterCompositionService | None = None
     shared_adapter_provider: SharedAdapterRuntimeProvider | None = None
     local_adapter_provider: LocalAdapterRuntimeProvider | None = None
@@ -117,6 +119,7 @@ class InferencePipelineService:
             "source_locale": event.locale,
             "source_type": event.source_type,
         }
+        metadata.update(self._runtime_profile_metadata())
         metadata.update(adapter_context.analysis_metadata())
         self.event_repository.save(
             analysis_event,
@@ -153,6 +156,29 @@ class InferencePipelineService:
         if self.scoring_asset_provider is not None:
             return self.scoring_asset_provider.get_scoring_assets()
         return {}
+
+    def _runtime_profile_metadata(self) -> dict[str, str]:
+        if self.runtime_profile_repository is None:
+            return {}
+        record = self.runtime_profile_repository.load_active()
+        if record is None:
+            return {}
+        profile = record.profile
+        metadata = {
+            "runtime_profile_id": profile.profile_id,
+            "runtime_profile_revision": profile.profile_revision,
+            "runtime_profile_checksum": profile.payload_checksum,
+            "runtime_family": profile.runtime_family,
+            "scorer_backend_name": profile.scorer_backend_name,
+            "runtime_model_revision": profile.model_revision,
+        }
+        if profile.adapter_mechanism is not None:
+            metadata["adapter_mechanism"] = profile.adapter_mechanism
+        if record.server_validated_at is not None:
+            metadata["runtime_profile_server_validated_at"] = (
+                record.server_validated_at.isoformat()
+            )
+        return metadata
 
 
 def _get_translation_model_id(service: TranslationService) -> str | None:

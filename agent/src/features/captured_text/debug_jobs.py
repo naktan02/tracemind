@@ -37,19 +37,29 @@ class CapturedTextDebugJobService:
 
         self.lifecycle_service.purge(repository=self.repository)
         view_result = self.view_generation_service.generate_pending_views(limit=limit)
-        return self._run_pending_analysis(view_result=view_result, limit=limit)
+        return self.run_pending_analysis(view_result=view_result, limit=limit)
 
-    def _run_pending_analysis(
+    def run_pending_analysis(
         self,
         *,
-        view_result: CapturedTextDebugJobRunResultPayload,
         limit: int,
+        view_result: CapturedTextDebugJobRunResultPayload | None = None,
     ) -> CapturedTextDebugJobRunResultPayload:
+        base_result = view_result or CapturedTextDebugJobRunResultPayload(
+            selected_count=0,
+            generated_count=0,
+            failed_count=0,
+            pending_remaining_count=self.repository.count_by_view_generation_status().get(
+                "pending",
+                0,
+            ),
+            generated_view_count=self.repository.count_generated_views(),
+        )
         if self.pipeline_service is None:
-            return view_result.model_copy(
+            return base_result.model_copy(
                 update={
                     "message": _append_run_message(
-                        view_result.message,
+                        base_result.message,
                         "analysis skipped: pipeline_service가 설정되지 않았습니다.",
                     )
                 }
@@ -77,13 +87,13 @@ class CapturedTextDebugJobService:
                 continue
             processed_count += 1
 
-        message = view_result.message
+        message = base_result.message
         if failed_count:
             message = _append_run_message(
                 message,
                 f"analysis failed: {failed_count}건. last_error={last_error}",
             )
-        return view_result.model_copy(
+        return base_result.model_copy(
             update={
                 "analysis_selected_count": len(sources),
                 "analysis_processed_count": processed_count,

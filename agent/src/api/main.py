@@ -12,6 +12,7 @@ from agent.src.api.child_support import router as child_support_router
 from agent.src.api.family_access import router as family_access_router
 from agent.src.api.health import router as health_router
 from agent.src.api.ingest import router as ingest_router
+from agent.src.api.runtime_profile import router as runtime_profile_router
 from agent.src.api.sync import router as sync_router
 from agent.src.api.training import router as training_router
 from agent.src.api.typing_segments import router as typing_segments_router
@@ -40,6 +41,10 @@ if TYPE_CHECKING:
         CapturedTextViewGenerationService,
     )
     from agent.src.features.inference.pipeline_service import InferencePipelineService
+    from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
+    from agent.src.features.runtime_profile.sync_service import (
+        RuntimeProfileSyncService,
+    )
     from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
         TrainingUsageLedgerRepository,
     )
@@ -86,6 +91,8 @@ def create_app(
         CapturedTextViewGenerationService | None
     ) = None,
     captured_text_lifecycle_service: CapturedTextLifecycleService | None = None,
+    runtime_profile_repository: RuntimeProfileRepository | None = None,
+    runtime_profile_sync_service: RuntimeProfileSyncService | None = None,
     child_support_conversation_repository: (
         ChildSupportConversationRepository | None
     ) = None,
@@ -120,6 +127,8 @@ def create_app(
         training_usage_ledger_repository=training_usage_ledger_repository,
         captured_text_view_generation_service=captured_text_view_generation_service,
         captured_text_lifecycle_service=captured_text_lifecycle_service,
+        runtime_profile_repository=runtime_profile_repository,
+        runtime_profile_sync_service=runtime_profile_sync_service,
         child_support_conversation_repository=child_support_conversation_repository,
         wellbeing_snapshot_repository=wellbeing_snapshot_repository,
         family_access_repository=family_access_repository,
@@ -138,6 +147,7 @@ def create_app(
     app.include_router(child_support_router)
     app.include_router(family_access_router)
     app.include_router(ingest_router)
+    app.include_router(runtime_profile_router)
     app.include_router(sync_router)
     app.include_router(training_router)
     app.include_router(typing_segments_router)

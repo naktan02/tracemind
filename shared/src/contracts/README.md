@@ -124,6 +124,23 @@ runtime과 test는 family별 direct import를 사용한다.
 추론/검증에서 category score를 계산할 backend와 score policy를 정의한다.
 training objective에는 scorer field를 두지 않는다.
 
+### `agent_runtime_profile_contracts.py`
+
+서버가 agent 상시 분석 runtime에 내려주는 active profile과 최신성 확인 payload를
+정의한다.
+
+- `AgentRuntimeProfilePayload`
+  - `runtime_family`, `adapter_mechanism`, `scorer_backend_name`,
+    `embedding_backend`, `embedding_model_id`, `required_state_kind` 같은
+    실행 선택값을 담는다
+  - shared contract는 문자열 shape와 checksum 규칙만 소유하고, 허용 catalog와
+    기본 조합은 main_server/agent runtime owner가 검증한다
+  - 최신성 비교는 `profile_id`, `profile_revision`, `payload_checksum`을 사용한다
+  - `updated_at`은 저장/표시/stale 정책용 metadata이며 checksum identity에 넣지 않는다
+- `AgentRuntimeProfileValidation*Payload`
+  - agent-local active profile이 서버 current profile과 같은지 묻고, 다르면
+    latest profile을 받는 경계 payload다
+
 ### `training_example_backends.py`
 
 agent training example backend 이름 중 여러 계층이 함께 읽는 canonical 값을 정의한다.

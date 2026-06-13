@@ -23,6 +23,8 @@ from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
 from agent.src.features.inference.pipeline_service import InferencePipelineService
+from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
+from agent.src.features.runtime_profile.sync_service import RuntimeProfileSyncService
 from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
     TrainingUsageLedgerRepository,
 )
@@ -150,6 +152,22 @@ def get_shared_adapter_runtime_service(request: Request) -> SharedAdapterRuntime
     )
 
 
+def get_runtime_profile_repository(request: Request) -> RuntimeProfileRepository:
+    return get_required_app_state(
+        request,
+        "runtime_profile_repository",
+        display_name="RuntimeProfileRepository",
+    )
+
+
+def get_runtime_profile_sync_service(request: Request) -> RuntimeProfileSyncService:
+    return get_required_app_state(
+        request,
+        "runtime_profile_sync_service",
+        display_name="RuntimeProfileSyncService",
+    )
+
+
 def get_shared_adapter_sync_service(request: Request) -> SharedAdapterSyncService:
     return get_required_app_state(
         request,
@@ -255,6 +273,14 @@ CapturedTextViewGenerationServiceDep = Annotated[
 SharedAdapterRuntimeServiceDep = Annotated[
     SharedAdapterRuntimeService,
     Depends(get_shared_adapter_runtime_service),
+]
+RuntimeProfileRepositoryDep = Annotated[
+    RuntimeProfileRepository,
+    Depends(get_runtime_profile_repository),
+]
+RuntimeProfileSyncServiceDep = Annotated[
+    RuntimeProfileSyncService,
+    Depends(get_runtime_profile_sync_service),
 ]
 SharedAdapterSyncServiceDep = Annotated[
     SharedAdapterSyncService,

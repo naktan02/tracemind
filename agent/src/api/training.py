@@ -10,6 +10,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from agent.src.api.dependencies import (
     AnalysisEventRepositoryDep,
     RoundClientFactoryDep,
+    RuntimeProfileRepositoryDep,
     SharedAdapterRuntimeServiceDep,
     SharedAdapterSyncServiceDep,
     TrainingUsageLedgerRepositoryDep,
@@ -83,6 +84,7 @@ def get_training_task_runner_service(
     shared_adapter_sync_service: SharedAdapterSyncServiceDep,
     round_client_factory: RoundClientFactoryDep,
     training_usage_ledger_repository: TrainingUsageLedgerRepositoryDep,
+    runtime_profile_repository: RuntimeProfileRepositoryDep,
 ) -> AgentTrainingTaskRunnerService:
     """run-current-task application service를 조립한다."""
 
@@ -92,6 +94,7 @@ def get_training_task_runner_service(
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
         captured_text_repository=_get_optional_captured_text_repository(request),
+        runtime_profile_repository=runtime_profile_repository,
         query_ssl_task_service=AgentQuerySslTrainingTaskService(
             usage_ledger_repository=training_usage_ledger_repository
         ),

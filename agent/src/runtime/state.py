@@ -22,6 +22,8 @@ from agent.src.features.captured_text.view_generation.service import (
 )
 from agent.src.features.federation.rounds.round_client import RoundClient
 from agent.src.features.inference.pipeline_service import InferencePipelineService
+from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
+from agent.src.features.runtime_profile.sync_service import RuntimeProfileSyncService
 from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
     TrainingUsageLedgerRepository,
 )
@@ -70,6 +72,8 @@ class AgentRuntimeState:
     training_usage_ledger_repository: TrainingUsageLedgerRepository
     captured_text_lifecycle_service: CapturedTextLifecycleService
     captured_text_view_generation_service: CapturedTextViewGenerationService
+    runtime_profile_repository: RuntimeProfileRepository
+    runtime_profile_sync_service: RuntimeProfileSyncService
     child_support_conversation_repository: ChildSupportConversationRepository
     wellbeing_snapshot_repository: WellbeingSnapshotRepository
     family_access_repository: FamilyAccessRepository

@@ -15,6 +15,7 @@ class TrainingTaskRunStatus(StrEnum):
     UNSUPPORTED_RUNTIME = "unsupported_runtime"
     NO_ACTIVE_SHARED_STATE = "no_active_shared_state"
     STALE_SHARED_STATE = "stale_shared_state"
+    STALE_RUNTIME_PROFILE = "stale_runtime_profile"
 
 
 @dataclass(slots=True)

@@ -8,6 +8,9 @@ import type {
   CapturedTextDebugJobRunRequestPayload,
   CapturedTextDebugJobRunResultPayload,
   CapturedTextDebugJobStatusPayload,
+  RuntimeProfileStatusPayload,
+  RuntimeProfileSyncRequest,
+  RuntimeProfileSyncResponse,
   TypingSegmentPayload,
 } from "../contracts/generated";
 import {
@@ -252,6 +255,14 @@ if (extensionApi === null) {
         <p id="agent-api-base"></p>
         <div class="control-row">
           <label>
+            server base URL
+            <input id="server-url" type="url" value="http://127.0.0.1:8000" />
+          </label>
+          <button id="sync-runtime-profile" class="secondary" type="button">profile sync</button>
+        </div>
+        <pre id="runtime-profile-status">{}</pre>
+        <div class="control-row">
+          <label>
             interval seconds
             <input id="job-interval" class="numeric" type="number" min="5" max="3600" value="30" />
           </label>
@@ -260,13 +271,10 @@ if (extensionApi === null) {
             <input id="job-batch-size" class="numeric" type="number" min="1" max="500" value="100" />
           </label>
           <button id="toggle-job" type="button">job 켜기</button>
-          <button id="run-view-generation" class="secondary" type="button">번역/view 즉시 실행</button>
+          <button id="run-view-generation" class="secondary" type="button">번역/view 생성</button>
+          <button id="run-analysis" class="secondary" type="button">분석 실행</button>
         </div>
         <div class="control-row">
-          <label>
-            server base URL
-            <input id="training-server-url" type="url" value="http://127.0.0.1:8000" />
-          </label>
           <button id="run-training" class="secondary" type="button">학습 즉시 실행</button>
         </div>
         <pre id="job-status">{}</pre>
@@ -297,6 +305,11 @@ const runViewGenerationButton = getElement(
   "run-view-generation",
   HTMLButtonElement,
 );
+const runAnalysisButton = getElement("run-analysis", HTMLButtonElement);
+const syncRuntimeProfileButton = getElement(
+  "sync-runtime-profile",
+  HTMLButtonElement,
+);
 const runTrainingButton = getElement("run-training", HTMLButtonElement);
 const copyStatusButton = getElement("copy-status", HTMLButtonElement);
 const copySegmentButton = getElement("copy-segment", HTMLButtonElement);
@@ -304,15 +317,18 @@ const copyHistoryButton = getElement("copy-history", HTMLButtonElement);
 const agentApiBaseText = getElement("agent-api-base", HTMLParagraphElement);
 const jobIntervalInput = getElement("job-interval", HTMLInputElement);
 const jobBatchSizeInput = getElement("job-batch-size", HTMLInputElement);
-const trainingServerUrlInput = getElement(
-  "training-server-url",
-  HTMLInputElement,
-);
+const serverUrlInput = getElement("server-url", HTMLInputElement);
 const statusPre = getElement("collector-status", HTMLPreElement);
+const runtimeProfileStatusPre = getElement(
+  "runtime-profile-status",
+  HTMLPreElement,
+);
 const jobStatusPre = getElement("job-status", HTMLPreElement);
 const segmentPre = getElement("last-segment", HTMLPreElement);
 const historyPre = getElement("segment-history", HTMLPreElement);
 let runViewGenerationRequestActive = false;
+let runAnalysisRequestActive = false;
+let syncRuntimeProfileRequestActive = false;
 
 toggleButton.addEventListener("click", () => {
   void toggleDebug();
@@ -322,12 +338,19 @@ refreshButton.addEventListener("click", () => {
 });
 refreshJobButton.addEventListener("click", () => {
   void refreshJobStatus();
+  void refreshRuntimeProfileStatus();
 });
 toggleJobButton.addEventListener("click", () => {
   void togglePipelineJob();
 });
 runViewGenerationButton.addEventListener("click", () => {
   void runViewGenerationNow();
+});
+runAnalysisButton.addEventListener("click", () => {
+  void runAnalysisNow();
+});
+syncRuntimeProfileButton.addEventListener("click", () => {
+  void syncRuntimeProfileNow();
 });
 runTrainingButton.addEventListener("click", () => {
   void runTrainingNow();
@@ -344,6 +367,7 @@ copyHistoryButton.addEventListener("click", () => {
 
 void refreshDebugView();
 agentApiBaseText.textContent = `Agent API: ${getAgentApiBaseUrl()}`;
+void refreshRuntimeProfileStatus();
 void refreshJobStatus();
 window.setInterval(() => {
   if (!hasActiveDebugSelection()) {
@@ -411,6 +435,59 @@ async function refreshJobStatus(): Promise<void> {
   }
 }
 
+async function refreshRuntimeProfileStatus(): Promise<void> {
+  try {
+    const status = await requestAgentJson<RuntimeProfileStatusPayload>(
+      "/api/v1/runtime-profile/status",
+    );
+    runtimeProfileStatusPre.textContent = JSON.stringify(status, null, 2);
+  } catch (error) {
+    runtimeProfileStatusPre.textContent = JSON.stringify(
+      formatAgentError(error),
+      null,
+      2,
+    );
+  }
+}
+
+async function syncRuntimeProfileNow(): Promise<void> {
+  if (syncRuntimeProfileRequestActive || syncRuntimeProfileButton.disabled) {
+    return;
+  }
+  const serverBaseUrl = serverUrlInput.value.trim();
+  if (serverBaseUrl.length === 0) {
+    runtimeProfileStatusPre.textContent = JSON.stringify(
+      { error: "server_base_url을 입력하세요." },
+      null,
+      2,
+    );
+    return;
+  }
+  syncRuntimeProfileRequestActive = true;
+  updateSyncRuntimeProfileButton(true);
+  const payload: RuntimeProfileSyncRequest = { server_base_url: serverBaseUrl };
+  try {
+    const result = await requestAgentJson<RuntimeProfileSyncResponse>(
+      "/api/v1/runtime-profile/sync",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+    runtimeProfileStatusPre.textContent = JSON.stringify(result, null, 2);
+    await refreshJobStatus();
+  } catch (error) {
+    runtimeProfileStatusPre.textContent = JSON.stringify(
+      formatAgentError(error),
+      null,
+      2,
+    );
+  } finally {
+    syncRuntimeProfileRequestActive = false;
+    updateSyncRuntimeProfileButton(false);
+  }
+}
+
 async function togglePipelineJob(): Promise<void> {
   const nextEnabled = toggleJobButton.dataset.enabled !== "true";
   const payload: CapturedTextDebugJobConfigRequestPayload = {
@@ -461,8 +538,36 @@ async function runViewGenerationNow(): Promise<void> {
   }
 }
 
+async function runAnalysisNow(): Promise<void> {
+  if (runAnalysisRequestActive || runAnalysisButton.disabled) {
+    return;
+  }
+  runAnalysisRequestActive = true;
+  updateRunAnalysisButton(true);
+  const payload: CapturedTextDebugJobRunRequestPayload = {
+    limit: readNumberInput(jobBatchSizeInput, 100),
+  };
+  try {
+    const result =
+      await requestAgentJson<CapturedTextDebugJobRunResultPayload>(
+        "/api/v1/captured-text/debug-job/run-analysis",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+    jobStatusPre.textContent = JSON.stringify(result, null, 2);
+    await refreshJobStatus();
+  } catch (error) {
+    jobStatusPre.textContent = JSON.stringify(formatAgentError(error), null, 2);
+  } finally {
+    runAnalysisRequestActive = false;
+    updateRunAnalysisButton(false);
+  }
+}
+
 async function runTrainingNow(): Promise<void> {
-  const serverBaseUrl = trainingServerUrlInput.value.trim();
+  const serverBaseUrl = serverUrlInput.value.trim();
   if (serverBaseUrl.length === 0) {
     jobStatusPre.textContent = JSON.stringify(
       { error: "server_base_url을 입력하세요." },
@@ -497,14 +602,28 @@ function applyJobStatus(status: CapturedTextDebugJobStatusPayload): void {
   jobIntervalInput.value = String(status.view_generation_interval_seconds);
   jobBatchSizeInput.value = String(status.view_generation_batch_size);
   updateRunViewGenerationButton(status.view_generation_running);
+  updateRunAnalysisButton(status.view_generation_running);
 }
 
 function updateRunViewGenerationButton(isServerJobRunning: boolean): void {
   const isRunning = runViewGenerationRequestActive || isServerJobRunning;
   runViewGenerationButton.disabled = isRunning;
   runViewGenerationButton.textContent = isRunning
-    ? "번역/view 실행 중"
-    : "번역/view 즉시 실행";
+    ? "번역/view 생성 중"
+    : "번역/view 생성";
+}
+
+function updateRunAnalysisButton(isServerJobRunning: boolean): void {
+  const isRunning = runAnalysisRequestActive || isServerJobRunning;
+  runAnalysisButton.disabled = isRunning;
+  runAnalysisButton.textContent = isRunning ? "분석 실행 중" : "분석 실행";
+}
+
+function updateSyncRuntimeProfileButton(isRunning: boolean): void {
+  syncRuntimeProfileButton.disabled = isRunning;
+  syncRuntimeProfileButton.textContent = isRunning
+    ? "profile sync 중"
+    : "profile sync";
 }
 
 function readNumberInput(input: HTMLInputElement, fallback: number): number {

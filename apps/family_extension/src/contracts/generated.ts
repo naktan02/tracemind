@@ -275,10 +275,50 @@ export interface CapturedTextDebugJobStatusPayload {
   strong_text_provider_name: string;
   weak_text_identity_fallback: boolean;
   strong_text_identity_fallback: boolean;
+  analysis_pipeline_configured: boolean;
+  scorer_backend_name: string | null;
+  embedding_model_id: string | null;
+  model_revision: string | null;
   captured_text_event_count: number;
   generated_view_count: number;
   view_generation_status_counts: Record<string, number>;
   analysis_status_counts: Record<string, number>;
   last_run_at: string | null;
   last_run_result: CapturedTextDebugJobRunResultPayload | null;
+}
+
+export interface AgentRuntimeProfilePayload {
+  schema_version: string;
+  profile_id: string;
+  profile_revision: string;
+  payload_checksum: string;
+  model_id: string;
+  model_revision: string;
+  runtime_family: string;
+  adapter_mechanism: string | null;
+  scorer_backend_name: string;
+  embedding_backend: string;
+  embedding_model_id: string;
+  training_scope: string;
+  required_state_kind: string | null;
+  updated_at: string;
+}
+
+export interface RuntimeProfileStatusPayload {
+  has_active_profile: boolean;
+  profile: AgentRuntimeProfilePayload | null;
+  source: string | null;
+  received_at: string | null;
+  activated_at: string | null;
+  server_validated_at: string | null;
+}
+
+export interface RuntimeProfileSyncRequest {
+  server_base_url: string;
+}
+
+export interface RuntimeProfileSyncResponse {
+  status: string;
+  message: string;
+  active_profile: RuntimeProfileStatusPayload;
 }

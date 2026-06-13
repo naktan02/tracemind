@@ -19,6 +19,7 @@ from agent.src.features.captured_text.storage.repository import (
 )
 from agent.src.features.federation.rounds.artifact_client import RoundArtifactClient
 from agent.src.features.federation.rounds.round_client import RoundClient
+from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
 from agent.src.features.training_runtime.query_ssl.task_service import (
     AgentQuerySslTrainingTaskRunRequest,
     AgentQuerySslTrainingTaskService,
@@ -66,6 +67,7 @@ class AgentTrainingTaskRunnerService:
     round_client_factory: RoundClientFactory
     round_artifact_client_factory: RoundArtifactClientFactory = RoundArtifactClient
     captured_text_repository: CapturedTextRepository | None = None
+    runtime_profile_repository: RuntimeProfileRepository | None = None
     query_ssl_task_service: AgentQuerySslTrainingTaskService = field(
         default_factory=AgentQuerySslTrainingTaskService
     )
@@ -121,6 +123,17 @@ class AgentTrainingTaskRunnerService:
                     f"{task_payload.model_revision}"
                 ),
             )
+        runtime_profile_error = self._validate_runtime_profile_for_task(
+            task_payload=task_payload,
+            active_state=active_state,
+        )
+        if runtime_profile_error is not None:
+            return AgentTrainingTaskRunResult(
+                status=TrainingTaskRunStatus.STALE_RUNTIME_PROFILE,
+                round_id=task_payload.round_id,
+                task_id=task_payload.task_id,
+                message=runtime_profile_error,
+            )
 
         try:
             result = self._run_runtime_plan(
@@ -147,6 +160,34 @@ class AgentTrainingTaskRunnerService:
             accepted_count=result.accepted_count,
             message=result.message,
         )
+
+    def _validate_runtime_profile_for_task(
+        self,
+        *,
+        task_payload: object,
+        active_state: object,
+    ) -> str | None:
+        if self.runtime_profile_repository is None:
+            return None
+        record = self.runtime_profile_repository.load_active()
+        if record is None:
+            return None
+        profile = record.profile
+        task_revision = str(getattr(task_payload, "model_revision", ""))
+        if profile.model_revision != task_revision:
+            return (
+                "active runtime profile model_revision이 training task와 다릅니다: "
+                f"{profile.model_revision} != {task_revision}"
+            )
+        if profile.required_state_kind is None:
+            return None
+        state_schema_version = str(getattr(active_state, "schema_version", ""))
+        if profile.required_state_kind != state_schema_version:
+            return (
+                "active runtime profile required_state_kind가 shared state와 "
+                f"다릅니다: {profile.required_state_kind} != {state_schema_version}"
+            )
+        return None
 
     def _run_runtime_plan(
         self,

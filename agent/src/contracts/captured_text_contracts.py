@@ -123,7 +123,7 @@ class CapturedTextBatchIngestResponsePayload(BaseModel):
 
 
 class CapturedTextDebugJobRunRequestPayload(BaseModel):
-    """개발용 captured text view generation 즉시 실행 요청."""
+    """개발용 captured text pipeline 단계 즉시 실행 요청."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -145,7 +145,7 @@ class CapturedTextDebugJobConfigRequestPayload(BaseModel):
 
 
 class CapturedTextDebugJobRunResultPayload(BaseModel):
-    """captured text view generation 실행 결과."""
+    """captured text debug pipeline 단계 실행 결과."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -179,6 +179,10 @@ class CapturedTextDebugJobStatusPayload(BaseModel):
     strong_text_provider_name: str
     weak_text_identity_fallback: bool
     strong_text_identity_fallback: bool
+    analysis_pipeline_configured: bool = False
+    scorer_backend_name: str | None = None
+    embedding_model_id: str | None = None
+    model_revision: str | None = None
     captured_text_event_count: int = Field(ge=0)
     generated_view_count: int = Field(ge=0)
     view_generation_status_counts: dict[str, int] = Field(default_factory=dict)
