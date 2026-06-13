@@ -5,13 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from uuid import uuid4
 
-from agent.src.services.inference.decision_policy import RuleBasedDecisionPolicy
-from agent.src.services.inference.result import AssessmentResult
-from agent.src.services.inference.state import (
+from agent.src.services.inference.interpretation.decision_policy import (
+    RuleBasedDecisionPolicy,
+)
+from agent.src.services.inference.interpretation.result import AssessmentResult
+from agent.src.services.inference.interpretation.state import (
     BaselineProfile,
     TimeSeriesState,
 )
-from agent.src.services.inference.time_series_service import TimeSeriesAccumulator
+from agent.src.services.inference.interpretation.time_series import (
+    TimeSeriesAccumulator,
+)
 from shared.src.domain.entities.inference.events import AnalysisEvent
 
 

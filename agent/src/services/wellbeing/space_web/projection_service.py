@@ -11,7 +11,7 @@ from agent.src.contracts.wellbeing_space_web_contracts import WellbeingSpaceWebP
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.inference.baseline_service import BaselineService
+from agent.src.services.inference.interpretation.baseline import BaselineService
 from agent.src.services.wellbeing.space_web.coactivation_delta_strategy import (
     CoactivationDeltaSpaceWebStrategy,
 )

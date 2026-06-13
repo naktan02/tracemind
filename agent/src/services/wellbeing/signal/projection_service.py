@@ -17,10 +17,13 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
-from agent.src.services.inference.baseline_service import BaselineService
-from agent.src.services.inference.decision_service import DecisionService
-from agent.src.services.inference.result import AssessmentResult
-from agent.src.services.inference.state import BaselineProfile, TimeSeriesState
+from agent.src.services.inference.interpretation.baseline import BaselineService
+from agent.src.services.inference.interpretation.decision import DecisionService
+from agent.src.services.inference.interpretation.result import AssessmentResult
+from agent.src.services.inference.interpretation.state import (
+    BaselineProfile,
+    TimeSeriesState,
+)
 
 
 @dataclass(slots=True)

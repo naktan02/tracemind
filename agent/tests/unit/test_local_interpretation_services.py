@@ -4,16 +4,18 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from agent.src.services.inference.baseline_service import (
+from agent.src.services.inference.interpretation.baseline import (
     BaselineConfig,
     BaselineService,
 )
-from agent.src.services.inference.decision_policy import RuleBasedDecisionPolicy
-from agent.src.services.inference.decision_service import DecisionService
-from agent.src.services.inference.state import (
+from agent.src.services.inference.interpretation.decision import DecisionService
+from agent.src.services.inference.interpretation.decision_policy import (
+    RuleBasedDecisionPolicy,
+)
+from agent.src.services.inference.interpretation.state import (
     BaselineProfile,
 )
-from agent.src.services.inference.time_series_service import (
+from agent.src.services.inference.interpretation.time_series import (
     TimeSeriesAccumulator,
     TimeSeriesConfig,
 )

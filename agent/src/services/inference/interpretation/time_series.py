@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from agent.src.services.inference.state import (
+from agent.src.services.inference.interpretation.state import (
     BaselineProfile,
     TimeSeriesState,
 )

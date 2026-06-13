@@ -21,7 +21,9 @@
 
 - `inference/`
   - 로컬 추론 rail
-  - scorer backend별 분석 계산, 의사결정, 시계열 누적 담당
+  - scorer backend별 분석 계산과 agent-local 개인 기준 해석 담당
+  - score 계산은 `scoring_service.py`/`scoring_backends/`, 개인 기준 해석은
+    `interpretation/`가 소유한다
 - `training_runtime/`
   - 로컬 학습 runtime rail
   - current TrainingTask 실행, Query SSL/FSSL local objective adapter,
@@ -50,8 +52,8 @@
 
 1. `inference/pipeline_service.py`
 2. `inference/scoring_service.py`
-3. `inference/decision_service.py`
-4. `inference/time_series_service.py`
+3. `inference/interpretation/decision.py`
+4. `inference/interpretation/time_series.py`
 5. `language/translation_service.py`
 
 ### 2. 로컬 학습 흐름을 보고 싶을 때

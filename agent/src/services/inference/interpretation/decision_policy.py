@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from agent.src.services.inference.result import AssessmentResult
-from agent.src.services.inference.state import (
+from agent.src.services.inference.interpretation.result import AssessmentResult
+from agent.src.services.inference.interpretation.state import (
     BaselineProfile,
     TimeSeriesState,
 )
