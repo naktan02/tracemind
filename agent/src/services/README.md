@@ -10,6 +10,9 @@
 - asset cache/sync와 language helper는 각각 `assets/`, `language/`로 분리한다.
 - `services/*/__init__.py`는 기본적으로 marker만 두고 direct-file import를 우선한다.
 - newcomer는 `__init__.py`보다 아래 읽기 순서로 시작하는 편이 빠르다.
+- 구조 리팩터링은 `agent/REFACTOR_ROADMAP.md`의 phase gate를 따른다.
+- 이동 중에도 같은 의미의 로직을 옛 위치와 새 위치에 복사하지 않는다.
+- 너무 작은 pass-through Module이나 단일 caller 전용 helper는 새로 만들지 않는다.
 
 ## 하위 패키지 역할
 

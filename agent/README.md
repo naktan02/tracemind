@@ -9,6 +9,7 @@ classifier/prototype scoring은 scorer backend와 local asset provider로 분리
 
 - `agent/src/contracts/`
 - `agent/src/services/README.md`
+- `agent/REFACTOR_ROADMAP.md` — agent 폴더 구조 리팩터링 phase gate
 - 로컬 추론 rail: `agent/src/services/inference/`
 - scorer asset runtime: `agent/src/services/assets/`
 - 로컬 학습 rail: `agent/src/services/training_runtime/`
