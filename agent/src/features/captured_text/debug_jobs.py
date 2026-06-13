@@ -7,16 +7,16 @@ from dataclasses import dataclass
 from agent.src.contracts.captured_text_contracts import (
     CapturedTextDebugJobRunResultPayload,
 )
-from agent.src.infrastructure.repositories.captured_text.records import (
-    CapturedTextAnalysisSourceRecord,
-)
-from agent.src.infrastructure.repositories.captured_text.repository import (
-    CapturedTextRepository,
-)
-from agent.src.services.captured_text.lifecycle import (
+from agent.src.features.captured_text.lifecycle import (
     CapturedTextLifecycleService,
 )
-from agent.src.services.captured_text.view_generation.service import (
+from agent.src.features.captured_text.storage.records import (
+    CapturedTextAnalysisSourceRecord,
+)
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
+)
+from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineService

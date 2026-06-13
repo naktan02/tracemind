@@ -5,15 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
+)
+from agent.src.features.captured_text.training_source.service import (
+    CapturedTextTrainingSourceService,
+)
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
     StoredAnalysisEvent,
-)
-from agent.src.infrastructure.repositories.captured_text.repository import (
-    CapturedTextRepository,
-)
-from agent.src.services.captured_text.training_source.service import (
-    CapturedTextTrainingSourceService,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 

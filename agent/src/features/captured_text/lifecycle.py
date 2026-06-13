@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
-from agent.src.infrastructure.repositories.captured_text.repository import (
+from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
 

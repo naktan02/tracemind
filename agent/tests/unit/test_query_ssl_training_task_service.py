@@ -5,16 +5,16 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.captured_text.records import (
+from agent.src.features.captured_text.storage.records import (
     CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
 )
-from agent.src.infrastructure.repositories.captured_text.repository import (
+from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
 from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
     TRAINING_USAGE_ROLE_LABELED_ANCHOR,

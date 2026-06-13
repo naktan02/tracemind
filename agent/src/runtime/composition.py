@@ -2,11 +2,21 @@
 
 from __future__ import annotations
 
+from agent.src.features.captured_text.lifecycle import (
+    CapturedTextLifecycleService,
+    build_captured_text_lifecycle_service_from_env,
+)
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
+)
+from agent.src.features.captured_text.view_generation.provider_factory import (
+    build_captured_text_view_generation_service_from_env,
+)
+from agent.src.features.captured_text.view_generation.service import (
+    CapturedTextViewGenerationService,
+)
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.captured_text.repository import (
-    CapturedTextRepository,
 )
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
@@ -29,16 +39,6 @@ from agent.src.services.assets.shared_adapters.runtime_service import (
 )
 from agent.src.services.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
-)
-from agent.src.services.captured_text.lifecycle import (
-    CapturedTextLifecycleService,
-    build_captured_text_lifecycle_service_from_env,
-)
-from agent.src.services.captured_text.view_generation.provider_factory import (
-    build_captured_text_view_generation_service_from_env,
-)
-from agent.src.services.captured_text.view_generation.service import (
-    CapturedTextViewGenerationService,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.inference.pipeline_factory import build_default_pipeline_service

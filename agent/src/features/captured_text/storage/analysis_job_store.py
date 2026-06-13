@@ -7,7 +7,7 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import Any
 
-from agent.src.infrastructure.repositories.captured_text.records import (
+from agent.src.features.captured_text.storage.records import (
     CAPTURED_TEXT_ANALYSIS_STATUS_COMPLETED,
     CAPTURED_TEXT_ANALYSIS_STATUS_FAILED,
     CAPTURED_TEXT_ANALYSIS_STATUSES,

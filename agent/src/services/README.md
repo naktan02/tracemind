@@ -2,6 +2,7 @@
 
 이 디렉터리는 agent가 소유하는 로컬 runtime 서비스 모음이다.
 프로세스 시작 시 service graph를 조립하는 책임은 `agent/src/runtime/`이 소유한다.
+feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of truth다.
 
 핵심 원칙:
 
@@ -27,7 +28,7 @@
 - `training_runtime/`
   - 로컬 학습 runtime rail
   - current TrainingTask 실행, Query SSL/FSSL local objective adapter,
-    captured text generated view source projection 담당
+    feature-owned captured text generated view source projection 연결 담당
 - `federation/`
   - agent와 서버 사이 round orchestration rail
   - current round fetch/upload 담당
@@ -62,7 +63,7 @@
 2. `training_runtime/current_task/runner.py`
 3. `training_runtime/query_ssl/task_service.py`
 4. `training_runtime/query_ssl_peft/local_training_service.py`
-5. `captured_text/training_source/service.py`
+5. `agent/src/features/captured_text/training_source/service.py`
 
 ### 3. agent가 서버 round에 참여하는 흐름을 보고 싶을 때
 
@@ -97,7 +98,7 @@
 - `language/backtranslation_service.py`
   - 운영 translation 코어와 같은 층에서 재사용하는 backtranslation service
   - strict USB NLP input용 `aug_0`, `aug_1` strong candidate 생성에 재사용한다
-- `captured_text/view_generation/provider_factory.py`
+- `agent/src/features/captured_text/view_generation/provider_factory.py`
   - captured text weak/strong view generation provider를 agent env에서 조립한다
   - 기본은 identity fallback이며, NLLB provider를 켜면 모델은 실제 view generation
     실행 시 lazy-load된다
@@ -106,7 +107,7 @@
   - debug job은 generated weak text를 inference pipeline에 넣어 analysis event까지
     저장한다. captured text 학습 입력은 generated weak/strong view source에서
     시작한다
-- `captured_text/training_source/service.py`
+- `agent/src/features/captured_text/training_source/service.py`
   - agent-local `CapturedTextGeneratedViewRecord`를 training backend가 읽는
     Query SSL unlabeled row로 정규화한다
   - captured text는 raw string이나 임의 JSON으로 학습에 직접 들어가지 않고,

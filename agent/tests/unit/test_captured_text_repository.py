@@ -13,7 +13,12 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextSourceType,
     CapturedTextSurfaceType,
 )
-from agent.src.infrastructure.repositories.captured_text.records import (
+from agent.src.features.captured_text.lifecycle import (
+    CapturedTextLifecycleConfig,
+    CapturedTextLifecycleService,
+    build_captured_text_lifecycle_service_from_env,
+)
+from agent.src.features.captured_text.storage.records import (
     CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
     CAPTURED_TEXT_VIEW_STATUS_FAILED,
     CAPTURED_TEXT_VIEW_STATUS_PENDING,
@@ -22,18 +27,13 @@ from agent.src.infrastructure.repositories.captured_text.records import (
     CapturedTextRecord,
     captured_text_record_from_payload,
 )
-from agent.src.infrastructure.repositories.captured_text.repository import (
+from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
-from agent.src.services.captured_text.lifecycle import (
-    CapturedTextLifecycleConfig,
-    CapturedTextLifecycleService,
-    build_captured_text_lifecycle_service_from_env,
-)
-from agent.src.services.captured_text.training_source.service import (
+from agent.src.features.captured_text.training_source.service import (
     CapturedTextTrainingSourceService,
 )
-from agent.src.services.captured_text.view_generation.service import (
+from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
 

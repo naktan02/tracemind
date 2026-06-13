@@ -2322,6 +2322,35 @@ def test_agent_does_not_keep_unused_hydra_conf_tree() -> None:
     )
 
 
+def test_captured_text_feature_owns_runtime_and_storage_paths() -> None:
+    legacy_paths = (
+        AGENT_SRC / "services" / "captured_text",
+        AGENT_SRC / "infrastructure" / "repositories" / "captured_text",
+    )
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (AGENT_SRC, REPO_ROOT / "agent" / "tests", REPO_ROOT / "tests"):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(
+                    "agent.src.services.captured_text",
+                    "agent.src.infrastructure.repositories.captured_text",
+                ),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "captured_text는 feature pilot으로 이동됐다. lifecycle/service는 "
+        "agent.src.features.captured_text, 전용 SQLite storage는 "
+        "agent.src.features.captured_text.storage를 직접 import한다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
 def test_main_server_layer_does_not_import_scripts() -> None:
     violations = _find_forbidden_imports(
         root=MAIN_SERVER_SRC,

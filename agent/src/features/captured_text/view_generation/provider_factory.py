@@ -6,14 +6,14 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from agent.src.infrastructure.model_adapters.translation.nllb import (
-    NllbTranslationAdapter,
-)
-from agent.src.infrastructure.repositories.captured_text.repository import (
+from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
-from agent.src.services.captured_text.view_generation.service import (
+from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
+)
+from agent.src.infrastructure.model_adapters.translation.nllb import (
+    NllbTranslationAdapter,
 )
 from agent.src.services.language.backtranslation_service import (
     NllbBacktranslationService,

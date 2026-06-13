@@ -7,14 +7,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from agent.src.infrastructure.repositories.captured_text import (
+from agent.src.features.captured_text.storage import (
     analysis_job_store,
     event_store,
     generated_view_store,
     retention,
     view_job_store,
 )
-from agent.src.infrastructure.repositories.captured_text.records import (
+from agent.src.features.captured_text.storage.records import (
     CAPTURED_TEXT_ANALYSIS_STATUS_PENDING,
     CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
     CAPTURED_TEXT_VIEW_STATUS_PENDING,
@@ -24,7 +24,7 @@ from agent.src.infrastructure.repositories.captured_text.records import (
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
 )
-from agent.src.infrastructure.repositories.captured_text.schema import (
+from agent.src.features.captured_text.storage.schema import (
     ensure_captured_text_schema,
 )
 from agent.src.infrastructure.repositories.local_agent_database import (

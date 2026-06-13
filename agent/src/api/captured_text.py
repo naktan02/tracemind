@@ -19,19 +19,19 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextEventPayload,
     CapturedTextIngestResponsePayload,
 )
-from agent.src.infrastructure.repositories.captured_text.repository import (
-    CapturedTextRepository,
-)
-from agent.src.services.captured_text.debug_jobs import (
+from agent.src.features.captured_text.debug_jobs import (
     CapturedTextDebugJobService,
 )
-from agent.src.services.captured_text.ingest import (
+from agent.src.features.captured_text.ingest import (
     CapturedTextIngestService,
 )
-from agent.src.services.captured_text.lifecycle import (
+from agent.src.features.captured_text.lifecycle import (
     CapturedTextLifecycleService,
 )
-from agent.src.services.captured_text.view_generation.service import (
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
+)
+from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineService

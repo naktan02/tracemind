@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
+)
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.captured_text.repository import (
-    CapturedTextRepository,
 )
 from agent.src.services.assets.adapters.composition_service import (
     AdapterCompositionService,

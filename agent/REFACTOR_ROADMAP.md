@@ -333,6 +333,9 @@ Gate:
 
 ### Feature Phase 2. captured_text pilot 이동
 
+Status: 완료. 현재 source of truth는 `agent/src/features/captured_text/`이며, 전용
+SQLite storage는 `agent/src/features/captured_text/storage/`가 소유한다.
+
 목표:
 
 - raw text lifecycle의 첫 pilot을 `features/captured_text/`로 이동한다.

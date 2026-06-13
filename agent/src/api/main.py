@@ -24,11 +24,17 @@ from agent.src.runtime.composition import (
 from agent.src.runtime.state import RoundClientFactory, install_agent_runtime_state
 
 if TYPE_CHECKING:
+    from agent.src.features.captured_text.lifecycle import (
+        CapturedTextLifecycleService,
+    )
+    from agent.src.features.captured_text.storage.repository import (
+        CapturedTextRepository,
+    )
+    from agent.src.features.captured_text.view_generation.service import (
+        CapturedTextViewGenerationService,
+    )
     from agent.src.infrastructure.repositories.analysis_event_repository import (
         AnalysisEventRepository,
-    )
-    from agent.src.infrastructure.repositories.captured_text.repository import (
-        CapturedTextRepository,
     )
     from agent.src.infrastructure.repositories.child_support_repository import (
         ChildSupportConversationRepository,
@@ -50,12 +56,6 @@ if TYPE_CHECKING:
     )
     from agent.src.services.assets.shared_adapters.sync_service import (
         SharedAdapterSyncService,
-    )
-    from agent.src.services.captured_text.lifecycle import (
-        CapturedTextLifecycleService,
-    )
-    from agent.src.services.captured_text.view_generation.service import (
-        CapturedTextViewGenerationService,
     )
     from agent.src.services.inference.pipeline_service import InferencePipelineService
     from agent.src.services.wellbeing.child_support.llm_provider import (

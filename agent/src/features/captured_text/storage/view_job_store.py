@@ -6,10 +6,10 @@ import json
 import sqlite3
 from datetime import datetime, timezone
 
-from agent.src.infrastructure.repositories.captured_text.event_store import (
+from agent.src.features.captured_text.storage.event_store import (
     row_to_record,
 )
-from agent.src.infrastructure.repositories.captured_text.records import (
+from agent.src.features.captured_text.storage.records import (
     CAPTURED_TEXT_VIEW_STATUSES,
     CapturedTextRecord,
 )

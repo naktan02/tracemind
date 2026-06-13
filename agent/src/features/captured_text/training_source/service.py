@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from agent.src.infrastructure.repositories.captured_text.records import (
+from agent.src.features.captured_text.storage.records import (
     CapturedTextGeneratedTrainingSourceRecord,
 )
-from agent.src.infrastructure.repositories.captured_text.repository import (
+from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

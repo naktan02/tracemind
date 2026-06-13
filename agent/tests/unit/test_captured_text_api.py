@@ -20,24 +20,24 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextSourceType,
     CapturedTextSurfaceType,
 )
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.captured_text.records import (
-    captured_text_record_from_payload,
-)
-from agent.src.infrastructure.repositories.captured_text.repository import (
-    CapturedTextRepository,
-)
-from agent.src.services.captured_text.ingest import (
+from agent.src.features.captured_text.ingest import (
     CapturedTextIngestService,
 )
-from agent.src.services.captured_text.lifecycle import (
+from agent.src.features.captured_text.lifecycle import (
     CapturedTextLifecycleConfig,
     CapturedTextLifecycleService,
 )
-from agent.src.services.captured_text.view_generation.service import (
+from agent.src.features.captured_text.storage.records import (
+    captured_text_record_from_payload,
+)
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
+)
+from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.language.preprocess_service import PreprocessService

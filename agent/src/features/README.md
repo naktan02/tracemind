@@ -1,9 +1,14 @@
 # Agent Features
 
-`features/`는 agent를 일반 백엔드형 feature module 구조로 옮기기 위한 목표
-경계다. 현재 migration 중에는 기존 `services/`, `api/`, `runtime/`,
-`infrastructure/repositories/`가 운영 source of truth이며, 이 디렉터리는 후속
-phase에서 파일을 실제로 이동할 때의 소유권 기준을 먼저 고정한다.
+`features/`는 agent를 일반 백엔드형 feature module 구조로 옮기는 경계다.
+아직 이동하지 않은 기능은 기존 `services/`, `api/`, `runtime/`,
+`infrastructure/repositories/`가 운영 source of truth이며, 이동이 끝난 기능은 이
+디렉터리 아래가 source of truth다.
+
+현재 이동된 feature:
+
+- `captured_text/`: raw text ingest, generated view, debug analysis job, training
+  source projection, captured text 전용 SQLite storage.
 
 ## 소유 원칙
 

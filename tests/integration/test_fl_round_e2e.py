@@ -25,16 +25,16 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.captured_text.records import (
+from agent.src.features.captured_text.storage.records import (
     CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
 )
-from agent.src.infrastructure.repositories.captured_text.repository import (
+from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.training_runtime.current_task.result import (

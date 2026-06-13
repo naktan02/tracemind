@@ -7,7 +7,7 @@ import sqlite3
 from datetime import datetime
 from typing import Any
 
-from agent.src.infrastructure.repositories.captured_text.records import (
+from agent.src.features.captured_text.storage.records import (
     CapturedTextGeneratedTrainingSourceRecord,
     CapturedTextGeneratedViewRecord,
 )
