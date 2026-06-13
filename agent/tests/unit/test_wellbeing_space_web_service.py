@@ -66,6 +66,47 @@ def test_coactivation_delta_strategy_builds_nodes_and_edges() -> None:
     assert result.edges[0].weight > 0
 
 
+def test_coactivation_delta_strategy_keeps_normal_category_node() -> None:
+    computed_at = datetime(2026, 6, 13, 9, tzinfo=timezone.utc)
+    strategy = CoactivationDeltaSpaceWebStrategy()
+
+    result = strategy.project(
+        SpaceWebProjectionContext(
+            recent_events=(
+                _analysis_event(
+                    query_id="q1",
+                    occurred_at=computed_at,
+                    scores={
+                        "anxiety": 0.7,
+                        "depression": 0.4,
+                        "normal": 0.2,
+                        "suicidal": 0.1,
+                    },
+                ),
+            ),
+            baseline_profile=BaselineProfile(
+                profile_version="baseline_profile.v1",
+                warmup_complete=True,
+                category_means={
+                    "anxiety": 0.1,
+                    "depression": 0.1,
+                    "normal": 0.3,
+                    "suicidal": 0.05,
+                },
+            ),
+            computed_at=computed_at,
+            category_label_overrides={},
+        )
+    )
+
+    assert {node.id for node in result.nodes} == {
+        "anxiety",
+        "depression",
+        "normal",
+        "suicidal",
+    }
+
+
 def test_space_web_service_returns_payload_from_recent_analysis_events(
     tmp_path: Path,
 ) -> None:

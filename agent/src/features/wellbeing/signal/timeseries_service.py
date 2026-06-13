@@ -3,25 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalRange,
     WellbeingSignalTimeseriesPayload,
     WellbeingSignalTimeseriesPointPayload,
 )
+from agent.src.features.wellbeing.range_window import cutoff_for_range
 from agent.src.features.wellbeing.signal.projection_service import (
     WellbeingSignalProjectionService,
 )
 from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
-
-_RANGE_TO_DAYS: dict[WellbeingSignalRange, int] = {
-    WellbeingSignalRange.LAST_7_DAYS: 7,
-    WellbeingSignalRange.LAST_14_DAYS: 14,
-    WellbeingSignalRange.LAST_30_DAYS: 30,
-}
 
 
 @dataclass(slots=True)
@@ -44,15 +39,17 @@ class WellbeingTimeseriesService:
             self.projection_service.refresh_from_runtime()
         if self.repository is not None:
             now = datetime.now(tz=timezone.utc)
-            days = _RANGE_TO_DAYS[requested_range]
             summaries = self.repository.list_summaries_since(
-                cutoff=now - timedelta(days=days - 1),
+                cutoff=cutoff_for_range(now, requested_range),
             )
             if not summaries:
                 latest_summary = self.repository.load_latest_summary()
                 if latest_summary is not None:
                     summaries = self.repository.list_summaries_since(
-                        cutoff=latest_summary.computed_at - timedelta(days=days - 1),
+                        cutoff=cutoff_for_range(
+                            latest_summary.computed_at,
+                            requested_range,
+                        ),
                     )
             if summaries:
                 return WellbeingSignalTimeseriesPayload(

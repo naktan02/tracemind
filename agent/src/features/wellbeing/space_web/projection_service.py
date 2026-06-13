@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
 from agent.src.contracts.wellbeing_space_web_contracts import WellbeingSpaceWebPayload
 from agent.src.features.inference.interpretation.baseline import BaselineService
+from agent.src.features.wellbeing.range_window import cutoff_for_range, days_for_range
 from agent.src.features.wellbeing.space_web.coactivation_delta_strategy import (
     CoactivationDeltaSpaceWebStrategy,
 )
@@ -20,12 +21,6 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
 from shared.src.domain.entities.inference.events import AnalysisEvent
-
-_RANGE_TO_DAYS: dict[WellbeingSignalRange, int] = {
-    WellbeingSignalRange.LAST_7_DAYS: 7,
-    WellbeingSignalRange.LAST_14_DAYS: 14,
-    WellbeingSignalRange.LAST_30_DAYS: 30,
-}
 
 
 @dataclass(slots=True)
@@ -48,13 +43,13 @@ class WellbeingSpaceWebProjectionService:
         requested_range: WellbeingSignalRange,
     ) -> WellbeingSpaceWebPayload:
         computed_at = self.now_provider()
-        range_days = _RANGE_TO_DAYS[requested_range]
+        range_days = days_for_range(requested_range)
         history_days = range_days + self.baseline_service.config.lookback_days
         events = sorted(
             self.analysis_event_repository.get_recent(days=history_days),
             key=lambda event: event.occurred_at,
         )
-        window_start = computed_at - timedelta(days=range_days - 1)
+        window_start = cutoff_for_range(computed_at, requested_range)
         recent_events = [
             event
             for event in events

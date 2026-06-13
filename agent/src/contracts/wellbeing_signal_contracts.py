@@ -54,6 +54,7 @@ class WellbeingSignalConfidence(StrEnum):
 class WellbeingSignalRange(StrEnum):
     """부모용 추이 화면이 요청하는 기간."""
 
+    LAST_1_DAY = "1d"
     LAST_7_DAYS = "7d"
     LAST_14_DAYS = "14d"
     LAST_30_DAYS = "30d"

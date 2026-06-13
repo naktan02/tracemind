@@ -61,6 +61,8 @@ export function formatConfidenceLabel(
 
 export function formatRangeLabel(range: WellbeingSignalRange): string {
   switch (range) {
+    case "1d":
+      return "1일";
     case "7d":
       return "7일";
     case "14d":

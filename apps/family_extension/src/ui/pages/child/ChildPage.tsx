@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import type { WellbeingSignalRange } from "../../../contracts/generated";
 import { ChildSupportCoachPanel } from "../../components/ChildSupportCoachPanel";
 import { WellbeingSpaceWebGraph } from "../../components/WellbeingSpaceWebGraph";
 import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
@@ -15,7 +16,7 @@ type ChildPageProps = {
 export type ChildTab = "ai" | "analysis" | "checkin";
 
 export function ChildPage({ activeTab }: ChildPageProps) {
-  const [selectedRange, setSelectedRange] = useState<"7d" | "14d" | "30d">("7d");
+  const [selectedRange, setSelectedRange] = useState<WellbeingSignalRange>("7d");
   const summaryState = useWellbeingSummary();
   const timeseriesState = useWellbeingTimeseries({
     enabled: activeTab === "analysis",

@@ -57,7 +57,7 @@ def test_wellbeing_signal_timeseries_payload_accepts_points() -> None:
     payload = WellbeingSignalTimeseriesPayload.model_validate(
         {
             "computed_at": "2026-04-24T10:30:00Z",
-            "range": "7d",
+            "range": "1d",
             "points": [
                 {"ts": "2026-04-22T00:00:00Z", "signal_score": 51.0},
                 {"ts": "2026-04-23T00:00:00Z", "signal_score": 61.0},
@@ -66,7 +66,7 @@ def test_wellbeing_signal_timeseries_payload_accepts_points() -> None:
         }
     )
 
-    assert payload.range == WellbeingSignalRange.LAST_7_DAYS
+    assert payload.range == WellbeingSignalRange.LAST_1_DAY
     assert len(payload.points) == 3
     assert payload.points[-1].signal_score == 72.0
 

@@ -85,7 +85,7 @@ export type WellbeingSignalTrend = "rising" | "steady" | "falling" | "volatile" 
 
 export type WellbeingSignalConfidence = "low" | "medium" | "high";
 
-export type WellbeingSignalRange = "7d" | "14d" | "30d";
+export type WellbeingSignalRange = "1d" | "7d" | "14d" | "30d";
 
 export interface WellbeingSignalSummaryPayload {
   schema_version: string;

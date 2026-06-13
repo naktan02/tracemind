@@ -67,11 +67,11 @@ def test_wellbeing_summary_api_returns_service_payload() -> None:
 
 def test_wellbeing_timeseries_api_returns_requested_range() -> None:
     response = wellbeing_api.get_wellbeing_timeseries(
-        range=WellbeingSignalRange.LAST_14_DAYS,
+        range=WellbeingSignalRange.LAST_1_DAY,
         timeseries_service=WellbeingTimeseriesService(),
     )
 
-    assert response.range == WellbeingSignalRange.LAST_14_DAYS
+    assert response.range == WellbeingSignalRange.LAST_1_DAY
     assert response.points == ()
 
 

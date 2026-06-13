@@ -10,7 +10,7 @@ type WellbeingSignalTrendChartProps = {
   timeseries: WellbeingSignalTimeseriesPayload;
 };
 
-const SUPPORTED_RANGES: WellbeingSignalRange[] = ["7d", "14d", "30d"];
+const SUPPORTED_RANGES: WellbeingSignalRange[] = ["1d", "7d", "14d", "30d"];
 
 function buildPolylinePoints(values: number[]): string {
   if (values.length === 0) {
@@ -30,15 +30,6 @@ function buildPolylinePoints(values: number[]): string {
     .join(" ");
 }
 
-function buildPointMarkers(values: number[]) {
-  return values.map((value, index) => {
-    const x = values.length === 1 ? 50 : (index / (values.length - 1)) * 100;
-    const clampedValue = Math.min(Math.max(value, 0), 100);
-    const y = 100 - clampedValue;
-    return { x, y, key: `${index}-${Math.round(value)}` };
-  });
-}
-
 export function WellbeingSignalTrendChart({
   activeRange,
   onRangeChange,
@@ -46,7 +37,6 @@ export function WellbeingSignalTrendChart({
 }: WellbeingSignalTrendChartProps) {
   const points = timeseries.points.map((point) => point.signal_score);
   const polylinePoints = buildPolylinePoints(points);
-  const pointMarkers = buildPointMarkers(points);
   const latestPoint =
     timeseries.points.length === 0
       ? null
@@ -98,20 +88,10 @@ export function WellbeingSignalTrendChart({
           <line x1="0" y1="75" x2="100" y2="75" className="trend-grid-line" />
           <line x1="0" y1="100" x2="100" y2="100" className="trend-grid-line" />
           <polyline
+            className="trend-line"
             fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
             points={polylinePoints}
           />
-          {pointMarkers.map((point) => (
-            <circle
-              key={point.key}
-              className="trend-point"
-              cx={point.x}
-              cy={point.y}
-              r="1.4"
-            />
-          ))}
         </svg>
       </div>
 

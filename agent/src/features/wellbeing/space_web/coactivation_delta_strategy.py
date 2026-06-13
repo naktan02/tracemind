@@ -25,9 +25,7 @@ from agent.src.features.wellbeing.space_web.projection_strategy import (
 class CoactivationDeltaConfig:
     """coactivation-delta strategy의 해석 정책."""
 
-    ignored_categories: frozenset[str] = field(
-        default_factory=lambda: frozenset({"normal"})
-    )
+    ignored_categories: frozenset[str] = field(default_factory=frozenset)
     positive_delta_floor: float = 0.02
     trend_delta_threshold: float = 0.08
     intensity_delta_weight: float = 0.3

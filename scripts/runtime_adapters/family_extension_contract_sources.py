@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+import agent.src.api.runtime_profile as runtime_profile_contracts
 import agent.src.contracts.captured_text_contracts as captured_text_contracts
 import agent.src.contracts.child_support_contracts as child_support_contracts
 import agent.src.contracts.family_access_contracts as family_access_contracts
 import agent.src.contracts.typing_segment_contracts as typing_segment_contracts
 import agent.src.contracts.wellbeing_signal_contracts as wellbeing_signal_contracts
 import agent.src.contracts.wellbeing_space_web_contracts as space_web_contracts
+from shared.src.contracts import agent_runtime_profile_contracts
 
 TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
     ("FamilyAccessMode", family_access_contracts.FamilyAccessMode),
@@ -128,5 +130,21 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
     (
         "CapturedTextDebugJobStatusPayload",
         captured_text_contracts.CapturedTextDebugJobStatusPayload,
+    ),
+    (
+        "AgentRuntimeProfilePayload",
+        agent_runtime_profile_contracts.AgentRuntimeProfilePayload,
+    ),
+    (
+        "RuntimeProfileStatusPayload",
+        runtime_profile_contracts.RuntimeProfileStatusPayload,
+    ),
+    (
+        "RuntimeProfileSyncRequest",
+        runtime_profile_contracts.RuntimeProfileSyncRequest,
+    ),
+    (
+        "RuntimeProfileSyncResponse",
+        runtime_profile_contracts.RuntimeProfileSyncResponse,
     ),
 )

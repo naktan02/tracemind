@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
+from agent.src.features.wellbeing.range_window import cutoff_for_range
 from agent.src.features.wellbeing.signal.projection_service import (
     WellbeingSignalProjectionService,
 )
@@ -20,6 +21,17 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
 from shared.src.domain.entities.inference.events import AnalysisEvent
+
+
+def test_wellbeing_range_cutoff_uses_last_24_hours_for_one_day() -> None:
+    anchor = datetime(2026, 6, 13, 9, tzinfo=timezone.utc)
+
+    assert cutoff_for_range(anchor, WellbeingSignalRange.LAST_1_DAY) == anchor - (
+        timedelta(days=1)
+    )
+    assert cutoff_for_range(anchor, WellbeingSignalRange.LAST_7_DAYS) == anchor - (
+        timedelta(days=6)
+    )
 
 
 def _build_analysis_event(
