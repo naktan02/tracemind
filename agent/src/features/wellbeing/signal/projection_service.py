@@ -40,6 +40,9 @@ class WellbeingSignalProjectionService:
     def refresh_from_runtime(self) -> None:
         """최근 analysis event를 replay해 wellbeing snapshot을 갱신한다."""
 
+        if self._snapshots_are_current():
+            return
+
         analysis_events = sorted(
             self.analysis_event_repository.get_recent(days=self.lookback_days),
             key=lambda event: event.occurred_at,
@@ -71,6 +74,15 @@ class WellbeingSignalProjectionService:
             history.append(analysis_event)
 
         self._last_refresh_at = datetime.now(tz=timezone.utc)
+
+    def _snapshots_are_current(self) -> bool:
+        latest_analysis_at = self.analysis_event_repository.load_latest_occurred_at()
+        if latest_analysis_at is None:
+            return True
+        latest_snapshot = self.snapshot_repository.load_latest_summary()
+        if latest_snapshot is None:
+            return False
+        return latest_snapshot.computed_at >= latest_analysis_at
 
 
 def _translate_to_wellbeing_summary(

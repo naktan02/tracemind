@@ -74,11 +74,11 @@ export function WellbeingSignalTrendChart({
 
       <div className="trend-chart-shell">
         <div className="trend-axis-labels" aria-hidden="true">
-          <span>0</span>
-          <span>25</span>
-          <span>50</span>
-          <span>75</span>
           <span>100</span>
+          <span>75</span>
+          <span>50</span>
+          <span>25</span>
+          <span>0</span>
         </div>
         <svg
           className="trend-chart"

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
 from agent.src.features.wellbeing.range_window import cutoff_for_range
 from agent.src.features.wellbeing.signal.projection_service import (
@@ -101,6 +103,36 @@ def test_projection_service_replays_analysis_events_into_snapshots(
         )
         == 3
     )
+
+
+def test_projection_service_skips_replay_when_snapshots_are_current(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    analysis_event_repository = AnalysisEventRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+    projection_service = WellbeingSignalProjectionService(
+        analysis_event_repository=analysis_event_repository,
+        snapshot_repository=snapshot_repository,
+        lookback_days=60,
+    )
+    analysis_event_repository.save(
+        _build_analysis_event(
+            query_id="q1",
+            occurred_at=datetime(2026, 4, 24, 9, tzinfo=timezone.utc),
+            score=0.73,
+        )
+    )
+    projection_service.refresh_from_runtime()
+
+    def fail_get_recent(*args, **kwargs):
+        raise AssertionError("current snapshots should not replay analysis events")
+
+    monkeypatch.setattr(AnalysisEventRepository, "get_recent", fail_get_recent)
+
+    projection_service.refresh_from_runtime()
 
 
 def test_wellbeing_services_refresh_projection_before_read(
