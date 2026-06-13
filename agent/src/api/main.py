@@ -73,6 +73,9 @@ from agent.src.services.wellbeing.family_access_service import FamilyAccessServi
 from agent.src.services.wellbeing.projection_service import (
     WellbeingSignalProjectionService,
 )
+from agent.src.services.wellbeing.space_web.projection_service import (
+    WellbeingSpaceWebProjectionService,
+)
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import (
     WellbeingTimeseriesService,
@@ -188,6 +191,9 @@ def create_app(
     app.state.wellbeing_timeseries_service = WellbeingTimeseriesService(
         repository=app.state.wellbeing_snapshot_repository,
         projection_service=app.state.wellbeing_projection_service,
+    )
+    app.state.wellbeing_space_web_service = WellbeingSpaceWebProjectionService(
+        analysis_event_repository=app.state.analysis_event_repository,
     )
     app.state.family_access_service = FamilyAccessService(
         repository=app.state.family_access_repository,

@@ -9,6 +9,7 @@ import agent.src.contracts.child_support_contracts as child_support_contracts
 import agent.src.contracts.family_access_contracts as family_access_contracts
 import agent.src.contracts.typing_segment_contracts as typing_segment_contracts
 import agent.src.contracts.wellbeing_signal_contracts as wellbeing_signal_contracts
+import agent.src.contracts.wellbeing_space_web_contracts as space_web_contracts
 
 TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
     ("FamilyAccessMode", family_access_contracts.FamilyAccessMode),
@@ -55,6 +56,22 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
     (
         "WellbeingSignalTimeseriesPayload",
         wellbeing_signal_contracts.WellbeingSignalTimeseriesPayload,
+    ),
+    (
+        "WellbeingSpaceWebRelationType",
+        space_web_contracts.WellbeingSpaceWebRelationType,
+    ),
+    (
+        "WellbeingSpaceWebNodePayload",
+        space_web_contracts.WellbeingSpaceWebNodePayload,
+    ),
+    (
+        "WellbeingSpaceWebEdgePayload",
+        space_web_contracts.WellbeingSpaceWebEdgePayload,
+    ),
+    (
+        "WellbeingSpaceWebPayload",
+        space_web_contracts.WellbeingSpaceWebPayload,
     ),
     (
         "ParentUnlockRequestPayload",

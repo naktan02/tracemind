@@ -14,7 +14,13 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
     WellbeingSignalTimeseriesPayload,
 )
+from agent.src.contracts.wellbeing_space_web_contracts import (
+    WellbeingSpaceWebPayload,
+)
 from agent.src.services.wellbeing.auth_service import ParentAuthService
+from agent.src.services.wellbeing.space_web.projection_service import (
+    WellbeingSpaceWebProjectionService,
+)
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
 
@@ -53,6 +59,18 @@ def get_wellbeing_timeseries_service(
     return service
 
 
+def get_wellbeing_space_web_service(
+    request: Request,
+) -> WellbeingSpaceWebProjectionService:
+    service = getattr(request.app.state, "wellbeing_space_web_service", None)
+    if service is None:
+        raise RuntimeError(
+            "WellbeingSpaceWebProjectionService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.wellbeing_space_web_service를 설정하세요."
+        )
+    return service
+
+
 def get_parent_auth_service(request: Request) -> ParentAuthService:
     service = getattr(request.app.state, "parent_auth_service", None)
     if service is None:
@@ -70,6 +88,10 @@ SummaryServiceDep = Annotated[
 TimeseriesServiceDep = Annotated[
     WellbeingTimeseriesService,
     Depends(get_wellbeing_timeseries_service),
+]
+SpaceWebServiceDep = Annotated[
+    WellbeingSpaceWebProjectionService,
+    Depends(get_wellbeing_space_web_service),
 ]
 ParentAuthServiceDep = Annotated[
     ParentAuthService,
@@ -98,6 +120,18 @@ def get_wellbeing_timeseries(
 ) -> WellbeingSignalTimeseriesPayload:
     """부모용 상세 화면의 전체 wellbeing signal 추이를 반환한다."""
     return timeseries_service.get_timeseries(requested_range=range)
+
+
+@router.get(
+    "/wellbeing/space-web",
+    response_model=WellbeingSpaceWebPayload,
+)
+def get_wellbeing_space_web(
+    range: WellbeingSignalRange,
+    space_web_service: SpaceWebServiceDep,
+) -> WellbeingSpaceWebPayload:
+    """아이용 분석 화면의 wellbeing space-web graph를 반환한다."""
+    return space_web_service.get_space_web(requested_range=range)
 
 
 @router.post(

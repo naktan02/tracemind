@@ -112,6 +112,36 @@ export interface WellbeingSignalTimeseriesPayload {
   points: WellbeingSignalTimeseriesPointPayload[];
 }
 
+export type WellbeingSpaceWebRelationType = "coactivation" | "transition";
+
+export interface WellbeingSpaceWebNodePayload {
+  id: string;
+  label: string;
+  intensity: number;
+  level: WellbeingSignalLevel;
+  trend: WellbeingSignalTrend;
+  observed_event_count: number;
+}
+
+export interface WellbeingSpaceWebEdgePayload {
+  source: string;
+  target: string;
+  weight: number;
+  relation_type: WellbeingSpaceWebRelationType;
+  evidence_count: number;
+}
+
+export interface WellbeingSpaceWebPayload {
+  schema_version: string;
+  computed_at: string;
+  range: WellbeingSignalRange;
+  strategy_name: string;
+  strategy_version: string;
+  nodes: WellbeingSpaceWebNodePayload[];
+  edges: WellbeingSpaceWebEdgePayload[];
+  low_data: boolean;
+}
+
 export interface ParentUnlockRequestPayload {
   pin: string;
 }

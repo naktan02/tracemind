@@ -20,6 +20,8 @@
 - `family_access_contracts.py`: family extension setup/unlock -> agent-local auth payload.
 - `wellbeing_signal_contracts.py`: agent wellbeing projection -> family extension summary,
   timeseries, parent unlock payload.
+- `wellbeing_space_web_contracts.py`: agent wellbeing category projection -> family
+  extension child analysis space-web nodes/edges payload.
 
 `CapturedTextDebugJob*Payload`는 debug page가 agent-local view generation/analysis
 상태를 조회하고 개발용 on/off, 즉시 실행을 요청하기 위한 payload다. production
@@ -43,3 +45,8 @@ Captured text ingest 응답의 `query_id`는 shape compatibility를 위해 `even
 `ChildSupportConversation*` raw message와 conversation 저장도 agent-local 경계다.
 LLM provider, prompt, safety policy, response plan 실행 방식은 agent runtime이
 소유하고 UI는 응답을 표시한다.
+
+Wellbeing space-web은 `analysis_events.category_scores`를 사용자 화면용
+`nodes`/`edges` view-model로 투영한 결과만 노출한다. category score 원본,
+baseline, edge weight 알고리즘 의미는 agent service/strategy가 소유하고,
+family extension은 payload를 재해석하지 않는다.

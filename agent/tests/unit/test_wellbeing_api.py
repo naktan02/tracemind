@@ -29,10 +29,16 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
 )
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 from agent.src.infrastructure.repositories.family_access_repository import (
     FamilyAccessRepository,
 )
 from agent.src.services.wellbeing.family_access_service import FamilyAccessService
+from agent.src.services.wellbeing.space_web.projection_service import (
+    WellbeingSpaceWebProjectionService,
+)
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import (
     WellbeingTimeseriesService,
@@ -67,6 +73,22 @@ def test_wellbeing_timeseries_api_returns_requested_range() -> None:
 
     assert response.range == WellbeingSignalRange.LAST_14_DAYS
     assert response.points == ()
+
+
+def test_wellbeing_space_web_api_returns_requested_range(tmp_path: Path) -> None:
+    response = wellbeing_api.get_wellbeing_space_web(
+        range=WellbeingSignalRange.LAST_30_DAYS,
+        space_web_service=WellbeingSpaceWebProjectionService(
+            analysis_event_repository=AnalysisEventRepository(
+                db_path=tmp_path / "analysis_events.db"
+            ),
+        ),
+    )
+
+    assert response.range == WellbeingSignalRange.LAST_30_DAYS
+    assert response.strategy_name == "coactivation_delta"
+    assert response.nodes == ()
+    assert response.edges == ()
 
 
 def test_parent_unlock_api_grants_valid_pin() -> None:
@@ -155,6 +177,7 @@ def test_wellbeing_router_is_registered_on_agent_app() -> None:
     assert "/api/v1/family/unlock" in route_paths
     assert "/api/v1/wellbeing/summary" in route_paths
     assert "/api/v1/wellbeing/timeseries" in route_paths
+    assert "/api/v1/wellbeing/space-web" in route_paths
     assert "/api/v1/parent/unlock" in route_paths
     assert "/api/v1/system/health" in route_paths
 

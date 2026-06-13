@@ -1,8 +1,10 @@
 import { useState } from "react";
 
 import { ChildSupportCoachPanel } from "../../components/ChildSupportCoachPanel";
+import { WellbeingSpaceWebGraph } from "../../components/WellbeingSpaceWebGraph";
 import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
 import { WellbeingSignalTrendChart } from "../../components/WellbeingSignalTrendChart";
+import { useWellbeingSpaceWeb } from "../../hooks/useWellbeingSpaceWeb";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
 import { useWellbeingTimeseries } from "../../hooks/useWellbeingTimeseries";
 
@@ -16,6 +18,10 @@ export function ChildPage({ activeTab }: ChildPageProps) {
   const [selectedRange, setSelectedRange] = useState<"7d" | "14d" | "30d">("7d");
   const summaryState = useWellbeingSummary();
   const timeseriesState = useWellbeingTimeseries({
+    enabled: activeTab === "analysis",
+    requestedRange: selectedRange,
+  });
+  const spaceWebState = useWellbeingSpaceWeb({
     enabled: activeTab === "analysis",
     requestedRange: selectedRange,
   });
@@ -88,6 +94,35 @@ export function ChildPage({ activeTab }: ChildPageProps) {
                 <div>
                   <p className="card-label">최근 변화</p>
                   <p className="section-copy">{timeseriesState.errorMessage}</p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {spaceWebState.status === "loaded" && (
+            <WellbeingSpaceWebGraph spaceWeb={spaceWebState.spaceWeb} />
+          )}
+          {spaceWebState.status === "loading" && (
+            <section className="surface-card trend-card">
+              <div className="trend-card-header">
+                <div>
+                  <p className="card-label">내 공간웹</p>
+                  <p className="section-copy">
+                    공간웹 데이터를 준비하고 있습니다.
+                  </p>
+                </div>
+              </div>
+              <div className="trend-chart-loading">
+                공간웹 데이터를 불러오는 중입니다.
+              </div>
+            </section>
+          )}
+          {spaceWebState.status === "error" && (
+            <section className="surface-card trend-card">
+              <div className="trend-card-header">
+                <div>
+                  <p className="card-label">내 공간웹</p>
+                  <p className="section-copy">{spaceWebState.errorMessage}</p>
                 </div>
               </div>
             </section>

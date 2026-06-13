@@ -2,6 +2,7 @@ import type {
   WellbeingSignalRange,
   WellbeingSignalSummaryPayload,
   WellbeingSignalTimeseriesPayload,
+  WellbeingSpaceWebPayload,
 } from "../../contracts/generated";
 import { requestAgentJson } from "../../common/agentClient";
 
@@ -13,6 +14,12 @@ export async function fetchWellbeingTimeseries(
   range: WellbeingSignalRange,
 ): Promise<WellbeingSignalTimeseriesPayload> {
   return requestAgentJson(`/api/v1/wellbeing/timeseries?range=${range}`);
+}
+
+export async function fetchWellbeingSpaceWeb(
+  range: WellbeingSignalRange,
+): Promise<WellbeingSpaceWebPayload> {
+  return requestAgentJson(`/api/v1/wellbeing/space-web?range=${range}`);
 }
 
 export async function checkLocalProgramHealth(): Promise<boolean> {
