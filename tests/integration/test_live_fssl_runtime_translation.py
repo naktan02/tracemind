@@ -5,13 +5,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from agent.src.services.training_runtime.current_task.agent_training_task_runner_service import (  # noqa: E501
-    AgentTrainingTaskRunnerService,
-    AgentTrainingTaskRunRequest,
-)
 from agent.src.services.training_runtime.current_task.result import (
     TrainingTaskRunResult,
     TrainingTaskRunStatus,
+)
+from agent.src.services.training_runtime.current_task.runner import (  # noqa: E501
+    AgentTrainingTaskRunnerService,
+    AgentTrainingTaskRunRequest,
 )
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenRequest,

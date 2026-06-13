@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from agent.src.services.training_runtime.current_task.agent_training_task_runner_service import (  # noqa: E501
-    AgentTrainingTaskRunnerService,
-    AgentTrainingTaskRunRequest,
-)
 from agent.src.services.training_runtime.current_task.result import (
     TrainingTaskRunResult,
     TrainingTaskRunStatus,
+)
+from agent.src.services.training_runtime.current_task.runner import (  # noqa: E501
+    AgentTrainingTaskRunnerService,
+    AgentTrainingTaskRunRequest,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_state_payload,

@@ -176,8 +176,8 @@ def test_method_owned_fssl_uses_request_training_surface() -> None:
         AGENT_SRC
         / "services"
         / "training_runtime"
-        / "current_task"
-        / "query_ssl_training_task_service.py"
+        / "query_ssl"
+        / "method_request_builder.py"
     )
     fedmatch_descriptor_path = METHODS_FEDERATED_SSL_SRC / "fedmatch" / "descriptor.py"
     method_owned_path = (
@@ -2355,13 +2355,7 @@ def test_live_runtime_layers_do_not_import_concrete_fssl_method_packages() -> No
 
 
 def test_agent_current_task_runner_delegates_runtime_resolution() -> None:
-    path = (
-        AGENT_SRC
-        / "services"
-        / "training_runtime"
-        / "current_task"
-        / "agent_training_task_runner_service.py"
-    )
+    path = AGENT_SRC / "services" / "training_runtime" / "current_task" / "runner.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "validate_federated_ssl_capability_compatibility",
@@ -2376,7 +2370,7 @@ def test_agent_current_task_runner_delegates_runtime_resolution() -> None:
     assert "resolve_current_task_runtime" in source
     assert not violations, (
         "agent current-task runner는 orchestration만 소유한다. runtime/profile/"
-        "capability 해석은 runtime_dispatch.py로 위임해 live task 경계가 runner에 "
+        "capability 해석은 dispatch.py로 위임해 live task 경계가 runner에 "
         "다시 누적되지 않게 한다.\n"
         f"violations={violations}"
     )
@@ -2387,8 +2381,8 @@ def test_agent_query_ssl_service_delegates_live_fssl_context_parsing() -> None:
         AGENT_SRC
         / "services"
         / "training_runtime"
-        / "current_task"
-        / "query_ssl_training_task_service.py"
+        / "query_ssl"
+        / "method_request_builder.py"
     )
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (

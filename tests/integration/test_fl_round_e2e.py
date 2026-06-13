@@ -28,24 +28,26 @@ from fastapi.testclient import TestClient
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.infrastructure.repositories.captured_text.records import (
     CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
+)
+from agent.src.infrastructure.repositories.captured_text.repository import (
     CapturedTextRepository,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.training_runtime.current_task.agent_training_task_runner_service import (  # noqa: E501
-    AgentTrainingTaskRunnerService,
-    AgentTrainingTaskRunRequest,
-)
-from agent.src.services.training_runtime.current_task.query_ssl_training_task_service import (  # noqa: E501
-    AgentQuerySslTrainingTaskRunRequest,
-    AgentQuerySslTrainingTaskService,
-)
 from agent.src.services.training_runtime.current_task.result import (
     TrainingTaskRunResult,
     TrainingTaskRunStatus,
+)
+from agent.src.services.training_runtime.current_task.runner import (  # noqa: E501
+    AgentTrainingTaskRunnerService,
+    AgentTrainingTaskRunRequest,
+)
+from agent.src.services.training_runtime.query_ssl.task_service import (  # noqa: E501
+    AgentQuerySslTrainingTaskRunRequest,
+    AgentQuerySslTrainingTaskService,
 )
 from main_server.src.api.fl_rounds import get_round_lifecycle_service
 from main_server.src.api.main import app as server_app

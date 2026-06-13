@@ -15,7 +15,9 @@ pseudo-label rule, PEFT update 계산 core는 `methods/`가 소유하고, agent�
 ## 하위 패키지
 
 - `current_task/`: live agent의 run-current-task application flow.
-- `query_ssl_peft/`: Query SSL / FSSL PEFT text encoder local runtime adapter.
+- `query_ssl/`: Query SSL current-task source selection, request build, upload,
+  usage ledger orchestration.
+- `query_ssl_peft/`: Query SSL/FSSL PEFT text encoder local update adapter.
 - `training_sources/`: agent-local source를 Query SSL training row로 변환.
 
 Legacy stored-event pseudo-label self-training path는 제거 대상이다. `top1_*`

@@ -24,11 +24,11 @@ from agent.src.services.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
 )
 from agent.src.services.federation.rounds.round_client import RoundClient
-from agent.src.services.training_runtime.current_task.agent_training_task_runner_service import (  # noqa: E501
+from agent.src.services.training_runtime.current_task.runner import (  # noqa: E501
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
 )
-from agent.src.services.training_runtime.current_task.query_ssl_training_task_service import (  # noqa: E501
+from agent.src.services.training_runtime.query_ssl.task_service import (  # noqa: E501
     AgentQuerySslTrainingTaskService,
 )
 from shared.src.contracts.training_contracts import TrainingTaskPayload

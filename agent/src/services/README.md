@@ -59,16 +59,16 @@
 ### 2. 로컬 학습 흐름을 보고 싶을 때
 
 1. `training_runtime/README.md`
-2. `training_runtime/current_task/agent_training_task_runner_service.py`
-3. `training_runtime/current_task/query_ssl_training_task_service.py`
+2. `training_runtime/current_task/runner.py`
+3. `training_runtime/query_ssl/task_service.py`
 4. `training_runtime/query_ssl_peft/local_training_service.py`
 5. `captured_text/training_source/service.py`
 
 ### 3. agent가 서버 round에 참여하는 흐름을 보고 싶을 때
 
 1. `federation/rounds/round_client.py`
-2. `training_runtime/current_task/agent_training_task_runner_service.py`
-3. `training_runtime/current_task/query_ssl_training_task_service.py`
+2. `training_runtime/current_task/runner.py`
+3. `training_runtime/query_ssl/task_service.py`
 4. `assets/shared_adapters/sync_service.py`
 5. `assets/adapters/composition_service.py`
 
@@ -116,7 +116,7 @@
     사용됐는지 source id와 recorded_at 기준으로 기록한다
 - `training_runtime/query_ssl_peft/local_training_service.py`
   - Query SSL raw-row local training을 agent-local artifact 저장과 submission envelope에 연결
-- `training_runtime/current_task/agent_training_task_runner_service.py`
+- `training_runtime/current_task/runner.py`
   - active task 조회, shared adapter sync, Query SSL task 실행, update upload까지의
     agent application flow 소유
   - stored-event self-training rebuild는 지원하지 않는다

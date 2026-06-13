@@ -21,7 +21,7 @@ from agent.src.infrastructure.repositories.training_usage_ledger_repository impo
     TRAINING_USAGE_ROLE_UNLABELED_GENERATED_VIEW,
     TrainingUsageLedgerRepository,
 )
-from agent.src.services.training_runtime.current_task.query_ssl_training_task_service import (  # noqa: E501
+from agent.src.services.training_runtime.query_ssl.task_service import (  # noqa: E501
     AgentQuerySslTrainingTaskRunRequest,
     AgentQuerySslTrainingTaskService,
 )

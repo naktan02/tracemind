@@ -183,7 +183,7 @@ Raw Event / Local Signal
 | FL report/evaluation payload | `methods/evaluation/*`, `scripts/experiments/fl_ssl/federated_simulation/io/*` |
 | payload adapter wiring | `main_server/src/services/federation/rounds/payload_adapters/registry.py`, `payload_adapters/models.py` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
-| agent current-task application flow | `agent/src/services/training_runtime/current_task/agent_training_task_runner_service.py` |
+| agent current-task application flow | `agent/src/services/training_runtime/current_task/runner.py` |
 
 ## 4. 코드 계층과 소유권
 
