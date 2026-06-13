@@ -5,9 +5,20 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from agent.src.features.assets.adapters.composition_service import (
+    AdapterCompositionService,
+)
+from agent.src.features.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
+from agent.src.features.assets.shared_adapters.sync_service import (
+    SharedAdapterSyncService,
+)
 from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
+from agent.src.features.federation.rounds.artifact_client import RoundArtifactClient
+from agent.src.features.federation.rounds.round_client import RoundClient
 from agent.src.features.training_runtime.query_ssl.task_service import (
     AgentQuerySslTrainingTaskRunRequest,
     AgentQuerySslTrainingTaskService,
@@ -15,17 +26,6 @@ from agent.src.features.training_runtime.query_ssl.task_service import (
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.assets.adapters.composition_service import (
-    AdapterCompositionService,
-)
-from agent.src.services.assets.shared_adapters.runtime_service import (
-    SharedAdapterRuntimeService,
-)
-from agent.src.services.assets.shared_adapters.sync_service import (
-    SharedAdapterSyncService,
-)
-from agent.src.services.federation.rounds.artifact_client import RoundArtifactClient
-from agent.src.services.federation.rounds.round_client import RoundClient
 
 from .dispatch import (
     AGENT_RUNTIME_QUERY_SSL_PEFT,

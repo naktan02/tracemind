@@ -1,42 +1,37 @@
 # Agent Services
 
-이 디렉터리는 agent가 소유하는 로컬 runtime 서비스 모음이다.
-프로세스 시작 시 service graph를 조립하는 책임은 `agent/src/runtime/`이 소유한다.
-feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of truth다.
+이 디렉터리는 feature module 전환 중 남은 legacy 안내 표면이다. 현재 운영 기능의
+source of truth는 `agent/src/features/`이며, 프로세스 시작 시 service graph를
+조립하는 책임은 `agent/src/runtime/`이 소유한다. 남은 `runtime_registry.py` 계열은
+Phase 8에서 feature/runtime 공통 primitive 위치로 정리한다.
 
 핵심 원칙:
 
-- `shared` 계약을 읽어 local inference와 local training을 실행한다.
-- 서버와 통신하는 orchestration은 `federation/`에 둔다.
-- asset cache/sync와 language helper는 각각 `assets/`, `language/`로 분리한다.
-- FastAPI shell과 service graph 조립은 `api/`와 `runtime/`에 두고, 이 디렉터리의
-  Module은 실제 local behavior를 소유한다.
+- `shared` 계약을 읽는 local inference/training/server participation 구현은
+  `agent/src/features/` 아래 feature module이 소유한다.
+- FastAPI shell과 service graph 조립은 `api/`와 `runtime/`에 둔다.
 - `services/*/__init__.py`는 기본적으로 marker만 두고 direct-file import를 우선한다.
 - newcomer는 `__init__.py`보다 아래 읽기 순서로 시작하는 편이 빠르다.
 - 구조 리팩터링은 `agent/REFACTOR_ROADMAP.md`의 phase gate를 따른다.
 - 이동 중에도 같은 의미의 로직을 옛 위치와 새 위치에 복사하지 않는다.
 - 너무 작은 pass-through Module이나 단일 caller 전용 helper는 새로 만들지 않는다.
 
-## 하위 패키지 역할
+## 이동 완료 feature:
 
-- `federation/`
-  - agent와 서버 사이 round orchestration rail
-  - current round fetch/upload 담당
-- `assets/shared_adapters/`
-  - 서버 current shared adapter state 동기화/로컬 runtime helper
-- `assets/adapters/`
-  - global shared state와 future agent-private local state의 조합 경계
-- `language/`
-  - preprocess, translation, backtranslation helper
-
-이동 완료 feature:
-
+- `agent/src/features/assets/`
+  - 서버 current shared adapter state 동기화, local runtime helper, composition boundary
 - `agent/src/features/captured_text/`
   - raw text ingest, generated view, training source projection, 전용 storage
+- `agent/src/features/federation/`
+  - agent와 서버 사이 round orchestration rail, current round fetch/upload client
 - `agent/src/features/inference/`
   - 로컬 추론 pipeline, scorer backend adapter, agent-local 개인 기준 해석
+- `agent/src/features/language/`
+  - preprocess, translation, backtranslation helper
 - `agent/src/features/training_runtime/`
   - 로컬 학습 runtime rail, current TrainingTask 실행, Query SSL/FSSL adapter, 전용 storage
+- `agent/src/features/typing_segments/`
+  - typing segment ingest use case
 - `agent/src/features/wellbeing/`
   - 가족용 확장 프로그램이 읽는 전체 상태/추이/잠금용 local output과 전용 storage
 
@@ -54,7 +49,7 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 2. `agent/src/features/inference/scoring_service.py`
 3. `agent/src/features/inference/interpretation/decision.py`
 4. `agent/src/features/inference/interpretation/time_series.py`
-5. `language/translation_service.py`
+5. `agent/src/features/language/translation_service.py`
 
 ### 2. 로컬 학습 흐름을 보고 싶을 때
 
@@ -66,11 +61,11 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 
 ### 3. agent가 서버 round에 참여하는 흐름을 보고 싶을 때
 
-1. `federation/rounds/round_client.py`
+1. `agent/src/features/federation/rounds/round_client.py`
 2. `agent/src/features/training_runtime/current_task/runner.py`
 3. `agent/src/features/training_runtime/query_ssl/task_service.py`
-4. `assets/shared_adapters/sync_service.py`
-5. `assets/adapters/composition_service.py`
+4. `agent/src/features/assets/shared_adapters/sync_service.py`
+5. `agent/src/features/assets/adapters/composition_service.py`
 
 ### 4. 가족용 확장 출력 surface를 보고 싶을 때
 
@@ -94,7 +89,7 @@ feature module로 이동이 끝난 기능은 `agent/src/features/`가 source of 
 - `agent/src/features/inference/scoring_backends/`
   - scorer backend registry와 agent runtime adapter 구현
   - backend 구현 옆 catalog entry와 decorator 등록을 둔다
-- `language/backtranslation_service.py`
+- `agent/src/features/language/backtranslation_service.py`
   - 운영 translation 코어와 같은 층에서 재사용하는 backtranslation service
   - strict USB NLP input용 `aug_0`, `aug_1` strong candidate 생성에 재사용한다
 - `agent/src/features/captured_text/view_generation/provider_factory.py`

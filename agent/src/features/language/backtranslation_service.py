@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from agent.src.features.language.translation_service import TranslationService
 from agent.src.infrastructure.model_adapters.translation.nllb import (
     NllbTranslationAdapter,
 )
-from agent.src.services.language.translation_service import TranslationService
 
 
 @dataclass(frozen=True, slots=True)

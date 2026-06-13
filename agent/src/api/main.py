@@ -24,6 +24,12 @@ from agent.src.runtime.composition import (
 from agent.src.runtime.state import RoundClientFactory, install_agent_runtime_state
 
 if TYPE_CHECKING:
+    from agent.src.features.assets.shared_adapters.runtime_service import (
+        SharedAdapterRuntimeService,
+    )
+    from agent.src.features.assets.shared_adapters.sync_service import (
+        SharedAdapterSyncService,
+    )
     from agent.src.features.captured_text.lifecycle import (
         CapturedTextLifecycleService,
     )
@@ -57,12 +63,6 @@ if TYPE_CHECKING:
     )
     from agent.src.infrastructure.repositories.analysis_event_repository import (
         AnalysisEventRepository,
-    )
-    from agent.src.services.assets.shared_adapters.runtime_service import (
-        SharedAdapterRuntimeService,
-    )
-    from agent.src.services.assets.shared_adapters.sync_service import (
-        SharedAdapterSyncService,
     )
 
 load_agent_env_files()

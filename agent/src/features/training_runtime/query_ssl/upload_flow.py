@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from agent.src.features.federation.rounds.round_client import RoundClient
 from agent.src.features.training_runtime.query_ssl_peft.local_training_service import (
     QuerySslPeftEncoderClientTrainingResult,
 )
-from agent.src.services.federation.rounds.round_client import RoundClient
 from shared.src.contracts.training_contracts import (
     TrainingTask,
     make_training_update_submission,

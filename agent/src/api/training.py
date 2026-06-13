@@ -8,9 +8,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
+from agent.src.features.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
+from agent.src.features.assets.shared_adapters.sync_service import (
+    SharedAdapterSyncService,
+)
 from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
+from agent.src.features.federation.rounds.round_client import RoundClient
 from agent.src.features.training_runtime.current_task.runner import (  # noqa: E501
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
@@ -24,13 +31,6 @@ from agent.src.features.training_runtime.storage.training_usage_ledger_repositor
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.assets.shared_adapters.runtime_service import (
-    SharedAdapterRuntimeService,
-)
-from agent.src.services.assets.shared_adapters.sync_service import (
-    SharedAdapterSyncService,
-)
-from agent.src.services.federation.rounds.round_client import RoundClient
 from shared.src.contracts.training_contracts import TrainingTaskPayload
 
 

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
+from agent.src.features.federation.rounds.round_client import RoundClient
 from agent.src.features.training_runtime.current_task.result import (
     TrainingTaskRunResult,
     TrainingTaskRunStatus,
@@ -36,7 +37,6 @@ from agent.src.features.training_runtime.storage.training_usage_ledger_repositor
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.federation.rounds.round_client import RoundClient
 from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
 from methods.adaptation.peft_text_encoder.federated_ssl.method_owned_training import (
     run_method_owned_peft_encoder_training_request,

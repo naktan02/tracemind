@@ -10,11 +10,11 @@ from fastapi import HTTPException
 
 import agent.src.api.sync as sync_api
 from agent.src.api.main import app
+from agent.src.features.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
 from agent.src.infrastructure.repositories.shared_adapter_state_repository import (
     SharedAdapterStateRepository,
-)
-from agent.src.services.assets.shared_adapters.runtime_service import (
-    SharedAdapterRuntimeService,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_state_payload,

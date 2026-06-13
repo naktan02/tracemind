@@ -12,7 +12,7 @@ from agent.src.contracts.typing_segment_contracts import (
     TypingSegmentIngestResponsePayload,
     TypingSegmentPayload,
 )
-from agent.src.services.typing_segments.ingest_service import (
+from agent.src.features.typing_segments.ingest_service import (
     TypingSegmentIngestService,
 )
 

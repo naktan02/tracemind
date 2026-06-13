@@ -12,19 +12,19 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Protocol, Sequence
 
-from agent.src.features.inference.embedding_service import EmbeddingService
-from agent.src.features.inference.scoring_service import ScoringService
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.services.assets.adapters.composition_service import (
+from agent.src.features.assets.adapters.composition_service import (
     AdapterCompositionService,
     AdapterRuntimeContext,
     LocalAdapterRuntimeProvider,
     SharedAdapterRuntimeProvider,
 )
-from agent.src.services.language.preprocess_service import PreprocessService
-from agent.src.services.language.translation_service import TranslationService
+from agent.src.features.inference.embedding_service import EmbeddingService
+from agent.src.features.inference.scoring_service import ScoringService
+from agent.src.features.language.preprocess_service import PreprocessService
+from agent.src.features.language.translation_service import TranslationService
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
 

@@ -12,13 +12,13 @@ from agent.src.features.captured_text.storage.repository import (
 from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.features.language.backtranslation_service import (
+    NllbBacktranslationService,
+)
+from agent.src.features.language.translation_service import TranslationService
 from agent.src.infrastructure.model_adapters.translation.nllb import (
     NllbTranslationAdapter,
 )
-from agent.src.services.language.backtranslation_service import (
-    NllbBacktranslationService,
-)
-from agent.src.services.language.translation_service import TranslationService
 
 CAPTURED_TEXT_TRANSLATION_PROVIDER_ENV = "TRACEMIND_CAPTURED_TEXT_TRANSLATION_PROVIDER"
 CAPTURED_TEXT_TRANSLATION_SOURCE_LOCALE_ENV = (

@@ -13,17 +13,17 @@ classifier/prototype scoring은 scorer backend와 local asset provider로 분리
 - `agent/src/runtime/README.md`
 - `agent/REFACTOR_ROADMAP.md` — agent 폴더 구조 리팩터링 phase gate
 - 로컬 추론 rail: `agent/src/features/inference/`
-- scorer asset runtime: `agent/src/services/assets/`
+- scorer asset runtime: `agent/src/features/assets/`
 - 로컬 학습 rail: `agent/src/features/training_runtime/`
-- 서버 참여 orchestration: `agent/src/services/federation/rounds/`
-- language helper: `agent/src/services/language/`
+- 서버 참여 orchestration: `agent/src/features/federation/rounds/`
+- language helper: `agent/src/features/language/`
 - 가족/아이 wellbeing feature: `agent/src/features/wellbeing/`
 
 모델 교체 시작점:
 
 - 실험/스크립트 embedding preset: `conf/execution_context/embedding_adapter/*.yaml`
 - agent embedding adapter factory: `agent/src/infrastructure/model_adapters/embedding/factory.py`
-- backtranslation runtime: `agent/src/services/language/backtranslation_service.py`
+- backtranslation runtime: `agent/src/features/language/backtranslation_service.py`
 - 실제 추론 파이프라인 조립: `agent/src/features/inference/pipeline_service.py`
 
 운영 추론 pipeline의 scoring backend는 `TRACEMIND_AGENT_SCORING_BACKEND`로

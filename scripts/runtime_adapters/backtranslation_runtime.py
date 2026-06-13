@@ -26,7 +26,7 @@ def build_nllb_backtranslation_candidate_pairs_from_params(
 ) -> Any:
     """명시 파라미터로 NLLB candidate pair를 생성한다."""
 
-    from agent.src.services.language.backtranslation_service import (
+    from agent.src.features.language.backtranslation_service import (
         NllbBacktranslationService,
     )
 

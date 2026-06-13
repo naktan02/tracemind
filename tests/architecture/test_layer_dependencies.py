@@ -2464,6 +2464,44 @@ def test_training_runtime_feature_owns_runtime_and_storage_paths() -> None:
     )
 
 
+def test_cross_runtime_features_own_service_paths() -> None:
+    legacy_paths = (
+        AGENT_SRC / "services" / "assets",
+        AGENT_SRC / "services" / "federation",
+        AGENT_SRC / "services" / "language",
+        AGENT_SRC / "services" / "typing_segments",
+    )
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (
+        AGENT_SRC,
+        REPO_ROOT / "agent" / "tests",
+        REPO_ROOT / "tests",
+        SCRIPTS_RUNTIME_ADAPTER_SRC,
+    ):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(
+                    "agent.src.services.assets",
+                    "agent.src.services.federation",
+                    "agent.src.services.language",
+                    "agent.src.services.typing_segments",
+                ),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "cross-runtime agent feature도 feature module로 이동됐다. asset sync, "
+        "round client, language helper, typing segment ingest는 "
+        "agent.src.features 아래를 직접 import한다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
 def test_main_server_layer_does_not_import_scripts() -> None:
     violations = _find_forbidden_imports(
         root=MAIN_SERVER_SRC,
@@ -2525,7 +2563,7 @@ def test_live_runtime_layers_do_not_import_concrete_fssl_method_packages() -> No
 
 
 def test_agent_current_task_runner_delegates_runtime_resolution() -> None:
-    path = AGENT_SRC / "services" / "training_runtime" / "current_task" / "runner.py"
+    path = AGENT_SRC / "features" / "training_runtime" / "current_task" / "runner.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "validate_federated_ssl_capability_compatibility",
@@ -2549,7 +2587,7 @@ def test_agent_current_task_runner_delegates_runtime_resolution() -> None:
 def test_agent_query_ssl_service_delegates_live_fssl_context_parsing() -> None:
     path = (
         AGENT_SRC
-        / "services"
+        / "features"
         / "training_runtime"
         / "query_ssl"
         / "method_request_builder.py"

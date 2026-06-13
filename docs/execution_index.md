@@ -68,9 +68,8 @@ Agent runtime:
 4. `agent/src/runtime/composition.py` for process object graph wiring
 5. `agent/src/features/README.md`
 6. `agent/src/services/README.md`
-7. `agent/src/features/{captured_text,inference,training_runtime,wellbeing}/**`
-8. `agent/src/services/federation/**`
-9. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
+7. `agent/src/features/{assets,captured_text,federation,inference,language,training_runtime,typing_segments,wellbeing}/**`
+8. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
 
 Main server FL:
 

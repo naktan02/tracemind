@@ -33,10 +33,7 @@ from agent.src.features.captured_text.storage.records import (
 from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.services.federation.rounds.round_client import RoundClient
+from agent.src.features.federation.rounds.round_client import RoundClient
 from agent.src.features.training_runtime.current_task.result import (
     TrainingTaskRunResult,
     TrainingTaskRunStatus,
@@ -48,6 +45,9 @@ from agent.src.features.training_runtime.current_task.runner import (  # noqa: E
 from agent.src.features.training_runtime.query_ssl.task_service import (  # noqa: E501
     AgentQuerySslTrainingTaskRunRequest,
     AgentQuerySslTrainingTaskService,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
 from main_server.src.api.fl_rounds import get_round_lifecycle_service
 from main_server.src.api.main import app as server_app

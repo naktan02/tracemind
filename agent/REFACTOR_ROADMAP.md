@@ -403,6 +403,8 @@ Gate:
 
 ### Feature Phase 6. federation, assets, language, typing_segments 이동
 
+Status: 완료. 현재 source of truth는 `agent/src/features/{assets,federation,language,typing_segments}/`다.
+
 목표:
 
 - 서버 라운드 참여, scorer asset sync/composition, language helper, typing segment ingest를

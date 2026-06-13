@@ -7,12 +7,16 @@
 
 현재 이동된 feature:
 
+- `assets/`: shared adapter asset runtime, sync, composition boundary.
 - `captured_text/`: raw text ingest, generated view, debug analysis job, training
   source projection, captured text 전용 SQLite storage.
+- `federation/`: agent와 server round 사이의 fetch/upload client.
 - `inference/`: preprocess 이후 embedding, scorer backend, local interpretation,
   pipeline orchestration.
+- `language/`: preprocess, translation, backtranslation helper.
 - `training_runtime/`: current TrainingTask 실행, Query SSL/FSSL local update adapter,
   학습 artifact/usage ledger storage.
+- `typing_segments/`: typing segment ingest use case.
 - `wellbeing/`: family extension wellbeing output, family access, child support,
   wellbeing 전용 SQLite storage.
 

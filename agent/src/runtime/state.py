@@ -5,6 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, fields
 
+from agent.src.features.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
+from agent.src.features.assets.shared_adapters.sync_service import (
+    SharedAdapterSyncService,
+)
 from agent.src.features.captured_text.lifecycle import (
     CapturedTextLifecycleService,
 )
@@ -14,6 +20,7 @@ from agent.src.features.captured_text.storage.repository import (
 from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.features.federation.rounds.round_client import RoundClient
 from agent.src.features.inference.pipeline_service import InferencePipelineService
 from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
     TrainingUsageLedgerRepository,
@@ -50,13 +57,6 @@ from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.assets.shared_adapters.runtime_service import (
-    SharedAdapterRuntimeService,
-)
-from agent.src.services.assets.shared_adapters.sync_service import (
-    SharedAdapterSyncService,
-)
-from agent.src.services.federation.rounds.round_client import RoundClient
 
 RoundClientFactory = Callable[[str], RoundClient]
 

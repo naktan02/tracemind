@@ -11,7 +11,7 @@
 3. 작업 축에 맞는 feature/service 경로
    - 추론: `agent/src/features/inference/`
    - 학습: `agent/src/features/training_runtime/`
-   - FL 참여: `agent/src/services/federation/`
+   - FL 참여: `agent/src/features/federation/`
 4. 관련 shared contract와 domain entity
 
 ## 변경 규칙

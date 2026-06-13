@@ -7,14 +7,14 @@ from pathlib import Path
 
 import httpx
 
-from agent.src.infrastructure.repositories.shared_adapter_state_repository import (
-    SharedAdapterStateRepository,
-)
-from agent.src.services.assets.shared_adapters.runtime_service import (
+from agent.src.features.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
-from agent.src.services.assets.shared_adapters.sync_service import (
+from agent.src.features.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
+)
+from agent.src.infrastructure.repositories.shared_adapter_state_repository import (
+    SharedAdapterStateRepository,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,

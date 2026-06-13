@@ -17,10 +17,10 @@ from agent.src.features.inference.pipeline_factory import (
 from agent.src.features.inference.pipeline_service import (
     InferencePipelineService,
 )
+from agent.src.features.language.preprocess_service import PreprocessService
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.language.preprocess_service import PreprocessService
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
