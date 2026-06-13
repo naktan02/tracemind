@@ -125,7 +125,7 @@ def test_child_support_passes_contextual_violence_question_to_llm() -> None:
     assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
     assert response.reply_text.startswith("AI가 로컬 맥락을 보고")
     assert "아이의 새 메시지: 친구들한테 맞아서 힘들어" in provider.last_prompt
-    assert "가능한 이유" in provider.last_prompt
+    assert "설명이나 판단을 요청하면 곧바로 짧게 답" in provider.last_prompt
 
 
 def test_child_support_service_passes_high_summary_to_llm_context() -> None:
@@ -419,6 +419,73 @@ def test_child_support_llm_prompt_includes_local_evidence_summary(
     assert "최근 원문 일부:" in provider.last_prompt
 
 
+def test_child_support_llm_prompt_includes_profile_context_and_current_question(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "agent_local.db"
+    conversation_repository = ChildSupportConversationRepository(
+        db_path=tmp_path / "child_support.db"
+    )
+    analysis_repository = AnalysisEventRepository(db_path=db_path)
+    captured_repository = CapturedTextRepository(db_path=db_path)
+    occurred_at = datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc)
+    captured_repository.save(
+        CapturedTextRecord(
+            event_id="captured-profile-context-1",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="친구 관계 때문에 불안해서 잠이 안 온다는 검색을 반복함",
+            locale="ko",
+            source_type="browser",
+            surface_type="search",
+        )
+    )
+    analysis_repository.save(
+        AnalysisEvent(
+            query_id="captured-profile-context-1",
+            occurred_at=occurred_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 10.0, "anxiety": 82.0},
+        ),
+        source_event_id="captured-profile-context-1",
+        scorer_name="test_scorer",
+        model_revision="test-revision",
+    )
+    provider = StubChildSupportLlmProvider()
+    service = ChildSupportCoachService(
+        conversation_repository=conversation_repository,
+        llm_provider=provider,
+        context_provider=ChildSupportContextProvider(
+            summary_service=_high_summary_service(),
+            evidence_summary_builder=ChildSupportEvidenceSummaryBuilder(
+                analysis_event_repository=analysis_repository,
+                captured_text_repository=captured_repository,
+            ),
+            conversation_repository=conversation_repository,
+        ),
+    )
+
+    first = service.create_response(
+        ChildSupportConversationRequestPayload(message="친구랑 싸워서 힘들어")
+    )
+    service.create_response(
+        ChildSupportConversationRequestPayload(
+            message="내가 왜 이렇게 불안한지 알아?",
+            conversation_id=first.conversation_id,
+        )
+    )
+
+    assert "현재 wellbeing summary:" in provider.last_prompt
+    assert "최근 상태가 평소보다 높습니다." in provider.last_prompt
+    assert "최근 캡처/검색 근거" in provider.last_prompt
+    assert "친구 관계 때문에 불안해서 잠이 안 온다는 검색" in provider.last_prompt
+    assert "현재 대화 최근 히스토리:" in provider.last_prompt
+    assert "- child: 친구랑 싸워서 힘들어" in provider.last_prompt
+    assert "아이의 새 메시지: 내가 왜 이렇게 불안한지 알아?" in provider.last_prompt
+
+
 def test_child_support_proactive_prompt_uses_evidence_topic(
     tmp_path: Path,
 ) -> None:
@@ -515,6 +582,7 @@ def test_child_support_proactive_prompt_passes_context_to_llm(
     prompt = service.build_proactive_prompt()
 
     assert prompt.should_prompt is True
+    assert prompt.conversation_id is not None
     assert prompt.prompt_text is not None
     assert "지금 정말 많이 버거워 보이네요" in prompt.prompt_text
     assert "짧은 한 문장이어도 괜찮아요" in prompt.prompt_text
@@ -678,11 +746,12 @@ def test_child_support_service_builds_proactive_prompt_for_high_summary() -> Non
     prompt = service.build_proactive_prompt()
 
     assert prompt.should_prompt is True
+    assert prompt.conversation_id is not None
     assert prompt.safety_level == ChildSupportSafetyLevel.CHECK_IN
     assert prompt.prompt_text is not None
 
 
-def test_child_support_service_builds_proactive_prompt_from_watch_score() -> None:
+def test_child_support_service_skips_proactive_prompt_from_watch_score() -> None:
     service = ChildSupportCoachService(
         llm_provider=StubChildSupportLlmProvider(),
         summary_service=WellbeingSummaryService(
@@ -702,9 +771,50 @@ def test_child_support_service_builds_proactive_prompt_from_watch_score() -> Non
 
     prompt = service.build_proactive_prompt()
 
+    assert prompt.should_prompt is False
+    assert prompt.conversation_id is None
+    assert prompt.safety_level is None
+    assert prompt.prompt_text is None
+
+
+def test_child_support_proactive_prompt_persists_first_assistant_turn(
+    tmp_path: Path,
+) -> None:
+    repository = ChildSupportConversationRepository(
+        db_path=tmp_path / "child_support.db"
+    )
+    provider = StubChildSupportLlmProvider()
+    service = ChildSupportCoachService(
+        conversation_repository=repository,
+        llm_provider=provider,
+        summary_service=WellbeingSummaryService(
+            _mock_payload=WellbeingSignalSummaryPayload(
+                computed_at=datetime(2026, 4, 25, 10, 30, tzinfo=timezone.utc),
+                signal_score=82.0,
+                signal_level=WellbeingSignalLevel.HIGH,
+                signal_label="주의 필요",
+                trend=WellbeingSignalTrend.RISING,
+                summary="최근 상태가 평소보다 높습니다.",
+                action_tip="짧게 안부를 물어보세요.",
+                confidence=WellbeingSignalConfidence.MEDIUM,
+                low_data=False,
+            )
+        ),
+    )
+
+    prompt = service.build_proactive_prompt()
+    service.create_response(
+        ChildSupportConversationRequestPayload(
+            message="나 힘들어",
+            conversation_id=prompt.conversation_id,
+        )
+    )
+
     assert prompt.should_prompt is True
-    assert prompt.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert prompt.conversation_id is not None
     assert prompt.prompt_text is not None
+    assert f"- assistant: {prompt.prompt_text}" in provider.last_prompt
+    assert "아이의 새 메시지: 나 힘들어" in provider.last_prompt
 
 
 def test_child_support_service_skips_proactive_prompt_for_low_data() -> None:

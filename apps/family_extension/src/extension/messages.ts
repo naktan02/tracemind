@@ -9,6 +9,8 @@ export const COLLECTOR_CONTENT_STATUS_MESSAGE =
   "tracemind.collectorContentStatus";
 export const PROACTIVE_PROMPT_AVAILABLE_MESSAGE =
   "tracemind.proactivePromptAvailable";
+export const PROACTIVE_PROMPT_DISMISSED_MESSAGE =
+  "tracemind.proactivePromptDismissed";
 export const CHILD_SUPPORT_MESSAGE_REQUESTED_MESSAGE =
   "tracemind.childSupportMessageRequested";
 
@@ -24,8 +26,13 @@ export type CollectorContentStatusMessage = {
 
 export type ProactivePromptAvailableMessage = {
   type: typeof PROACTIVE_PROMPT_AVAILABLE_MESSAGE;
+  conversationId: string | null;
   promptText: string;
   suggestedPrompts: ChildSupportSuggestionPayload[];
+};
+
+export type ProactivePromptDismissedMessage = {
+  type: typeof PROACTIVE_PROMPT_DISMISSED_MESSAGE;
 };
 
 export type ChildSupportMessageRequestedMessage = {
@@ -46,6 +53,7 @@ export type ExtensionMessage =
   | TypingSegmentCapturedMessage
   | CollectorContentStatusMessage
   | ProactivePromptAvailableMessage
+  | ProactivePromptDismissedMessage
   | ChildSupportMessageRequestedMessage;
 
 export function isTypingSegmentCapturedMessage(
@@ -85,9 +93,21 @@ export function isProactivePromptAvailableMessage(
   const candidate = value as Partial<ProactivePromptAvailableMessage>;
   return (
     candidate.type === PROACTIVE_PROMPT_AVAILABLE_MESSAGE &&
+    (typeof candidate.conversationId === "string" ||
+      candidate.conversationId === null) &&
     typeof candidate.promptText === "string" &&
     Array.isArray(candidate.suggestedPrompts)
   );
+}
+
+export function isProactivePromptDismissedMessage(
+  value: unknown,
+): value is ProactivePromptDismissedMessage {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<ProactivePromptDismissedMessage>;
+  return candidate.type === PROACTIVE_PROMPT_DISMISSED_MESSAGE;
 }
 
 export function isChildSupportMessageRequestedMessage(

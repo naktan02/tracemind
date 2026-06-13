@@ -43,6 +43,7 @@ export function ProactiveCoachPopup({
       <ChildSupportChatSurface
         initialMessage={initialMessage}
         initialSuggestions={prompt.suggested_prompts}
+        initialConversationId={prompt.conversation_id}
         compact
       />
     </aside>

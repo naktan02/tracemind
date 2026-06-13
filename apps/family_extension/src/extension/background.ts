@@ -14,9 +14,11 @@ import {
   type ChildSupportMessageResponse,
   isChildSupportMessageRequestedMessage,
   isCollectorContentStatusMessage,
+  isProactivePromptDismissedMessage,
   isTypingSegmentCapturedMessage,
 } from "./messages";
 import {
+  CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY,
   CHILD_SUPPORT_PROACTIVE_TAB_IDS_STORAGE_KEY,
   COLLECTOR_DEBUG_PIPELINE_ENABLED_STORAGE_KEY,
   COLLECTOR_DEBUG_ENABLED_STORAGE_KEY,
@@ -86,6 +88,7 @@ const DEBUG_PIPELINE_BATCH_LIMIT = 20;
 const MAX_PROACTIVE_CONTENT_TABS = 12;
 const PROACTIVE_PROMPT_ALARM_NAME = "tracemind.childSupportPromptPoll";
 const PROACTIVE_PROMPT_POLL_MINUTES = 0.5;
+const PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS = 30 * 60 * 1000;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (isCollectorContentStatusMessage(message)) {
@@ -103,8 +106,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           errorMessage:
             error instanceof Error ? error.message : "AI 마음 도움 응답 실패",
         } satisfies ChildSupportMessageResponse),
-      );
+    );
     return true;
+  }
+  if (isProactivePromptDismissedMessage(message)) {
+    void saveProactivePromptDismissal();
+    return;
   }
   if (!isTypingSegmentCapturedMessage(message)) {
     return;
@@ -265,6 +272,17 @@ async function pollProactivePrompt({
         last_proactive_prompt_checked_at: checkedAt,
         last_proactive_prompt_should_prompt: false,
         last_proactive_prompt_error: null,
+        last_proactive_prompt_suppressed_by_dismissal: false,
+      });
+      return;
+    }
+    if (await isProactivePromptDismissed()) {
+      await saveStatusPatch({
+        last_proactive_prompt_checked_at: checkedAt,
+        last_proactive_prompt_should_prompt: true,
+        last_proactive_prompt_delivered_count: 0,
+        last_proactive_prompt_error: null,
+        last_proactive_prompt_suppressed_by_dismissal: true,
       });
       return;
     }
@@ -280,6 +298,7 @@ async function pollProactivePrompt({
     }
     const message = {
       type: PROACTIVE_PROMPT_AVAILABLE_MESSAGE,
+      conversationId: prompt.conversation_id,
       promptText: prompt.prompt_text,
       suggestedPrompts: prompt.suggested_prompts,
     };
@@ -301,6 +320,7 @@ async function pollProactivePrompt({
       last_proactive_prompt_delivered_count: deliveredCount,
       last_proactive_prompt_error:
         deliveredCount > 0 ? null : "content script가 응답한 탭이 없습니다.",
+      last_proactive_prompt_suppressed_by_dismissal: false,
     });
   } catch (error) {
     await saveStatusPatch({
@@ -418,6 +438,32 @@ function saveContentTabIds(tabIds: number[]): Promise<void> {
       MAX_PROACTIVE_CONTENT_TABS,
     ),
   });
+}
+
+async function saveProactivePromptDismissal(): Promise<void> {
+  const dismissedUntil = new Date(
+    Date.now() + PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS,
+  ).toISOString();
+  await storageSet({
+    [CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY]: dismissedUntil,
+  });
+  await saveStatusPatch({
+    last_proactive_prompt_dismissed_at: new Date().toISOString(),
+    last_proactive_prompt_dismissed_until: dismissedUntil,
+  });
+}
+
+async function isProactivePromptDismissed(): Promise<boolean> {
+  const items = await storageGet([
+    CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY,
+  ]);
+  const dismissedUntil =
+    items[CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY];
+  if (typeof dismissedUntil !== "string") {
+    return false;
+  }
+  const dismissedUntilTime = Date.parse(dismissedUntil);
+  return Number.isFinite(dismissedUntilTime) && Date.now() < dismissedUntilTime;
 }
 
 function sendTabMessage(tabId: number, message: unknown): Promise<boolean> {

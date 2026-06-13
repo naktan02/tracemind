@@ -106,6 +106,8 @@ Child Message
 - child-support raw message와 query context는 agent-local boundary에 남긴다.
 - 같은 `conversation_id`에서는 agent-local conversation store의 최근 메시지를 prompt
   history로 전달해 LLM이 대화 흐름을 이어가게 한다.
+- proactive prompt는 위험 신호나 높은 위험 수치가 있을 때만 생성하며, 생성된
+  첫 assistant turn도 같은 `conversation_id`에 저장해 아이의 첫 답변과 연결한다.
 - message safety hint는 직접적인 자해/타해 위험 표현만 `urgent`로 표시한다.
   off-topic redirect, 괴롭힘, 폭력 경험, 불안, 우울, 관계 갈등 같은 상황 해석은
   recent message, wellbeing summary, evidence summary를 받은 LLM이 처리한다.

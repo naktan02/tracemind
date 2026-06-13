@@ -22,6 +22,7 @@ const EDITOR_SETTLE_MS = 80;
 const TYPING_SEGMENT_CAPTURED_MESSAGE = "tracemind.typingSegmentCaptured";
 const COLLECTOR_CONTENT_STATUS_MESSAGE = "tracemind.collectorContentStatus";
 const PROACTIVE_PROMPT_AVAILABLE_MESSAGE = "tracemind.proactivePromptAvailable";
+const PROACTIVE_PROMPT_DISMISSED_MESSAGE = "tracemind.proactivePromptDismissed";
 const CHILD_SUPPORT_MESSAGE_REQUESTED_MESSAGE =
   "tracemind.childSupportMessageRequested";
 const surfaceElementIds = new WeakMap<HTMLElement, string>();
@@ -65,6 +66,7 @@ chrome.runtime?.onMessage?.addListener((message) => {
     return;
   }
   showProactiveCoachPopup({
+    conversationId: message.conversationId,
     promptText: message.promptText,
     suggestedPrompts: message.suggestedPrompts,
   });
@@ -280,9 +282,11 @@ function sendCollectorStatus(status: Record<string, unknown>): void {
 }
 
 function showProactiveCoachPopup({
+  conversationId,
   promptText,
   suggestedPrompts,
 }: {
+  conversationId: string | null;
   promptText: string;
   suggestedPrompts: ChildSupportSuggestionPayload[];
 }): void {
@@ -294,7 +298,7 @@ function showProactiveCoachPopup({
     return;
   }
   lastPromptText = promptText;
-  proactiveConversationId = null;
+  proactiveConversationId = conversationId;
   proactivePopupRoot?.remove();
 
   const root = document.createElement("div");
@@ -485,6 +489,7 @@ function showProactiveCoachPopup({
     "click",
     () => {
       root.remove();
+      notifyProactivePromptDismissed();
       if (proactivePopupRoot === root) {
         proactivePopupRoot = null;
       }
@@ -501,6 +506,12 @@ function showProactiveCoachPopup({
     void submitProactiveCoachMessage(root, thread, textarea, error);
   });
   textarea.focus();
+}
+
+function notifyProactivePromptDismissed(): void {
+  chrome.runtime?.sendMessage({
+    type: PROACTIVE_PROMPT_DISMISSED_MESSAGE,
+  });
 }
 
 async function submitProactiveCoachMessage(
@@ -624,6 +635,7 @@ function isChildSupportMessageResponse(
 
 type ProactivePromptAvailableMessage = {
   type: typeof PROACTIVE_PROMPT_AVAILABLE_MESSAGE;
+  conversationId: string | null;
   promptText: string;
   suggestedPrompts: ChildSupportSuggestionPayload[];
 };
@@ -651,6 +663,8 @@ function isProactivePromptAvailableMessage(
   const candidate = value as Partial<ProactivePromptAvailableMessage>;
   return (
     candidate.type === PROACTIVE_PROMPT_AVAILABLE_MESSAGE &&
+    (typeof candidate.conversationId === "string" ||
+      candidate.conversationId === null) &&
     typeof candidate.promptText === "string" &&
     Array.isArray(candidate.suggestedPrompts)
   );

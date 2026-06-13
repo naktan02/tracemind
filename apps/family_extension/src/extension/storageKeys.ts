@@ -10,3 +10,5 @@ export const TYPING_SEGMENT_HISTORY_STORAGE_KEY =
   "tracemind.typingSegmentHistory";
 export const CHILD_SUPPORT_PROACTIVE_TAB_IDS_STORAGE_KEY =
   "tracemind.childSupportProactiveTabIds";
+export const CHILD_SUPPORT_PROACTIVE_DISMISSED_UNTIL_STORAGE_KEY =
+  "tracemind.childSupportProactiveDismissedUntil";

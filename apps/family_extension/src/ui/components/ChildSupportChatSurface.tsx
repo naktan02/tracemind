@@ -17,6 +17,7 @@ export type CoachMessage = {
 export type AssistantPromptSeed = {
   id: string;
   text: string;
+  conversationId?: string | null;
   suggestions?: ChildSupportSuggestionPayload[];
 };
 
@@ -41,6 +42,7 @@ export const STARTER_SUGGESTIONS: ChildSupportSuggestionPayload[] = [
 type ChildSupportChatSurfaceProps = {
   initialMessage: CoachMessage;
   initialSuggestions?: ChildSupportSuggestionPayload[];
+  initialConversationId?: string | null;
   promptSeed?: AssistantPromptSeed | null;
   compact?: boolean;
   onAssistantModeChange?: (assistantMode: string) => void;
@@ -78,6 +80,7 @@ function resolveSafetyLabel(
 export function ChildSupportChatSurface({
   initialMessage,
   initialSuggestions = STARTER_SUGGESTIONS,
+  initialConversationId = null,
   promptSeed,
   compact = false,
   onAssistantModeChange,
@@ -88,7 +91,9 @@ export function ChildSupportChatSurface({
     useState<ChildSupportSuggestionPayload[]>(initialSuggestions);
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(
+    initialConversationId,
+  );
   const consumedSeedIdsRef = useRef<Set<string>>(new Set());
   const threadEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -108,6 +113,7 @@ export function ChildSupportChatSurface({
       return;
     }
     consumedSeedIdsRef.current.add(promptSeed.id);
+    setConversationId(promptSeed.conversationId ?? null);
     setMessages((current) => [
       ...current,
       createLocalMessage("assistant", promptSeed.text),

@@ -74,6 +74,7 @@ export interface ChildSupportConversationResponsePayload {
 export interface ChildSupportProactivePromptPayload {
   schema_version: string;
   should_prompt: boolean;
+  conversation_id: string | null;
   safety_level: ChildSupportSafetyLevel | null;
   prompt_text: string | null;
   suggested_prompts: ChildSupportSuggestionPayload[];

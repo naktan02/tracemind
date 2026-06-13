@@ -95,6 +95,7 @@ class ChildSupportProactivePromptPayload(BaseModel):
         CHILD_SUPPORT_PROACTIVE_PROMPT_V1
     )
     should_prompt: bool
+    conversation_id: str | None = Field(default=None, min_length=1)
     safety_level: ChildSupportSafetyLevel | None = None
     prompt_text: str | None = None
     suggested_prompts: tuple[ChildSupportSuggestionPayload, ...] = Field(

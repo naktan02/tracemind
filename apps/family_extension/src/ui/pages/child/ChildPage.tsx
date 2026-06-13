@@ -20,7 +20,8 @@ type ChildPageProps = {
 
 export type ChildTab = "ai" | "analysis" | "checkin";
 const PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY =
-  "tracemind.childSupport.proactivePromptDismissed";
+  "tracemind.childSupport.proactivePromptDismissedUntil";
+const PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS = 30 * 60 * 1000;
 
 export function ChildPage({ activeTab }: ChildPageProps) {
   const [selectedRange, setSelectedRange] = useState<WellbeingSignalRange>("7d");
@@ -37,24 +38,17 @@ export function ChildPage({ activeTab }: ChildPageProps) {
     enabled: activeTab === "analysis",
     requestedRange: selectedRange,
   });
-  const promptSuppressionValue =
-    summaryState.status === "loaded"
-      ? `${summaryState.summary.computed_at}:${Math.round(
-          summaryState.summary.signal_score,
-        )}`
-      : null;
-
   useEffect(() => {
     setProactivePrompt(null);
-    if (promptSuppressionValue === null) {
-      setIsProactivePromptDismissed(false);
-      return;
-    }
-    setIsProactivePromptDismissed(
-      window.localStorage.getItem(PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY) ===
-        promptSuppressionValue,
+    const dismissedUntil = window.localStorage.getItem(
+      PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY,
     );
-  }, [promptSuppressionValue]);
+    setIsProactivePromptDismissed(
+      dismissedUntil !== null &&
+        Number.isFinite(Date.parse(dismissedUntil)) &&
+        Date.now() < Date.parse(dismissedUntil),
+    );
+  }, [summaryState.status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,12 +85,10 @@ export function ChildPage({ activeTab }: ChildPageProps) {
   }, [activeTab, isProactivePromptDismissed, proactivePrompt, summaryState]);
 
   function dismissProactivePrompt() {
-    if (promptSuppressionValue !== null) {
-      window.localStorage.setItem(
-        PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY,
-        promptSuppressionValue,
-      );
-    }
+    window.localStorage.setItem(
+      PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY,
+      new Date(Date.now() + PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS).toISOString(),
+    );
     setIsProactivePromptDismissed(true);
   }
 

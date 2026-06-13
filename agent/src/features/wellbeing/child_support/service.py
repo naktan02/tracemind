@@ -37,7 +37,7 @@ DISCLOSURE_NOTICE = (
     "TraceMind는 진단이나 상담을 대신하지 않습니다. 위험하거나 혼자 감당하기 "
     "어려운 상황이면 지금 바로 보호자나 믿을 수 있는 어른에게 알려 주세요."
 )
-PROACTIVE_PROMPT_SCORE_THRESHOLD = 35.0
+PROACTIVE_PROMPT_SCORE_THRESHOLD = 70.0
 PROACTIVE_HIGH_RISK_EVIDENCE_TOPIC = "자해/죽음 관련 표현"
 NO_STATIC_FALLBACK_MESSAGE = "AI 응답을 만들지 못했습니다. LLM 설정을 확인하세요."
 URGENT_RISK = "urgent_risk"
@@ -59,21 +59,6 @@ _URGENT_RISK_PHRASES = (
     "kill them",
     "murder",
 )
-_IMMEDIATE_DANGER_PHRASES = (
-    "지금 할",
-    "오늘 할",
-    "어떻게",
-    "방법",
-    "계획",
-    "칼",
-    "약",
-    "옥상",
-    "줄",
-    "피",
-    "how to",
-    "plan",
-    "tonight",
-)
 
 
 class ChildSupportReplyUnavailable(RuntimeError):
@@ -87,7 +72,6 @@ class ChildSupportMessageSafety:
     safety_level: ChildSupportSafetyLevel = ChildSupportSafetyLevel.SUPPORTIVE
     scope_status: ChildSupportScopeStatus = ChildSupportScopeStatus.IN_SCOPE
     reason: str = GENERAL_SUPPORT
-    immediate_danger: bool = False
 
     @property
     def parent_handoff_suggested(self) -> bool:
@@ -155,7 +139,6 @@ class ChildSupportCoachService:
                 scope_status=assessment.scope_status.value,
                 metadata={
                     "assessment_reason": assessment.reason,
-                    "immediate_danger": assessment.immediate_danger,
                 },
             )
         )
@@ -180,7 +163,8 @@ class ChildSupportCoachService:
         데이터가 없거나 위험도가 낮으면 아무 문구도 반환하지 않는다.
         """
 
-        context = self.context_provider.build(_new_conversation_id())
+        conversation_id = _new_conversation_id()
+        context = self.context_provider.build(conversation_id)
         summary = context.wellbeing_summary
         if (
             summary is None
@@ -208,8 +192,27 @@ class ChildSupportCoachService:
         )
         if prompt_text is None:
             return ChildSupportProactivePromptPayload(should_prompt=False)
+        created_at = datetime.now(tz=timezone.utc)
+        self._save_message(
+            ChildSupportMessageRecord(
+                message_id=_new_message_id("assistant"),
+                conversation_id=conversation_id,
+                role="assistant",
+                text=prompt_text,
+                created_at=created_at,
+                safety_level=safety_level.value,
+                assistant_mode=self.llm_provider.assistant_mode.value
+                if self.llm_provider is not None
+                else None,
+                scope_status=ChildSupportScopeStatus.IN_SCOPE.value,
+                metadata={
+                    "source": "proactive_prompt",
+                },
+            )
+        )
         return ChildSupportProactivePromptPayload(
             should_prompt=True,
+            conversation_id=conversation_id,
             safety_level=safety_level,
             prompt_text=prompt_text,
             suggested_prompts=(),
@@ -301,7 +304,6 @@ def _assess_message_safety(message: str) -> ChildSupportMessageSafety:
     return ChildSupportMessageSafety(
         safety_level=ChildSupportSafetyLevel.URGENT,
         reason=URGENT_RISK,
-        immediate_danger=_has_any(normalized, _IMMEDIATE_DANGER_PHRASES),
     )
 
 

@@ -32,6 +32,7 @@ export function ChildSupportCoachPanel() {
         setPromptSeed({
           id: `coach-page-${promptText}`,
           text: promptText,
+          conversationId: prompt.conversation_id,
           suggestions: prompt.suggested_prompts,
         });
       } catch {
