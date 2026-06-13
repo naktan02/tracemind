@@ -35,6 +35,9 @@ from agent.src.features.training_runtime.storage.training_usage_ledger_repositor
 from agent.src.features.wellbeing.child_support.context_provider import (
     ChildSupportContextProvider,
 )
+from agent.src.features.wellbeing.child_support.evidence_summary import (
+    ChildSupportEvidenceSummaryBuilder,
+)
 from agent.src.features.wellbeing.child_support.llm_provider import (
     ChildSupportLlmProvider,
     build_child_support_llm_provider_from_env,
@@ -158,6 +161,10 @@ def build_agent_runtime_state(
     wellbeing_space_web_service = WellbeingSpaceWebProjectionService(
         analysis_event_repository=analysis_repo,
     )
+    child_support_evidence_summary_builder = ChildSupportEvidenceSummaryBuilder(
+        analysis_event_repository=analysis_repo,
+        captured_text_repository=captured_repo,
+    )
     family_access_service = FamilyAccessService(
         repository=family_access_repo,
         settings_repository=wellbeing_settings_repo,
@@ -171,6 +178,9 @@ def build_agent_runtime_state(
             conversation_repository=child_support_repo,
             context_provider=ChildSupportContextProvider(
                 summary_service=wellbeing_summary_service,
+                timeseries_service=wellbeing_timeseries_service,
+                space_web_service=wellbeing_space_web_service,
+                evidence_summary_builder=child_support_evidence_summary_builder,
                 conversation_repository=child_support_repo,
             ),
             llm_provider=(

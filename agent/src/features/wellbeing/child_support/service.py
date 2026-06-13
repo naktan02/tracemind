@@ -162,7 +162,10 @@ class ChildSupportCoachService:
             if summary.signal_level == WellbeingSignalLevel.VERY_HIGH
             else ChildSupportSafetyLevel.CHECK_IN
         )
-        prompt_text = _build_proactive_prompt_text(summary.signal_level)
+        prompt_text = _build_proactive_prompt_text(
+            summary.signal_level,
+            context.wellbeing_context_notes,
+        )
         return ChildSupportProactivePromptPayload(
             should_prompt=True,
             safety_level=safety_level,
@@ -221,11 +224,27 @@ class ChildSupportCoachService:
         self.conversation_repository.save_message(record)
 
 
-def _build_proactive_prompt_text(signal_level: WellbeingSignalLevel) -> str:
+def _build_proactive_prompt_text(
+    signal_level: WellbeingSignalLevel,
+    context_notes: tuple[str, ...] = (),
+) -> str:
+    topic_note = _first_note_with_prefix(context_notes, "반복 주제:")
     if signal_level == WellbeingSignalLevel.VERY_HIGH:
+        if topic_note is not None:
+            return (
+                "최근 마음 신호가 많이 높고, "
+                f"{topic_note.replace('반복 주제: ', '')} 쪽 흐름이 보여요. "
+                "지금 안전한 곳에 있는지 먼저 같이 확인해볼까요?"
+            )
         return (
             "오늘 마음 신호가 많이 높게 보여요. 지금 안전한 곳에 있는지, "
             "그리고 혼자 있지 않아도 되는지 먼저 같이 확인해볼까요?"
+        )
+    if topic_note is not None:
+        return (
+            "최근 마음 신호가 평소보다 올라갔고, "
+            f"{topic_note.replace('반복 주제: ', '')} 쪽 이야기가 반복되는 것 같아요. "
+            "지금 제일 크게 느껴지는 감정 하나만 같이 확인해볼까요?"
         )
     return (
         "오늘 마음 신호가 평소보다 올라간 것 같아요. 바로 해결책을 말하기보다, "
@@ -265,6 +284,7 @@ def _build_llm_prompt(
     blocked_terms_block = (
         ", ".join(plan.blocked_terms) if plan.blocked_terms else "없음"
     )
+    context_notes_block = _build_context_notes_block(context.wellbeing_context_notes)
 
     return (
         "너는 TraceMind의 아이용 마음 도움 로컬 상담 코치다.\n"
@@ -304,10 +324,24 @@ def _build_llm_prompt(
         "의미를 지켜 자연스럽게 답한다.\n"
         f"fallback_reference:\n{plan.fallback_text}\n\n"
         f"{summary_block}\n\n"
+        f"{context_notes_block}\n\n"
         f"{history_block}\n\n"
         f"아이의 새 메시지: {message}\n\n"
         "아이에게 바로 보여줄 답변만 작성해라."
     )
+
+
+def _first_note_with_prefix(notes: tuple[str, ...], prefix: str) -> str | None:
+    for note in notes:
+        if note.startswith(prefix):
+            return note
+    return None
+
+
+def _build_context_notes_block(notes: tuple[str, ...]) -> str:
+    if not notes:
+        return "최근 wellbeing context notes: 없음"
+    return "최근 wellbeing context notes:\n" + "\n".join(f"- {note}" for note in notes)
 
 
 def _postprocess_llm_reply(

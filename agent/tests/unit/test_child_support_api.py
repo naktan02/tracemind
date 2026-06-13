@@ -19,6 +19,14 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
 )
+from agent.src.features.captured_text.storage.records import CapturedTextRecord
+from agent.src.features.captured_text.storage.repository import CapturedTextRepository
+from agent.src.features.wellbeing.child_support.context_provider import (
+    ChildSupportContextProvider,
+)
+from agent.src.features.wellbeing.child_support.evidence_summary import (
+    ChildSupportEvidenceSummaryBuilder,
+)
 from agent.src.features.wellbeing.child_support.response_policy import (
     ChildSupportResponsePolicy,
 )
@@ -35,6 +43,10 @@ from agent.src.features.wellbeing.signal.summary_service import WellbeingSummary
 from agent.src.features.wellbeing.storage.child_support_repository import (
     ChildSupportConversationRepository,
 )
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
+from shared.src.domain.entities.inference.events import AnalysisEvent
 
 
 class StubChildSupportLlmProvider:
@@ -457,6 +469,108 @@ def test_child_support_service_uses_local_llm_provider() -> None:
     assert "fallback_reference:" in provider.last_prompt
 
 
+def test_child_support_llm_prompt_includes_local_evidence_summary(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "agent_local.db"
+    analysis_repository = AnalysisEventRepository(db_path=db_path)
+    captured_repository = CapturedTextRepository(db_path=db_path)
+    occurred_at = datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc)
+    captured_repository.save(
+        CapturedTextRecord(
+            event_id="captured-evidence-1",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="요즘 친구 관계 때문에 불안하고 잠을 못 자겠다는 검색을 계속 봤어",
+            locale="ko",
+            source_type="browser",
+            surface_type="search",
+        )
+    )
+    analysis_repository.save(
+        AnalysisEvent(
+            query_id="captured-evidence-1",
+            occurred_at=occurred_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 12.0, "anxiety": 76.0, "depression": 42.0},
+        ),
+        source_event_id="captured-evidence-1",
+        scorer_name="test_scorer",
+        model_revision="test-revision",
+    )
+    provider = StubChildSupportLlmProvider()
+    service = ChildSupportCoachService(
+        llm_provider=provider,
+        context_provider=ChildSupportContextProvider(
+            summary_service=_high_summary_service(),
+            evidence_summary_builder=ChildSupportEvidenceSummaryBuilder(
+                analysis_event_repository=analysis_repository,
+                captured_text_repository=captured_repository,
+            ),
+        ),
+    )
+
+    response = service.create_response(
+        ChildSupportConversationRequestPayload(message="요즘 계속 힘들어")
+    )
+
+    assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
+    assert "최근 캡처/검색 근거" in provider.last_prompt
+    assert "반복 주제:" in provider.last_prompt
+    assert "불안/공포" in provider.last_prompt
+    assert "친구/관계 갈등" in provider.last_prompt
+
+
+def test_child_support_proactive_prompt_uses_evidence_topic(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "agent_local.db"
+    analysis_repository = AnalysisEventRepository(db_path=db_path)
+    captured_repository = CapturedTextRepository(db_path=db_path)
+    occurred_at = datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc)
+    captured_repository.save(
+        CapturedTextRecord(
+            event_id="captured-evidence-2",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="학교 시험 성적 때문에 불안해서 잠이 안 온다는 검색",
+            locale="ko",
+            source_type="browser",
+            surface_type="search",
+        )
+    )
+    analysis_repository.save(
+        AnalysisEvent(
+            query_id="captured-evidence-2",
+            occurred_at=occurred_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 18.0, "anxiety": 81.0},
+        ),
+        source_event_id="captured-evidence-2",
+        scorer_name="test_scorer",
+        model_revision="test-revision",
+    )
+    service = ChildSupportCoachService(
+        context_provider=ChildSupportContextProvider(
+            summary_service=_high_summary_service(),
+            evidence_summary_builder=ChildSupportEvidenceSummaryBuilder(
+                analysis_event_repository=analysis_repository,
+                captured_text_repository=captured_repository,
+            ),
+        )
+    )
+
+    prompt = service.build_proactive_prompt()
+
+    assert prompt.should_prompt is True
+    assert prompt.prompt_text is not None
+    assert "학교/성적 부담" in prompt.prompt_text
+
+
 def test_child_support_service_keeps_general_distress_in_check_in() -> None:
     response = ChildSupportCoachService().create_response(
         ChildSupportConversationRequestPayload(message="나 너무 힘들어")
@@ -579,3 +693,19 @@ def test_child_support_router_is_registered_on_agent_app() -> None:
 
     assert "/api/v1/child-support/messages" in route_paths
     assert "/api/v1/child-support/proactive-prompt" in route_paths
+
+
+def _high_summary_service() -> WellbeingSummaryService:
+    return WellbeingSummaryService(
+        _mock_payload=WellbeingSignalSummaryPayload(
+            computed_at=datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc),
+            signal_score=72.0,
+            signal_level=WellbeingSignalLevel.HIGH,
+            signal_label="주의 필요",
+            trend=WellbeingSignalTrend.RISING,
+            summary="최근 상태가 평소보다 높습니다.",
+            action_tip="짧게 안부를 물어보세요.",
+            confidence=WellbeingSignalConfidence.MEDIUM,
+            low_data=False,
+        )
+    )

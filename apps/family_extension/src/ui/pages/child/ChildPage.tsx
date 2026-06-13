@@ -6,6 +6,7 @@ import type {
 } from "../../../contracts/generated";
 import { getChildSupportProactivePrompt } from "../../api/childSupport";
 import { ChildSupportCoachPanel } from "../../components/ChildSupportCoachPanel";
+import { ProactiveCoachPopup } from "../../components/ProactiveCoachPopup";
 import { WellbeingSpaceWebGraph } from "../../components/WellbeingSpaceWebGraph";
 import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
 import { WellbeingSignalTrendChart } from "../../components/WellbeingSignalTrendChart";
@@ -15,13 +16,13 @@ import { useWellbeingTimeseries } from "../../hooks/useWellbeingTimeseries";
 
 type ChildPageProps = {
   activeTab: ChildTab;
-  onOpenCoach?: () => void;
 };
 
 export type ChildTab = "ai" | "analysis" | "checkin";
-const PROACTIVE_PROMPT_SCORE_THRESHOLD = 35;
+const PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY =
+  "tracemind.childSupport.proactivePromptDismissed";
 
-export function ChildPage({ activeTab, onOpenCoach }: ChildPageProps) {
+export function ChildPage({ activeTab }: ChildPageProps) {
   const [selectedRange, setSelectedRange] = useState<WellbeingSignalRange>("7d");
   const [proactivePrompt, setProactivePrompt] =
     useState<ChildSupportProactivePromptPayload | null>(null);
@@ -36,6 +37,24 @@ export function ChildPage({ activeTab, onOpenCoach }: ChildPageProps) {
     enabled: activeTab === "analysis",
     requestedRange: selectedRange,
   });
+  const promptSuppressionValue =
+    summaryState.status === "loaded"
+      ? `${summaryState.summary.computed_at}:${Math.round(
+          summaryState.summary.signal_score,
+        )}`
+      : null;
+
+  useEffect(() => {
+    setProactivePrompt(null);
+    if (promptSuppressionValue === null) {
+      setIsProactivePromptDismissed(false);
+      return;
+    }
+    setIsProactivePromptDismissed(
+      window.localStorage.getItem(PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY) ===
+        promptSuppressionValue,
+    );
+  }, [promptSuppressionValue]);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,8 +65,7 @@ export function ChildPage({ activeTab, onOpenCoach }: ChildPageProps) {
         isProactivePromptDismissed ||
         proactivePrompt !== null ||
         summaryState.status !== "loaded" ||
-        summaryState.summary.low_data ||
-        summaryState.summary.signal_score < PROACTIVE_PROMPT_SCORE_THRESHOLD
+        summaryState.summary.low_data
       ) {
         return;
       }
@@ -72,39 +90,26 @@ export function ChildPage({ activeTab, onOpenCoach }: ChildPageProps) {
     };
   }, [activeTab, isProactivePromptDismissed, proactivePrompt, summaryState]);
 
+  function dismissProactivePrompt() {
+    if (promptSuppressionValue !== null) {
+      window.localStorage.setItem(
+        PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY,
+        promptSuppressionValue,
+      );
+    }
+    setIsProactivePromptDismissed(true);
+  }
+
   return (
     <div className="page-stack">
       {activeTab === "analysis" &&
-        proactivePrompt?.prompt_text != null &&
+        proactivePrompt != null &&
+        proactivePrompt.prompt_text != null &&
         !isProactivePromptDismissed && (
-          <section
-            className="proactive-support-popup"
-            aria-label="AI 마음 도움 선제 질문"
-          >
-            <div>
-              <p className="card-label">AI 마음 도움</p>
-              <p>{proactivePrompt.prompt_text}</p>
-            </div>
-            <div className="button-row">
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => {
-                  setIsProactivePromptDismissed(true);
-                  onOpenCoach?.();
-                }}
-              >
-                지금 답해보기
-              </button>
-              <button
-                className="ghost-button"
-                type="button"
-                onClick={() => setIsProactivePromptDismissed(true)}
-              >
-                나중에
-              </button>
-            </div>
-          </section>
+          <ProactiveCoachPopup
+            prompt={proactivePrompt}
+            onDismiss={dismissProactivePrompt}
+          />
         )}
 
       {summaryState.status === "loaded" && (

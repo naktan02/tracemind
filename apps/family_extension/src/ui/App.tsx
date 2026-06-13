@@ -214,10 +214,7 @@ export default function App({ initialRoute }: AppProps) {
         {setupStatusState.phase === "loaded" &&
           currentRoute === "/child" &&
           activeRole === "child" && (
-          <ChildPage
-            activeTab={childActiveTab}
-            onOpenCoach={() => setChildActiveTab("ai")}
-          />
+          <ChildPage activeTab={childActiveTab} />
         )}
         {setupStatusState.phase === "loaded" &&
           currentRoute === "/parent" &&
