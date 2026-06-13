@@ -81,7 +81,6 @@ Raw Event
 Child Message
 -> Agent-local Conversation Store
 -> LocalContextProvider
--> ConversationState
 -> SafetyPolicy / Scope Redirect
 -> Local Context Prompt
 -> Local LLM Provider Execution
@@ -97,7 +96,6 @@ Child Message
 | service 조합 | `agent/src/features/wellbeing/child_support/service.py` |
 | local conversation store | `agent/src/features/wellbeing/storage/child_support_repository.py` |
 | local context provider | `agent/src/features/wellbeing/child_support/context_provider.py` |
-| conversation state extractor | `agent/src/features/wellbeing/child_support/conversation_state.py` |
 | safety/scope policy | `agent/src/features/wellbeing/child_support/safety_policy.py` |
 | local LLM prompt builder | `agent/src/features/wellbeing/child_support/llm_prompt.py` |
 | local evidence summary | `agent/src/features/wellbeing/child_support/evidence_summary.py` |
@@ -107,10 +105,8 @@ Child Message
 중요:
 
 - child-support raw message와 query context는 agent-local boundary에 남긴다.
-- 같은 `conversation_id`에서는 agent-local conversation store의 최근 메시지를 읽어
-  폭력 사건 후속 대화를 감정 정리나 친구 대응 계획으로 이어간다.
-- 타인 위해 신호 직후의 일반 힘듦 표현은 일반 check-in으로 리셋하지 않고,
-  감정 수용과 위해 행동 경계를 함께 담은 de-escalation 응답으로 이어간다.
+- 같은 `conversation_id`에서는 agent-local conversation store의 최근 메시지를 prompt
+  history로 전달해 LLM이 대화 흐름을 이어가게 한다.
 - safety routing은 shared contract의 화면 노출용 `safety_level`과 agent-local
   `reason` 문자열을 함께 저장한다. 세부 reason은 UI 계약을 늘리지 않고 대화
   history와 LLM prompt hint에만 쓴다.

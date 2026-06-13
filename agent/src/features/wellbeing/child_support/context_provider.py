@@ -10,10 +10,6 @@ from agent.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalTimeseriesPayload,
 )
 from agent.src.contracts.wellbeing_space_web_contracts import WellbeingSpaceWebPayload
-from agent.src.features.wellbeing.child_support.conversation_state import (
-    ChildSupportConversationState,
-    derive_child_support_conversation_state,
-)
 from agent.src.features.wellbeing.child_support.evidence_summary import (
     ChildSupportEvidenceSummaryBuilder,
 )
@@ -35,9 +31,6 @@ class ChildSupportConversationContext:
     """child-support 응답 생성에 필요한 agent-local context."""
 
     conversation_id: str
-    conversation_state: ChildSupportConversationState = field(
-        default_factory=ChildSupportConversationState
-    )
     wellbeing_summary: WellbeingSignalSummaryPayload | None = None
     wellbeing_summary_is_observed: bool = False
     wellbeing_context_notes: tuple[str, ...] = field(default_factory=tuple)
@@ -64,7 +57,6 @@ class ChildSupportContextProvider:
         summary = self._load_summary()
         return ChildSupportConversationContext(
             conversation_id=conversation_id,
-            conversation_state=derive_child_support_conversation_state(recent_messages),
             wellbeing_summary=summary,
             wellbeing_summary_is_observed=self._has_observed_summary(),
             wellbeing_context_notes=self._build_wellbeing_context_notes(summary),

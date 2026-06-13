@@ -154,7 +154,7 @@ def test_child_support_service_uses_high_summary_as_check_in_context() -> None:
     assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
 
 
-def test_child_support_service_flags_parent_handoff_keywords() -> None:
+def test_child_support_service_flags_explicit_safety_handoff_signal() -> None:
     response = ChildSupportCoachService(
         llm_provider=StubChildSupportLlmProvider()
     ).create_response(
@@ -229,7 +229,7 @@ def test_child_support_service_uses_violence_context_for_safe_followup(
     assert second.suggested_prompts == ()
 
 
-def test_child_support_service_uses_violence_context_for_peer_response_planning(
+def test_child_support_service_passes_recent_violence_context_to_llm(
     tmp_path: Path,
 ) -> None:
     repository = ChildSupportConversationRepository(
@@ -255,7 +255,7 @@ def test_child_support_service_uses_violence_context_for_peer_response_planning(
     assert second.suggested_prompts == ()
 
 
-def test_child_support_service_escalates_other_harm_ideation_after_violence(
+def test_child_support_service_flags_direct_other_harm_signal(
     tmp_path: Path,
 ) -> None:
     repository = ChildSupportConversationRepository(
@@ -282,7 +282,7 @@ def test_child_support_service_escalates_other_harm_ideation_after_violence(
     assert second.suggested_prompts == ()
 
 
-def test_child_support_service_uses_warm_deescalation_after_other_harm_urgent(
+def test_child_support_service_keeps_recent_urgent_history_in_llm_context(
     tmp_path: Path,
 ) -> None:
     repository = ChildSupportConversationRepository(
@@ -315,7 +315,7 @@ def test_child_support_service_uses_warm_deescalation_after_other_harm_urgent(
     assert third.suggested_prompts == ()
 
 
-def test_child_support_service_refuses_other_harm_method_request_after_violence(
+def test_child_support_service_flags_direct_other_harm_method_request(
     tmp_path: Path,
 ) -> None:
     repository = ChildSupportConversationRepository(
@@ -361,7 +361,7 @@ def test_child_support_service_uses_local_llm_provider() -> None:
     assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
     assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
     assert "wellbeing summary" in provider.last_prompt
-    assert "safety_reason_hint: calming_keyword" in provider.last_prompt
+    assert "safety_reason_hint: elevated_signal" in provider.last_prompt
     assert "아이의 새 메시지: 요즘 계속 힘들어" in provider.last_prompt
 
 

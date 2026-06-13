@@ -14,21 +14,19 @@ from agent.src.features.wellbeing.child_support.context_provider import (
 )
 
 OFF_TOPIC = "off_topic"
-SELF_HARM_SIGNAL = "self_harm_signal"
-OTHER_HARM_IDEATION = "other_harm_ideation"
-OTHER_HARM_METHOD_REQUEST = "other_harm_method_request"
-POST_URGENT_DEESCALATION = "post_urgent_deescalation"
-PARENT_HANDOFF_KEYWORD = "parent_handoff_keyword"
-POST_HANDOFF_EMOTIONAL_FOLLOWUP = "post_handoff_emotional_followup"
-PEER_RESPONSE_PLANNING = "peer_response_planning"
-CALMING_KEYWORD = "calming_keyword"
-HIGH_WELLBEING_SUMMARY = "high_wellbeing_summary"
-SUPPORTIVE = "supportive"
+URGENT_RISK = "urgent_risk"
+SAFETY_HANDOFF = "safety_handoff"
+ELEVATED_SIGNAL = "elevated_signal"
+GENERAL_SUPPORT = "general_support"
 
-_SELF_HARM_KEYWORDS = (
+_URGENT_RISK_KEYWORDS = (
     "죽고",
     "자살",
-    "해치",
+    "자해",
+    "죽여",
+    "죽일",
+    "죽이",
+    "살해",
     "사라지고",
     "끝내고",
     "못 살",
@@ -36,16 +34,6 @@ _SELF_HARM_KEYWORDS = (
     "kill myself",
     "suicide",
     "self harm",
-)
-_OTHER_HARM_KEYWORDS = (
-    "죽여",
-    "죽일",
-    "죽이",
-    "살해",
-    "해치고",
-    "해치려",
-    "패버",
-    "때려버",
     "kill him",
     "kill her",
     "kill them",
@@ -66,28 +54,28 @@ _IMMEDIATE_DANGER_KEYWORDS = (
     "plan",
     "tonight",
 )
-_PARENT_HANDOFF_KEYWORDS = (
-    "무서",
+_SAFETY_HANDOFF_KEYWORDS = (
     "협박",
     "괴롭",
     "따돌림",
     "폭력",
+    "폭행",
     "때렸",
     "맞았",
-    "도와줘",
-    "help",
-    "scared",
+    "맞아서",
+    "맞고",
     "bully",
     "violence",
 )
-_CALMING_KEYWORDS = (
+_CHECK_IN_KEYWORDS = (
     "불안",
     "떨려",
-    "숨",
     "화나",
+    "미워",
     "울고",
     "답답",
     "힘들",
+    "힘든",
     "속상",
     "억울",
     "무기력",
@@ -148,7 +136,7 @@ class ChildSupportSafetyAssessment:
 
     safety_level: ChildSupportSafetyLevel
     scope_status: ChildSupportScopeStatus
-    intent: str = SUPPORTIVE
+    intent: str = GENERAL_SUPPORT
     immediate_danger: bool = False
     reason: str = ""
 
@@ -187,67 +175,26 @@ class ChildSupportSafetyPolicy:
                 intent=OFF_TOPIC,
             )
 
-        if any(keyword in normalized for keyword in _OTHER_HARM_KEYWORDS):
-            immediate_danger = any(
-                keyword in normalized for keyword in _IMMEDIATE_DANGER_KEYWORDS
-            )
+        if _has_any(normalized, _URGENT_RISK_KEYWORDS):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.URGENT,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=(
-                    OTHER_HARM_METHOD_REQUEST
-                    if immediate_danger
-                    else OTHER_HARM_IDEATION
-                ),
-                immediate_danger=immediate_danger,
+                intent=URGENT_RISK,
+                immediate_danger=_has_any(normalized, _IMMEDIATE_DANGER_KEYWORDS),
             )
 
-        if any(keyword in normalized for keyword in _SELF_HARM_KEYWORDS):
-            return ChildSupportSafetyAssessment(
-                safety_level=ChildSupportSafetyLevel.URGENT,
-                scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=SELF_HARM_SIGNAL,
-                immediate_danger=any(
-                    keyword in normalized for keyword in _IMMEDIATE_DANGER_KEYWORDS
-                ),
-            )
-
-        if (
-            context.conversation_state.has_recent_other_harm_risk
-            and _is_post_urgent_distress_followup(normalized)
-        ):
-            return ChildSupportSafetyAssessment(
-                safety_level=ChildSupportSafetyLevel.CHECK_IN,
-                scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=POST_URGENT_DEESCALATION,
-            )
-
-        if any(keyword in normalized for keyword in _PARENT_HANDOFF_KEYWORDS):
+        if _has_any(normalized, _SAFETY_HANDOFF_KEYWORDS):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.PARENT_HANDOFF,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=PARENT_HANDOFF_KEYWORD,
+                intent=SAFETY_HANDOFF,
             )
 
-        if context.conversation_state.has_recent_parent_handoff:
-            if _is_peer_response_question(normalized):
-                return ChildSupportSafetyAssessment(
-                    safety_level=ChildSupportSafetyLevel.CHECK_IN,
-                    scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                    intent=PEER_RESPONSE_PLANNING,
-                )
-            if _is_post_handoff_followup(normalized):
-                return ChildSupportSafetyAssessment(
-                    safety_level=ChildSupportSafetyLevel.CHECK_IN,
-                    scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                    intent=POST_HANDOFF_EMOTIONAL_FOLLOWUP,
-                )
-
-        if any(keyword in normalized for keyword in _CALMING_KEYWORDS):
+        if _has_any(normalized, _CHECK_IN_KEYWORDS):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.CHECK_IN,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=CALMING_KEYWORD,
+                intent=ELEVATED_SIGNAL,
             )
 
         summary = context.wellbeing_summary
@@ -258,91 +205,22 @@ class ChildSupportSafetyPolicy:
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.CHECK_IN,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                intent=HIGH_WELLBEING_SUMMARY,
+                intent=ELEVATED_SIGNAL,
             )
 
         return ChildSupportSafetyAssessment(
             safety_level=ChildSupportSafetyLevel.SUPPORTIVE,
             scope_status=ChildSupportScopeStatus.IN_SCOPE,
-            intent=SUPPORTIVE,
+            intent=GENERAL_SUPPORT,
         )
 
 
 def _is_off_topic(normalized_message: str) -> bool:
-    has_support_keyword = any(
-        keyword in normalized_message for keyword in _SUPPORT_DOMAIN_KEYWORDS
-    )
+    has_support_keyword = _has_any(normalized_message, _SUPPORT_DOMAIN_KEYWORDS)
     if has_support_keyword:
         return False
-    return any(keyword in normalized_message for keyword in _OFF_TOPIC_KEYWORDS)
+    return _has_any(normalized_message, _OFF_TOPIC_KEYWORDS)
 
 
-def _is_peer_response_question(normalized_message: str) -> bool:
-    """폭력 사건 뒤 상대에게 어떻게 대응할지 묻는 후속 질문인지 본다."""
-
-    response_keywords = (
-        "어떻게",
-        "어쩌",
-        "대응",
-        "말해야",
-        "말할",
-        "해야",
-        "하면",
-        "걔한테",
-        "그 친구",
-        "사과",
-        "거리",
-        "복수",
-        "따져",
-    )
-    return any(keyword in normalized_message for keyword in response_keywords)
-
-
-def _is_post_handoff_followup(normalized_message: str) -> bool:
-    """폭력 사건 뒤 안전 확인 또는 감정 정리로 넘어갈 수 있는지 본다."""
-
-    safe_update_keywords = (
-        "떨어졌",
-        "떨어져",
-        "집",
-        "집에",
-        "안전",
-        "피했",
-        "나왔",
-    )
-    emotional_keywords = (
-        "속상",
-        "억울",
-        "화나",
-        "무서",
-        "슬퍼",
-        "힘들",
-        "답답",
-        "울",
-    )
-    return any(
-        keyword in normalized_message
-        for keyword in safe_update_keywords + emotional_keywords
-    )
-
-
-def _is_post_urgent_distress_followup(normalized_message: str) -> bool:
-    """위해 충동 직후 이어지는 힘듦/무너짐 표현인지 본다."""
-
-    distress_keywords = (
-        "힘들",
-        "힘든",
-        "버거",
-        "괴로",
-        "무너",
-        "모르겠",
-        "답답",
-        "속상",
-        "억울",
-        "화가",
-        "화나",
-        "눈물",
-        "울",
-        "너무",
-    )
-    return any(keyword in normalized_message for keyword in distress_keywords)
+def _has_any(text: str, keywords: tuple[str, ...]) -> bool:
+    return any(keyword in text for keyword in keywords)
