@@ -8,7 +8,7 @@ from agent.src.contracts.child_support_contracts import ChildSupportSafetyLevel
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportMessageRecord,
 )
-from agent.src.services.wellbeing.child_support_safety_intent import (
+from agent.src.services.wellbeing.child_support.safety_intent import (
     ChildSupportSafetyIntent,
 )
 

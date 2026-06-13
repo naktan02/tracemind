@@ -9,10 +9,10 @@ from agent.src.contracts.child_support_contracts import (
     ChildSupportScopeStatus,
 )
 from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
-from agent.src.services.wellbeing.child_support_context_provider import (
+from agent.src.services.wellbeing.child_support.context_provider import (
     ChildSupportConversationContext,
 )
-from agent.src.services.wellbeing.child_support_safety_intent import (
+from agent.src.services.wellbeing.child_support.safety_intent import (
     ChildSupportSafetyIntent,
 )
 

@@ -72,19 +72,20 @@
 
 ### 4. 가족용 확장 출력 surface를 보고 싶을 때
 
-1. `wellbeing/family_access_service.py`
-2. `wellbeing/summary_service.py`
-3. `wellbeing/timeseries_service.py`
-4. `wellbeing/projection_service.py`
-5. `wellbeing/space_web/README.md`
-6. `wellbeing/auth_service.py`
-7. `wellbeing/child_support_service.py`
-8. `wellbeing/child_support_context_provider.py`
-9. `wellbeing/child_support_safety_policy.py`
-10. `wellbeing/child_support_llm_provider.py`
-11. `agent/src/api/family_access.py`
-12. `agent/src/api/child_support.py`
-13. `agent/src/api/wellbeing.py`
+1. `wellbeing/README.md`
+2. `wellbeing/family_access/service.py`
+3. `wellbeing/signal/summary_service.py`
+4. `wellbeing/signal/timeseries_service.py`
+5. `wellbeing/signal/projection_service.py`
+6. `wellbeing/space_web/README.md`
+7. `wellbeing/family_access/parent_auth_adapter.py`
+8. `wellbeing/child_support/service.py`
+9. `wellbeing/child_support/context_provider.py`
+10. `wellbeing/child_support/safety_policy.py`
+11. `wellbeing/child_support/llm_provider.py`
+12. `agent/src/api/family_access.py`
+13. `agent/src/api/child_support.py`
+14. `agent/src/api/wellbeing.py`
 
 ## 파일 역할 빠른 맵
 

@@ -40,20 +40,22 @@ from agent.src.services.ingest.captured_text_lifecycle_service import (
 from agent.src.services.ingest.captured_text_view_generation_service import (
     CapturedTextViewGenerationService,
 )
-from agent.src.services.wellbeing.auth_service import ParentAuthService
-from agent.src.services.wellbeing.child_support_service import (
+from agent.src.services.wellbeing.child_support.service import (
     ChildSupportCoachService,
 )
-from agent.src.services.wellbeing.family_access_service import FamilyAccessService
-from agent.src.services.wellbeing.projection_service import (
+from agent.src.services.wellbeing.family_access.parent_auth_adapter import (
+    ParentAuthService,
+)
+from agent.src.services.wellbeing.family_access.service import FamilyAccessService
+from agent.src.services.wellbeing.signal.projection_service import (
     WellbeingSignalProjectionService,
+)
+from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.services.wellbeing.signal.timeseries_service import (
+    WellbeingTimeseriesService,
 )
 from agent.src.services.wellbeing.space_web.projection_service import (
     WellbeingSpaceWebProjectionService,
-)
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.timeseries_service import (
-    WellbeingTimeseriesService,
 )
 
 RoundClientFactory = Callable[[str], RoundClient]

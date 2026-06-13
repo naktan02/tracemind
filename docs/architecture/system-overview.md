@@ -73,7 +73,7 @@ Raw Event
 | scoring backend adapter | `agent/src/services/inference/scoring_backends/*` |
 | local baseline/time-series state | `agent/src/services/inference/state.py` |
 | final decision | `agent/src/services/inference/decision_service.py` |
-| wellbeing projection | `agent/src/services/wellbeing/*` |
+| wellbeing projection | `agent/src/services/wellbeing/signal/*`, `agent/src/services/wellbeing/space_web/*` |
 
 ### 3.2 Child Support Rail
 
@@ -94,14 +94,14 @@ Child Message
 | 책임 | 파일 |
 |---|---|
 | API route | `agent/src/api/child_support.py` |
-| service 조합 | `agent/src/services/wellbeing/child_support_service.py` |
+| service 조합 | `agent/src/services/wellbeing/child_support/service.py` |
 | local conversation store | `agent/src/infrastructure/repositories/child_support_repository.py` |
-| local context provider | `agent/src/services/wellbeing/child_support_context_provider.py` |
-| conversation state extractor | `agent/src/services/wellbeing/child_support_conversation_state.py` |
-| agent-local safety intent | `agent/src/services/wellbeing/child_support_safety_intent.py` |
-| safety/scope policy | `agent/src/services/wellbeing/child_support_safety_policy.py` |
-| response plan/validation policy | `agent/src/services/wellbeing/child_support_response_policy.py` |
-| local LLM adapter | `agent/src/services/wellbeing/child_support_llm_provider.py` |
+| local context provider | `agent/src/services/wellbeing/child_support/context_provider.py` |
+| conversation state extractor | `agent/src/services/wellbeing/child_support/conversation_state.py` |
+| agent-local safety intent | `agent/src/services/wellbeing/child_support/safety_intent.py` |
+| safety/scope policy | `agent/src/services/wellbeing/child_support/safety_policy.py` |
+| response plan/validation policy | `agent/src/services/wellbeing/child_support/response_policy.py` |
+| local LLM adapter | `agent/src/services/wellbeing/child_support/llm_provider.py` |
 | UI panel | `apps/family_extension/src/components/ChildSupportCoachPanel.tsx` |
 
 중요:

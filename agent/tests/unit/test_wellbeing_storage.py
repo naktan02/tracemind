@@ -24,9 +24,11 @@ from agent.src.infrastructure.repositories.wellbeing_settings_repository import 
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
-from agent.src.services.wellbeing.family_access_service import FamilyAccessService
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
+from agent.src.services.wellbeing.family_access.service import FamilyAccessService
+from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.services.wellbeing.signal.timeseries_service import (
+    WellbeingTimeseriesService,
+)
 
 
 def _build_summary_payload(
@@ -168,9 +170,7 @@ def test_family_access_service_persists_failed_attempts_in_repository(
     assert first_failure.granted is False
     assert second_failure.remaining_attempts == 1
     assert auth_repository.load_state(FamilyAccessRole.PARENT) is not None
-    assert (
-        auth_repository.load_state(FamilyAccessRole.PARENT).failed_attempt_count == 2
-    )
+    assert auth_repository.load_state(FamilyAccessRole.PARENT).failed_attempt_count == 2
 
     locked_response = service.unlock(role=FamilyAccessRole.PARENT, pin="9999")
     assert locked_response.remaining_attempts == 0

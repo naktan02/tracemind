@@ -35,13 +35,13 @@ from agent.src.infrastructure.repositories.analysis_event_repository import (
 from agent.src.infrastructure.repositories.family_access_repository import (
     FamilyAccessRepository,
 )
-from agent.src.services.wellbeing.family_access_service import FamilyAccessService
+from agent.src.services.wellbeing.family_access.service import FamilyAccessService
+from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.services.wellbeing.signal.timeseries_service import (
+    WellbeingTimeseriesService,
+)
 from agent.src.services.wellbeing.space_web.projection_service import (
     WellbeingSpaceWebProjectionService,
-)
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.timeseries_service import (
-    WellbeingTimeseriesService,
 )
 
 

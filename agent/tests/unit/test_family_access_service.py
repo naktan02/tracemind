@@ -14,7 +14,7 @@ from agent.src.infrastructure.repositories.wellbeing_settings_repository import 
     WellbeingSettingsRecord,
     WellbeingSettingsRepository,
 )
-from agent.src.services.wellbeing.family_access_service import (
+from agent.src.services.wellbeing.family_access.service import (
     FamilyAccessService,
     FamilyAccessSetupAlreadyCompletedError,
 )

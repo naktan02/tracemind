@@ -11,11 +11,11 @@ from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
     ChildSupportMessageRecord,
 )
-from agent.src.services.wellbeing.child_support_conversation_state import (
+from agent.src.services.wellbeing.child_support.conversation_state import (
     ChildSupportConversationState,
     derive_child_support_conversation_state,
 )
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
+from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
 
 
 @dataclass(frozen=True, slots=True)

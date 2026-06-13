@@ -58,10 +58,10 @@ if TYPE_CHECKING:
     from agent.src.services.ingest.captured_text_view_generation_service import (
         CapturedTextViewGenerationService,
     )
-    from agent.src.services.wellbeing.child_support_llm_provider import (
+    from agent.src.services.wellbeing.child_support.llm_provider import (
         ChildSupportLlmProvider,
     )
-    from agent.src.services.wellbeing.child_support_service import (
+    from agent.src.services.wellbeing.child_support.service import (
         ChildSupportCoachService,
     )
 

@@ -22,19 +22,19 @@ from agent.src.contracts.wellbeing_signal_contracts import (
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
 )
-from agent.src.services.wellbeing.child_support_response_policy import (
+from agent.src.services.wellbeing.child_support.response_policy import (
     ChildSupportResponsePolicy,
 )
-from agent.src.services.wellbeing.child_support_safety_intent import (
+from agent.src.services.wellbeing.child_support.safety_intent import (
     ChildSupportSafetyIntent,
 )
-from agent.src.services.wellbeing.child_support_safety_policy import (
+from agent.src.services.wellbeing.child_support.safety_policy import (
     ChildSupportSafetyAssessment,
 )
-from agent.src.services.wellbeing.child_support_service import (
+from agent.src.services.wellbeing.child_support.service import (
     ChildSupportCoachService,
 )
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
+from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
 
 
 class StubChildSupportLlmProvider:

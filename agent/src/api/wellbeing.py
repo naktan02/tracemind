@@ -17,12 +17,16 @@ from agent.src.contracts.wellbeing_signal_contracts import (
 from agent.src.contracts.wellbeing_space_web_contracts import (
     WellbeingSpaceWebPayload,
 )
-from agent.src.services.wellbeing.auth_service import ParentAuthService
+from agent.src.services.wellbeing.family_access.parent_auth_adapter import (
+    ParentAuthService,
+)
+from agent.src.services.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.services.wellbeing.signal.timeseries_service import (
+    WellbeingTimeseriesService,
+)
 from agent.src.services.wellbeing.space_web.projection_service import (
     WellbeingSpaceWebProjectionService,
 )
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
 
 router = APIRouter(prefix="/api/v1", tags=["wellbeing"])
 
