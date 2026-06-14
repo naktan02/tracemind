@@ -173,7 +173,7 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
     if not trainer_version:
         raise ValueError(f"Report is missing trainer_version: {report_path}")
 
-    selection_slug = _find_selection_slug(report_path)
+    selection_slug = _find_selection_slug(report_path=report_path, manifest=manifest)
     split_names = _parse_selection_slug(selection_slug)
     query_ssl_method = as_mapping(manifest.get("query_ssl_method"))
     runtime_metrics = as_mapping(manifest.get("runtime_metrics"))
@@ -347,11 +347,40 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
     )
 
 
-def _find_selection_slug(report_path: Path) -> str | None:
+def _find_selection_slug(
+    *,
+    report_path: Path,
+    manifest: dict[str, Any] | None = None,
+) -> str | None:
     for parent in report_path.parents:
         name = parent.name
         if name.startswith("labeled-") and "_unlabeled-" in name:
             return name
+    for value in _manifest_selection_slug_candidates(manifest or {}):
+        slug = _extract_selection_slug_from_text(value)
+        if slug:
+            return slug
+    return None
+
+
+def _manifest_selection_slug_candidates(manifest: dict[str, Any]) -> list[str]:
+    candidates: list[str] = []
+    for key in ("train_jsonl", "selection_slug", "split_id"):
+        value = optional_str(manifest.get(key))
+        if value:
+            candidates.append(value)
+    for value in as_mapping(manifest.get("eval_sets")).values():
+        text = optional_str(value)
+        if text:
+            candidates.append(text)
+    return candidates
+
+
+def _extract_selection_slug_from_text(value: str) -> str | None:
+    for raw_part in Path(value).parts:
+        part = raw_part.strip()
+        if part.startswith("labeled-") and "_unlabeled-" in part:
+            return part
     return None
 
 

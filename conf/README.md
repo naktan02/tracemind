@@ -118,6 +118,8 @@ conf/
 
 - `execution_context/query_data_source`는 source별 JSONL 주소와 선택값을 소유한다.
 - `query_data_selection.labeled`, `unlabeled`, `validation`, `test`가 실행 source를 고른다.
+- `execution_context/query_labeled_budget`은 선택된 labeled source의 라벨 예산
+  artifact만 바꾼다. unlabeled/eval source 조합은 `query_data_source`가 계속 소유한다.
 - `execution_context/query_split`은 central SSL query split 선택을 소유한다.
 - `execution_context/query_view`는 weak/strong/original view JSONL surface를 고른다.
 - `execution_context/fl_client_split`은 FL SSL simulation이 읽을 materialized client

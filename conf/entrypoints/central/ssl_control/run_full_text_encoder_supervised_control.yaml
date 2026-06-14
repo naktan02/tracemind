@@ -7,6 +7,7 @@ defaults:
   - /strategy_axes/model_architecture/trainable_surface: full_text_encoder
   - /run_controls/central_ssl/budget: main
   - /execution_context/query_data_source: default
+  - /execution_context/query_labeled_budget: per_class1024
   - /strategy_axes/model_architecture/initial_checkpoint: none
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled

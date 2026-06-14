@@ -4,7 +4,6 @@ import {
 import { algorithmName } from "./labels.js";
 import { compareMetricValues } from "../../../shared/formatting/metrics.js";
 
-const CENTRAL_SSL_TRACK_PREFIX = "supervised";
 const CENTRAL_TRACK_PREFIX = "central_";
 const HIDDEN_CENTRAL_EVAL_SETS = new Set(["test"]);
 
@@ -36,7 +35,7 @@ export function isCentralSupervisedTrack(track) {
   }
   const methodName = resolveMethodName(track);
   const algorithm = resolveAlgorithmName(track);
-  return current.includes(CENTRAL_SSL_TRACK_PREFIX) || methodName === "supervised" || algorithm === "supervised";
+  return current.includes("supervised") || methodName === "supervised" || algorithm === "supervised";
 }
 
 export function isFlResultTrack(track) {
@@ -48,7 +47,11 @@ export function isAllComparisonTrack(track) {
   return isCentralResultTrack(current) || isFlResultTrack(current);
 }
 
-export function centralEvalSets(bundle, trackPredicate = isCentralResultTrack) {
+export function centralEvalSets(
+  bundle,
+  trackPredicate = isCentralResultTrack,
+  options = {},
+) {
   const allCandidateSets = new Set(
     (bundle.eval_metrics ?? [])
       .filter((row) =>
@@ -59,8 +62,10 @@ export function centralEvalSets(bundle, trackPredicate = isCentralResultTrack) {
       .map((row) => row.eval_set),
   );
   const candidateSets = new Set(allCandidateSets);
-  for (const hidden of HIDDEN_CENTRAL_EVAL_SETS) {
-    candidateSets.delete(hidden);
+  if (options.hideTest !== false) {
+    for (const hidden of HIDDEN_CENTRAL_EVAL_SETS) {
+      candidateSets.delete(hidden);
+    }
   }
   if (candidateSets.size === 0) {
     return preferredCentralEvalSetOrder(allCandidateSets);

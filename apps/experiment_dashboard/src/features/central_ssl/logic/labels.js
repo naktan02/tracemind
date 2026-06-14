@@ -7,11 +7,21 @@ import {
 } from "../../../shared/formatting/text.js";
 
 export function algorithmName(row) {
-  return row.algorithm_name ?? row.method_name ?? "-";
+  const methodName = row.method_name ?? "-";
+  if (methodName === "supervised" && row.method_family) {
+    return `supervised · ${methodFamilyLabel(row)}`;
+  }
+  return row.algorithm_name ?? methodName;
 }
 
 export function peftAdapterLabel(row) {
   return row.peft_adapter_name ?? "-";
+}
+
+export function methodFamilyLabel(row) {
+  if (row.method_family === "peft_classifier") return "PEFT classifier";
+  if (row.method_family === "full_text_encoder") return "full text encoder";
+  return row.method_family ?? "-";
 }
 
 export function centralDataLabel(row) {
@@ -60,6 +70,7 @@ export function overviewRunSubLabel(row) {
 export function runDescriptor(row) {
   return [
     algorithmName(row),
+    `family=${methodFamilyLabel(row)}`,
     peftAdapterConfigLabel(row),
     `lr=${formatMetric(row.learning_rate)}`,
     `clf=${formatMetric(row.classifier_learning_rate)}`,

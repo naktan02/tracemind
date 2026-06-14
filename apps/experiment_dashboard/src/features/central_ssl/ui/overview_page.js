@@ -21,6 +21,7 @@ import {
 
 const DEFAULT_VISIBLE_COLUMNS = [
   "axis:algorithm",
+  "axis:method_family",
   "axis:created_date",
   "axis:initial_checkpoint",
 ];

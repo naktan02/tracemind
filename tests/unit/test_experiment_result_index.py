@@ -82,6 +82,26 @@ def test_load_result_index_records_keeps_peft_track(
     assert records.run.method_name == "fixmatch"
 
 
+def test_load_result_index_records_derives_supervised_selection_from_manifest(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_supervised_report_without_selection_path(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.track == "central_peft_supervised"
+    assert records.run.method_family == "peft_classifier"
+    assert records.run.method_name == "supervised"
+    assert records.run.selection_slug == (
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit_labels_pc100"
+    )
+    assert records.run.labeled_dataset_name == "szegeelim_general4"
+    assert records.run.unlabeled_dataset_name == "ourafla_reddit"
+    assert records.run.validation_dataset_name == "ourafla_reddit"
+    assert records.run.test_dataset_name == "ourafla_reddit_labels_pc100"
+
+
 def test_load_result_index_records_keeps_legacy_peft_entrypoint_track(
     tmp_path: Path,
 ) -> None:
@@ -581,6 +601,38 @@ def _write_peft_report(tmp_path: Path) -> Path:
     projection_dir.mkdir(parents=True, exist_ok=True)
     payload = _sample_report(projection_dir)
     payload["schema_version"] = "central_peft_classifier_eval.v1"
+    report_path.write_text(
+        json.dumps(payload, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _write_supervised_report_without_selection_path(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "central"
+        / "supervised"
+        / "peft_classifier"
+        / "peft_clf_2026_06_15_031353"
+        / "reports"
+        / "report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    projection_dir = report_path.parent.parent / "projections"
+    projection_dir.mkdir(parents=True, exist_ok=True)
+    payload = _sample_report(projection_dir)
+    payload["trainer_version"] = "peft_clf_2026_06_15_031353"
+    manifest = payload["manifest"]
+    manifest["trainer_version"] = "peft_clf_2026_06_15_031353"
+    manifest.pop("query_ssl_method")
+    manifest["train_jsonl"] = (
+        "data/datasets/fl_client_splits/shared_client_labeled/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit_labels_pc100/"
+        "shared_client_labeled.jsonl"
+    )
     report_path.write_text(
         json.dumps(payload, indent=2) + "\n",
         encoding="utf-8",

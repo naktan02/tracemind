@@ -1,0 +1,17 @@
+# @package _global_
+
+# FL main split에서 materialize된 shared pc100 labeled seed만 중앙 control의
+# labeled source 후보로 바꾼다. unlabeled/eval source 선택은 query_data_source가
+# 계속 소유한다.
+query_labeled_budget:
+  name: pc100_shared_client_seed
+  count_per_class: 100
+  source_artifact: fl_shared_client_labeled
+
+query_data_sources:
+  ourafla_reddit:
+    labeled_jsonl: data/datasets/fl_client_splits/shared_client_labeled/labeled-ourafla_reddit_unlabeled-ourafla_reddit_validation-ourafla_reddit_test-ourafla_reddit_labels_pc100_shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42/shared_client_labeled.jsonl
+  szegeelim_general4:
+    labeled_jsonl: data/datasets/fl_client_splits/shared_client_labeled/labeled-szegeelim_general4_unlabeled-ourafla_reddit_validation-ourafla_reddit_test-ourafla_reddit_labels_pc100_shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42/shared_client_labeled.jsonl
+
+query_data_selection_slug: labeled-${query_data_selection.labeled}_labels-pc100_unlabeled-${query_data_selection.unlabeled}_test-${query_data_selection.test}
