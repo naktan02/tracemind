@@ -62,7 +62,7 @@ function hydrateEvalFilters() {
   const centralEvalValues = centralEvalSets(
     state.bundle,
     resolveCentralTrackPredicate(),
-    { hideTest: state.activeTrack !== "supervised" },
+    { hideTest: state.activeTrack !== "supervised" && state.activeTrack !== "central_ssl" },
   );
   const centralEvalDefault = resolveCentralDefaultEvalSet(centralEvalValues, state.activeTrack);
   const forceTrackDefaults = state.previousActiveTrack !== state.activeTrack;
@@ -94,8 +94,8 @@ function hydrateEvalFilters() {
 }
 
 function resolveCentralDefaultEvalSet(centralEvalValues, activeTrack) {
-  const ordered = activeTrack === "supervised"
-    ? ["best", "final", "validation", "final_validation", "initial_validation", "test"]
+  const ordered = activeTrack === "supervised" || activeTrack === "central_ssl"
+    ? ["test", "best", "final", "validation", "final_validation", "initial_validation"]
     : ["best", "final", "validation", "final_validation", "initial_validation"];
   for (const evalSet of ordered) {
     if (centralEvalValues.includes(evalSet)) return evalSet;

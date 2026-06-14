@@ -78,7 +78,7 @@ export function runDescriptor(row) {
   const costValue = typeof cost === "object" && cost !== null ? cost.value : cost;
   return [
     dataSourceLabel(row),
-    labelBudgetLabel(row),
+    `label_budget=${labelBudgetLabel(row)}`,
     adapterConfigLabel(row),
     `payload=${adapterKind(row)}`,
     `agg=${row.aggregation_backend_name ?? "-"}`,
@@ -138,7 +138,7 @@ export function runDisplayLabel(row, aliases) {
 export function compactRunSubLabel(row) {
   const created = compactDateTime(row.created_at);
   return [
-    labelBudgetLabel(row),
+    `label_budget=${labelBudgetLabel(row)}`,
     `clients=${row.client_count ?? "-"}`,
     `rank=${row.peft_adapter_rank ?? "-"}`,
     `ckpt=${initialCheckpointLabel(row)}`,
@@ -154,6 +154,7 @@ export function runDetailLabel(row) {
   return [
     algorithmName(row),
     localRegularizerLabel(row),
+    `label_budget=${labelBudgetLabel(row)}`,
     `clients=${row.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? "-"}/${row.round_budget ?? "-"}`,
     `alpha=${formatMetric(row.shard_alpha)}`,

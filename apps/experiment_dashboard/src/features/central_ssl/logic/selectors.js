@@ -9,7 +9,7 @@ const HIDDEN_CENTRAL_EVAL_SETS = new Set(["test"]);
 
 function preferredCentralEvalSetOrder(evalSets) {
   const prioritized = [];
-  for (const key of ["validation", "best", "final"]) {
+  for (const key of ["test", "best", "final", "validation"]) {
     if (evalSets.delete(key)) {
       prioritized.push(key);
     }

@@ -81,7 +81,7 @@ def test_central_dashboard_selectors_keep_ssl_and_supervised_tracks_separate() -
         "sslRows": ["ssl_run"],
         "peftSupIsSsl": False,
         "fullSupIsSupervised": True,
-        "supervisedEvalSets": ["best", "final", "test"],
+        "supervisedEvalSets": ["test", "best", "final"],
     }
 
 
@@ -92,6 +92,22 @@ def test_central_dashboard_entrypoint_uses_ssl_only_predicate_for_ssl_track() ->
 
     assert 'if (state.activeTrack === "central_ssl")' in source
     assert "return isCentralSslResultTrack;" in source
+
+
+def test_supervised_dashboard_defaults_to_test_eval_set() -> None:
+    source = (
+        REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "main.js"
+    ).read_text(encoding="utf-8")
+
+    assert (
+        'activeTrack === "supervised" || activeTrack === "central_ssl"\n'
+        '    ? ["test", "best", "final", "validation", "final_validation", '
+        '"initial_validation"]'
+    ) in source
+    assert (
+        'hideTest: state.activeTrack !== "supervised" && '
+        'state.activeTrack !== "central_ssl"'
+    ) in source
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node가 설치되어 있지 않음")
@@ -160,9 +176,72 @@ def test_central_dashboard_labels_are_track_aware() -> None:
     assert result["sslTrain"] == (
         "labeled=szegeelim_general4 pc1024 · unlabeled=ourafla_reddit"
     )
-    assert result["sslEval"] == "validation=ourafla_reddit · test=ourafla_reddit"
+    assert result["sslEval"] == "test=ourafla_reddit"
+    assert "validation=" not in result["sslDetail"]
     assert "labeled_batch=8" in result["sslDetail"]
     assert "unlabeled_batch=16" in result["sslDetail"]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node가 설치되어 있지 않음")
+def test_fl_dashboard_shows_label_budget_in_filters_and_details() -> None:
+    script = """
+        const { flFilterAxes } = await import(
+          "./apps/experiment_dashboard/src/features/fl_ssl/logic/filters.js"
+        );
+        const {
+          compactRunSubLabel,
+          runDetailLabel,
+          runHoverDetail,
+        } = await import(
+          "./apps/experiment_dashboard/src/features/fl_ssl/logic/labels.js"
+        );
+
+        const row = {
+          run_id: "fl_run",
+          track: "fl_ssl_main_comparison",
+          method_family: "manual_baselines",
+          method_name: "fixmatch",
+          algorithm_name: "fixmatch",
+          label_budget_name: "pc100",
+          labeled_dataset_name: "ourafla_reddit",
+          unlabeled_dataset_name: "ourafla_reddit",
+          peft_adapter_name: "lora",
+          peft_adapter_rank: 8,
+          peft_adapter_alpha: 16,
+          peft_adapter_dropout: 0.1,
+          payload_adapter_kind: "peft_classifier",
+          aggregation_backend_name: "fedavg",
+          initial_checkpoint_name: "central_seed",
+          train_batch_size: 12,
+          labeled_batch_size: 12,
+          unlabeled_batch_size: 12,
+          client_count: 10,
+          completed_rounds: 30,
+          round_budget: 30,
+          seed: 42,
+        };
+        const axes = flFilterAxes({}).map((axis) => axis.id);
+        console.log(JSON.stringify({
+          hasLabelBudgetFilter: axes.includes("label_budget"),
+          hover: runHoverDetail(row),
+          detail: runDetailLabel(row),
+          sub: compactRunSubLabel(row),
+        }));
+    """
+
+    completed = subprocess.run(
+        ["node", "--input-type=module", "-e", script],
+        check=True,
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+    )
+    result = json.loads(completed.stdout)
+
+    assert result["hasLabelBudgetFilter"] is True
+    assert "label_budget=pc100" in result["hover"]
+    assert "label_budget=pc100" in result["detail"]
+    assert "label_budget=pc100" in result["sub"]
 
 
 def test_central_dashboard_confusion_matrix_uses_result_index_field_names() -> None:

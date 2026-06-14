@@ -66,9 +66,11 @@ export function evaluationDataLabel(row) {
   if (isCentralSupervisedRow(row)) {
     return `test=${row.test_dataset_name ?? "?"}`;
   }
+  const validation = row.validation_dataset_name;
+  const test = row.test_dataset_name ?? "?";
   return [
-    row.validation_dataset_name ? `validation=${row.validation_dataset_name}` : null,
-    `test=${row.test_dataset_name ?? "?"}`,
+    validation && validation !== test ? `validation=${validation}` : null,
+    `test=${test}`,
   ].filter(Boolean).join(" · ");
 }
 

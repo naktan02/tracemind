@@ -24,9 +24,7 @@ export const CENTRAL_FILTER_AXES = [
   axis("unlabeled_dataset", "Unlabeled Dataset", (row) =>
     isCentralSupervisedRow(row) ? "-" : row.unlabeled_dataset_name ?? "-",
   ),
-  axis("validation_dataset", "Validation Dataset", (row) =>
-    isCentralSupervisedRow(row) ? "-" : row.validation_dataset_name ?? "-",
-  ),
+  axis("validation_dataset", "Validation Dataset", validationDatasetFilterValue),
   axis("test_dataset", "Test Dataset", (row) => row.test_dataset_name ?? "-"),
   axis("initial_checkpoint", "Initial Checkpoint", initialCheckpointLabel, null, {
     alwaysVisible: true,
@@ -117,4 +115,11 @@ function labeledBatchSize(row) {
 function unlabeledBatchSize(row) {
   if (isCentralSupervisedRow(row)) return "-";
   return row.unlabeled_batch_size ?? "-";
+}
+
+function validationDatasetFilterValue(row) {
+  if (isCentralSupervisedRow(row)) return "-";
+  const validation = row.validation_dataset_name;
+  if (!validation || validation === row.test_dataset_name) return "-";
+  return validation;
 }

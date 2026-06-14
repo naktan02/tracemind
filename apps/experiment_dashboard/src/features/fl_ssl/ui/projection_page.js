@@ -14,7 +14,7 @@ import { flProjectionEvalSets, flRowsWithProjection } from "../logic/selectors.j
 export function normalizeFlProjectionSelection(bundle, rows, state) {
   const evalSets = flProjectionEvalSets(bundle, rows);
   if (!evalSets.includes(state.projectionEvalSet)) {
-    state.projectionEvalSet = evalSets.includes("validation") ? "validation" : evalSets[0] ?? "validation";
+    state.projectionEvalSet = evalSets.includes("test") ? "test" : evalSets[0] ?? "test";
     state.projectionRunIds = [];
   }
 }
