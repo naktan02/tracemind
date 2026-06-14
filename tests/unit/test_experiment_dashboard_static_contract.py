@@ -116,6 +116,8 @@ def test_central_dashboard_labels_are_track_aware() -> None:
           validation_dataset_name: "ourafla_reddit",
           test_dataset_name: "ourafla_reddit",
           label_budget_name: "pc100",
+          train_batch_size: 8,
+          labeled_batch_size: 8,
           seed: 42,
         };
         const ssl = {
@@ -125,6 +127,7 @@ def test_central_dashboard_labels_are_track_aware() -> None:
           method_name: "fixmatch",
           algorithm_name: "fixmatch",
           label_budget_name: "pc1024",
+          unlabeled_batch_size: 16,
         };
 
         console.log(JSON.stringify({
@@ -134,6 +137,7 @@ def test_central_dashboard_labels_are_track_aware() -> None:
           supervisedDetail: runDetail(supervised),
           sslTrain: trainingDataLabel(ssl),
           sslEval: evaluationDataLabel(ssl),
+          sslDetail: runDetail(ssl),
         }));
     """
 
@@ -151,10 +155,14 @@ def test_central_dashboard_labels_are_track_aware() -> None:
     assert result["supervisedEval"] == "test=ourafla_reddit"
     assert "unlabeled=" not in result["supervisedDetail"]
     assert "validation=" not in result["supervisedDetail"]
+    assert "labeled_batch=8" in result["supervisedDetail"]
+    assert "unlabeled_batch=" not in result["supervisedDetail"]
     assert result["sslTrain"] == (
         "labeled=szegeelim_general4 pc1024 · unlabeled=ourafla_reddit"
     )
     assert result["sslEval"] == "validation=ourafla_reddit · test=ourafla_reddit"
+    assert "labeled_batch=8" in result["sslDetail"]
+    assert "unlabeled_batch=16" in result["sslDetail"]
 
 
 def test_central_dashboard_confusion_matrix_uses_result_index_field_names() -> None:
@@ -171,6 +179,33 @@ def test_central_dashboard_confusion_matrix_uses_result_index_field_names() -> N
 
     assert "actual_category" in source
     assert "predicted_category" in source
+
+
+def test_dashboard_filters_include_labeled_and_unlabeled_batch_size_axes() -> None:
+    central_source = (
+        REPO_ROOT
+        / "apps"
+        / "experiment_dashboard"
+        / "src"
+        / "features"
+        / "central_ssl"
+        / "logic"
+        / "filters.js"
+    ).read_text(encoding="utf-8")
+    fl_source = (
+        REPO_ROOT
+        / "apps"
+        / "experiment_dashboard"
+        / "src"
+        / "features"
+        / "fl_ssl"
+        / "logic"
+        / "filters.js"
+    ).read_text(encoding="utf-8")
+
+    for source in (central_source, fl_source):
+        assert 'axis("labeled_batch_size", "Labeled Batch"' in source
+        assert 'axis("unlabeled_batch_size", "Unlabeled Batch"' in source
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node가 설치되어 있지 않음")
@@ -206,3 +241,126 @@ def test_selected_run_card_uses_single_app_tooltip() -> None:
     result = json.loads(completed.stdout)
 
     assert result == {"hasNativeTitle": False, "tooltipCount": 1}
+
+
+def test_selected_run_card_detail_is_hover_only() -> None:
+    source = (
+        REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "styles" / "index.css"
+    ).read_text(encoding="utf-8")
+
+    assert ".selected-run-label-wrap:hover .selected-run-detail" in source
+    assert ".selected-run-card:hover .selected-run-detail" not in source
+    assert ".selected-run-card:focus-within .selected-run-detail" not in source
+
+
+def test_run_selection_blocks_use_single_app_hover_detail() -> None:
+    files = [
+        REPO_ROOT
+        / "apps"
+        / "experiment_dashboard"
+        / "src"
+        / "features"
+        / "central_ssl"
+        / "ui"
+        / "overview_page.js",
+        REPO_ROOT
+        / "apps"
+        / "experiment_dashboard"
+        / "src"
+        / "features"
+        / "central_ssl"
+        / "ui"
+        / "compare_page.js",
+        REPO_ROOT
+        / "apps"
+        / "experiment_dashboard"
+        / "src"
+        / "features"
+        / "central_ssl"
+        / "ui"
+        / "projection_page.js",
+        REPO_ROOT
+        / "apps"
+        / "experiment_dashboard"
+        / "src"
+        / "features"
+        / "fl_ssl"
+        / "ui"
+        / "runs_page.js",
+        REPO_ROOT
+        / "apps"
+        / "experiment_dashboard"
+        / "src"
+        / "features"
+        / "fl_ssl"
+        / "ui"
+        / "rounds_page.js",
+        REPO_ROOT
+        / "apps"
+        / "experiment_dashboard"
+        / "src"
+        / "features"
+        / "fl_ssl"
+        / "ui"
+        / "projection_page.js",
+    ]
+
+    for path in files:
+        source = path.read_text(encoding="utf-8")
+        assert '<label class="run-option" title=' not in source
+        assert 'class="run-option-detail"' in source
+
+    style_source = (
+        REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "styles" / "index.css"
+    ).read_text(encoding="utf-8")
+    assert ".run-option .run-option-detail {" in style_source
+    assert "position: absolute;" in style_source
+    assert ".run-option:hover .run-option-detail" in style_source
+    assert ".run-option .run-option-detail.align-right" in style_source
+    assert ".run-option .run-option-detail span" in style_source
+    assert "display: inline;" in style_source
+    assert ".run-option-detail-diff" in style_source
+
+    main_source = (
+        REPO_ROOT / "apps" / "experiment_dashboard" / "src" / "main.js"
+    ).read_text(encoding="utf-8")
+    assert "bindRunOptionDetailPositioning();" in main_source
+    assert 'detail.classList.add("align-right")' in main_source
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node가 설치되어 있지 않음")
+def test_run_option_detail_highlights_only_different_parts() -> None:
+    script = """
+        const { renderRunOptionDetail } = await import(
+          "./apps/experiment_dashboard/src/ui/controls/run_option_detail.js"
+        );
+        const html = renderRunOptionDetail(
+          "algo=fixmatch · pc=100 · seed=42",
+          [
+            "algo=fixmatch · pc=100 · seed=42",
+            "algo=fixmatch · pc=200 · seed=42",
+          ],
+        );
+        console.log(JSON.stringify({
+          diffCount: (html.match(/run-option-detail-diff/g) ?? []).length,
+          hasDifferentPc: (
+            /pc=<span class="run-option-detail-diff">100<\\/span>/.test(html)
+          ),
+          hasCommonSeed: /class="run-option-detail-part">seed=42</.test(html),
+        }));
+    """
+
+    completed = subprocess.run(
+        ["node", "--input-type=module", "-e", script],
+        check=True,
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+    )
+    result = json.loads(completed.stdout)
+
+    assert result == {
+        "diffCount": 1,
+        "hasDifferentPc": True,
+        "hasCommonSeed": True,
+    }

@@ -84,6 +84,7 @@ export function runDescriptor(row) {
     `agg=${row.aggregation_backend_name ?? "-"}`,
     `regularizer=${localRegularizerLabel(row)}`,
     `checkpoint=${initialCheckpointLabel(row)}`,
+    batchConfigLabel(row),
     `created=${compactDateTime(row.created_at)}`,
     `clients=${row.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? "-"}/${row.round_budget ?? "-"}`,
@@ -106,6 +107,14 @@ function displayAdapterKind(value) {
   if (raw === "peft_classifier") return "peft classifier";
   if (raw === "peft_text_encoder_lora") return "lora text encoder";
   return raw.replace(/^peft_/, "");
+}
+
+function batchConfigLabel(row) {
+  const labeled = row.labeled_batch_size ?? row.train_batch_size ?? "-";
+  return [
+    `labeled_batch=${labeled}`,
+    `unlabeled_batch=${row.unlabeled_batch_size ?? "-"}`,
+  ].join(" · ");
 }
 
 function checkpointDisplayValue(value) {

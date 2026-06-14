@@ -177,6 +177,12 @@ def _build_filters(
         "classifier_learning_rates": _unique(
             row.get("classifier_learning_rate") for row in runs
         ),
+        "train_batch_sizes": _unique(row.get("train_batch_size") for row in runs),
+        "labeled_batch_sizes": _unique(row.get("labeled_batch_size") for row in runs),
+        "unlabeled_batch_sizes": _unique(
+            row.get("unlabeled_batch_size") for row in runs
+        ),
+        "eval_batch_sizes": _unique(row.get("eval_batch_size") for row in runs),
         "initial_checkpoints": _unique(
             row.get("initial_checkpoint_name") for row in runs
         ),

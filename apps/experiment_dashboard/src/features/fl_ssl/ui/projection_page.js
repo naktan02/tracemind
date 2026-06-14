@@ -1,5 +1,6 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
 import { fillSelect } from "../../../ui/controls/form_controls.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
 import {
   algorithmName,
   dataSourceLabel,
@@ -23,6 +24,7 @@ export function renderFlProjectionPage(elements, rows, state, bundle, selectionR
   fillSelect(elements.flProjectionEvalFilter, evalSets, state.projectionEvalSet, "eval 없음");
   const candidateRows = flRowsWithProjection(bundle, rows, state.projectionEvalSet);
   const selectedRunIds = new Set(state.projectionRunIds);
+  const peerDetails = candidateRows.map(runHoverDetail);
   elements.flProjectionRunCheckboxes.innerHTML =
     candidateRows.length === 0
       ? `<p class="empty">projection 이미지가 있는 FL run이 없습니다.</p>`
@@ -31,7 +33,7 @@ export function renderFlProjectionPage(elements, rows, state, bundle, selectionR
             const id = runId(row);
             const detail = runHoverDetail(row);
             return `
-              <label class="run-option" title="${escapeHtml(detail)}">
+              <label class="run-option">
                 <input
                   type="checkbox"
                   data-fl-projection-run-id="${escapeHtml(id)}"
@@ -41,6 +43,7 @@ export function renderFlProjectionPage(elements, rows, state, bundle, selectionR
                   <strong>${escapeHtml(algorithmName(row))}</strong>
                   <small>${escapeHtml(runDescriptor(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
             `;
           })

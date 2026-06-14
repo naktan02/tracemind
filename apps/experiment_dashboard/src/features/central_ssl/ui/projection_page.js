@@ -1,5 +1,6 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
 import { fillSelect } from "../../../ui/controls/form_controls.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
 import {
   algorithmName,
   centralEvalSetLabel,
@@ -29,13 +30,15 @@ export function renderProjectionPage(elements, rows, state, bundle) {
     ? rowsForAlgorithms(projectionRows, [state.projectionAlgorithm])
     : projectionRows;
   const selectedRunIds = new Set(state.projectionRunIds);
+  const peerDetails = candidateRows.map(runDetail);
   elements.projectionRunCheckboxes.innerHTML =
     candidateRows.length === 0
       ? `<p class="empty">projection 이미지가 있는 algorithm/run이 없습니다.</p>`
       : candidateRows
-          .map(
-            (row) => `
-              <label class="run-option" title="${escapeHtml(runDetail(row))}">
+          .map((row) => {
+            const detail = runDetail(row);
+            return `
+              <label class="run-option">
                 <input
                   type="checkbox"
                   data-projection-run-id="${escapeHtml(row.run_id)}"
@@ -45,9 +48,10 @@ export function renderProjectionPage(elements, rows, state, bundle) {
                   <strong>${escapeHtml(algorithmName(row))}</strong>
                   <small>${escapeHtml(runDescriptor(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
-            `,
-          )
+            `;
+          })
           .join("");
   renderProjectionGallery(elements, state, bundle);
 }

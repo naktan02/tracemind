@@ -13,7 +13,10 @@ export function renderSelectedRunCard({
 }) {
   return `
     <article class="selected-run-card alias-run-card">
-      <strong>${escapeHtml(label)}</strong>
+      <span class="selected-run-label-wrap">
+        <strong>${escapeHtml(label)}</strong>
+        <span class="selected-run-detail" aria-hidden="true">${escapeHtml(detail)}</span>
+      </span>
       <input
         type="text"
         ${renderDataAttribute(aliasDataAttribute, id)}
@@ -26,7 +29,6 @@ export function renderSelectedRunCard({
         ${renderDataAttribute(removeDataAttribute, id)}
         aria-label="${escapeHtml(removeAriaLabel)}"
       >x</button>
-      <span class="selected-run-detail" aria-hidden="true">${escapeHtml(detail)}</span>
     </article>
   `;
 }

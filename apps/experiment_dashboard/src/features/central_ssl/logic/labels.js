@@ -115,6 +115,7 @@ export function runDescriptor(row) {
     trainingDataLabel(row),
     evaluationDataLabel(row),
     peftAdapterConfigLabel(row),
+    batchConfigLabel(row),
     `lr=${formatHyperparameter(row.learning_rate)}`,
     `clf=${formatHyperparameter(row.classifier_learning_rate)}`,
   ].join(" · ");
@@ -168,6 +169,17 @@ function modelConfigLabel(row) {
     return methodFamilyLabel(row);
   }
   return `${peftAdapterLabel(row)} r${row.peft_adapter_rank ?? "?"}`;
+}
+
+function batchConfigLabel(row) {
+  const labeled = row.labeled_batch_size ?? row.train_batch_size ?? "-";
+  if (isCentralSupervisedRow(row)) {
+    return `labeled_batch=${labeled}`;
+  }
+  return [
+    `labeled_batch=${labeled}`,
+    `unlabeled_batch=${row.unlabeled_batch_size ?? "-"}`,
+  ].join(" · ");
 }
 
 export function centralRunSuffix(runId) {

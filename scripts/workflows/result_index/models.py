@@ -25,6 +25,8 @@ class ExperimentRunRecord:
     epochs: int | None
     max_train_steps: int | None
     train_batch_size: int | None
+    labeled_batch_size: int | None
+    unlabeled_batch_size: int | None
     eval_batch_size: int | None
     initial_checkpoint_name: str | None
     unlabeled_row_count: int | None

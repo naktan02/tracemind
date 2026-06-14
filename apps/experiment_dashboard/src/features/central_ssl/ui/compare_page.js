@@ -3,6 +3,7 @@ import { metricLabel } from "../../../shared/formatting/metrics.js";
 import { formatMetric, numberOrNull } from "../../../shared/formatting/numbers.js";
 import { drawLineChart } from "../../../ui/charts/line_chart.js";
 import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
 import {
   algorithmName,
   compareDisplayLabel,
@@ -55,13 +56,15 @@ function renderMetricPicker(elements, state, bundle) {
 
 function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.compareRunIds);
+  const peerDetails = rows.map(runDetail);
   elements.comparisonRunCheckboxes.innerHTML =
     rows.length === 0
       ? `<p class="empty">현재 필터에 해당하는 run이 없습니다.</p>`
       : rows
-          .map(
-            (row) => `
-              <label class="run-option" title="${escapeHtml(runDetail(row))}">
+          .map((row) => {
+            const detail = runDetail(row);
+            return `
+              <label class="run-option">
                 <input
                   type="checkbox"
                   data-run-id="${escapeHtml(row.run_id)}"
@@ -71,9 +74,10 @@ function renderRunPicker(elements, rows, state) {
                   <strong>${escapeHtml(algorithmName(row))}</strong>
                   <small>${escapeHtml(runDescriptor(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
-            `,
-          )
+            `;
+          })
           .join("");
 }
 

@@ -676,7 +676,9 @@ code {
 
 .check-row,
 .run-option {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: flex-start;
   gap: 10px;
   border: 1px solid var(--line);
@@ -720,6 +722,53 @@ code {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.run-option .run-option-detail {
+  position: absolute;
+  z-index: 35;
+  top: calc(100% + 8px);
+  left: 28px;
+  display: none;
+  width: max-content;
+  max-width: min(760px, calc(100vw - 64px));
+  border: 1px solid rgba(0, 158, 115, 0.22);
+  border-radius: 12px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 16px 36px rgba(35, 55, 64, 0.18);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  white-space: normal;
+}
+
+.run-option:hover .run-option-detail {
+  display: block;
+}
+
+.run-option .run-option-detail.align-right {
+  right: 0;
+  left: auto;
+}
+
+.run-option .run-option-detail span {
+  display: inline;
+}
+
+.run-option-detail-diff {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--teal);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.run-option-detail-separator {
+  color: var(--muted);
 }
 
 .selected-run-cards {
@@ -782,7 +831,15 @@ code {
   line-height: 1;
 }
 
+.selected-run-label-wrap {
+  position: relative;
+  display: inline-grid;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .selected-run-card strong {
+  display: block;
   min-width: 0;
   overflow: hidden;
   color: var(--ink);
@@ -811,8 +868,7 @@ code {
   white-space: normal;
 }
 
-.selected-run-card:hover .selected-run-detail,
-.selected-run-card:focus-within .selected-run-detail {
+.selected-run-label-wrap:hover .selected-run-detail {
   display: block;
 }
 

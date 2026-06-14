@@ -183,12 +183,14 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         manifest=manifest,
     )
     query_ssl_method = as_mapping(manifest.get("query_ssl_method"))
+    query_ssl_parameters = as_mapping(query_ssl_method.get("parameters"))
     runtime_metrics = as_mapping(manifest.get("runtime_metrics"))
     initial_checkpoint = as_mapping(manifest.get("query_adaptation_initial_checkpoint"))
     run_control = as_mapping(manifest.get("run_control"))
     peft_adapter_config = _peft_adapter_config_from_backbone(
         as_mapping(manifest.get("backbone"))
     )
+    train_batch_size = optional_int(manifest.get("train_batch_size"))
 
     run = ExperimentRunRecord(
         run_id=trainer_version,
@@ -213,7 +215,14 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         ),
         epochs=optional_int(manifest.get("epochs")),
         max_train_steps=optional_int(manifest.get("max_train_steps")),
-        train_batch_size=optional_int(manifest.get("train_batch_size")),
+        train_batch_size=train_batch_size,
+        labeled_batch_size=optional_int(manifest.get("labeled_batch_size"))
+        or train_batch_size,
+        unlabeled_batch_size=optional_int(
+            manifest.get("unlabeled_batch_size")
+            or query_ssl_method.get("unlabeled_batch_size")
+            or query_ssl_parameters.get("unlabeled_batch_size")
+        ),
         eval_batch_size=optional_int(manifest.get("eval_batch_size")),
         initial_checkpoint_name=optional_str(
             initial_checkpoint.get("preset_name")

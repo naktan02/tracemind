@@ -42,6 +42,8 @@ export const CENTRAL_FILTER_AXES = [
   axis("classifier_learning_rate", "Classifier LR", (row) => row.classifier_learning_rate ?? "-", (row) => formatMetric(row.classifier_learning_rate)),
   axis("epochs", "Epochs", (row) => row.epochs ?? "-", (row) => `${row.epochs ?? "-"} epochs`),
   axis("max_train_steps", "Max Steps", (row) => row.max_train_steps ?? "-", (row) => `${row.max_train_steps ?? "-"} steps`),
+  axis("labeled_batch_size", "Labeled Batch", labeledBatchSize, (row) => `labeled batch ${labeledBatchSize(row)}`),
+  axis("unlabeled_batch_size", "Unlabeled Batch", unlabeledBatchSize, (row) => `unlabeled batch ${unlabeledBatchSize(row)}`),
   axis("train_batch_size", "Train Batch", (row) => row.train_batch_size ?? "-", (row) => `batch ${row.train_batch_size ?? "-"}`),
 ];
 
@@ -106,4 +108,13 @@ function axis(id, label, value, labelForValue = null, options = {}) {
     labelForValue: labelForValue ? (row) => labelForValue(row) : null,
     alwaysVisible: Boolean(options.alwaysVisible),
   };
+}
+
+function labeledBatchSize(row) {
+  return row.labeled_batch_size ?? row.train_batch_size ?? "-";
+}
+
+function unlabeledBatchSize(row) {
+  if (isCentralSupervisedRow(row)) return "-";
+  return row.unlabeled_batch_size ?? "-";
 }

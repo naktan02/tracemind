@@ -87,6 +87,7 @@ def load_fl_ssl_result_index_records(
         selection_slug,
         source_jsonl.get("labeled"),
     )
+    train_batch_size = optional_int(local_update_budget.get("batch_size"))
     run = ExperimentRunRecord(
         run_id=run_id,
         track=optional_str(payload.get("track")) or "fl_ssl_main_comparison",
@@ -109,7 +110,13 @@ def load_fl_ssl_result_index_records(
         classifier_learning_rate=None,
         epochs=optional_int(local_update_budget.get("local_epochs")),
         max_train_steps=optional_int(local_update_budget.get("max_steps")),
-        train_batch_size=optional_int(local_update_budget.get("batch_size")),
+        train_batch_size=train_batch_size,
+        labeled_batch_size=optional_int(local_update_budget.get("labeled_batch_size"))
+        or train_batch_size,
+        unlabeled_batch_size=optional_int(
+            objective.get("query_ssl.unlabeled_batch_size")
+            or local_update_budget.get("unlabeled_batch_size")
+        ),
         eval_batch_size=None,
         initial_checkpoint_name=_initial_checkpoint_name(initial_checkpoint),
         unlabeled_row_count=optional_int(split_summary.get("actual_unlabeled_count")),

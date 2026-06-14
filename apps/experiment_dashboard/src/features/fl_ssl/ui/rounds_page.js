@@ -10,6 +10,7 @@ import {
   setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
 import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
 import { FL_ROUND_METRICS } from "../logic/constants.js";
 import {
   algorithmName,
@@ -76,6 +77,7 @@ export function renderRoundsPage(elements, rows, state, bundle, rerender = () =>
 
 function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.roundRunIds);
+  const peerDetails = rows.map(runHoverDetail);
   elements.flRoundRunCheckboxes.innerHTML =
     rows.length === 0
       ? `<p class="empty">선택 가능한 run이 없습니다.</p>`
@@ -84,7 +86,7 @@ function renderRunPicker(elements, rows, state) {
             const id = runId(row);
             const detail = runHoverDetail(row);
             return `
-              <label class="run-option" title="${escapeHtml(detail)}">
+              <label class="run-option">
                 <input
                   type="checkbox"
                   data-fl-round-run-id="${escapeHtml(id)}"
@@ -94,6 +96,7 @@ function renderRunPicker(elements, rows, state) {
                   <strong>${escapeHtml(algorithmName(row))}</strong>
                   <small>${escapeHtml(runDescriptor(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
             `;
           })

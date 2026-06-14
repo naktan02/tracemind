@@ -47,6 +47,10 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.run.test_dataset_name == "ourafla_reddit"
     assert records.run.label_budget_name == "pc1024"
     assert records.run.label_budget_count_per_class == 1024
+    assert records.run.train_batch_size == 12
+    assert records.run.labeled_batch_size == 12
+    assert records.run.unlabeled_batch_size == 24
+    assert records.run.eval_batch_size == 32
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs"
     assert records.run.peft_adapter_name == "lora"
@@ -157,6 +161,10 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
     assert bundle["filters"]["created_dates"] == ["2026-05-13"]
     assert bundle["filters"]["label_budgets"] == ["pc1024"]
     assert bundle["filters"]["label_budget_counts_per_class"] == [1024]
+    assert bundle["filters"]["train_batch_sizes"] == [12]
+    assert bundle["filters"]["labeled_batch_sizes"] == [12]
+    assert bundle["filters"]["unlabeled_batch_sizes"] == [24]
+    assert bundle["filters"]["eval_batch_sizes"] == [32]
     assert bundle["runs"][0]["selection_slug"] == (
         "labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit"
     )
@@ -215,6 +223,8 @@ def test_result_index_schema_migration_adds_run_control_columns(
     assert "update_family_name" in columns
     assert "label_budget_name" in columns
     assert "label_budget_count_per_class" in columns
+    assert "labeled_batch_size" in columns
+    assert "unlabeled_batch_size" in columns
 
 
 def test_load_result_index_records_normalizes_fl_ssl_report_shape(
@@ -239,6 +249,9 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.labeled_dataset_name == "ourafla_reddit"
     assert records.run.unlabeled_dataset_name == "ourafla_reddit"
     assert records.run.seed == 42
+    assert records.run.train_batch_size == 16
+    assert records.run.labeled_batch_size == 16
+    assert records.run.unlabeled_batch_size == 24
     assert records.run.client_count == 10
     assert records.run.round_budget == 50
     assert records.run.completed_rounds == 50
@@ -486,6 +499,10 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["created_dates"] == ["2026-05-17"]
     assert bundle["filters"]["client_counts"] == [10]
     assert bundle["filters"]["round_budgets"] == [50]
+    assert bundle["filters"]["train_batch_sizes"] == [16]
+    assert bundle["filters"]["labeled_batch_sizes"] == [16]
+    assert bundle["filters"]["unlabeled_batch_sizes"] == [24]
+    assert bundle["filters"]["eval_batch_sizes"] == []
     assert bundle["filters"]["shard_alphas"] == [0.3]
     assert bundle["filters"]["payload_adapter_kinds"] == ["peft_classifier"]
     assert bundle["filters"]["peft_adapter_names"] == ["lora"]
@@ -954,6 +971,10 @@ def _sample_report(projection_dir: Path) -> dict:
             "query_ssl_method": {
                 "preset_name": "fixmatch_usb_v1",
                 "algorithm_name": "fixmatch",
+                "parameters": {
+                    "unlabeled_batch_size": 24,
+                },
+                "unlabeled_batch_size": 24,
             },
             "projection_artifacts": {
                 "enabled": True,
@@ -1189,6 +1210,7 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
             "objective": {
                 "query_ssl.method_name": "fixmatch_usb_v1",
                 "query_ssl.algorithm_name": "fixmatch",
+                "query_ssl.unlabeled_batch_size": 24,
                 "peft_classifier.peft_adapter_name": "lora",
                 "peft_classifier.rank": 8,
                 "peft_classifier.alpha": 16,

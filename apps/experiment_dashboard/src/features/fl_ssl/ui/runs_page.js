@@ -9,6 +9,7 @@ import {
   setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
 import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
 import {
   algorithmName,
   compactRunSubLabel,
@@ -99,6 +100,7 @@ export function renderFlRunsPage(elements, rows, state, _bundle = null, rerender
 
 function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.runIds);
+  const peerDetails = rows.map(runHoverDetail);
   elements.flRunCheckboxes.innerHTML =
     rows.length === 0
       ? `<p class="empty">선택 가능한 FL run이 없습니다.</p>`
@@ -107,7 +109,7 @@ function renderRunPicker(elements, rows, state) {
             const id = runId(row);
             const detail = runHoverDetail(row);
             return `
-              <label class="run-option" title="${escapeHtml(detail)}">
+              <label class="run-option">
                 <input
                   type="checkbox"
                   data-fl-run-id="${escapeHtml(id)}"
@@ -117,6 +119,7 @@ function renderRunPicker(elements, rows, state) {
                   <strong>${escapeHtml(runDisplayLabel(row, state.runAliases))}</strong>
                   <small>${escapeHtml(compactRunSubLabel(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
             `;
           })

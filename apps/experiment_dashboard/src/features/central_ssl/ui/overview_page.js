@@ -10,6 +10,7 @@ import {
   setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
 import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
 import { CENTRAL_FILTER_AXES } from "../logic/filters.js";
 import { centralOverviewMetricKeys } from "../logic/metrics.js";
 import {
@@ -109,14 +110,16 @@ export function renderOverviewPage(elements, rows, state, _bundle, rerender = ()
 
 function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.overviewRunIds);
+  const peerDetails = rows.map(runDetail);
   elements.overviewRunCheckboxes.innerHTML =
     rows.length === 0
       ? `<p class="empty">선택 가능한 run이 없습니다.</p>`
       : rows
           .map((row) => {
             const label = overviewRunLabel(row);
+            const detail = runDetail(row);
             return `
-              <label class="run-option" title="${escapeHtml(runDetail(row))}">
+              <label class="run-option">
                 <input
                   type="checkbox"
                   data-overview-run-id="${escapeHtml(row.run_id)}"
@@ -126,6 +129,7 @@ function renderRunPicker(elements, rows, state) {
                   <strong>${escapeHtml(label)}</strong>
                   <small>${escapeHtml(overviewRunSubLabel(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
             `;
           })

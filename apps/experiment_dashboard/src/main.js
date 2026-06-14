@@ -423,6 +423,7 @@ function render() {
   renderShell();
   renderCentral();
   renderFl();
+  bindRunOptionDetailPositioning();
 }
 
 function resetCentralTrackState() {
@@ -565,6 +566,33 @@ function renderFl() {
   renderClientsPage(elements, rows, state.fl, state.bundle, render);
   renderSplitsPage(elements, rows, state.fl, state.bundle, render);
   renderFlProjectionPage(elements, rows, state.fl, state.bundle, allRows);
+}
+
+function bindRunOptionDetailPositioning() {
+  document.querySelectorAll(".run-option").forEach((option) => {
+    if (option.dataset.detailPositionBound === "true") return;
+    option.dataset.detailPositionBound = "true";
+    option.addEventListener("mouseenter", () => positionRunOptionDetail(option));
+    option.addEventListener("focusin", () => positionRunOptionDetail(option));
+  });
+}
+
+function positionRunOptionDetail(option) {
+  const detail = option.querySelector(".run-option-detail");
+  if (!detail) return;
+  detail.classList.remove("align-right");
+  detail.style.maxWidth = "";
+
+  const viewportPadding = 16;
+  const rect = detail.getBoundingClientRect();
+  if (rect.right > window.innerWidth - viewportPadding) {
+    detail.classList.add("align-right");
+  }
+
+  const adjustedRect = detail.getBoundingClientRect();
+  if (adjustedRect.left < viewportPadding) {
+    detail.style.maxWidth = `${window.innerWidth - viewportPadding * 2}px`;
+  }
 }
 
 function checkedValuesForAxis(container, axisDatasetKey, axisId, valueDatasetKey) {
