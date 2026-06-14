@@ -175,7 +175,7 @@ def test_central_query_ssl_support_does_not_import_agent_runtime() -> None:
     )
 
 
-def test_central_peft_ssl_uses_methods_local_training_request_surface() -> None:
+def test_central_query_ssl_uses_surface_neutral_request_surface() -> None:
     trainable_surface_path = (
         CONF_SRC
         / "strategy_axes"
@@ -187,12 +187,14 @@ def test_central_peft_ssl_uses_methods_local_training_request_surface() -> None:
     trainable_surface_source = trainable_surface_path.read_text(encoding="utf-8")
     runner_source = runner_path.read_text(encoding="utf-8")
 
-    assert "run_query_ssl_peft_encoder_local_session" in trainable_surface_source
-    assert "QuerySslPeftEncoderLocalSessionRequest" in runner_source
+    assert "run_central_query_ssl_peft_encoder_session" in trainable_surface_source
+    assert "artifact_writer" in trainable_surface_source
+    assert "CentralQuerySslTextEncoderSessionRequest" in runner_source
+    assert "QuerySslPeftEncoderLocalSessionRequest" not in runner_source
     assert "**local_session_request" not in runner_source, (
-        "central SSL runner는 methods-owned dataclass request를 그대로 넘긴다. "
-        "dict/kwargs surface로 되돌리면 central/agent/FL training 의미 drift를 "
-        "테스트하기 어려워진다."
+        "central SSL runner는 surface-neutral dataclass request를 그대로 넘긴다. "
+        "surface별 PEFT/full 요청과 artifact writer는 trainable_surface callable이 "
+        "소유해야 한다."
     )
 
 
@@ -650,14 +652,14 @@ def test_central_ssl_consistency_entrypoint_imports_runner_directly() -> None:
         / "experiments"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.py"
+        / "run_query_ssl_control.py"
     )
     entrypoint_config = (
         CONF_SRC
         / "entrypoints"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.yaml"
+        / "run_query_ssl_control.yaml"
     )
     source = entrypoint_path.read_text(encoding="utf-8")
     forbidden_snippets = (
@@ -666,7 +668,7 @@ def test_central_ssl_consistency_entrypoint_imports_runner_directly() -> None:
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
-    assert "run_query_ssl_peft_baseline" in source
+    assert "run_query_ssl_control" in source
     assert "group_by_query_ssl_method: true" in entrypoint_config.read_text(
         encoding="utf-8"
     )
@@ -799,7 +801,7 @@ def test_central_ssl_entrypoint_does_not_compose_input_mode_strategy_axis() -> N
         / "entrypoints"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.yaml"
+        / "run_query_ssl_control.yaml"
     )
     source = path.read_text(encoding="utf-8")
 
@@ -1701,7 +1703,7 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         / "experiments"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.py",
+        / "run_query_ssl_control.py",
         SCRIPTS_SRC
         / "experiments"
         / "central"
@@ -1716,7 +1718,7 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         / "entrypoints"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.yaml",
+        / "run_query_ssl_control.yaml",
         CONF_SRC
         / "entrypoints"
         / "central"
@@ -1812,7 +1814,7 @@ def test_central_peft_entrypoints_do_not_write_lora_named_artifact_roots() -> No
         / "entrypoints"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.yaml",
+        / "run_query_ssl_control.yaml",
         CONF_SRC
         / "entrypoints"
         / "central"
@@ -2976,7 +2978,6 @@ def test_peft_text_encoder_active_module_docs_use_peft_names() -> None:
         PEFT_TEXT_ENCODER_SRC / "training" / "optimizer_step.py",
         PEFT_TEXT_ENCODER_SRC / "training" / "partitioned_deltas.py",
         PEFT_TEXT_ENCODER_SRC / "training" / "pseudo_label_diagnostics.py",
-        PEFT_TEXT_ENCODER_SRC / "training" / "scalar_metrics.py",
         PEFT_TEXT_ENCODER_SRC / "training" / "step_budget.py",
         PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned" / "budget.py",
         PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned" / "training_loop.py",

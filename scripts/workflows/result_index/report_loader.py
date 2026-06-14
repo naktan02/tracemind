@@ -45,6 +45,7 @@ from scripts.workflows.result_index.report_parsing import (
 CENTRAL_PEFT_SSL_CONTROL_PATH_NAMES = frozenset(
     {
         "run_peft_ssl_control",
+        "run_query_ssl_control",
         "train_peft_ssl_classifier",
     }
 )

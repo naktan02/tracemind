@@ -17,7 +17,7 @@ defaults:
 
 group_by_query_ssl_method: true
 
-output_dir: ${central_ssl_budget.output_root}/central/ssl/peft_classifier/${query_data_selection_slug}
+output_dir: ${central_ssl_budget.output_root}/central/ssl/${trainable_surface.name}/${query_data_selection_slug}
 fixed_categories: ${dataset.label_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}

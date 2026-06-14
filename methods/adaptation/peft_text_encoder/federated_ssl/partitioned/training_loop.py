@@ -19,6 +19,14 @@ from methods.adaptation.common.step_budget import resolve_epoch_distributed_step
 from methods.adaptation.query_text_views.local_training_budget import (
     QuerySslLocalStepPlan,
 )
+from methods.adaptation.text_encoder_classifier.query_ssl_training import (
+    build_optimizer,
+    trainable_model_parameters,
+)
+from methods.adaptation.text_encoder_classifier.scalar_metrics import (
+    ScalarMetricAccumulator,
+    tensor_mapping_l2,
+)
 from methods.federated_ssl.hooks.local_objective import (
     PartitionedObjectiveParameterTensors,
     PartitionedTensorLocalObjective,
@@ -26,20 +34,12 @@ from methods.federated_ssl.hooks.local_objective import (
 )
 from methods.ssl.base import QuerySslAlgorithm, QuerySslStepResult, TextBatchClassifier
 
-from ...training.loops import (
-    build_optimizer,
-    trainable_model_parameters,
-)
 from ...training.modeling import PeftTextEncoderWithLinearHead
 from ...training.partitioned_deltas import (
     build_peft_encoder_partition_delta_from_parameter_deltas,
     diff_parameter_snapshots,
     named_trainable_parameter_tensors,
     snapshot_trainable_parameter_tensors,
-)
-from ...training.scalar_metrics import (
-    ScalarMetricAccumulator,
-    tensor_mapping_l2,
 )
 from ...update.partitioned_delta import PeftEncoderPartitionDelta
 from . import trainable_model as ptm
@@ -138,9 +138,7 @@ def train_partitioned_adapter_linear_head(
             labeled_batch = None
             if use_supervised_steps:
                 if train_loader is None or labeled_iterator is None:
-                    raise ValueError(
-                        "supervised partition steps require train_loader."
-                    )
+                    raise ValueError("supervised partition steps require train_loader.")
                 labeled_batch, labeled_iterator = next_cycling_batch(
                     loader=train_loader,
                     iterator=labeled_iterator,
@@ -682,9 +680,7 @@ def _empty_objective_step_result(
     try:
         reference = next(iter(parameter_snapshot.values()))
     except StopIteration as error:
-        raise ValueError(
-            "partitioned step requires trainable parameters."
-        ) from error
+        raise ValueError("partitioned step requires trainable parameters.") from error
     zero = reference.new_zeros(())
     return TensorLocalObjectiveResult(
         total_loss=zero,

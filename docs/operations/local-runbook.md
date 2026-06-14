@@ -219,14 +219,14 @@ uv run python scripts/experiments/central/ssl_control/run_full_text_encoder_supe
 USB PseudoLabel baseline:
 
 ```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
   strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1
 ```
 
 FixMatch baseline:
 
 ```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py
 ```
 
 중앙 SSL의 labeled/unlabeled source는 `query_data_selection.*`으로 바꾼다.
@@ -234,7 +234,7 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py
 Hydra group이 아니다.
 
 ```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
   query_data_selection.labeled=szegeelim_general4 \
   query_data_selection.unlabeled=ourafla_reddit \
   query_data_selection.validation=ourafla_reddit \
@@ -242,7 +242,7 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
 ```
 
 중앙 SSL smoke/test 실행은 `run_controls/central_ssl/budget=smoke`를 사용한다.
-이 경우 산출물은 `runs/_smoke/central/ssl/peft_classifier/...`,
+이 경우 산출물은 `runs/_smoke/central/ssl/peft_text_encoder/...`,
 `runs/_smoke/central/supervised/peft_classifier`,
 `runs/_smoke/central/supervised/full_text_encoder` 아래에 저장되어 main run과
 섞이지 않는다. 중앙 supervised/SSL의 best 모델 artifact도 해당 run 폴더의
@@ -277,7 +277,7 @@ uv run python scripts/experiments/central/ssl_control/build_method_projection_fi
 
 ```bash
 uv run python scripts/experiments/central/ssl_control/build_method_projection_figure.py \
-  --run-dir runs/central/ssl/peft_classifier/labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit \
+  --run-dir runs/central/ssl/peft_text_encoder/labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit \
   --split test \
   --output-root runs/figures/central_ssl/method_projection
 ```
@@ -384,7 +384,7 @@ GPU/mxbai 실행 결과만 사용한다.
 Hydra 설정 preview:
 
 ```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py --cfg job
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py --cfg job
 ```
 
 ## 7. Runtime Profiles

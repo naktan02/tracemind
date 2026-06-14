@@ -1,4 +1,4 @@
-"""PEFT text encoder/head Query SSL 학습/평가 유틸리티."""
+"""Text encoder + linear head Query SSL 학습/평가 유틸리티."""
 
 from __future__ import annotations
 
@@ -30,6 +30,16 @@ from methods.adaptation.local_objective_regularizers.fedprox import (
     prepare_fedprox_regularizer,
 )
 from methods.adaptation.text_encoder_classifier import training as _text_training
+from methods.adaptation.text_encoder_classifier.modeling import (
+    TextEncoderWithLinearHead,
+)
+from methods.adaptation.text_encoder_classifier.query_ssl_model_extensions import (
+    build_query_ssl_model_extensions,
+    set_query_ssl_auxiliary_modules_train,
+)
+from methods.adaptation.text_encoder_classifier.scalar_metrics import (
+    ScalarMetricAccumulator,
+)
 from methods.ssl.base import (
     QuerySslAlgorithm,
     QuerySslStepContext,
@@ -49,13 +59,6 @@ from methods.ssl.runtime.lifecycle import (
 from methods.ssl.state import load_query_ssl_algorithm_state
 from shared.src.domain.services.classification_report import (
     safe_divide,
-)
-
-from .modeling import PeftTextEncoderWithLinearHead
-from .scalar_metrics import ScalarMetricAccumulator
-from .ssl_model_extensions import (
-    build_peft_query_ssl_model_extensions,
-    set_peft_query_ssl_auxiliary_modules_train,
 )
 
 set_seed = _text_training.set_seed
@@ -92,7 +95,7 @@ def _format_running_scalars(
 
 def train_query_ssl_classifier(
     *,
-    model: PeftTextEncoderWithLinearHead,
+    model: TextEncoderWithLinearHead,
     train_loader: DataLoader[dict[str, Any]],
     unlabeled_loader: DataLoader[dict[str, Any]],
     selection_loader: DataLoader[dict[str, torch.Tensor]],
@@ -111,7 +114,7 @@ def train_query_ssl_classifier(
     resume_checkpoint_output_dir: str | Path | None = None,
     resume_checkpoint_every_epochs: int = 0,
     proximal_mu: float = 0.0,
-) -> tuple[PeftTextEncoderWithLinearHead, list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[TextEncoderWithLinearHead, list[dict[str, Any]], dict[str, Any]]:
     """Query SSL algorithm을 epoch-based query adaptation scaffold에 얹어 학습한다."""
 
     algorithm.validate_loaders(
@@ -194,7 +197,7 @@ def train_query_ssl_classifier(
         classifier_learning_rate=classifier_learning_rate,
         weight_decay=weight_decay,
     )
-    model_extensions = build_peft_query_ssl_model_extensions(
+    model_extensions = build_query_ssl_model_extensions(
         algorithm=algorithm,
         model=model,
         device=device,
@@ -275,7 +278,7 @@ def train_query_ssl_classifier(
         nonlocal completed_steps
 
         model.train()
-        set_peft_query_ssl_auxiliary_modules_train(
+        set_query_ssl_auxiliary_modules_train(
             model_extensions,
             training=True,
         )
@@ -450,7 +453,7 @@ def _resolve_initial_selection_warmup_steps(algorithm: QuerySslAlgorithm) -> int
 
 def _run_initial_selection_supervised_warmup(
     *,
-    model: PeftTextEncoderWithLinearHead,
+    model: TextEncoderWithLinearHead,
     train_loader: DataLoader[dict[str, Any]],
     device: str,
     max_steps: int,

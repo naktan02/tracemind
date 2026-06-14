@@ -1,4 +1,4 @@
-"""PEFT text encoder/head training scalar metric accumulation primitive."""
+"""Text encoder classifier training scalar metric accumulation primitive."""
 
 from __future__ import annotations
 

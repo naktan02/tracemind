@@ -28,7 +28,6 @@ from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     extract_peft_encoder_parameter_deltas,
     load_peft_encoder_base_parameters_into_model,
 )
-from methods.adaptation.peft_text_encoder.training.loops import set_seed
 from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftTextEncoderWithLinearHead,
     build_peft_text_encoder_with_linear_head_from_config,
@@ -57,6 +56,7 @@ from methods.adaptation.query_text_views.view_rows import (
     USB_MULTIVIEW_BUILDER_NAME,
     validate_query_ssl_unlabeled_views,
 )
+from methods.adaptation.text_encoder_classifier.query_ssl_training import set_seed
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping
 from methods.federated_ssl.capabilities.axes import (

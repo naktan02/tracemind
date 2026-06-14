@@ -1,9 +1,9 @@
 # Query SSL Text Encoder Support
 
 이 패키지는 중앙 SSL control과 future FL client-local SSL에서 공유 가능한
-query-domain SSL text encoder runtime support를 둔다. PEFT text encoder control과
-중앙 full text encoder supervised control은 같은 supervised runner/context helper를
-재사용하되, PEFT-specific artifact/export 이름은 PEFT leaf runner 안에만 남긴다.
+query-domain SSL text encoder runtime support를 둔다. 중앙 Query SSL runner는
+`trainable_surface.central_ssl.*` callable을 호출하고, PEFT/full surface별
+local session과 artifact writer는 각 surface owner가 제공한다.
 직접 실행하는 Hydra entrypoint는 `scripts/experiments/central/ssl_control/*.py`가
 소유하고, 이 패키지는 그 entrypoint가 호출하는 runner/helper 구현을 소유한다.
 
@@ -13,13 +13,13 @@ query-domain SSL text encoder runtime support를 둔다. PEFT text encoder contr
   - `supervised_text_encoder.py`: 중앙 supervised text encoder train/eval 공통 흐름.
   - `supervised.py`: frozen backbone + PEFT text encoder + linear head supervised baseline.
   - `full_text_encoder_supervised.py`: full encoder + linear head supervised-only baseline.
-  - `consistency.py`: USB PseudoLabel, FixMatch 등 Query SSL runner.
+  - `consistency.py`: USB PseudoLabel, FixMatch 등 surface-neutral Query SSL runner.
 - `text_encoder_run_context.py`
   - text encoder model/data/eval 공통 scaffolding. 기본 model builder는 현재
     PEFT text encoder control을 가리키고, full encoder runner는 별도 builder를 주입한다.
 - `io/`
-  - `artifacts.py`: run artifact 저장 public orchestration entrypoint.
-  - `full_text_encoder_artifacts.py`: full-model supervised control artifact 저장.
+  - `artifacts.py`: PEFT text encoder run artifact 저장 entrypoint.
+  - `full_text_encoder_artifacts.py`: full text encoder run artifact 저장 entrypoint.
   - `artifact_paths.py`: run directory와 output path 계산.
   - `model_artifact_exporter.py`: adapter/tokenizer/classifier 파일 export.
   - `manifest_builder.py`: manifest/report payload 조립.
@@ -37,7 +37,7 @@ Hydra entrypoint를 실행한다.
 
 - `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
 - `scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py`
-- `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
+- `scripts/experiments/central/ssl_control/run_query_ssl_control.py`
 
 공통으로 재사용될 알고리즘 core는 이 패키지 안에서 키우지 않고 `methods/`로
 올린다. cross-boundary contract/domain은 `shared/`, runtime bridge는
@@ -49,8 +49,10 @@ compatibility workflow와 fixed-classifier fallback은 scripts surface에서 제
 새 teacher source가 필요하면 `methods`의 teacher hook이나 method recipe로 먼저
 정의한다.
 
-새 PEFT-backed Query SSL 알고리즘은 원칙적으로 `run_peft_ssl_control.py`를 재사용하고
+새 Query SSL 알고리즘은 원칙적으로 `run_query_ssl_control.py`를 재사용하고
 `strategy_axes/ssl_objective/consistency_method` Hydra config만 추가/교체한다.
+새 LoRA/DoRA 계열은 `peft_text_encoder` surface 안의 PEFT mechanism 축으로 추가하고,
+full fine-tuning은 `full_text_encoder` surface를 고른다.
 
 ## Owner Refactor Queue
 

@@ -38,10 +38,9 @@ conf/
 - PEFT adapter mechanism은 `strategy_axes/model_architecture/peft`가 고르고,
   compose 후 namespace는 `cfg.peft_adapter`다.
 - 중앙 SSL의 학습 가능한 모델 표면은
-  `strategy_axes/model_architecture/trainable_surface`가 고른다. PEFT supervised/SSL
-  비교는 `peft_text_encoder`를 쓰고, 중앙 supervised-only full fine-tuning
-  ablation은 `full_text_encoder`를 쓴다. LoRA 여부는 surface 이름이 아니라 PEFT
-  adapter mechanism 축에서 결정한다.
+  `strategy_axes/model_architecture/trainable_surface`가 고른다. 중앙 Query SSL은
+  `peft_text_encoder`와 `full_text_encoder` surface를 모두 실행할 수 있다. LoRA
+  여부는 surface 이름이 아니라 PEFT adapter mechanism 축에서 결정한다.
 - `strategy_axes/fl_topology`는 client split/topology leaf와 공통 round capability
   leaf를 함께 둔다. method identity나 local SSL update recipe는 여기에 두지 않는다.
 

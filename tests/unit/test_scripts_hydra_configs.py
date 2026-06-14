@@ -257,7 +257,7 @@ def test_central_ssl_trainable_surface_leafs_declare_runtime_callables() -> None
         central_ssl_leaf_count += 1
         assert cfg.get("name"), path
         assert central_ssl.get("trainer_version_prefix"), path
-        for field_name in ("model_builder", "local_session_runner"):
+        for field_name in ("model_builder", "local_session_runner", "artifact_writer"):
             callable_path = central_ssl.get(field_name)
             assert callable_path, path
             load_configured_callable(
@@ -278,7 +278,7 @@ def test_central_ssl_trainable_surface_leafs_declare_runtime_callables() -> None
         "entrypoints/fl_ssl/run_federated_simulation",
         "entrypoints/central/ssl_control/run_peft_supervised_control",
         "entrypoints/central/ssl_control/run_full_text_encoder_supervised_control",
-        "entrypoints/central/ssl_control/run_peft_ssl_control",
+        "entrypoints/central/ssl_control/run_query_ssl_control",
     ],
 )
 def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
@@ -523,10 +523,10 @@ def test_central_supervised_controls_support_pc100_labeled_budget() -> None:
     )
 
 
-def test_run_peft_ssl_control_supports_auto_local_runtime_override() -> None:
+def test_run_query_ssl_control_supports_auto_local_runtime_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=["execution_context/runtime_env=auto_local"],
         )
 
@@ -535,10 +535,10 @@ def test_run_peft_ssl_control_supports_auto_local_runtime_override() -> None:
     assert cfg.runtime.local_files_only is True
 
 
-def test_run_peft_ssl_control_supports_source_budget_and_leaf_overrides() -> None:
+def test_run_query_ssl_control_supports_source_budget_and_leaf_overrides() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "query_data_selection.labeled=szegeelim_general4",
                 "query_data_selection.unlabeled=ourafla_reddit",
@@ -564,7 +564,7 @@ def test_run_peft_ssl_control_supports_source_budget_and_leaf_overrides() -> Non
     assert cfg.selection_set == "test"
     assert cfg.central_ssl_budget.name == "smoke"
     assert cfg.central_ssl_budget.output_root == "runs/_smoke"
-    assert cfg.output_dir.startswith("runs/_smoke/central/ssl/peft_classifier/")
+    assert cfg.output_dir.startswith("runs/_smoke/central/ssl/peft_text_encoder/")
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
@@ -579,10 +579,10 @@ def test_run_peft_ssl_control_supports_source_budget_and_leaf_overrides() -> Non
     assert cfg.initial_classifier_path == ""
 
 
-def test_run_peft_ssl_control_supports_query_ssl_method_override() -> None:
+def test_run_query_ssl_control_supports_query_ssl_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "query_ssl_method.p_cutoff=0.9",
                 "query_ssl_method.unlabeled_batch_size=8",
@@ -595,10 +595,10 @@ def test_run_peft_ssl_control_supports_query_ssl_method_override() -> None:
     assert cfg.query_ssl_method.hard_label is True
 
 
-def test_run_peft_ssl_control_supports_pseudolabel_method_override() -> None:
+def test_run_query_ssl_control_supports_pseudolabel_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
@@ -615,10 +615,10 @@ def test_run_peft_ssl_control_supports_pseudolabel_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is False
 
 
-def test_run_peft_ssl_control_supports_flexmatch_method_override() -> None:
+def test_run_query_ssl_control_supports_flexmatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
@@ -635,10 +635,10 @@ def test_run_peft_ssl_control_supports_flexmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_refixmatch_method_override() -> None:
+def test_run_query_ssl_control_supports_refixmatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=refixmatch_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
@@ -655,10 +655,10 @@ def test_run_peft_ssl_control_supports_refixmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_freematch_method_override() -> None:
+def test_run_query_ssl_control_supports_freematch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=freematch_usb_v1",
                 "query_ssl_method.ema_p=0.9",
@@ -677,10 +677,10 @@ def test_run_peft_ssl_control_supports_freematch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_adamatch_method_override() -> None:
+def test_run_query_ssl_control_supports_adamatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=adamatch_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
@@ -697,10 +697,10 @@ def test_run_peft_ssl_control_supports_adamatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_dash_method_override() -> None:
+def test_run_query_ssl_control_supports_dash_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=dash_usb_v1",
                 "query_ssl_method.gamma=1.5",
@@ -721,10 +721,10 @@ def test_run_peft_ssl_control_supports_dash_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_uda_method_override() -> None:
+def test_run_query_ssl_control_supports_uda_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=uda_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
@@ -742,10 +742,10 @@ def test_run_peft_ssl_control_supports_uda_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_pimodel_method_override() -> None:
+def test_run_query_ssl_control_supports_pimodel_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=pimodel_usb_v1",
                 "query_ssl_method.unsup_warm_up=0.2",
@@ -760,10 +760,10 @@ def test_run_peft_ssl_control_supports_pimodel_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_meanteacher_method_override() -> None:
+def test_run_query_ssl_control_supports_meanteacher_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=meanteacher_usb_v1",
                 "query_ssl_method.ema_m=0.9",
@@ -780,10 +780,10 @@ def test_run_peft_ssl_control_supports_meanteacher_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_comatch_method_override() -> None:
+def test_run_query_ssl_control_supports_comatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=comatch_usb_v1",
                 "query_ssl_method.queue_batch=4",
@@ -801,10 +801,10 @@ def test_run_peft_ssl_control_supports_comatch_method_override() -> None:
     assert cfg.query_ssl_method.require_weak_strong_pair is True
 
 
-def test_run_peft_ssl_control_supports_simmatch_method_override() -> None:
+def test_run_query_ssl_control_supports_simmatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=simmatch_usb_v1",
                 "query_ssl_method.proj_size=4",
@@ -823,10 +823,10 @@ def test_run_peft_ssl_control_supports_simmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_mixmatch_method_override() -> None:
+def test_run_query_ssl_control_supports_mixmatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=mixmatch_usb_v1",
                 "query_ssl_method.unsup_warm_up=0.2",
@@ -845,10 +845,10 @@ def test_run_peft_ssl_control_supports_mixmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_supports_remixmatch_method_override() -> None:
+def test_run_query_ssl_control_supports_remixmatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=remixmatch_usb_v1",
                 "query_ssl_method.mixup_alpha=0.7",
@@ -869,10 +869,10 @@ def test_run_peft_ssl_control_supports_remixmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_weak_strong_pair is True
 
 
-def test_run_peft_ssl_control_supports_softmatch_method_override() -> None:
+def test_run_query_ssl_control_supports_softmatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=softmatch_usb_v1",
                 "query_ssl_method.ema_p=0.9",
@@ -891,10 +891,10 @@ def test_run_peft_ssl_control_supports_softmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_run_peft_ssl_control_uses_materialized_query_views_without_augmenter() -> None:
+def test_run_query_ssl_control_uses_materialized_views_without_augmenter() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control"
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control"
         )
 
     assert "query_ssl_augmenter" not in cfg
@@ -939,13 +939,13 @@ def test_central_supervised_smoke_orchestration_contract_snapshot() -> None:
 def test_central_query_ssl_smoke_orchestration_contract_snapshot() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=["run_controls/central_ssl/budget=smoke"],
         )
 
     assert _central_query_ssl_contract_snapshot(cfg) == {
         "output_dir": (
-            "runs/_smoke/central/ssl/peft_classifier/"
+            "runs/_smoke/central/ssl/peft_text_encoder/"
             "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
             "test-ourafla_reddit"
         ),
@@ -2197,10 +2197,10 @@ def test_run_full_text_encoder_supervised_control_defaults_to_gpu_online() -> No
     assert cfg.central_ssl_budget.output_root == "runs"
 
 
-def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
+def test_run_query_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control"
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control"
         )
 
     assert cfg.runtime.name == "gpu_local"
@@ -2240,13 +2240,13 @@ def test_run_peft_ssl_control_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.resume_checkpoint_every_epochs == 0
 
 
-def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:
+def test_run_query_ssl_control_switches_method_by_hydra_name() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1",
-                "output_dir=runs/run_peft_ssl_control_pseudolabel",
+                "output_dir=runs/run_query_ssl_control_pseudolabel",
             ],
         )
 
@@ -2257,13 +2257,13 @@ def test_run_peft_ssl_control_switches_method_by_hydra_name() -> None:
         cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
         "test_ourafla_reddit"
     )
-    assert cfg.output_dir == "runs/run_peft_ssl_control_pseudolabel"
+    assert cfg.output_dir == "runs/run_query_ssl_control_pseudolabel"
 
 
-def test_run_peft_ssl_control_supports_general_labeled_reddit_pool() -> None:
+def test_run_query_ssl_control_supports_general_labeled_reddit_pool() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "query_data_selection.labeled=szegeelim_general4",
                 "query_data_selection.unlabeled=ourafla_reddit",
@@ -2296,10 +2296,10 @@ def test_run_peft_ssl_control_supports_general_labeled_reddit_pool() -> None:
     )
 
 
-def test_run_peft_ssl_control_supports_pc100_labeled_budget() -> None:
+def test_run_query_ssl_control_supports_pc100_labeled_budget() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "execution_context/query_labeled_budget=pc100_shared_client_seed",
                 "run_controls/central_ssl/budget=smoke",
@@ -2333,10 +2333,36 @@ def test_run_peft_ssl_control_supports_pc100_labeled_budget() -> None:
     assert cfg.max_train_steps == 2000
 
 
-def test_run_peft_ssl_control_supports_general_pool_with_reddit_eval() -> None:
+def test_run_query_ssl_control_supports_full_text_encoder_flexmatch_pc100() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
+            overrides=[
+                "strategy_axes/model_architecture/trainable_surface=full_text_encoder",
+                "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
+                "execution_context/query_labeled_budget=pc100_shared_client_seed",
+                "run_controls/central_ssl/budget=smoke",
+            ],
+        )
+
+    assert cfg.trainable_surface.name == "full_text_encoder"
+    assert cfg.trainable_surface.requires_peft_adapter is False
+    assert cfg.trainable_surface.central_ssl.local_session_runner.endswith(
+        "run_query_ssl_full_text_encoder_local_session"
+    )
+    assert cfg.trainable_surface.central_ssl.artifact_writer.endswith(
+        "write_full_text_encoder_run_artifacts"
+    )
+    assert cfg.query_ssl_method.name == "flexmatch_usb_v1"
+    assert cfg.query_labeled_budget.name == "pc100_shared_client_seed"
+    assert cfg.output_dir.startswith("runs/_smoke/central/ssl/full_text_encoder/")
+    assert cfg.learning_rate == 0.00002
+
+
+def test_run_query_ssl_control_supports_general_pool_with_reddit_eval() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "query_data_selection.labeled=szegeelim_general4",
                 "query_data_selection.unlabeled=szegeelim_general4",
@@ -2370,10 +2396,10 @@ def test_run_peft_ssl_control_supports_general_pool_with_reddit_eval() -> None:
     )
 
 
-def test_run_peft_ssl_control_uses_test_only_eval_set() -> None:
+def test_run_query_ssl_control_uses_test_only_eval_set() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
                 "query_data_selection.validation=szegeelim_general4",
                 "query_data_selection.test=ourafla_reddit",

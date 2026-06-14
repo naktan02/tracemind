@@ -45,7 +45,7 @@ Central SSL:
 1. relevant `conf/**`
 2. `scripts/experiments/central/ssl_control/README.md`
 3. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
-4. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
+4. `scripts/experiments/central/ssl_control/run_query_ssl_control.py`
 5. `scripts/support/query_ssl_text_encoder/runners/**`
 6. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
 7. `methods/ssl/**`, `methods/adaptation/{peft_text_encoder,full_text_encoder}/**`

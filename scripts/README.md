@@ -57,7 +57,7 @@ uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
 중앙 PEFT SSL control smoke:
 
 ```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
   run_controls/central_ssl/budget=smoke
 ```
 

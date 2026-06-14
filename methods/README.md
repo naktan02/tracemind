@@ -97,6 +97,12 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   update family와 text-specific training/update core. 중앙 SSL, FL simulation,
   live agent는 `training/local_training_surface.py`의 methods-owned request
   surface를 통해 같은 local training core를 호출한다
+- `methods/adaptation/text_encoder_classifier/`: full/PEFT text encoder surface가
+  공유하는 text encoder + linear head 모델, supervised/Query SSL 학습 loop,
+  pseudo-label diagnostic primitive
+- `methods/adaptation/full_text_encoder/`: 중앙 control용 full text encoder
+  trainable surface. 현재는 FL update family를 열지 않고 중앙 supervised/SSL
+  artifact만 소유한다
 - `methods/adaptation/query_text_views/`: query-domain text view row 해석,
   unlabeled view preparation, tokenizer batch glue
 - `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP

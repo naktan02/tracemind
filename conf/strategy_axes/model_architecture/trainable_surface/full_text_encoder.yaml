@@ -5,3 +5,15 @@ model_artifact_kind: full_text_encoder_with_linear_head
 trainable_state: full_encoder_and_classifier_head
 requires_peft_adapter: false
 supports_initial_adapter: false
+central_ssl:
+  model_builder: methods.adaptation.full_text_encoder.training.modeling.build_model
+  local_session_runner: methods.adaptation.full_text_encoder.training.query_ssl_training_session.run_query_ssl_full_text_encoder_local_session
+  artifact_writer: scripts.support.query_ssl_text_encoder.io.full_text_encoder_artifacts.write_full_text_encoder_run_artifacts
+  trainer_version_prefix: full_text_encoder
+  training_backend_name: full_text_encoder_trainer
+central_training:
+  learning_rate: 0.00002
+  classifier_learning_rate: 0.0002
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  log_every_steps: 100

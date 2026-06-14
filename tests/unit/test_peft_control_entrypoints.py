@@ -16,15 +16,15 @@ def test_run_peft_supervised_control_entrypoint_imports_direct_runner() -> None:
     )
 
 
-def test_run_peft_ssl_control_entrypoint_imports_consistency_runner() -> None:
+def test_run_query_ssl_control_entrypoint_imports_consistency_runner() -> None:
     entrypoint = importlib.import_module(
-        "scripts.experiments.central.ssl_control.run_peft_ssl_control"
+        "scripts.experiments.central.ssl_control.run_query_ssl_control"
     )
     runner = importlib.import_module(
         "scripts.support.query_ssl_text_encoder.runners.consistency"
     )
 
-    assert entrypoint.run_query_ssl_peft_baseline is runner.run_query_ssl_peft_baseline
+    assert entrypoint.run_query_ssl_control is runner.run_query_ssl_control
 
 
 def test_query_peft_package_keeps_concrete_helpers_out_of_package_surface() -> None:

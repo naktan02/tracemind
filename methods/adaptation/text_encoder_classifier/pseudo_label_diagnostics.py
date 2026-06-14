@@ -1,4 +1,4 @@
-"""PEFT text encoder/head pseudo-label 품질 진단 helper."""
+"""Text encoder classifier pseudo-label 품질 진단 helper."""
 
 from __future__ import annotations
 
@@ -8,18 +8,11 @@ from typing import Any, Protocol
 
 import torch
 
-from methods.adaptation.common.batching import (
-    move_tensor_batch_to_device,
-)
-from methods.adaptation.peft_text_encoder.config import (
-    PeftEncoderTrainingBackendConfig,
-)
-from methods.adaptation.peft_text_encoder.training.modeling import (
-    PeftTextEncoderWithLinearHead,
-)
+from methods.adaptation.common.batching import move_tensor_batch_to_device
 from methods.adaptation.query_text_views.data import build_weak_dataloader
-from methods.adaptation.query_text_views.tokenization import (
-    TextTokenizationCache,
+from methods.adaptation.query_text_views.tokenization import TextTokenizationCache
+from methods.adaptation.text_encoder_classifier.modeling import (
+    TextEncoderWithLinearHead,
 )
 from methods.evaluation.pseudo_label_quality import (
     PseudoLabelCandidateRecord,
@@ -29,10 +22,19 @@ from methods.evaluation.pseudo_label_quality import (
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
-class PeftEncoderDiagnosticsRuntimeConfig(Protocol):
+class TextEncoderDiagnosticsRuntimeConfig(Protocol):
     """pseudo-label diagnostics가 필요한 runtime surface."""
 
     device: str
+
+
+class TextEncoderBackboneRuntimeConfig(Protocol):
+    """text encoder tokenizer/view 설정 surface."""
+
+    max_length: int
+    task_prefix: str
+    tokenizer_model_id: str
+    tokenizer_revision: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,12 +63,7 @@ class PseudoLabelDiagnosticThreshold:
 def resolve_fixed_pseudo_label_diagnostic_threshold(
     parameters: Mapping[str, object],
 ) -> PseudoLabelDiagnosticThreshold:
-    """학습 후 pseudo-label 품질 진단용 fixed threshold를 해석한다.
-
-    adaptive/classwise threshold method에서는 이 값이 실제 학습 mask와 다를 수 있다.
-    그래서 여기서는 `p_cutoff`가 있는 경우에만 fixed-threshold snapshot diagnostic으로
-    기록한다.
-    """
+    """학습 후 pseudo-label 품질 진단용 fixed threshold를 해석한다."""
 
     raw_value = parameters.get("p_cutoff")
     if raw_value is None:
@@ -76,18 +73,18 @@ def resolve_fixed_pseudo_label_diagnostic_threshold(
 
 def build_final_snapshot_pseudo_label_quality(
     *,
-    model: PeftTextEncoderWithLinearHead,
+    model: TextEncoderWithLinearHead,
     tokenizer: Any,
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
-    peft_config: PeftEncoderTrainingBackendConfig,
+    backbone_config: TextEncoderBackboneRuntimeConfig,
     acceptance_threshold: float | None,
-    trainer_runtime_config: PeftEncoderDiagnosticsRuntimeConfig,
+    trainer_runtime_config: TextEncoderDiagnosticsRuntimeConfig,
     unlabeled_batch_size: int,
     tokenization_cache: TextTokenizationCache | None,
     tokenization_cache_namespace: str,
 ) -> PseudoLabelQualitySummary:
-    """round 종료 시점 local classifier snapshot의 pseudo-label 품질을 계산한다."""
+    """학습 종료 시점 classifier snapshot의 pseudo-label 품질을 계산한다."""
 
     effective_rows = list(rows)
     if not effective_rows:
@@ -97,8 +94,8 @@ def build_final_snapshot_pseudo_label_quality(
         rows=effective_rows,
         tokenizer=tokenizer,
         batch_size=int(unlabeled_batch_size),
-        max_length=peft_config.max_length,
-        task_prefix=peft_config.task_prefix,
+        max_length=int(backbone_config.max_length),
+        task_prefix=str(backbone_config.task_prefix),
         shuffle=False,
         tokenization_cache=tokenization_cache,
         tokenization_cache_namespace=tokenization_cache_namespace,
@@ -149,11 +146,11 @@ def build_final_snapshot_pseudo_label_quality(
 
 
 def tokenization_cache_namespace(
-    peft_config: PeftEncoderTrainingBackendConfig,
+    backbone_config: TextEncoderBackboneRuntimeConfig,
 ) -> str:
-    """PEFT text encoder tokenizer 설정을 cache namespace로 정규화한다."""
+    """text encoder tokenizer 설정을 cache namespace로 정규화한다."""
 
     return (
-        f"tokenizer={peft_config.tokenizer_model_id}"
-        f"|revision={peft_config.tokenizer_revision}"
+        f"tokenizer={backbone_config.tokenizer_model_id}"
+        f"|revision={backbone_config.tokenizer_revision}"
     )

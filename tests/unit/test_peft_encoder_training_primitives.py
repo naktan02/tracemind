@@ -21,7 +21,7 @@ from methods.adaptation.common.step_budget import (
 from methods.adaptation.local_objective_regularizers.fedprox import (
     prepare_fedprox_regularizer,
 )
-from methods.adaptation.peft_text_encoder.training.scalar_metrics import (
+from methods.adaptation.text_encoder_classifier.scalar_metrics import (
     ScalarMetricAccumulator,
     tensor_mapping_l2,
 )
