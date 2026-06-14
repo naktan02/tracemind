@@ -12,7 +12,7 @@ export function renderSelectedRunCard({
   removeAriaLabel,
 }) {
   return `
-    <article class="selected-run-card alias-run-card" title="${escapeHtml(detail)}">
+    <article class="selected-run-card alias-run-card">
       <strong>${escapeHtml(label)}</strong>
       <input
         type="text"

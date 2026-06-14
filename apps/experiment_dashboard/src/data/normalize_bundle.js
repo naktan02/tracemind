@@ -48,6 +48,8 @@ function normalizeDashboardFilters(filters) {
     ...filters,
     initial_checkpoints: filters.initial_checkpoints ?? [],
     created_dates: filters.created_dates ?? [],
+    label_budgets: filters.label_budgets ?? [],
+    label_budget_counts_per_class: filters.label_budget_counts_per_class ?? [],
     peft_adapter_ranks: filters.peft_adapter_ranks ?? filters.lora_ranks ?? [],
     peft_adapter_alphas: filters.peft_adapter_alphas ?? filters.lora_alphas ?? [],
     peft_adapter_use_rslora_values:

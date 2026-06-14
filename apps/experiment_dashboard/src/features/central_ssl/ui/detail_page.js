@@ -147,9 +147,21 @@ function renderConfusionMatrix(elements, row, state, bundle) {
     elements.confusionMatrix.innerHTML = `<p class="empty">confusion matrix가 없습니다.</p>`;
     return;
   }
-  const labels = Array.from(new Set(cells.flatMap((cell) => [cell.true_label, cell.predicted_label]))).sort();
+  const labels = Array.from(
+    new Set(
+      cells.flatMap((cell) => [
+        cell.actual_category ?? cell.true_label,
+        cell.predicted_category ?? cell.predicted_label,
+      ]),
+    ),
+  ).sort();
   const max = Math.max(...cells.map((cell) => Number(cell.count) || 0), 1);
-  const byKey = new Map(cells.map((cell) => [`${cell.true_label}::${cell.predicted_label}`, cell]));
+  const byKey = new Map(
+    cells.map((cell) => [
+      `${cell.actual_category ?? cell.true_label}::${cell.predicted_category ?? cell.predicted_label}`,
+      cell,
+    ]),
+  );
   elements.confusionMatrix.innerHTML = `
     <div class="matrix-grid" style="--matrix-size:${labels.length + 1}">
       <span></span>

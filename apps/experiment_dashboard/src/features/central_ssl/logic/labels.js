@@ -24,10 +24,52 @@ export function methodFamilyLabel(row) {
   return row.method_family ?? "-";
 }
 
+export function isCentralSupervisedRow(row) {
+  const track = String(row.track ?? "");
+  return track.includes("supervised") || row.method_name === "supervised";
+}
+
+export function labelBudgetLabel(row) {
+  if (row.label_budget_name) return row.label_budget_name;
+  if (row.label_budget_count_per_class) {
+    return `pc${row.label_budget_count_per_class}`;
+  }
+  const source = [row.selection_slug, row.run_id].join(" ");
+  const labelsPcMatch = source.match(/labels_pc(\d+)/);
+  if (labelsPcMatch) return `pc${labelsPcMatch[1]}`;
+  const labeledPerClassMatch = source.match(/labeled(\d+)_per_class/);
+  if (labeledPerClassMatch) return `pc${labeledPerClassMatch[1]}`;
+  return "pc?";
+}
+
 export function centralDataLabel(row) {
   const labeled = row.labeled_dataset_name ?? "?";
   const unlabeled = row.unlabeled_dataset_name ?? "?";
+  if (isCentralSupervisedRow(row)) {
+    return `L:${labeled} ${labelBudgetLabel(row)}`;
+  }
   return `${labeled} -> ${unlabeled}`;
+}
+
+export function trainingDataLabel(row) {
+  const labeled = row.labeled_dataset_name ?? "?";
+  if (isCentralSupervisedRow(row)) {
+    return `labeled=${labeled} ${labelBudgetLabel(row)}`;
+  }
+  return [
+    `labeled=${labeled} ${labelBudgetLabel(row)}`,
+    `unlabeled=${row.unlabeled_dataset_name ?? "?"}`,
+  ].join(" · ");
+}
+
+export function evaluationDataLabel(row) {
+  if (isCentralSupervisedRow(row)) {
+    return `test=${row.test_dataset_name ?? "?"}`;
+  }
+  return [
+    row.validation_dataset_name ? `validation=${row.validation_dataset_name}` : null,
+    `test=${row.test_dataset_name ?? "?"}`,
+  ].filter(Boolean).join(" · ");
 }
 
 export function initialCheckpointLabel(row) {
@@ -40,13 +82,14 @@ export function runCreatedDateLabel(row) {
 }
 
 export function overviewRunLabel(row) {
+  const modelConfig = modelConfigLabel(row);
   return [
     algorithmName(row),
-    `${peftAdapterLabel(row)} r${row.peft_adapter_rank ?? "?"}`,
+    modelConfig === methodFamilyLabel(row) ? null : modelConfig,
     compactDateTime(row.created_at) !== "-"
       ? compactDateTime(row.created_at)
       : centralRunSuffix(row.run_id),
-  ].join(" · ");
+  ].filter(Boolean).join(" · ");
 }
 
 export function overviewDisplayLabel(row, aliases) {
@@ -59,38 +102,38 @@ export function compareDisplayLabel(row, aliases) {
 
 export function overviewRunSubLabel(row) {
   return [
-    row.labeled_dataset_name ?? "?",
-    "->",
-    row.unlabeled_dataset_name ?? "?",
+    trainingDataLabel(row),
+    evaluationDataLabel(row),
     `ckpt=${initialCheckpointLabel(row)}`,
-    `seed${row.seed ?? "?"}`,
-  ].join(" ");
+    `seed=${row.seed ?? "?"}`,
+  ].join(" · ");
 }
 
 export function runDescriptor(row) {
   return [
-    algorithmName(row),
     `family=${methodFamilyLabel(row)}`,
+    trainingDataLabel(row),
+    evaluationDataLabel(row),
     peftAdapterConfigLabel(row),
-    `lr=${formatMetric(row.learning_rate)}`,
-    `clf=${formatMetric(row.classifier_learning_rate)}`,
-    shortSplit(row.selection_slug),
+    `lr=${formatHyperparameter(row.learning_rate)}`,
+    `clf=${formatHyperparameter(row.classifier_learning_rate)}`,
   ].join(" · ");
 }
 
 export function runDetail(row) {
-  return [
+  const parts = [
     algorithmName(row),
     shortRun(row.run_id),
     runDescriptor(row),
-    `labeled=${row.labeled_dataset_name ?? "-"}`,
-    `unlabeled=${row.unlabeled_dataset_name ?? "-"}`,
-    `validation=${row.validation_dataset_name ?? "-"}`,
-    `test=${row.test_dataset_name ?? "-"}`,
+    `label_budget=${labelBudgetLabel(row)}`,
     `checkpoint=${initialCheckpointLabel(row)}`,
     `created=${compactDateTime(row.created_at)}`,
     `run_id=${row.run_id}`,
-  ].join(" · ");
+  ];
+  if (!isCentralSupervisedRow(row)) {
+    parts.push(`split=${shortSplit(row.selection_slug)}`);
+  }
+  return parts.join(" · ");
 }
 
 export function centralEvalSetLabel(evalSet) {
@@ -100,12 +143,31 @@ export function centralEvalSetLabel(evalSet) {
 }
 
 export function peftAdapterConfigLabel(row) {
+  if (!row.peft_adapter_name && !row.peft_adapter_rank) {
+    return `surface=${methodFamilyLabel(row)}`;
+  }
   return [
     `adapter=${peftAdapterLabel(row)}`,
     `r=${row.peft_adapter_rank ?? "-"}`,
     `alpha=${row.peft_adapter_alpha ?? "-"}`,
-    `dropout=${row.peft_adapter_dropout ?? "-"}`,
+    `dropout=${formatHyperparameter(row.peft_adapter_dropout)}`,
   ].join(" · ");
+}
+
+function formatHyperparameter(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  if (number !== 0 && Math.abs(number) < 0.0001) {
+    return number.toExponential(1);
+  }
+  return formatMetric(number);
+}
+
+function modelConfigLabel(row) {
+  if (!row.peft_adapter_name && !row.peft_adapter_rank) {
+    return methodFamilyLabel(row);
+  }
+  return `${peftAdapterLabel(row)} r${row.peft_adapter_rank ?? "?"}`;
 }
 
 export function centralRunSuffix(runId) {

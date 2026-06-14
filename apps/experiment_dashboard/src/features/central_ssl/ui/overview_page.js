@@ -22,6 +22,9 @@ import {
 const DEFAULT_VISIBLE_COLUMNS = [
   "axis:algorithm",
   "axis:method_family",
+  "axis:training_data",
+  "axis:evaluation_data",
+  "axis:label_budget",
   "axis:created_date",
   "axis:initial_checkpoint",
 ];

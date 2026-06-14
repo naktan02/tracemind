@@ -45,6 +45,8 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.run.unlabeled_dataset_name == "szegeelim_general4"
     assert records.run.validation_dataset_name is None
     assert records.run.test_dataset_name == "ourafla_reddit"
+    assert records.run.label_budget_name == "pc1024"
+    assert records.run.label_budget_count_per_class == 1024
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs"
     assert records.run.peft_adapter_name == "lora"
@@ -99,7 +101,9 @@ def test_load_result_index_records_derives_supervised_selection_from_manifest(
     assert records.run.labeled_dataset_name == "szegeelim_general4"
     assert records.run.unlabeled_dataset_name == "ourafla_reddit"
     assert records.run.validation_dataset_name == "ourafla_reddit"
-    assert records.run.test_dataset_name == "ourafla_reddit_labels_pc100"
+    assert records.run.test_dataset_name == "ourafla_reddit"
+    assert records.run.label_budget_name == "pc100"
+    assert records.run.label_budget_count_per_class == 100
 
 
 def test_load_result_index_records_keeps_legacy_peft_entrypoint_track(
@@ -151,6 +155,8 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
     assert bundle["filters"]["run_control_output_dirs"] == ["runs"]
     assert bundle["filters"]["initial_checkpoints"] == ["none"]
     assert bundle["filters"]["created_dates"] == ["2026-05-13"]
+    assert bundle["filters"]["label_budgets"] == ["pc1024"]
+    assert bundle["filters"]["label_budget_counts_per_class"] == [1024]
     assert bundle["runs"][0]["selection_slug"] == (
         "labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit"
     )
@@ -207,6 +213,8 @@ def test_result_index_schema_migration_adds_run_control_columns(
     assert "peft_adapter_rank" in columns
     assert "peft_adapter_parameters_json" in columns
     assert "update_family_name" in columns
+    assert "label_budget_name" in columns
+    assert "label_budget_count_per_class" in columns
 
 
 def test_load_result_index_records_normalizes_fl_ssl_report_shape(
@@ -297,6 +305,8 @@ def test_load_result_index_records_infers_fl_label_budget_from_source_path(
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
         "test-ourafla_reddit_labels_pc1024"
     )
+    assert records.run.label_budget_name == "pc1024"
+    assert records.run.label_budget_count_per_class == 1024
 
 
 def test_load_result_index_records_reads_peft_classifier_objective(
@@ -866,7 +876,10 @@ def _sample_report(projection_dir: Path) -> dict:
         "trainer_version": "peft_fixmatch_2026_05_13_143419",
         "manifest": {
             "trainer_version": "peft_fixmatch_2026_05_13_143419",
-            "train_jsonl": "data/datasets/source/labeled.jsonl",
+            "train_jsonl": (
+                "data/datasets/ourafla_mental_health/query_ssl/"
+                "labeled1024_per_class_seed42_v1/labeled_train.jsonl"
+            ),
             "eval_sets": {
                 "validation": "data/datasets/source/validation.jsonl",
             },

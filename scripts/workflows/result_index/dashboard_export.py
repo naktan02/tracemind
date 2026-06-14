@@ -167,6 +167,10 @@ def _build_filters(
             row.get("validation_dataset_name") for row in runs
         ),
         "test_datasets": _unique(row.get("test_dataset_name") for row in runs),
+        "label_budgets": _unique(row.get("label_budget_name") for row in runs),
+        "label_budget_counts_per_class": _unique(
+            row.get("label_budget_count_per_class") for row in runs
+        ),
         "eval_sets": _unique(row.get("eval_set") for row in eval_metrics),
         "categories": _unique(row.get("category") for row in per_class_metrics),
         "learning_rates": _unique(row.get("learning_rate") for row in runs),

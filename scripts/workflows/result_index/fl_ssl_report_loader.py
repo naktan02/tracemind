@@ -22,7 +22,9 @@ from scripts.workflows.result_index.record_builders import (
 from scripts.workflows.result_index.report_parsing import (
     as_mapping,
     infer_created_at,
+    infer_label_budget_count_from_texts,
     json_object_snapshot,
+    label_budget_name_from_count,
     optional_float,
     optional_int,
     optional_str,
@@ -79,6 +81,12 @@ def load_fl_ssl_result_index_records(
     if algorithm_name is None and method_name != "unknown":
         algorithm_name = method_name
     local_regularizer_name, local_regularizer_mu = infer_local_regularizer(objective)
+    selection_slug = infer_selection_slug(fl_data_source)
+    source_jsonl = as_mapping(fl_data_source.get("source_jsonl"))
+    label_budget_count = infer_label_budget_count_from_texts(
+        selection_slug,
+        source_jsonl.get("labeled"),
+    )
     run = ExperimentRunRecord(
         run_id=run_id,
         track=optional_str(payload.get("track")) or "fl_ssl_main_comparison",
@@ -89,11 +97,13 @@ def load_fl_ssl_result_index_records(
         ),
         method_name=method_name,
         algorithm_name=algorithm_name,
-        selection_slug=infer_selection_slug(fl_data_source),
+        selection_slug=selection_slug,
         labeled_dataset_name=optional_str(source_selection.get("labeled")),
         unlabeled_dataset_name=optional_str(source_selection.get("unlabeled")),
         validation_dataset_name=optional_str(source_selection.get("validation")),
         test_dataset_name=optional_str(source_selection.get("test")),
+        label_budget_name=label_budget_name_from_count(label_budget_count),
+        label_budget_count_per_class=label_budget_count,
         seed=optional_int(protocol.get("seed")),
         learning_rate=optional_float(local_update_budget.get("learning_rate")),
         classifier_learning_rate=None,

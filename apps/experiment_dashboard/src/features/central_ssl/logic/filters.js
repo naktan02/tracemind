@@ -3,18 +3,30 @@ import { applyFacetedFilters, optionsForAxis } from "../../../shared/filters/fac
 import {
   algorithmName,
   centralDataLabel,
+  evaluationDataLabel,
   initialCheckpointLabel,
+  isCentralSupervisedRow,
+  labelBudgetLabel,
   peftAdapterLabel,
   runCreatedDateLabel,
+  trainingDataLabel,
 } from "./labels.js";
 
 export const CENTRAL_FILTER_AXES = [
   axis("track", "Track", (row) => row.track ?? "-"),
   axis("algorithm", "Algorithm", algorithmName),
   axis("method_family", "Family", (row) => row.method_family ?? "-"),
+  axis("training_data", "Training Data", trainingDataLabel),
+  axis("evaluation_data", "Evaluation Data", evaluationDataLabel),
+  axis("label_budget", "Label Budget", labelBudgetLabel),
   axis("data_pair", "Labeled / Unlabeled", centralDataLabel),
   axis("labeled_dataset", "Labeled Dataset", (row) => row.labeled_dataset_name ?? "-"),
-  axis("unlabeled_dataset", "Unlabeled Dataset", (row) => row.unlabeled_dataset_name ?? "-"),
+  axis("unlabeled_dataset", "Unlabeled Dataset", (row) =>
+    isCentralSupervisedRow(row) ? "-" : row.unlabeled_dataset_name ?? "-",
+  ),
+  axis("validation_dataset", "Validation Dataset", (row) =>
+    isCentralSupervisedRow(row) ? "-" : row.validation_dataset_name ?? "-",
+  ),
   axis("test_dataset", "Test Dataset", (row) => row.test_dataset_name ?? "-"),
   axis("initial_checkpoint", "Initial Checkpoint", initialCheckpointLabel, null, {
     alwaysVisible: true,

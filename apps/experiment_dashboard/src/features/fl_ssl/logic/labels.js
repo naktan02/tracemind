@@ -49,6 +49,8 @@ export function dataSourceLabel(row) {
 }
 
 export function labelBudgetLabel(row) {
+  if (row.label_budget_name) return row.label_budget_name;
+  if (row.label_budget_count_per_class) return `pc${row.label_budget_count_per_class}`;
   const source = [
     row.selection_slug,
     row.run_id,

@@ -9,6 +9,11 @@ from typing import Any
 RUN_TIMESTAMP_RE = re.compile(
     r"(?P<year>\d{4})_(?P<month>\d{2})_(?P<day>\d{2})_(?P<hms>\d{6})"
 )
+LABEL_BUDGET_PATTERNS = (
+    re.compile(r"(?:^|_)labels_pc(?P<count>\d+)(?:_|$)"),
+    re.compile(r"(?:^|_)labels-pc(?P<count>\d+)(?:_|$)"),
+    re.compile(r"(?:^|/)labeled(?P<count>\d+)_per_class(?:_|/)"),
+)
 
 
 def infer_created_at(run_id: str) -> str | None:
@@ -65,6 +70,24 @@ def optional_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def infer_label_budget_count_from_texts(*values: Any) -> int | None:
+    """path/slug에 들어간 per-class label budget 표기를 정규화한다."""
+
+    for value in values:
+        text = str(value or "")
+        if not text:
+            continue
+        for pattern in LABEL_BUDGET_PATTERNS:
+            match = pattern.search(text)
+            if match is not None:
+                return optional_int(match.group("count"))
+    return None
+
+
+def label_budget_name_from_count(count: int | None) -> str | None:
+    return f"pc{count}" if count is not None else None
 
 
 def json_object_snapshot(

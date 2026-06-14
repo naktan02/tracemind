@@ -34,7 +34,9 @@ from scripts.workflows.result_index.report_parsing import (
     as_mapping,
     as_sequence,
     infer_created_at,
+    infer_label_budget_count_from_texts,
     json_object_snapshot,
+    label_budget_name_from_count,
     optional_float,
     optional_int,
     optional_str,
@@ -175,6 +177,10 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
 
     selection_slug = _find_selection_slug(report_path=report_path, manifest=manifest)
     split_names = _parse_selection_slug(selection_slug)
+    label_budget_count = _infer_label_budget_count(
+        selection_slug=selection_slug,
+        manifest=manifest,
+    )
     query_ssl_method = as_mapping(manifest.get("query_ssl_method"))
     runtime_metrics = as_mapping(manifest.get("runtime_metrics"))
     initial_checkpoint = as_mapping(manifest.get("query_adaptation_initial_checkpoint"))
@@ -197,6 +203,8 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         unlabeled_dataset_name=split_names.get("unlabeled"),
         validation_dataset_name=split_names.get("validation"),
         test_dataset_name=split_names.get("test"),
+        label_budget_name=label_budget_name_from_count(label_budget_count),
+        label_budget_count_per_class=label_budget_count,
         seed=optional_int(manifest.get("seed")),
         learning_rate=optional_float(manifest.get("learning_rate")),
         classifier_learning_rate=optional_float(
@@ -411,10 +419,29 @@ def _parse_selection_slug(selection_slug: str | None) -> dict[str, str | None]:
             "labeled": labeled_part or None,
             "unlabeled": unlabeled_part or None,
             "validation": validation_part or None,
-            "test": test_part or None,
+            "test": _strip_label_budget_suffix(test_part) or None,
         }
     )
     return names
+
+
+def _infer_label_budget_count(
+    *,
+    selection_slug: str | None,
+    manifest: dict[str, Any],
+) -> int | None:
+    return infer_label_budget_count_from_texts(
+        selection_slug,
+        manifest.get("train_jsonl"),
+        *as_mapping(manifest.get("eval_sets")).values(),
+    )
+
+
+def _strip_label_budget_suffix(value: str) -> str:
+    for marker in ("_labels_pc", "_labels-pc"):
+        if marker in value:
+            return value.split(marker, 1)[0]
+    return value
 
 
 def _peft_adapter_config_from_backbone(backbone: dict[str, Any]) -> dict[str, Any]:

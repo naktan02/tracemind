@@ -17,6 +17,8 @@ class ExperimentRunRecord:
     unlabeled_dataset_name: str | None
     validation_dataset_name: str | None
     test_dataset_name: str | None
+    label_budget_name: str | None
+    label_budget_count_per_class: int | None
     seed: int | None
     learning_rate: float | None
     classifier_learning_rate: float | None
