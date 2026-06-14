@@ -411,6 +411,7 @@ def test_run_federated_simulation_config_loads_materialized_split(
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "~execution_context/fl_client_split",
                 "execution_context/embedding_adapter=hash_debug",
                 "execution_context/runtime_env=cpu_local",
                 "query_data_selection.labeled=ourafla_reddit",
@@ -463,6 +464,7 @@ def test_run_federated_simulation_rejects_manifest_client_count_drift(
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "~execution_context/fl_client_split",
                 "execution_context/embedding_adapter=hash_debug",
                 "execution_context/runtime_env=cpu_local",
                 "query_data_selection.labeled=ourafla_reddit",
@@ -494,6 +496,7 @@ def test_run_federated_simulation_records_server_only_seed_manifest_capability(
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "~execution_context/fl_client_split",
                 "execution_context/embedding_adapter=hash_debug",
                 "execution_context/runtime_env=cpu_local",
                 "query_data_selection.labeled=ourafla_reddit",
@@ -524,6 +527,7 @@ def test_run_federated_simulation_allows_materialized_split_ratio_metadata_drift
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "~execution_context/fl_client_split",
                 "execution_context/embedding_adapter=hash_debug",
                 "execution_context/runtime_env=cpu_local",
                 "query_data_selection.labeled=ourafla_reddit",

@@ -98,7 +98,10 @@ conf/
 - `payload_adapter_kind=peft_classifier`
 - `update_family_name=peft_text_encoder`
 - `aggregation_backend_name=fedavg`
-- main split: `10 clients`, Dirichlet `alpha=0.3`, split seed `42`.
+- default materialized split:
+  `shared_general_reddit_pc1024_alpha03_clients10`.
+- main split: `10 clients`, Dirichlet `alpha=0.3`, labeled `1024/class`,
+  split seed `42`.
 - full budget: `30 rounds`, `local_epochs=1`, `batch_size=8`, `max_steps=50`.
 - smoke artifacts: `runs/_smoke/fl_ssl`
 - comparison artifacts: `runs/fl_ssl`

@@ -40,17 +40,16 @@ from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PC100_SZEGEELIM_LABEL_DIR = (
-    "data/datasets/fl_client_splits/shared_client_labeled/"
-    "labeled-szegeelim_general4_unlabeled-ourafla_reddit_validation-"
-    "ourafla_reddit_test-ourafla_reddit_labels_pc100_shared_client_seed_"
-    "dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42"
+PC100_QUERY_LABEL_BUDGET = "labeled100_per_class_seed42_nllb_views_v1"
+PC100_SZEGEELIM_LABEL_WITH_VIEWS = (
+    "data/datasets/szegeelim_mental_health/views/"
+    "labeled100_per_class_seed42_v1/"
+    "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
 )
-PC100_OURAFLA_LABEL_DIR = (
-    "data/datasets/fl_client_splits/shared_client_labeled/"
-    "labeled-ourafla_reddit_unlabeled-ourafla_reddit_validation-"
-    "ourafla_reddit_test-ourafla_reddit_labels_pc100_shared_client_seed_"
-    "dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42"
+PC100_OURAFLA_LABEL_WITH_VIEWS = (
+    "data/datasets/ourafla_mental_health/views/"
+    "labeled100_per_class_seed42_v1/"
+    "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
 )
 
 
@@ -466,7 +465,7 @@ def test_run_full_text_encoder_supervised_control_supports_transfer_overrides() 
 
 def test_central_supervised_controls_support_pc100_labeled_budget() -> None:
     overrides = [
-        "execution_context/query_labeled_budget=pc100_shared_client_seed",
+        f"execution_context/query_labeled_budget={PC100_QUERY_LABEL_BUDGET}",
         "run_controls/central_ssl/budget=smoke",
         "central_ssl_budget.max_train_steps=2000",
     ]
@@ -485,7 +484,7 @@ def test_central_supervised_controls_support_pc100_labeled_budget() -> None:
         )
 
     for cfg in (peft_cfg, full_cfg):
-        assert cfg.query_labeled_budget.name == "pc100_shared_client_seed"
+        assert cfg.query_labeled_budget.name == PC100_QUERY_LABEL_BUDGET
         assert cfg.query_labeled_budget.count_per_class == 100
         assert cfg.query_data_selection.labeled == "szegeelim_general4"
         assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
@@ -497,10 +496,7 @@ def test_central_supervised_controls_support_pc100_labeled_budget() -> None:
             "labeled-szegeelim_general4_labels-pc100_unlabeled-"
             "ourafla_reddit_test-ourafla_reddit"
         )
-        assert (
-            cfg.train_jsonl
-            == f"{PC100_SZEGEELIM_LABEL_DIR}/shared_client_labeled.jsonl"
-        )
+        assert cfg.train_jsonl == PC100_SZEGEELIM_LABEL_WITH_VIEWS
         assert cfg.eval_sets.test.endswith(
             "data/datasets/ourafla_mental_health/query_ssl/"
             "labeled1024_per_class_seed42_v1/test_balanced_validation_test_seed42.jsonl"
@@ -517,10 +513,7 @@ def test_central_supervised_controls_support_pc100_labeled_budget() -> None:
         )
 
     assert reddit_cfg.query_data_selection.labeled == "ourafla_reddit"
-    assert (
-        reddit_cfg.train_jsonl
-        == f"{PC100_OURAFLA_LABEL_DIR}/shared_client_labeled.jsonl"
-    )
+    assert reddit_cfg.train_jsonl == PC100_OURAFLA_LABEL_WITH_VIEWS
 
 
 def test_run_query_ssl_control_supports_auto_local_runtime_override() -> None:
@@ -1004,16 +997,16 @@ def test_federated_ssl_smoke_orchestration_contract_snapshot(
         "run": {
             "budget_name": "smoke",
             "run_output_dir": "runs/_smoke/fl_ssl",
-            "client_count": 4,
+            "client_count": 10,
             "rounds": 3,
             "bootstrap_ratio": 0.2,
             "seed": 42,
         },
         "rows": {
-            "train": 57759,
-            "validation": 3192,
-            "test": 3192,
-            "client_shards": 4,
+            "train": 82335,
+            "validation": 4961,
+            "test": 992,
+            "client_shards": 10,
         },
         "training_task": {
             "task_type": "pseudo_label_self_training",
@@ -1058,8 +1051,14 @@ def test_federated_ssl_smoke_orchestration_contract_snapshot(
             "unlabeled_batch_size": 8,
         },
         "data_source": {
-            "source_mode": "runtime_split_from_train",
-            "split_manifest_path": None,
+            "source_mode": "materialized_client_split",
+            "split_manifest_path": (
+                "data/datasets/fl_client_splits/shared_client_labeled/"
+                "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+                "validation-ourafla_reddit_test-ourafla_reddit_labels_pc1024_"
+                "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
+                "clients10_seed42/manifest.json"
+            ),
         },
         "diagnostic_view": {
             "enabled": True,
@@ -1207,12 +1206,18 @@ def test_federated_simulation_composes_named_initial_checkpoint_preset(
         "epoch_0001_step_002000/manifest.json"
     )
     assert cfg.federated_run_budget.output_dir == "runs/_smoke/fl_ssl"
-    assert cfg.federated_run_budget.client_count == 4
+    assert cfg.federated_run_budget.client_count == 10
     assert cfg.federated_run_budget.rounds == 3
     assert cfg.runtime.name == "gpu_local"
     assert cfg.runtime.local_files_only is True
-    assert cfg.fl_data.source_mode == "runtime_split_from_train"
-    assert cfg.fl_data.split_manifest is None
+    assert cfg.fl_data.source_mode == "materialized_client_split"
+    assert cfg.fl_data.split_manifest == (
+        "data/datasets/fl_client_splits/shared_client_labeled/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit_labels_pc1024_"
+        "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
+        "clients10_seed42/manifest.json"
+    )
     assert cfg.sweep.axis == "none"
     assert cfg.sweep.output_dir == "runs/_smoke/fl_ssl"
     assert list(cfg.sweep.seed.members) == [42, 43, 44]
@@ -1364,8 +1369,11 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
-    assert cfg.fl_data.source_mode == "runtime_split_from_train"
-    assert cfg.fl_data.split_manifest is None
+    assert cfg.fl_data.source_mode == "materialized_client_split"
+    assert cfg.fl_data.split_manifest.endswith(
+        "labels_pc1024_shared_client_seed_dirichlet_label_skew_"
+        "dominantNone_alpha0.3_clients10_seed42/manifest.json"
+    )
     assert "ssl_method" not in cfg
     assert cfg.fl_method.composition_mode == "manual"
     assert "training_algorithm_profile" not in cfg
@@ -1460,7 +1468,7 @@ def test_federated_simulation_fl_client_split_context_selects_manifest() -> None
     assert cfg.fl_data.split_manifest == (
         "data/datasets/fl_client_splits/shared_client_labeled/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
-        "test-ourafla_reddit_labels_pc100_"
+        "validation-ourafla_reddit_test-ourafla_reddit_labels_pc100_"
         "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
         "clients10_seed42/manifest.json"
     )
@@ -2021,6 +2029,7 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "~execution_context/fl_client_split",
                 "strategy_axes/fl_topology/shard_policy=label_dominant",
                 "shard_policy.dominant_ratio=0.6",
             ],
@@ -2301,18 +2310,18 @@ def test_run_query_ssl_control_supports_pc100_labeled_budget() -> None:
         cfg = compose(
             config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=[
-                "execution_context/query_labeled_budget=pc100_shared_client_seed",
+                f"execution_context/query_labeled_budget={PC100_QUERY_LABEL_BUDGET}",
                 "run_controls/central_ssl/budget=smoke",
                 "central_ssl_budget.max_train_steps=2000",
             ],
         )
 
-    assert cfg.query_labeled_budget.name == "pc100_shared_client_seed"
+    assert cfg.query_labeled_budget.name == PC100_QUERY_LABEL_BUDGET
     assert cfg.query_labeled_budget.count_per_class == 100
     assert cfg.query_data_selection.labeled == "szegeelim_general4"
     assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
     assert cfg.query_data_selection.test == "ourafla_reddit"
-    assert cfg.train_jsonl == f"{PC100_SZEGEELIM_LABEL_DIR}/shared_client_labeled.jsonl"
+    assert cfg.train_jsonl == PC100_SZEGEELIM_LABEL_WITH_VIEWS
     assert cfg.unlabeled_jsonl.endswith(
         "data/datasets/ourafla_mental_health/views/"
         "labeled1024_per_class_seed42_v1/"
@@ -2340,7 +2349,7 @@ def test_run_query_ssl_control_supports_full_text_encoder_flexmatch_pc100() -> N
             overrides=[
                 "strategy_axes/model_architecture/trainable_surface=full_text_encoder",
                 "strategy_axes/ssl_objective/consistency_method=flexmatch_usb_v1",
-                "execution_context/query_labeled_budget=pc100_shared_client_seed",
+                f"execution_context/query_labeled_budget={PC100_QUERY_LABEL_BUDGET}",
                 "run_controls/central_ssl/budget=smoke",
             ],
         )
@@ -2354,7 +2363,7 @@ def test_run_query_ssl_control_supports_full_text_encoder_flexmatch_pc100() -> N
         "write_full_text_encoder_run_artifacts"
     )
     assert cfg.query_ssl_method.name == "flexmatch_usb_v1"
-    assert cfg.query_labeled_budget.name == "pc100_shared_client_seed"
+    assert cfg.query_labeled_budget.name == PC100_QUERY_LABEL_BUDGET
     assert cfg.output_dir.startswith("runs/_smoke/central/ssl/full_text_encoder/")
     assert cfg.learning_rate == 0.00002
 

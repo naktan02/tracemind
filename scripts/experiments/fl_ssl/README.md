@@ -87,14 +87,17 @@ policy이며 shard policy가 아니다.
 
 ## Simulation
 
+기본 FL 실행은 `shared_general_reddit_pc1024_alpha03_clients10` materialized split을
+사용한다. 다른 split을 쓰려면 `execution_context/fl_client_split=...`로 고른다.
+즉석 runtime split smoke가 필요하면 `execution_context/fl_client_split=null`로
+되돌리고 `fl_data.*`를 직접 override한다.
+
 고정 split smoke:
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=smoke \
-  fl_data.source_mode=materialized_client_split \
-  fl_data.split_manifest=data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json \
-  federated_run_budget.client_count=10 \
+  execution_context/fl_client_split=shared_general_reddit_pc1024_alpha03_clients10 \
   federated_run_budget.rounds=1
 ```
 

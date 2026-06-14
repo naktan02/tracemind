@@ -45,7 +45,7 @@ uv run python scripts/experiments/central/ssl_control/run_peft_supervised_contro
 uv run python scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py \
   run_controls/central_ssl/budget=smoke
 uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
-  execution_context/query_labeled_budget=pc100_shared_client_seed \
+  execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1 \
   central_ssl_budget.max_train_steps=2000 \
   output_dir=runs/central/supervised/peft_classifier_pc100_step2000
 ```
@@ -76,8 +76,9 @@ Hydra group이 아니다. 기본 중앙 supervised/SSL 실행은 `selection_set=
 source 주소록은 `conf/execution_context/query_data_source/default.yaml`이 소유한다.
 실행 시에는 `query_data_selection.{labeled,unlabeled,validation,test}` selector를
 override한다. 라벨 예산만 1024-per-class에서 FL main comparison의 shared pc100
-labeled seed로 바꿀 때는
-`execution_context/query_labeled_budget=pc100_shared_client_seed`를 고른다.
+labeled seed에서 추출한 pc100 view artifact로 바꿀 때는
+`execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1`를
+고른다.
 
 PEFT run은 `artifacts/adapter/`와 `artifacts/classifier_head.safetensors`, full text
 encoder run은 `artifacts/model/`과 `artifacts/classifier_head.safetensors`를 저장한다.

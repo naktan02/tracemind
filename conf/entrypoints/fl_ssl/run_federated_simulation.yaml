@@ -30,7 +30,7 @@ defaults:
   # fssl_method: FL+SSL 결합 방법론
   - /strategy_axes/fssl_method: null
   - _self_
-  - /execution_context/fl_client_split: null
+  - /execution_context/fl_client_split: shared_general_reddit_pc1024_alpha03_clients10
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
 
@@ -41,8 +41,9 @@ published_model_id: tracemind-embed-sim
 seed: 42
 
 fl_data:
-  # 기본값은 기존 smoke/debug용 runtime split이다.
-  # 논문 비교는 materialize_fl_client_split 산출 manifest를 지정해서 고정 split을 쓴다.
+  # 기본값은 논문 비교용 materialized pc1024 shared labeled split이다.
+  # smoke/debug에서 즉석 split이 필요하면 execution_context/fl_client_split=null로
+  # 되돌리고 아래 값을 override한다.
   source_mode: runtime_split_from_train
   split_manifest: null
 
