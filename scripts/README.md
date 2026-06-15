@@ -69,6 +69,12 @@ uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
 uv run python scripts/experiments/central/fixed_feature_control/run_fixed_feature_baseline.py
 ```
 
+중앙 fixed-feature self-training 준지도 baseline:
+
+```bash
+uv run python scripts/experiments/central/fixed_feature_control/run_fixed_feature_self_training_baseline.py
+```
+
 ## Read Path
 
 1. `docs/ai_context_manifest.yaml`에서 task route를 고른다.

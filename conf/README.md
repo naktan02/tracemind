@@ -46,6 +46,10 @@ conf/
   `strategy_axes/classification/{feature_space,estimator}`로 고정 feature와 얕은
   classifier를 고른다. 계산 의미는 `methods/classification/fixed_feature/`가
   소유한다.
+- 중앙 fixed-feature self-training baseline은 같은 classification 축을 재사용하고,
+  `fixed_feature_self_training` entrypoint-local 값으로 threshold, criterion,
+  max_iter와 unlabeled sampling cap을 고른다. 이는 classic ML 준지도 baseline이며
+  `strategy_axes/ssl_objective`의 neural consistency method가 아니다.
 - `strategy_axes/fl_topology`는 client split/topology leaf와 공통 round capability
   leaf를 함께 둔다. method identity나 local SSL update recipe는 여기에 두지 않는다.
 

@@ -23,6 +23,9 @@ from methods.federated_ssl.local_update_profile import (
 from methods.federated_ssl.registry import (
     list_federated_ssl_method_descriptors,
 )
+from scripts.experiments.central.fixed_feature_control import (
+    run_fixed_feature_self_training_baseline as fixed_feature_self_training_runner,
+)
 from scripts.experiments.fl_ssl.federated_simulation.config_request import (
     _build_capability_plan,
     _build_execution_plan,
@@ -604,6 +607,88 @@ def test_run_fixed_feature_baseline_supports_estimator_override(
         f"{estimator_name}/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit"
     )
+
+
+def test_fixed_feature_self_training_baseline_defaults() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/fixed_feature_control/"
+                "run_fixed_feature_self_training_baseline"
+            )
+        )
+
+    assert cfg.fixed_feature_space.name == "tfidf_word"
+    assert cfg.fixed_feature_estimator.name == "logistic_regression"
+    assert cfg.fixed_feature_self_training.criterion == "threshold"
+    assert cfg.fixed_feature_self_training.threshold == 0.95
+    assert cfg.fixed_feature_self_training.unlabeled_cap_policy == "step_budget"
+    assert cfg.fixed_feature_self_training.max_unlabeled_rows is None
+    assert cfg.fixed_feature_self_training.unlabeled_sample_seed == 42
+    assert cfg.fixed_feature_self_training.unlabeled_label == -1
+    assert cfg.train_jsonl.endswith("labeled_train.with_views.jsonl")
+    assert cfg.unlabeled_jsonl.endswith("unlabeled_pool.with_views.jsonl")
+    assert cfg.output_dir == (
+        "runs/central/ssl/fixed_feature_self_training/tfidf_word/"
+        "logistic_regression/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit"
+    )
+
+
+def test_run_fixed_feature_self_training_baseline_supports_estimator_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/fixed_feature_control/"
+                "run_fixed_feature_self_training_baseline"
+            ),
+            overrides=[
+                "strategy_axes/classification/estimator=decision_tree",
+                "fixed_feature_self_training.threshold=0.85",
+            ],
+        )
+
+    assert cfg.fixed_feature_estimator.name == "decision_tree"
+    assert cfg.fixed_feature_self_training.threshold == 0.85
+    assert cfg.fixed_feature_self_training.unlabeled_cap_policy == "step_budget"
+    assert cfg.output_dir == (
+        "runs/central/ssl/fixed_feature_self_training/tfidf_word/decision_tree/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit"
+    )
+
+
+def test_fixed_feature_self_training_step_budget_caps_unlabeled_rows() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/fixed_feature_control/"
+                "run_fixed_feature_self_training_baseline"
+            ),
+            overrides=[
+                "central_ssl_budget.max_train_steps=2",
+                "train_batch_size=3",
+            ],
+        )
+
+    rows = [{"query_id": f"u{index}", "text": f"row {index}"} for index in range(10)]
+    selected, manifest = fixed_feature_self_training_runner._select_unlabeled_rows(
+        rows=rows,
+        cfg=cfg,
+        self_training_config=OmegaConf.to_container(
+            cfg.fixed_feature_self_training,
+            resolve=True,
+        ),
+    )
+
+    assert len(selected) == 6
+    assert manifest == {
+        "policy": "step_budget",
+        "pool_count": 10,
+        "used_count": 6,
+        "max_unlabeled_rows": 6,
+        "sample_seed": 42,
+        "sampled": True,
+    }
 
 
 def test_run_fixed_feature_baseline_supports_pc100_budget() -> None:

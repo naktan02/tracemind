@@ -21,6 +21,32 @@ uv run python scripts/experiments/central/fixed_feature_control/run_fixed_featur
 scikit-learn 학습 자체는 CPU에서 실행되지만, runtime leaf는 중앙 실험 기본 축과
 맞추기 위해 `gpu_local`을 사용한다.
 
+## Self-training 준지도 baseline
+
+`run_fixed_feature_self_training_baseline.py`는 기존 fixed-feature classifier를
+scikit-learn `SelfTrainingClassifier`로 감싼 classical 준지도 baseline이다.
+이는 논문식 `Self-Training Classifier` 비교선이며, FixMatch/AdaMatch/UDA 같은
+neural consistency SSL objective와는 별도 family다.
+
+```bash
+uv run python scripts/experiments/central/fixed_feature_control/run_fixed_feature_self_training_baseline.py
+uv run python scripts/experiments/central/fixed_feature_control/run_fixed_feature_self_training_baseline.py \
+  strategy_axes/classification/estimator=decision_tree
+uv run python scripts/experiments/central/fixed_feature_control/run_fixed_feature_self_training_baseline.py \
+  strategy_axes/classification/estimator=multinomial_nb
+uv run python scripts/experiments/central/fixed_feature_control/run_fixed_feature_self_training_baseline.py \
+  fixed_feature_self_training.max_unlabeled_rows=8000
+```
+
+unlabeled source는 `query_source.unlabeled_jsonl`을 사용하지만, 학습 입력 label은
+항상 `fixed_feature_self_training.unlabeled_label` 기본값 `-1`로 마스킹한다.
+기본 pseudo-label threshold는 FixMatch 계열과 비교하기 쉽도록 `0.95`다.
+기본 `unlabeled_cap_policy=step_budget`은
+`central_ssl_budget.max_train_steps * train_batch_size`만큼 unlabeled row를
+seed 고정 sampling해서 쓴다. main budget에서는 현재 pool 전체가 들어가지만,
+`max_train_steps=2000` 같은 reduced 비교에서는 unlabeled exposure가 함께 줄어든다.
+`linear_svc`는 `predict_proba`가 없어 threshold self-training에서 제외한다.
+
 ## Frozen Embedding 실행
 
 `frozen_embedding_mxbai`는 TF-IDF를 쓰지 않는다. mxbai encoder로 dense embedding을
@@ -71,6 +97,21 @@ runs/central/supervised/fixed_feature/
             feature_space.joblib
             label_schema.json
             predictions.test.jsonl
+          reports/
+            report.json
+          logs/
+            training_log.jsonl
+runs/central/ssl/fixed_feature_self_training/
+  tfidf_word/
+    logistic_regression/
+      labeled-.../
+        fixed_feature_self_training_tfidf_word_logistic_regression_YYYY_MM_DD_HHMMSS/
+          artifacts/
+            model.joblib
+            feature_space.joblib
+            label_schema.json
+            predictions.test.jsonl
+            pseudo_labels.train_unlabeled.jsonl
           reports/
             report.json
           logs/

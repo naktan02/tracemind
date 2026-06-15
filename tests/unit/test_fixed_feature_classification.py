@@ -6,6 +6,10 @@ import numpy as np
 import pytest
 
 from methods.classification.fixed_feature import feature_spaces
+from methods.classification.fixed_feature.self_training import (
+    FixedFeatureUnlabeledDataset,
+    run_fixed_feature_self_training_classification,
+)
 from methods.classification.fixed_feature.training import (
     FixedFeatureDataset,
     run_fixed_feature_classification,
@@ -140,6 +144,80 @@ def test_frozen_embedding_rejects_multinomial_nb() -> None:
             estimator_config={"name": "multinomial_nb"},
             categories=_CATEGORIES,
             train_dataset=_TRAIN_DATASET,
+            eval_datasets={},
+        )
+
+
+def test_fixed_feature_self_training_accepts_unlabeled_pseudo_labels() -> None:
+    result = run_fixed_feature_self_training_classification(
+        feature_space_config={
+            "name": "tfidf_word",
+            "feature_kind": "sparse_nonnegative_text",
+            "ngram_min": 1,
+            "ngram_max": 2,
+            "min_df": 1,
+            "max_df": 1.0,
+            "sublinear_tf": True,
+            "lowercase": True,
+            "strip_accents": "unicode",
+        },
+        estimator_config={
+            "name": "logistic_regression",
+            "max_iter": 1000,
+            "class_weight": None,
+        },
+        self_training_config={
+            "criterion": "threshold",
+            "threshold": 0.25,
+            "k_best": 10,
+            "max_iter": 5,
+            "unlabeled_label": -1,
+            "verbose": False,
+        },
+        categories=_CATEGORIES,
+        train_dataset=_TRAIN_DATASET,
+        unlabeled_dataset=FixedFeatureUnlabeledDataset(
+            texts=[
+                "panic worry anxiety",
+                "hopeless sad depression",
+                "normal calm okay",
+                "suicidal self harm",
+            ],
+            query_ids=["u1", "u2", "u3", "u4"],
+        ),
+        eval_datasets={"test": _TRAIN_DATASET},
+    )
+
+    assert result.summary.labeled_count == len(_TRAIN_DATASET.texts)
+    assert result.summary.unlabeled_count == 4
+    assert result.summary.accepted_pseudo_label_count > 0
+    assert sum(result.summary.accepted_class_distribution.values()) == (
+        result.summary.accepted_pseudo_label_count
+    )
+    assert len(result.pseudo_label_records) == 4
+    assert {record.query_id for record in result.pseudo_label_records} == {
+        "u1",
+        "u2",
+        "u3",
+        "u4",
+    }
+    assert result.evaluations["test"].report["rows_total"] == len(_TRAIN_DATASET.labels)
+
+
+def test_fixed_feature_self_training_rejects_estimators_without_predict_proba() -> None:
+    with pytest.raises(ValueError, match="predict_proba"):
+        run_fixed_feature_self_training_classification(
+            feature_space_config={
+                "name": "tfidf_word",
+                "feature_kind": "sparse_nonnegative_text",
+                "min_df": 1,
+                "max_df": 1.0,
+            },
+            estimator_config={"name": "linear_svc"},
+            self_training_config={"threshold": 0.9},
+            categories=_CATEGORIES,
+            train_dataset=_TRAIN_DATASET,
+            unlabeled_dataset=FixedFeatureUnlabeledDataset(texts=["unlabeled row"]),
             eval_datasets={},
         )
 

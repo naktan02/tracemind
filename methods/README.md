@@ -94,7 +94,7 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   primitive와 `classifier_head.v1(head_kind=linear)` payload projection. 새 MLP나
   projection head는 `linear_head` 아래에 넣지 않고 별도 classification owner를 연다
 - `methods/classification/fixed_feature/`: TF-IDF 같은 고정 feature 위에 얕은
-  scikit-learn classifier를 얹는 중앙 지도학습 baseline core
+  scikit-learn classifier를 얹는 중앙 지도학습/self-training baseline core
 - `methods/adaptation/peft_text_encoder/`: PEFT text encoder + classifier head
   update family와 text-specific training/update core. 중앙 SSL, FL simulation,
   live agent는 `training/local_training_surface.py`의 methods-owned request

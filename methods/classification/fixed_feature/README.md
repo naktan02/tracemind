@@ -8,6 +8,7 @@
 - 텍스트 row를 고정 feature로 변환하는 feature space 생성
 - scikit-learn estimator 생성
 - 학습, 예측, 분류 metric 계산
+- scikit-learn `SelfTrainingClassifier` 기반 준지도 baseline 계산
 
 지원 feature space:
 
@@ -22,7 +23,7 @@ feature용이므로 `frozen_embedding_mxbai`와 함께 쓰지 않는다.
 
 - JSONL 파일 선택, Hydra 조합, artifact 저장 위치
 - PEFT/full text encoder fine-tuning
-- SSL objective와 unlabeled consistency loss
+- FixMatch/AdaMatch/UDA 같은 neural SSL objective와 unlabeled consistency loss
 
 실행 orchestration과 report/artifact 저장은
 `scripts/experiments/central/fixed_feature_control/`이 맡는다.
