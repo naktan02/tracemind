@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from agent.src.contracts.wellbeing_signal_contracts import (
+    ParentWellbeingGuidancePayload,
     WellbeingSignalConfidence,
     WellbeingSignalLevel,
     WellbeingSignalSummaryPayload,
@@ -167,6 +168,11 @@ def _translate_to_wellbeing_summary(
         low_data=low_data,
         evidence_signal=evidence_signal,
     )
+    parent_guidance = _build_parent_guidance(
+        signal_level=signal_level,
+        low_data=low_data,
+        evidence_signal=evidence_signal,
+    )
 
     return WellbeingSignalSummaryPayload(
         computed_at=computed_at,
@@ -176,6 +182,7 @@ def _translate_to_wellbeing_summary(
         trend=trend,
         summary=summary,
         action_tip=action_tip,
+        parent_guidance=parent_guidance,
         confidence=confidence,
         low_data=low_data,
     )
@@ -314,6 +321,87 @@ def _build_action_tip(
         ),
         WellbeingSignalLevel.VERY_HIGH: (
             "혼자 두지 말고 바로 대화를 시도하며 가까운 보호자가 함께 확인해 주세요."
+        ),
+    }
+    return mapping[signal_level]
+
+
+def _build_parent_guidance(
+    *,
+    signal_level: WellbeingSignalLevel,
+    low_data: bool,
+    evidence_signal: WellbeingEvidenceSignal,
+) -> ParentWellbeingGuidancePayload:
+    if evidence_signal.direct_risk:
+        if evidence_signal.reason == RECENT_DIRECT_RISK_REASON:
+            return ParentWellbeingGuidancePayload(
+                response_priority=(
+                    "최근 위험 신호가 있었으므로 지금 상태를 직접 확인하세요."
+                ),
+                conversation_starter=(
+                    "지금 혼자 있는지, 바로 함께 있어도 되는지부터 차분히 물어보세요."
+                ),
+                caution_note=(
+                    "최근 표현이 줄었다고 바로 안정으로 보지 말고 "
+                    "가까운 어른과 함께 확인하세요."
+                ),
+            )
+        return ParentWellbeingGuidancePayload(
+            response_priority="혼자 두지 말고 즉시 가까운 보호자가 함께 확인하세요.",
+            conversation_starter=(
+                "지금 안전한 곳에 있는지, 곁에 있어도 되는지부터 짧게 물어보세요."
+            ),
+            caution_note=(
+                "훈계나 추궁보다 안전 확인을 우선하고 필요하면 "
+                "109 또는 1388에 도움을 요청하세요."
+            ),
+        )
+    if low_data:
+        return ParentWellbeingGuidancePayload(
+            response_priority="판단을 서두르지 말고 짧은 안부 확인부터 시작하세요.",
+            conversation_starter=(
+                "오늘 하루 중 불편했던 순간이 있었는지 가볍게 물어보세요."
+            ),
+            caution_note=(
+                "데이터가 적으므로 상태를 단정하지 말고 평소 변화와 함께 보세요."
+            ),
+        )
+    mapping = {
+        WellbeingSignalLevel.LOW: ParentWellbeingGuidancePayload(
+            response_priority="평소처럼 짧은 안부 확인과 안정적인 루틴을 유지하세요.",
+            conversation_starter="오늘 괜찮았던 일과 힘들었던 일을 하나씩 물어보세요.",
+            caution_note=(
+                "문제가 없다고 단정하지 말고 부담 없는 대화 기회를 유지하세요."
+            ),
+        ),
+        WellbeingSignalLevel.MODERATE: ParentWellbeingGuidancePayload(
+            response_priority="오늘 한 번은 직접 상태를 묻고 저녁에 다시 확인하세요.",
+            conversation_starter=(
+                "요즘 평소와 다르게 신경 쓰이는 일이 있는지 물어보세요."
+            ),
+            caution_note="답을 재촉하지 말고 아이가 말한 감정을 먼저 확인해 주세요.",
+        ),
+        WellbeingSignalLevel.HIGH: ParentWellbeingGuidancePayload(
+            response_priority=(
+                "오늘 안에 바로 짧은 대화를 시도하고 혼자 두는 시간을 줄이세요."
+            ),
+            conversation_starter=(
+                "지금 가장 힘든 일이 무엇인지, "
+                "같이 줄일 수 있는 부담이 있는지 물어보세요."
+            ),
+            caution_note=(
+                "해결책을 먼저 제시하기보다 안전과 휴식이 필요한지 먼저 확인하세요."
+            ),
+        ),
+        WellbeingSignalLevel.VERY_HIGH: ParentWellbeingGuidancePayload(
+            response_priority="빠르게 직접 확인하고 가까운 보호자가 함께 있어 주세요.",
+            conversation_starter=(
+                "지금 안전한지, 혼자 있기 어렵지는 않은지부터 물어보세요."
+            ),
+            caution_note=(
+                "높은 신호가 반복되면 학교 상담실, 1388, 109 같은 "
+                "도움 경로를 함께 열어두세요."
+            ),
         ),
     }
     return mapping[signal_level]

@@ -19,7 +19,7 @@
   conversation/proactive prompt payload.
 - `family_access_contracts.py`: family extension setup/unlock -> agent-local auth payload.
 - `wellbeing_signal_contracts.py`: agent wellbeing projection -> family extension summary,
-  timeseries, parent unlock payload.
+  parent guidance, timeseries, parent unlock payload.
 - `wellbeing_space_web_contracts.py`: agent wellbeing category projection -> family
   extension child analysis space-web nodes/edges payload.
 

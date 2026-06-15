@@ -94,6 +94,12 @@ export type WellbeingSignalConfidence = "low" | "medium" | "high";
 
 export type WellbeingSignalRange = "1d" | "7d" | "14d" | "30d";
 
+export interface ParentWellbeingGuidancePayload {
+  response_priority: string;
+  conversation_starter: string;
+  caution_note: string;
+}
+
 export interface WellbeingSignalSummaryPayload {
   schema_version: string;
   computed_at: string;
@@ -103,6 +109,7 @@ export interface WellbeingSignalSummaryPayload {
   trend: WellbeingSignalTrend;
   summary: string;
   action_tip: string;
+  parent_guidance: ParentWellbeingGuidancePayload;
   confidence: WellbeingSignalConfidence;
   low_data: boolean;
 }

@@ -10,6 +10,7 @@ from agent.src.config.paths import (
 )
 from agent.src.contracts.family_access_contracts import FamilyAccessRole
 from agent.src.contracts.wellbeing_signal_contracts import (
+    ParentWellbeingGuidancePayload,
     WellbeingSignalConfidence,
     WellbeingSignalLevel,
     WellbeingSignalRange,
@@ -53,6 +54,11 @@ def _build_summary_payload(
         trend=WellbeingSignalTrend.STEADY,
         summary="최근 상태가 비교적 안정적으로 유지되고 있습니다.",
         action_tip="오늘 저녁에 짧게 안부를 물어보세요.",
+        parent_guidance=ParentWellbeingGuidancePayload(
+            response_priority="오늘 저녁에 바로 짧은 안부를 확인하세요.",
+            conversation_starter="요즘 신경 쓰이는 일이 있는지 물어보세요.",
+            caution_note="답을 재촉하지 말고 먼저 들어주세요.",
+        ),
         confidence=WellbeingSignalConfidence.MEDIUM,
         low_data=False,
     )

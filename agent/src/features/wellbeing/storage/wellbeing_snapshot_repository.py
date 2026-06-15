@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 
 from agent.src.contracts.wellbeing_signal_contracts import (
+    DEFAULT_PARENT_WELLBEING_GUIDANCE,
+    ParentWellbeingGuidancePayload,
     WellbeingSignalConfidence,
     WellbeingSignalLevel,
     WellbeingSignalSummaryPayload,
@@ -29,6 +31,9 @@ CREATE TABLE IF NOT EXISTS wellbeing_snapshots (
     trend           TEXT NOT NULL,
     summary         TEXT NOT NULL,
     action_tip      TEXT NOT NULL,
+    parent_response_priority TEXT NOT NULL,
+    parent_conversation_starter TEXT NOT NULL,
+    parent_caution_note TEXT NOT NULL,
     confidence      TEXT NOT NULL,
     low_data        INTEGER NOT NULL
 );
@@ -39,16 +44,27 @@ ALTER TABLE wellbeing_snapshots
 ADD COLUMN projection_version TEXT NOT NULL DEFAULT 'legacy';
 """
 
+_PARENT_GUIDANCE_COLUMN_DEFAULTS = {
+    "parent_response_priority": DEFAULT_PARENT_WELLBEING_GUIDANCE.response_priority,
+    "parent_conversation_starter": (
+        DEFAULT_PARENT_WELLBEING_GUIDANCE.conversation_starter
+    ),
+    "parent_caution_note": DEFAULT_PARENT_WELLBEING_GUIDANCE.caution_note,
+}
+
 _INSERT_SQL = """
 INSERT OR REPLACE INTO wellbeing_snapshots
     (computed_at, schema_version, projection_version, signal_score,
-     signal_level, signal_label, trend, summary, action_tip, confidence, low_data)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+     signal_level, signal_label, trend, summary, action_tip,
+     parent_response_priority, parent_conversation_starter, parent_caution_note,
+     confidence, low_data)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 """
 
 _SELECT_LATEST_SQL = """
 SELECT computed_at, schema_version, signal_score, signal_level, signal_label,
-       trend, summary, action_tip, confidence, low_data
+       trend, summary, action_tip, parent_response_priority,
+       parent_conversation_starter, parent_caution_note, confidence, low_data
 FROM wellbeing_snapshots
 ORDER BY computed_at DESC
 LIMIT 1;
@@ -63,7 +79,8 @@ LIMIT 1;
 
 _SELECT_SINCE_SQL = """
 SELECT computed_at, schema_version, signal_score, signal_level, signal_label,
-       trend, summary, action_tip, confidence, low_data
+       trend, summary, action_tip, parent_response_priority,
+       parent_conversation_starter, parent_caution_note, confidence, low_data
 FROM wellbeing_snapshots
 WHERE computed_at >= ?
 ORDER BY computed_at ASC;
@@ -80,6 +97,7 @@ class WellbeingSnapshotRepository:
         with self._connect() as conn:
             conn.execute(_CREATE_TABLE_SQL)
             _ensure_projection_version_column(conn)
+            _ensure_parent_guidance_columns(conn)
 
     def save_summary(
         self,
@@ -100,6 +118,9 @@ class WellbeingSnapshotRepository:
                     payload.trend.value,
                     payload.summary,
                     payload.action_tip,
+                    payload.parent_guidance.response_priority,
+                    payload.parent_guidance.conversation_starter,
+                    payload.parent_guidance.caution_note,
                     payload.confidence.value,
                     1 if payload.low_data else 0,
                 ),
@@ -137,6 +158,18 @@ def _ensure_projection_version_column(conn: sqlite3.Connection) -> None:
     conn.execute(_ADD_PROJECTION_VERSION_COLUMN_SQL)
 
 
+def _ensure_parent_guidance_columns(conn: sqlite3.Connection) -> None:
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(wellbeing_snapshots)")}
+    for column_name, default_value in _PARENT_GUIDANCE_COLUMN_DEFAULTS.items():
+        if column_name in columns:
+            continue
+        escaped_default = default_value.replace("'", "''")
+        conn.execute(
+            "ALTER TABLE wellbeing_snapshots "
+            f"ADD COLUMN {column_name} TEXT NOT NULL DEFAULT '{escaped_default}';"
+        )
+
+
 def _row_to_summary_payload(row: tuple[object, ...]) -> WellbeingSignalSummaryPayload:
     (
         computed_at,
@@ -147,6 +180,9 @@ def _row_to_summary_payload(row: tuple[object, ...]) -> WellbeingSignalSummaryPa
         trend,
         summary,
         action_tip,
+        parent_response_priority,
+        parent_conversation_starter,
+        parent_caution_note,
         confidence,
         low_data,
     ) = row
@@ -159,6 +195,11 @@ def _row_to_summary_payload(row: tuple[object, ...]) -> WellbeingSignalSummaryPa
         trend=WellbeingSignalTrend(str(trend)),
         summary=str(summary),
         action_tip=str(action_tip),
+        parent_guidance=ParentWellbeingGuidancePayload(
+            response_priority=str(parent_response_priority),
+            conversation_starter=str(parent_conversation_starter),
+            caution_note=str(parent_caution_note),
+        ),
         confidence=WellbeingSignalConfidence(str(confidence)),
         low_data=bool(low_data),
     )

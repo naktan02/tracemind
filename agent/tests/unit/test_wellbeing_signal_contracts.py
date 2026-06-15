@@ -37,6 +37,9 @@ def test_wellbeing_signal_summary_payload_accepts_canonical_fields() -> None:
     assert payload.schema_version == "wellbeing_signal_summary.v1"
     assert payload.signal_level == WellbeingSignalLevel.HIGH
     assert payload.trend == WellbeingSignalTrend.RISING
+    assert payload.parent_guidance.response_priority
+    assert payload.parent_guidance.conversation_starter
+    assert payload.parent_guidance.caution_note
 
 
 def test_wellbeing_signal_summary_payload_rejects_out_of_range_score() -> None:

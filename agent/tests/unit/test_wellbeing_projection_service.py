@@ -233,6 +233,8 @@ def test_projection_service_uses_direct_risk_source_text_as_evidence(
     assert latest_summary.signal_level == WellbeingSignalLevel.VERY_HIGH
     assert latest_summary.signal_score == 95.0
     assert latest_summary.low_data is False
+    assert "혼자 두지 말고" in latest_summary.parent_guidance.response_priority
+    assert "안전한 곳" in latest_summary.parent_guidance.conversation_starter
 
 
 def test_projection_service_keeps_recent_direct_risk_from_dropping_to_low(

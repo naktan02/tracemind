@@ -52,6 +52,10 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
     ("WellbeingSignalConfidence", wellbeing_signal_contracts.WellbeingSignalConfidence),
     ("WellbeingSignalRange", wellbeing_signal_contracts.WellbeingSignalRange),
     (
+        "ParentWellbeingGuidancePayload",
+        wellbeing_signal_contracts.ParentWellbeingGuidancePayload,
+    ),
+    (
         "WellbeingSignalSummaryPayload",
         wellbeing_signal_contracts.WellbeingSignalSummaryPayload,
     ),

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from agent.src.contracts.wellbeing_signal_contracts import (
+    ParentWellbeingGuidancePayload,
     WellbeingSignalConfidence,
     WellbeingSignalLevel,
     WellbeingSignalSummaryPayload,
@@ -48,6 +49,13 @@ class WellbeingSummaryService:
             trend=WellbeingSignalTrend.UNKNOWN,
             summary="아직 분석된 최근 입력이 없어 현재 상태를 판단하지 않습니다.",
             action_tip="입력 데이터가 쌓이면 최근 상태를 다시 확인하세요.",
+            parent_guidance=ParentWellbeingGuidancePayload(
+                response_priority=(
+                    "분석 데이터가 쌓일 때까지 평소 안부 확인을 유지하세요."
+                ),
+                conversation_starter="오늘 하루가 어땠는지 부담 없이 물어보세요.",
+                caution_note="아직 판단 근거가 부족하므로 상태를 단정하지 마세요.",
+            ),
             confidence=WellbeingSignalConfidence.LOW,
             low_data=True,
         )

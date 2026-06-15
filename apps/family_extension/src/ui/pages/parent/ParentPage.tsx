@@ -1,6 +1,9 @@
 import { ParentWellbeingSummaryCard } from "../../components/ParentWellbeingSummaryCard";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
-import { formatComputedAtLabel } from "../../lib/formatters";
+import {
+  formatComputedAtLabel,
+  formatConfidenceLabel,
+} from "../../lib/formatters";
 
 type ParentPageProps = {
   activeSessionExpiresAt: string | null;
@@ -53,13 +56,20 @@ export function ParentPage({ activeSessionExpiresAt }: ParentPageProps) {
         <section className="parent-guidance">
           <article className="surface-card">
             <p className="card-label">지금 필요한 대응</p>
-            <p className="section-copy">{summaryState.summary.action_tip}</p>
+            <p className="section-copy">
+              {summaryState.summary.parent_guidance.response_priority}
+            </p>
           </article>
           <article className="surface-card">
-            <p className="card-label">대화 방향</p>
+            <p className="card-label">대화 시작</p>
             <p className="section-copy">
-              자녀가 쓴 문장을 캐묻기보다, 오늘 가장 힘들었던 순간과 지금 필요한
-              도움을 먼저 물어보세요.
+              {summaryState.summary.parent_guidance.conversation_starter}
+            </p>
+          </article>
+          <article className="surface-card">
+            <p className="card-label">주의할 점</p>
+            <p className="section-copy">
+              {summaryState.summary.parent_guidance.caution_note}
             </p>
           </article>
           <article className="surface-card">
@@ -76,6 +86,9 @@ export function ParentPage({ activeSessionExpiresAt }: ParentPageProps) {
                 {summaryState.summary.low_data
                   ? "데이터가 아직 적습니다"
                   : "기본 상태 해석 가능"}
+              </li>
+              <li>
+                신뢰도: {formatConfidenceLabel(summaryState.summary.confidence)}
               </li>
             </ul>
           </article>
