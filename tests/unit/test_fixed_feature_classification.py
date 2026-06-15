@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
+from methods.classification.fixed_feature import feature_spaces
 from methods.classification.fixed_feature.training import (
     FixedFeatureDataset,
     run_fixed_feature_classification,
@@ -85,3 +87,86 @@ def test_fixed_feature_classification_rejects_unknown_labels() -> None:
             train_dataset=FixedFeatureDataset(texts=["oops"], labels=["unknown"]),
             eval_datasets={},
         )
+
+
+def test_frozen_embedding_classification_trains_with_dense_features(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        feature_spaces,
+        "_load_sentence_transformer_class",
+        lambda: _FakeSentenceTransformer,
+    )
+
+    result = run_fixed_feature_classification(
+        feature_space_config={
+            "name": "frozen_embedding_mxbai",
+            "feature_kind": "dense_embedding",
+            "model_id": "fake-mxbai",
+            "device": "cpu",
+            "batch_size": 4,
+            "local_files_only": True,
+            "show_progress_bar": False,
+        },
+        estimator_config={
+            "name": "logistic_regression",
+            "max_iter": 1000,
+            "class_weight": None,
+        },
+        categories=_CATEGORIES,
+        train_dataset=_TRAIN_DATASET,
+        eval_datasets={"test": _TRAIN_DATASET},
+    )
+
+    evaluation = result.evaluations["test"]
+
+    assert result.feature_space.model_id == "fake-mxbai"
+    assert result.feature_space._resolved_device == "cpu"
+    assert evaluation.report["rows_total"] == len(_TRAIN_DATASET.labels)
+    assert evaluation.report["accuracy_top_1"] >= 0.75
+    assert evaluation.score_matrix.shape == (
+        len(_TRAIN_DATASET.labels),
+        len(_CATEGORIES),
+    )
+
+
+def test_frozen_embedding_rejects_multinomial_nb() -> None:
+    with pytest.raises(ValueError, match="multinomial_nb"):
+        run_fixed_feature_classification(
+            feature_space_config={
+                "name": "frozen_embedding_mxbai",
+                "feature_kind": "dense_embedding",
+            },
+            estimator_config={"name": "multinomial_nb"},
+            categories=_CATEGORIES,
+            train_dataset=_TRAIN_DATASET,
+            eval_datasets={},
+        )
+
+
+class _FakeSentenceTransformer:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        self.args = args
+        self.kwargs = kwargs
+
+    def encode(
+        self,
+        texts: list[str],
+        *,
+        batch_size: int,
+        normalize_embeddings: bool,
+        show_progress_bar: bool,
+        convert_to_numpy: bool,
+    ) -> np.ndarray:
+        del batch_size, normalize_embeddings, show_progress_bar, convert_to_numpy
+        return np.asarray([_fake_embedding(text) for text in texts], dtype=np.float32)
+
+
+def _fake_embedding(text: str) -> list[float]:
+    lowered = text.lower()
+    return [
+        1.0 if "anxiety" in lowered or "panic" in lowered else 0.0,
+        1.0 if "depress" in lowered or "sad" in lowered else 0.0,
+        1.0 if "normal" in lowered or "calm" in lowered or "fine" in lowered else 0.0,
+        1.0 if "suicidal" in lowered or "kill" in lowered else 0.0,
+    ]

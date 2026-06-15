@@ -539,16 +539,46 @@ def test_run_fixed_feature_baseline_defaults_to_tfidf_logistic_regression() -> N
 
     assert cfg.runtime.name == "gpu_local"
     assert cfg.runtime.device == "cuda"
+    assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.fixed_feature_space.name == "tfidf_word"
+    assert cfg.fixed_feature_space.feature_kind == "sparse_nonnegative_text"
     assert cfg.fixed_feature_space.ngram_min == 1
     assert cfg.fixed_feature_space.ngram_max == 2
     assert cfg.fixed_feature_estimator.name == "logistic_regression"
     assert cfg.fixed_feature_estimator.class_weight == "balanced"
     assert cfg.query_labeled_budget.count_per_class == 1024
+    assert cfg.train_batch_size == 8
+    assert cfg.eval_batch_size == 32
     assert cfg.selection_set == "test"
     assert cfg.output_dir == (
         "runs/central/supervised/fixed_feature/tfidf_word/"
         "logistic_regression/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit"
+    )
+
+
+def test_run_fixed_feature_baseline_supports_frozen_embedding_mxbai() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/fixed_feature_control/run_fixed_feature_baseline"
+            ),
+            overrides=[
+                "strategy_axes/classification/feature_space=frozen_embedding_mxbai",
+                "strategy_axes/classification/estimator=linear_svc",
+            ],
+        )
+
+    assert cfg.runtime.name == "gpu_local"
+    assert cfg.fixed_feature_space.name == "frozen_embedding_mxbai"
+    assert cfg.fixed_feature_space.feature_kind == "dense_embedding"
+    assert cfg.fixed_feature_space.model_id == "mixedbread-ai/mxbai-embed-large-v1"
+    assert cfg.fixed_feature_space.batch_size == 32
+    assert cfg.fixed_feature_space.device == "cuda"
+    assert cfg.fixed_feature_space.local_files_only is True
+    assert cfg.fixed_feature_estimator.name == "linear_svc"
+    assert cfg.output_dir == (
+        "runs/central/supervised/fixed_feature/frozen_embedding_mxbai/linear_svc/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit"
     )
 

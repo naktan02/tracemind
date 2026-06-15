@@ -9,8 +9,14 @@
 - scikit-learn estimator 생성
 - 학습, 예측, 분류 metric 계산
 
-1차 feature space는 `tfidf_word`다. 이는 word unigram/bigram TF-IDF feature를 만들고,
-encoder/backbone을 학습하지 않는다.
+지원 feature space:
+
+- `tfidf_word`: word unigram/bigram TF-IDF feature를 만든다.
+- `frozen_embedding_mxbai`: `mixedbread-ai/mxbai-embed-large-v1`로 dense 문장 임베딩을
+  만들고, encoder/backbone은 학습하지 않는다.
+
+두 경로 모두 classifier만 학습한다. `multinomial_nb`는 non-negative sparse text
+feature용이므로 `frozen_embedding_mxbai`와 함께 쓰지 않는다.
 
 ## 제외
 

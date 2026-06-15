@@ -1,6 +1,7 @@
 # @package fixed_feature_space
 
 name: tfidf_word
+feature_kind: sparse_nonnegative_text
 analyzer: word
 ngram_min: 1
 ngram_max: 2

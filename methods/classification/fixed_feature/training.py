@@ -53,6 +53,10 @@ def run_fixed_feature_classification(
     """feature space와 estimator를 학습하고 모든 eval split을 평가한다."""
 
     _validate_labels(categories=categories, labels=train_dataset.labels)
+    _validate_feature_estimator_pair(
+        feature_space_config=feature_space_config,
+        estimator_config=estimator_config,
+    )
     feature_space = build_feature_space(feature_space_config)
     estimator = build_estimator(estimator_config)
     train_features = feature_space.fit_transform(train_dataset.texts)
@@ -145,4 +149,18 @@ def _validate_labels(*, categories: list[str], labels: Sequence[str]) -> None:
     if unknown_labels:
         raise ValueError(
             f"Unknown labels for fixed-feature classification: {unknown_labels}"
+        )
+
+
+def _validate_feature_estimator_pair(
+    *,
+    feature_space_config: Mapping[str, Any],
+    estimator_config: Mapping[str, Any],
+) -> None:
+    feature_kind = str(feature_space_config.get("feature_kind", ""))
+    estimator_name = str(estimator_config.get("name", ""))
+    if feature_kind == "dense_embedding" and estimator_name == "multinomial_nb":
+        raise ValueError(
+            "multinomial_nb is only supported for non-negative sparse text "
+            "features such as tfidf_word, not frozen dense embeddings."
         )
