@@ -1,0 +1,11 @@
+# @package fixed_feature_space
+
+name: tfidf_word
+analyzer: word
+ngram_min: 1
+ngram_max: 2
+min_df: 2
+max_df: 0.95
+sublinear_tf: true
+lowercase: true
+strip_accents: unicode

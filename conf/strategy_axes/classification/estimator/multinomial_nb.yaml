@@ -1,0 +1,4 @@
+# @package fixed_feature_estimator
+
+name: multinomial_nb
+alpha: 1.0

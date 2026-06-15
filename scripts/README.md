@@ -13,6 +13,8 @@ adapter는 `agent/`와 `main_server/`가 소유한다.
 - `scripts/workflows/datasets/`: dataset asset 생성 CLI.
 - `scripts/experiments/`: track별 실험 entrypoint와 실험 전용 runtime support.
 - `scripts/experiments/fl_ssl/`: FL SSL split, simulation, sweep entrypoint.
+- `scripts/experiments/central/fixed_feature_control/`: 고정 feature 기반 중앙
+  지도학습 baseline entrypoint.
 - `scripts/support/query_ssl_text_encoder/`: query-domain text encoder SSL runtime
   support와 IO. PEFT-specific runner/artifact 이름은 PEFT leaf에만 남긴다.
 - `scripts/workflows/result_index/`: `runs` report를 index/dashboard JSON으로 정규화.
@@ -59,6 +61,12 @@ uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
 ```bash
 uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
   run_controls/central_ssl/budget=smoke
+```
+
+중앙 fixed-feature 지도학습 baseline:
+
+```bash
+uv run python scripts/experiments/central/fixed_feature_control/run_fixed_feature_baseline.py
 ```
 
 ## Read Path

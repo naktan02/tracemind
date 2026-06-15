@@ -278,6 +278,7 @@ def test_central_ssl_trainable_surface_leafs_declare_runtime_callables() -> None
         "entrypoints/central/ssl_control/run_peft_supervised_control",
         "entrypoints/central/ssl_control/run_full_text_encoder_supervised_control",
         "entrypoints/central/ssl_control/run_query_ssl_control",
+        "entrypoints/central/fixed_feature_control/run_fixed_feature_baseline",
     ],
 )
 def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
@@ -526,6 +527,76 @@ def test_run_query_ssl_control_supports_auto_local_runtime_override() -> None:
     assert cfg.runtime.name == "auto_local"
     assert cfg.runtime.device == "auto"
     assert cfg.runtime.local_files_only is True
+
+
+def test_run_fixed_feature_baseline_defaults_to_tfidf_logistic_regression() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/fixed_feature_control/run_fixed_feature_baseline"
+            )
+        )
+
+    assert cfg.runtime.name == "gpu_local"
+    assert cfg.runtime.device == "cuda"
+    assert cfg.fixed_feature_space.name == "tfidf_word"
+    assert cfg.fixed_feature_space.ngram_min == 1
+    assert cfg.fixed_feature_space.ngram_max == 2
+    assert cfg.fixed_feature_estimator.name == "logistic_regression"
+    assert cfg.fixed_feature_estimator.class_weight == "balanced"
+    assert cfg.query_labeled_budget.count_per_class == 1024
+    assert cfg.selection_set == "test"
+    assert cfg.output_dir == (
+        "runs/central/supervised/fixed_feature/tfidf_word/"
+        "logistic_regression/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit"
+    )
+
+
+@pytest.mark.parametrize(
+    "estimator_name",
+    ["logistic_regression", "multinomial_nb", "decision_tree", "linear_svc"],
+)
+def test_run_fixed_feature_baseline_supports_estimator_override(
+    estimator_name: str,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/fixed_feature_control/run_fixed_feature_baseline"
+            ),
+            overrides=[f"strategy_axes/classification/estimator={estimator_name}"],
+        )
+
+    assert cfg.fixed_feature_estimator.name == estimator_name
+    assert cfg.output_dir == (
+        "runs/central/supervised/fixed_feature/tfidf_word/"
+        f"{estimator_name}/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit"
+    )
+
+
+def test_run_fixed_feature_baseline_supports_pc100_budget() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name=(
+                "entrypoints/central/fixed_feature_control/run_fixed_feature_baseline"
+            ),
+            overrides=[
+                f"execution_context/query_labeled_budget={PC100_QUERY_LABEL_BUDGET}",
+                "strategy_axes/classification/estimator=linear_svc",
+            ],
+        )
+
+    assert cfg.query_labeled_budget.name == PC100_QUERY_LABEL_BUDGET
+    assert cfg.query_labeled_budget.count_per_class == 100
+    assert cfg.train_jsonl == PC100_SZEGEELIM_LABEL_WITH_VIEWS
+    assert cfg.fixed_feature_estimator.name == "linear_svc"
+    assert cfg.output_dir == (
+        "runs/central/supervised/fixed_feature/tfidf_word/linear_svc/"
+        "labeled-szegeelim_general4_labels-pc100_unlabeled-"
+        "ourafla_reddit_test-ourafla_reddit"
+    )
 
 
 def test_run_query_ssl_control_supports_source_budget_and_leaf_overrides() -> None:

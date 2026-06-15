@@ -1,0 +1,7 @@
+# @package fixed_feature_estimator
+
+name: decision_tree
+max_depth: null
+min_samples_leaf: 1
+class_weight: balanced
+random_state: 42

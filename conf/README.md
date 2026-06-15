@@ -19,6 +19,7 @@ conf/
 ├── execution_context/
 │   ├── fl_client_split/
 ├── strategy_axes/
+│   ├── classification/
 │   ├── fl_topology/
 │   ├── fssl_method/
 │   ├── model_architecture/
@@ -41,6 +42,10 @@ conf/
   `strategy_axes/model_architecture/trainable_surface`가 고른다. 중앙 Query SSL은
   `peft_text_encoder`와 `full_text_encoder` surface를 모두 실행할 수 있다. LoRA
   여부는 surface 이름이 아니라 PEFT adapter mechanism 축에서 결정한다.
+- 중앙 fixed-feature 지도학습 baseline은
+  `strategy_axes/classification/{feature_space,estimator}`로 고정 feature와 얕은
+  classifier를 고른다. 계산 의미는 `methods/classification/fixed_feature/`가
+  소유한다.
 - `strategy_axes/fl_topology`는 client split/topology leaf와 공통 round capability
   leaf를 함께 둔다. method identity나 local SSL update recipe는 여기에 두지 않는다.
 

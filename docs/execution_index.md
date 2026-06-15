@@ -50,6 +50,14 @@ Central SSL:
 6. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
 7. `methods/ssl/**`, `methods/adaptation/{peft_text_encoder,full_text_encoder}/**`
 
+Central fixed-feature supervised:
+
+1. `conf/entrypoints/central/fixed_feature_control/run_fixed_feature_baseline.yaml`
+2. `conf/strategy_axes/classification/**`
+3. `scripts/experiments/central/fixed_feature_control/README.md`
+4. `scripts/experiments/central/fixed_feature_control/run_fixed_feature_baseline.py`
+5. `methods/classification/fixed_feature/**`
+
 FL SSL:
 
 1. relevant `conf/**`
