@@ -50,6 +50,40 @@ uv run python scripts/experiments/central/ssl_control/run_peft_supervised_contro
   output_dir=runs/central/supervised/peft_classifier_pc100_step2000
 ```
 
+## 자주 바꾸는 실행 축
+
+중앙 SSL 기본값은 `FixMatch + peft_text_encoder + main budget + pc1024`다.
+`peft_text_encoder`는 LoRA/PEFT adapter와 classifier head만 학습하고,
+`full_text_encoder`는 PEFT adapter 없이 encoder 전체와 classifier head를 학습한다.
+
+```bash
+# 기본 중앙 SSL: FixMatch + LoRA/PEFT + pc1024 + main budget
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py
+
+# full text encoder로 중앙 SSL FixMatch 실행
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
+  strategy_axes/model_architecture/trainable_surface=full_text_encoder \
+  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
+  run_controls/central_ssl/budget=main
+
+# LoRA/PEFT surface를 명시해서 중앙 SSL FixMatch 실행
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
+  strategy_axes/model_architecture/trainable_surface=peft_text_encoder \
+  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
+  run_controls/central_ssl/budget=main
+
+# 라벨 예산만 pc1024 기본값에서 pc100 view artifact로 변경
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
+  execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1
+
+# full text encoder + FixMatch + pc100
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
+  strategy_axes/model_architecture/trainable_surface=full_text_encoder \
+  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
+  execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1 \
+  run_controls/central_ssl/budget=main
+```
+
 method는 `strategy_axes/ssl_objective/consistency_method`로 선택한다.
 `run_query_ssl_control.py`의 학습 표면은
 `strategy_axes/model_architecture/trainable_surface`로 고른다. 기본값은
