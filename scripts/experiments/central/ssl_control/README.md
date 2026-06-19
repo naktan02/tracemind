@@ -1,31 +1,171 @@
-# Central SSL Control
+# Central SSL Experiments
 
-중앙집중형 query-domain text encoder control entrypoint다. 이 트랙은
-pooled/offline control이며, FL SSL non-IID 메인 비교를 대체하지 않는다.
+중앙집중형 query-domain text encoder 실험 entrypoint다. 이 트랙은 모든 데이터를 한
+곳에 모아 실행하는 pooled/offline control이며, FL SSL non-IID 메인 비교를 대체하지
+않는다.
 
-긴 과거 cookbook은
-`docs/notes/decisions/2026-05-28-archived-central-ssl-control-readme.md`에
-보관했다. 현재 경계 판단은 이 README, `conf/README.md`,
-`docs/contracts/central_peft_text_encoder_trainer_contract.md`를 기준으로 본다.
+## When To Use
 
-## 책임
+- PEFT/LoRA text encoder 지도학습 baseline을 만들 때
+- full text encoder 지도학습 ablation을 만들 때
+- FixMatch, AdaMatch, FreeMatch 같은 SSL objective를 같은 중앙 조건에서 비교할 때
+- FL SSL 실험 전에 supervised checkpoint나 중앙 control table이 필요할 때
 
-- `run_peft_supervised_control.py`: PEFT text encoder scaffold의 supervised control
-- `run_query_ssl_control.py`: trainable surface를 바꿔 끼우는 SSL objective 비교
-- `run_full_text_encoder_supervised_control.py`: full-model supervised-only ablation
-- `build_method_projection_figure.py`: 완료된 report 기반 projection figure 생성
-- `enrich_final_reports.py`: 과거 report의 final-selection metadata 보강
+고정 feature 위 scikit-learn 지도학습 baseline은
+`scripts/experiments/central/fixed_feature_control/README.md`를 사용한다.
 
-고정 feature 위 scikit-learn 지도학습 baseline은 별도 entrypoint인
-`scripts/experiments/central/fixed_feature_control/`를 사용한다.
+## Entrypoints
 
-`scripts`는 dataset/report/artifact IO와 orchestration만 맡는다. SSL objective는
-`methods/ssl`, text encoder/head 공통 학습 substrate는
-`methods/adaptation/text_encoder_classifier`, PEFT surface와 FL update family는
-`methods/adaptation/peft_text_encoder`, full fine-tuning surface는
-`methods/adaptation/full_text_encoder`, 실행 조합은 루트 `conf/`가 소유한다.
+| Goal | Entrypoint |
+|---|---|
+| PEFT/LoRA text encoder 지도학습 | `run_peft_supervised_control.py` |
+| full text encoder 지도학습 | `run_full_text_encoder_supervised_control.py` |
+| 중앙 SSL objective 비교 | `run_query_ssl_control.py` |
+| 완료된 report 기반 projection figure 생성 | `build_method_projection_figure.py` |
+| 과거 report final-selection metadata 보강 | `enrich_final_reports.py` |
 
-## 읽기 경로
+실행 전 Hydra compose 결과를 먼저 확인할 수 있다.
+
+```bash
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py --cfg job
+```
+
+## Standard Run Shape
+
+기본 중앙 SSL 실행은 아래 조합이다.
+
+```text
+SSL objective: FixMatch USB v1
+trainable surface: peft_text_encoder
+backbone: mxbai encoder
+labeled budget: pc1024
+budget: main
+selection/eval set: test
+```
+
+`peft_text_encoder`는 LoRA/PEFT adapter와 classifier head만 학습한다.
+`full_text_encoder`는 PEFT adapter 없이 encoder 전체와 classifier head를 학습한다.
+
+## Choose A Run
+
+| If you want to... | Use |
+|---|---|
+| 가장 빠르게 wiring을 확인한다 | `run_controls/central_ssl/budget=smoke` |
+| 기본 중앙 SSL control을 실행한다 | `run_query_ssl_control.py` |
+| 지도학습 PEFT checkpoint를 만든다 | `run_peft_supervised_control.py` |
+| full fine-tuning ablation을 본다 | `run_full_text_encoder_supervised_control.py` |
+| 라벨 예산만 줄인다 | `execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1` |
+| SSL method만 바꾼다 | `strategy_axes/ssl_objective/consistency_method=<method>` |
+| 학습 surface를 바꾼다 | `strategy_axes/model_architecture/trainable_surface=<surface>` |
+
+## Combination Axes
+
+| Axis | Common values |
+|---|---|
+| SSL objective | `fixmatch_usb_v1`, `adamatch_usb_v1`, `freematch_usb_v1`, `pseudolabel_usb_v1` |
+| Trainable surface | `peft_text_encoder`, `full_text_encoder` |
+| Backbone | `mxbai_encoder`, `roberta_base_v2` |
+| PEFT config | `default` |
+| Initial checkpoint | `none`, `supervised_20260612_step2000` |
+| Labeled budget | `per_class1024`, `labeled100_per_class_seed42_nllb_views_v1` |
+| Runtime | `gpu_local`, `gpu_online`, `cpu_local` |
+| Budget | `smoke`, `main` |
+
+Public override surface는 아래 범위로 제한한다.
+
+- `strategy_axes/ssl_objective/consistency_method`
+- `strategy_axes/model_architecture/{backbone,trainable_surface,peft,initial_checkpoint}`
+- `execution_context/{dataset_asset,query_data_source,query_view,runtime_env}`
+- `execution_context/query_labeled_budget`
+- `run_controls/central_ssl/budget`
+
+`input_mode`, `teacher_provider`, `pseudo_label_selection`은 central SSL public Hydra
+group이 아니다.
+
+## Quick Examples
+
+### Supervised Controls
+
+```bash
+# PEFT/LoRA text encoder + classifier head 지도학습 smoke.
+uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
+  run_controls/central_ssl/budget=smoke
+
+# PEFT/LoRA text encoder + classifier head 지도학습 main.
+uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
+  run_controls/central_ssl/budget=main
+
+# full text encoder + classifier head 지도학습 smoke.
+uv run python scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py \
+  run_controls/central_ssl/budget=smoke
+
+# pc100 labeled view로 PEFT supervised reduced 비교.
+uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
+  execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1 \
+  central_ssl_budget.max_train_steps=2000 \
+  output_dir=runs/central/supervised/peft_classifier_pc100_step2000
+```
+
+### SSL Controls
+
+```bash
+# 기본 중앙 SSL: FixMatch + LoRA/PEFT + pc1024 + main budget.
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py
+
+# FixMatch + LoRA/PEFT + smoke.
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
+  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
+  run_controls/central_ssl/budget=smoke
+
+# FixMatch + full text encoder + main budget.
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
+  strategy_axes/model_architecture/trainable_surface=full_text_encoder \
+  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
+  run_controls/central_ssl/budget=main
+
+# FixMatch + LoRA/PEFT + pc100 labeled view.
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
+  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
+  execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1
+
+# AdaMatch + LoRA/PEFT + smoke.
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
+  strategy_axes/ssl_objective/consistency_method=adamatch_usb_v1 \
+  run_controls/central_ssl/budget=smoke
+
+# FreeMatch + RoBERTa backbone + LoRA/PEFT + smoke.
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
+  strategy_axes/model_architecture/backbone=roberta_base_v2 \
+  strategy_axes/ssl_objective/consistency_method=freematch_usb_v1 \
+  run_controls/central_ssl/budget=smoke
+```
+
+## Outputs
+
+PEFT run은 아래 artifact를 저장한다.
+
+```text
+artifacts/adapter/
+artifacts/classifier_head.safetensors
+reports/report.json
+projections/
+```
+
+Full text encoder run은 아래 artifact를 저장한다.
+
+```text
+artifacts/model/
+artifacts/classifier_head.safetensors
+reports/report.json
+projections/
+```
+
+`report.json`은 downstream 호환을 위해 `results[test]`를 `best`로 유지한다. 마지막
+epoch 기준 값은 `manifest.final_selection_report`와 `results.final`에 남긴다.
+
+## Internal References
+
+사람이 코드를 읽을 때는 아래 순서가 가장 짧다.
 
 ```text
 conf/entrypoints/central/ssl_control/*.yaml
@@ -37,93 +177,10 @@ conf/entrypoints/central/ssl_control/*.yaml
 -> scripts/support/query_ssl_text_encoder/io/*
 ```
 
-## 기본 실행
-
-```bash
-uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py --cfg job
-uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
-  run_controls/central_ssl/budget=smoke
-uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
-  run_controls/central_ssl/budget=smoke
-uv run python scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py \
-  run_controls/central_ssl/budget=smoke
-uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
-  execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1 \
-  central_ssl_budget.max_train_steps=2000 \
-  output_dir=runs/central/supervised/peft_classifier_pc100_step2000
-```
-
-## 자주 바꾸는 실행 축
-
-중앙 SSL 기본값은 `FixMatch + peft_text_encoder + main budget + pc1024`다.
-`peft_text_encoder`는 LoRA/PEFT adapter와 classifier head만 학습하고,
-`full_text_encoder`는 PEFT adapter 없이 encoder 전체와 classifier head를 학습한다.
-
-```bash
-# 기본 중앙 SSL: FixMatch + LoRA/PEFT + pc1024 + main budget
-uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py
-
-# full text encoder로 중앙 SSL FixMatch 실행
-uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
-  strategy_axes/model_architecture/trainable_surface=full_text_encoder \
-  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
-  run_controls/central_ssl/budget=main
-
-# LoRA/PEFT surface를 명시해서 중앙 SSL FixMatch 실행
-uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
-  strategy_axes/model_architecture/trainable_surface=peft_text_encoder \
-  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
-  run_controls/central_ssl/budget=main
-
-# 라벨 예산만 pc1024 기본값에서 pc100 view artifact로 변경
-uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
-  execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1
-
-# full text encoder + FixMatch + pc100
-uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
-  strategy_axes/model_architecture/trainable_surface=full_text_encoder \
-  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
-  execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1 \
-  run_controls/central_ssl/budget=main
-```
-
-method는 `strategy_axes/ssl_objective/consistency_method`로 선택한다.
-`run_query_ssl_control.py`의 학습 표면은
-`strategy_axes/model_architecture/trainable_surface`로 고른다. 기본값은
-`peft_text_encoder`이고, LoRA/RS-LoRA/DoRA 같은 PEFT mechanism은
-`strategy_axes/model_architecture/peft` 축이 고른다. `full_text_encoder`는 중앙
-SSL/supervised control surface이며 FL update family는 아직 열지 않는다.
-smoke 산출물은 main run과 섞지 않는다.
-
-## Public Surface
-
-사용자가 고르는 public surface는 아래로 제한한다.
-
-- `strategy_axes/ssl_objective/consistency_method`
-- `strategy_axes/model_architecture/{backbone,trainable_surface,peft,initial_checkpoint}`
-- `execution_context/{dataset_asset,query_data_source,query_view,runtime_env}`
-- `run_controls/central_ssl/budget`
-
-`input_mode`, `teacher_provider`, `pseudo_label_selection`은 central SSL public
-Hydra group이 아니다. 기본 중앙 supervised/SSL 실행은 `selection_set=test`이고
-`eval_sets`에는 단일 `test`만 포함한다.
-
-## 데이터와 산출물
-
-source 주소록은 `conf/execution_context/query_data_source/default.yaml`이 소유한다.
-실행 시에는 `query_data_selection.{labeled,unlabeled,validation,test}` selector를
-override한다. 라벨 예산만 1024-per-class에서 FL main comparison의 shared pc100
-labeled seed에서 추출한 pc100 view artifact로 바꿀 때는
-`execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1`를
-고른다.
-
-PEFT run은 `artifacts/adapter/`와 `artifacts/classifier_head.safetensors`, full text
-encoder run은 `artifacts/model/`과 `artifacts/classifier_head.safetensors`를 저장한다.
-기존 `.pt` classifier head는 legacy warm-start reader에서만 읽는다.
-`report.json`은 기존 downstream 호환을 위해 `results[test]`를 `best`로 유지하고,
-마지막 epoch 기준 값은 `manifest.final_selection_report`와 `results.final`에 남긴다.
-
-## 경계
+긴 과거 cookbook은
+`docs/notes/decisions/2026-05-28-archived-central-ssl-control-readme.md`에 보관했다.
+현재 경계 판단은 이 README, `conf/README.md`,
+`docs/contracts/central_peft_text_encoder_trainer_contract.md`를 기준으로 본다.
 
 이 폴더는 dataset, method, adapter family 기본값을 새로 정의하지 않는다. 중앙
 Query SSL runner는 pooled/offline orchestration만 맡고, surface별 local SSL 학습과

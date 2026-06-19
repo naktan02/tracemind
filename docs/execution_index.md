@@ -14,6 +14,8 @@ central fixed embedding + classifier seed
 | 문서 | 역할 |
 |---|---|
 | `AGENTS.md` | repo-wide 작업 규칙과 소유 경계 |
+| `README.md` | 외부 독자용 프로젝트 개요와 빠른 실행 경로 |
+| `docs/README.md` | 공개 문서 인덱스 |
 | `docs/ai_context_manifest.yaml` | task route와 source-of-truth 우선순위 |
 | `plan.md` | 연구 비전과 global/local 경계 |
 | `docs/project_execution_plan.md` | 현재 활성 판단과 다음 검증 |

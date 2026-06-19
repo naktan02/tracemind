@@ -15,7 +15,8 @@
 ## 구조
 
 - `central/`
-  - 중앙 pooled/offline SSL control entrypoint를 둔다.
+  - 중앙 pooled/offline SSL control, PEFT/full text encoder 지도학습 control,
+    fixed-feature 지도학습 baseline entrypoint를 둔다.
 - `fl_ssl/`
   - client split, round loop, aggregation, per-client metric 같은 FL SSL orchestration을 둔다.
 
@@ -85,6 +86,12 @@ central PEFT / SSL control:
 
 중앙 PEFT/SSL warm-start와 method별 실행 명령은
 `central/ssl_control/README.md`와 각 entrypoint의 `--cfg job` preview를 기준으로 본다.
+
+central fixed-feature supervised control:
+
+1. `central/fixed_feature_control/README.md`
+2. `central/fixed_feature_control/run_fixed_feature_baseline.py`
+3. `central/fixed_feature_control/run_fixed_feature_self_training_baseline.py`
 
 ## 주의할 점
 

@@ -46,6 +46,7 @@ path_specific_instructions:
   - apps/family_extension/AGENTS.md
 
 active_entrypoints:
+  - docs/README.md
   - docs/execution_index.md
   - .codex/skills/tracemind-research-loop/SKILL.md
   - plan.md
