@@ -26,3 +26,9 @@ FedMatch의 `sigma/psi` 같은 scheme 의미는 `methods/federated_ssl/<method>/
 둘 수 있고, 두 개 이상 method가 공유할 때 이 패키지로 승격한다.
 `main_server`는 round lifecycle, update storage, server-owned artifact ref 생성,
 publication metadata만 맡고, selected aggregation strategy를 호출한다.
+
+## FedAvg Files
+
+- `fedavg/weighted_average.py`: scalar, vector, mapping의 공통 가중 평균 산술
+- `fedavg/update_metrics.py`: family와 무관한 FedAvg update 관측 metric 집계
+- `fedavg/strategy.py`: family별 aggregation adapter를 실행하는 generic strategy wiring

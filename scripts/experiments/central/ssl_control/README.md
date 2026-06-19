@@ -22,7 +22,6 @@
 | full text encoder 지도학습 | `run_full_text_encoder_supervised_control.py` |
 | 중앙 SSL objective 비교 | `run_query_ssl_control.py` |
 | 완료된 report 기반 projection figure 생성 | `build_method_projection_figure.py` |
-| 과거 report final-selection metadata 보강 | `enrich_final_reports.py` |
 
 실행 전 Hydra compose 결과를 먼저 확인할 수 있다.
 
@@ -91,10 +90,6 @@ group이 아니다.
 uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
   run_controls/central_ssl/budget=smoke
 
-# PEFT/LoRA text encoder + classifier head 지도학습 main.
-uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py \
-  run_controls/central_ssl/budget=main
-
 # full text encoder + classifier head 지도학습 smoke.
 uv run python scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py \
   run_controls/central_ssl/budget=smoke
@@ -112,21 +107,11 @@ uv run python scripts/experiments/central/ssl_control/run_peft_supervised_contro
 # 기본 중앙 SSL: FixMatch + LoRA/PEFT + pc1024 + main budget.
 uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py
 
-# FixMatch + LoRA/PEFT + smoke.
-uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
-  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
-  run_controls/central_ssl/budget=smoke
-
 # FixMatch + full text encoder + main budget.
 uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
   strategy_axes/model_architecture/trainable_surface=full_text_encoder \
   strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
   run_controls/central_ssl/budget=main
-
-# FixMatch + LoRA/PEFT + pc100 labeled view.
-uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
-  strategy_axes/ssl_objective/consistency_method=fixmatch_usb_v1 \
-  execution_context/query_labeled_budget=labeled100_per_class_seed42_nllb_views_v1
 
 # AdaMatch + LoRA/PEFT + smoke.
 uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
@@ -177,8 +162,6 @@ conf/entrypoints/central/ssl_control/*.yaml
 -> scripts/support/query_ssl_text_encoder/io/*
 ```
 
-긴 과거 cookbook은
-`docs/notes/decisions/2026-05-28-archived-central-ssl-control-readme.md`에 보관했다.
 현재 경계 판단은 이 README, `conf/README.md`,
 `docs/contracts/central_peft_text_encoder_trainer_contract.md`를 기준으로 본다.
 

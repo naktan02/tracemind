@@ -11,6 +11,12 @@ builder와 registry를 소유한다. text classifier task나 update payload 의�
   convention import
 - LoRA/DoRA별 target module 해석과 builder
 
+## Current Mechanisms
+
+| Mechanism | Path | Notes |
+| --- | --- | --- |
+| LoRA / RS-LoRA | `lora/` | encoder adapter mechanism만 소유한다. classifier label, classifier head, update payload, FL method 의미는 참조하지 않는다. |
+
 ## 금지
 
 - classifier label schema 해석

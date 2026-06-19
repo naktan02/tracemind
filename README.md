@@ -99,7 +99,7 @@ npm run build
 
 ## Run The Experiment Dashboard
 
-먼저 `runs/` 아래 report를 dashboard용 index로 변환합니다.
+먼저 `runs/` 아래 report를 dashboard용 index로 변환한 뒤 정적 파일 서버로 엽니다.
 
 ```bash
 uv run python -m scripts.workflows.result_index.ingest \
@@ -115,17 +115,9 @@ python -m http.server 5175 -d apps/experiment_dashboard
 ```
 
 브라우저에서 `http://127.0.0.1:5175`를 엽니다.
-
-기존 SQLite index를 비우고 `runs/` 아래 report를 다시 훑어 dashboard cache를
-만들려면 `--reset`을 붙입니다. 원본 run artifact는 삭제하지 않습니다.
-
-```bash
-uv run python -m scripts.workflows.result_index.ingest \
-  --runs-root runs \
-  --reset \
-  --db data/processed/experiment_index/experiment_results.sqlite \
-  --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json
-```
+`--reset`을 포함한 cache 재생성 규칙은
+[apps/experiment_dashboard/README.md](apps/experiment_dashboard/README.md)를 기준으로
+봅니다.
 
 ## Main Workflows
 

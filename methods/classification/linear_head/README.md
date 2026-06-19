@@ -19,3 +19,7 @@ modality-independent linear classifier head primitive를 소유한다.
 
 텍스트 encoder에 종속되는 구현은 `methods/adaptation/peft_text_encoder/`에
 둔다.
+
+`aggregation/linear_head_fedavg_projection.py`는 classifier-head update payload를
+FedAvg strategy 입력으로 변환하고 다음 `ClassifierHeadState`를 materialize한다.
+FedAvg weighted-average 산술 자체는 `methods/federated/aggregation/`이 소유한다.

@@ -1,28 +1,32 @@
 # Methods
 
-`methods/`는 TraceMind 실험과 production adapter가 함께 재사용할 수 있는
-알고리즘 core 패키지다.
+`methods/`는 TraceMind 실험과 runtime adapter가 함께 재사용하는 알고리즘 core
+패키지다. SSL objective, adaptation/update family, classifier primitive, FL aggregation,
+FL SSL method descriptor와 policy 의미를 소유한다.
 
-## 책임
+`methods`는 실행 환경을 소유하지 않는다. Hydra entrypoint, FastAPI route, repository,
+artifact storage, raw text/private state, report/dashboard 생성은 각각 `conf/`,
+`scripts/`, `agent`, `main_server`, `apps`의 책임이다.
 
-- SSL objective, pseudo-label, loss, thresholding 같은 method 계산
-- PEFT/adaptation 적용 방식
-- payload/update-family별 local update 계산 방식
-- shared adapter scoring과 privacy guard 계산 방식
+## What Belongs Here
+
+- SSL objective, pseudo-labeling, thresholding, consistency loss
+- PEFT/text encoder adaptation과 local update 계산 core
+- fixed-feature/classification primitive
+- privacy guard와 local objective regularizer 계산
 - federated aggregation의 순수 계산 core
-- FL-SSL composition에서 재사용되는 method 조립 규칙
-- FedProx 같은 payload/update-family 중립 local objective regularizer 계산
-- FL SSL method별 local objective, server policy, round policy 의미
+- FL SSL method descriptor, local objective, server/round policy 의미
+- 여러 runtime이 호출할 수 있는 methods-owned request/result surface
 
-## 제외
+## What Does Not Belong Here
 
-- Hydra entrypoint와 artifact 저장 로직
-- FastAPI router, repository, HTTP transport
-- main_server round lifecycle, update acceptance, publication
-- agent-local private state, raw text, runtime storage
-- 논문 표/그림/report 생성
+- Hydra config loading과 CLI orchestration
+- FastAPI route, HTTP transport, repository, state storage
+- main_server round lifecycle, update acceptance, artifact publication
+- agent-local raw text 접근, personal threshold, private state
+- report writer, dashboard view-model, 논문 표/그림 생성
 
-## 의존 방향
+## Dependency Direction
 
 ```text
 shared
@@ -32,88 +36,80 @@ methods
 agent / main_server / scripts
 ```
 
-`methods`는 `shared`와 외부 ML 라이브러리만 import한다. `agent`,
-`main_server`, `scripts`를 import하지 않는다.
+`methods`는 `shared`와 외부 ML 라이브러리만 import한다. `agent`, `main_server`,
+`scripts`를 import하지 않는다.
 
-새 scoring/update family가 추가되어도 `scripts`, `agent`, `main_server` 전반을
-고치는 구조가 아니어야 한다. 새 method core는 `methods/`와 `conf/`에 추가하고,
-runtime 계층은 이미 합의된 capability contract만 호출한다.
+새 method core는 기본적으로 `methods/`와 `conf/`에 추가한다. `agent`나
+`main_server`에 method 이름을 가진 runtime 파일이 늘어나면 runtime adapter가 method
+framework 역할을 흡수하고 있다는 신호다.
 
-최종 method/runtime 구조와 migration plan은
-`docs/architecture/target-method-runtime-structure.md`를 우선한다. 현재 코드의
-`adapter_family`, `lora_classifier` 이름은 legacy compatibility 표면을 설명할 수
-있지만, 새 설계 판단에서는 `update_family`, `trainable_state`, `linear_head`,
-`peft_text_encoder` 용어를 기준으로 삼는다.
+## Read Path
 
-새 알고리즘이나 논문 method를 추가할 때는 먼저 `methods/`에 method-local module을
-만든다. `agent`와 `main_server`에 method 이름을 가진 runtime 파일을 늘리는 방식은
-framework seam이 얕다는 신호로 본다. 두 runtime 계층은 raw text 접근, private
-state, artifact repository, round lifecycle, publication처럼 실행 환경 차이를
-core interface로 변환하는 adapter만 소유한다.
+| Goal | Start here |
+|---|---|
+| 중앙/FL SSL objective를 본다 | [ssl/README.md](ssl/README.md) |
+| FL SSL method descriptor와 FedMatch를 본다 | [federated_ssl/README.md](federated_ssl/README.md) |
+| PEFT/full text encoder adaptation을 본다 | [adaptation/README.md](adaptation/README.md) |
+| fixed-feature 지도학습 baseline core를 본다 | [classification/fixed_feature/README.md](classification/fixed_feature/README.md) |
+| linear classifier head primitive를 본다 | [classification/linear_head/README.md](classification/linear_head/README.md) |
+| FedAvg와 generic aggregation core를 본다 | [federated/aggregation/README.md](federated/aggregation/README.md) |
+| non-IID client shard 계산을 본다 | [federated/README.md](federated/README.md) |
+| 평가 metric helper를 본다 | [evaluation/README.md](evaluation/README.md) |
 
-논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다. 이
-폴더는 descriptor, recipe, local objective, server/round policy, method-only
-aggregation 변형을 묶는다. 반대로 두 개 이상 방법론에서 재사용되는 SSL hook,
-aggregation backend, adapter projection은 축별 패키지로 승격한다.
-이 기준은 method 응집도와 교체 가능한 core 재사용성을 동시에 지키기 위한 것이다.
-새 방법론이 기존 algorithm file 하나로 표현되지 않고 view, pseudo-label 생성,
-confidence/weighting, consistency loss, distribution alignment, local regularizer,
-teacher/memory, mix/adversarial, FL round-state 같은 새 변화 축을 요구하면 해당
-방법론 추가 작업에 축 분리를 함께 포함한다. 기존 training loop나 runtime adapter에
-method-specific 분기를 누적하지 않는다.
-payload/update family가 method-owned objective를 실행해야 할 때도
-`methods/adaptation/<family>/federated_ssl/<method>_*.py`를 기본값으로 만들지
-않는다. family 폴더는 `partitioned_training_loop.py` 같은 실행 primitive를 소유하고,
-method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/`에서 읽힌다.
+최종 method/runtime 구조와 migration 판단은
+[../docs/architecture/target-method-runtime-structure.md](../docs/architecture/target-method-runtime-structure.md)를
+우선한다.
 
-## 하위 패키지 지도
+## Package Map
 
-- `methods/ssl/algorithms/fixmatch/`: USB 스타일 FixMatch objective core
-- `methods/ssl/algorithms/refixmatch/`: USB 스타일 ReFixMatch low-confidence KL
-  objective core
-- `methods/ssl/algorithms/freematch/`: USB 스타일 FreeMatch adaptive threshold
-  objective core
-- `methods/ssl/algorithms/adamatch/`: USB 스타일 AdaMatch distribution alignment
-  objective core
-- `methods/ssl/algorithms/dash/`: USB 스타일 Dash dynamic threshold objective core
-- `methods/ssl/algorithms/simmatch/`: USB 스타일 SimMatch memory-bank similarity
-  objective core
-- `methods/ssl/algorithms/mixmatch/`: USB NLP 스타일 manifold MixMatch objective core
-- `methods/ssl/algorithms/remixmatch/`: USB NLP 스타일 ReMixMatch DA + manifold
-  MixUp objective core
-- `methods/ssl/algorithms/pseudolabel/`: USB 스타일 PseudoLabel objective core
-- `methods/ssl/hooks/`: 중앙/FL SSL이 공유하는 pseudo-labeling, masking,
-  selection hook
-- `methods/ssl/primitives/`: SSL algorithm들이 공유하는 probability transform,
-  soft-target loss, MixUp, projection head 같은 순수 tensor/module primitive
-- `methods/adaptation/peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와
-  registry
-- `methods/adaptation/local_objective_regularizers/`: FedProx처럼 payload/update family와
-  분리된 client-local objective regularizer
-- `methods/classification/linear_head/`: modality-independent linear classifier head
-  primitive와 `classifier_head.v1(head_kind=linear)` payload projection. 새 MLP나
-  projection head는 `linear_head` 아래에 넣지 않고 별도 classification owner를 연다
-- `methods/classification/fixed_feature/`: TF-IDF 같은 고정 feature 위에 얕은
-  scikit-learn classifier를 얹는 중앙 지도학습/self-training baseline core
-- `methods/adaptation/peft_text_encoder/`: PEFT text encoder + classifier head
-  update family와 text-specific training/update core. 중앙 SSL, FL simulation,
-  live agent는 `training/local_training_surface.py`의 methods-owned request
-  surface를 통해 같은 local training core를 호출한다
-- `methods/adaptation/text_encoder_classifier/`: full/PEFT text encoder surface가
-  공유하는 text encoder + linear head 모델, supervised/Query SSL 학습 loop,
-  pseudo-label diagnostic primitive
-- `methods/adaptation/full_text_encoder/`: 중앙 control용 full text encoder
-  trainable surface. 현재는 FL update family를 열지 않고 중앙 supervised/SSL
-  artifact만 소유한다
-- `methods/adaptation/query_text_views/`: query-domain text view row 해석,
-  unlabeled view preparation, tokenizer batch glue
-- `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP
-  policy core와 registry
-- `methods/evaluation/`: 중앙 SSL과 FL SSL이 공유하는 평가 metric 계산 helper
-- `methods/federated/aggregation/fedavg/`: FedAvg 공통 가중 평균 산술과 generic
-  strategy wiring
-- `methods/federated/shard_policy/`: FL non-IID client shard assignment 계산
-- `methods/federated_ssl/`: FL SSL method descriptor, recipe, local objective,
-  server/round policy, method-local variant
-구현 상태와 기본 선택값은 `conf/README.md`와 실제 `conf/strategy_axes/**` leaf를
-기준으로 본다. 이 문서는 `methods/`의 책임 경계만 설명한다.
+| Package | Responsibility |
+|---|---|
+| `ssl/` | FixMatch, FreeMatch, AdaMatch 등 SSL objective framework와 shared hooks/primitives |
+| `adaptation/` | trainable surface/update family, PEFT adapter, text encoder training, privacy guard |
+| `classification/` | fixed-feature baseline, modality-independent linear head primitive |
+| `federated/` | FedAvg 같은 reusable aggregation core와 shard policy |
+| `federated_ssl/` | FedMatch 같은 FL SSL method descriptor, capability plan, method-owned policy |
+| `evaluation/` | 중앙 SSL과 FL SSL이 공유하는 metric 계산 helper |
+| `common/` | 여러 methods package가 공유하는 small utility |
+
+## How To Add New Logic
+
+### New SSL objective
+
+1. [ssl/NEW_METHOD.md](ssl/NEW_METHOD.md)를 먼저 본다.
+2. `methods/ssl/algorithms/<method>/`에 method-local core를 둔다.
+3. 기존 hook/primitives로 표현 가능한지 확인한다.
+4. 필요한 Hydra leaf는 `conf/strategy_axes/ssl_objective/consistency_method/`에 둔다.
+
+Algorithm-local hook은 처음에는 해당 method 아래에 둔다. 두 개 이상 algorithm에서
+같은 의미로 안정적으로 쓰일 때만 `methods/ssl/hooks/` 또는 `methods/ssl/primitives/`
+로 승격한다.
+
+### New trainable/update family
+
+1. `methods/adaptation/<family>/`가 family-specific training/update/projection을 소유한다.
+2. shared payload shape가 바뀌면 `shared/src/contracts/adapter_contract_families/`를 함께 연다.
+3. runtime이 고를 설정은 `conf/strategy_axes/model_architecture/update_family/`에 둔다.
+4. scripts/agent/main_server는 family 이름으로 분기하지 않고 declared callable/capability를 호출한다.
+
+### New FL SSL method
+
+1. [federated_ssl/NEW_METHOD.md](federated_ssl/NEW_METHOD.md)를 먼저 본다.
+2. `methods/federated_ssl/<method>/`에 descriptor, method surface, original spec,
+   local objective, method-only policy를 둔다.
+3. 여러 method가 공유할 수 있는 mechanism만 `federated_ssl/hooks/` 또는 capability axis로 올린다.
+4. `agent`와 `main_server`에는 method-specific 파일을 만들지 않는다.
+
+## Naming Notes
+
+- `peft_text_encoder`는 text encoder, tokenizer, PEFT adapter, head/scorer가 함께
+  움직이는 update family다.
+- `linear_head`는 modality-independent classifier head primitive다.
+- `peft_classifier`는 shared payload adapter kind다.
+- `lora_classifier`, `adapter_family_name`, `diagonal_scale`은 legacy/historical 이름이다.
+  새 실행 config와 report/result reader에서는 `peft_text_encoder`,
+  `payload_adapter_kind`, `update_family_name`, `trainable_state` 용어를 쓴다.
+
+구현 상태와 기본 선택값은 [../conf/README.md](../conf/README.md)와 실제
+`conf/strategy_axes/**` leaf를 기준으로 본다. 이 문서는 `methods/`의 책임 경계와
+읽기 경로만 설명한다.

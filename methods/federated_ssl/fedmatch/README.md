@@ -1,8 +1,20 @@
 # FedMatch
 
-`fedmatch/`는 FedMatch 논문 method 의미를 소유한다.
+`fedmatch/`는 FedMatch method의 identity, local objective, partition 의미,
+helper policy, server update policy를 소유한다. Simulation, agent, main_server는
+FedMatch 이름으로 직접 분기하지 않고 이 package의 descriptor와 capability plan을
+읽는다.
 
-## 빠른 읽기
+## What It Owns
+
+- FedMatch method descriptor와 report metadata
+- `labels-at-client`, `labels-at-server` scenario default
+- agreement pseudo-labeling, confidence filtering, helper consistency loss
+- `sigma` / `psi` partition 이름, loss routing, original parameter snapshot
+- helper selection policy와 peer context parameter 해석
+- FedMatch-style partitioned server update policy metadata
+
+## Read Path
 
 FedMatch 동작을 볼 때는 아래 네 파일만 먼저 읽는다.
 
@@ -13,149 +25,58 @@ FedMatch 동작을 볼 때는 아래 네 파일만 먼저 읽는다.
 
 필요할 때만 `original_spec.py`, `compatibility.py`, `helper_selection.py`,
 `client_diagnostics.py`를 따라간다. `local_runtime.py`는 descriptor가 호출하는 얇은
-entrypoint이며, FedMatch config를 `partitioning.py`의 plan으로 정규화한 뒤 PEFT text
-encoder runtime bridge로 넘긴다. 그래서 partition 의미 owner는 `partitioning.py` 하나다.
+entrypoint이며, FedMatch config를 partition runtime plan으로 정규화한 뒤 PEFT text
+encoder runtime bridge로 넘긴다.
 
-PEFT text encoder에서 FedMatch를 실행하는 family-specific bridge와 partitioned
-optimizer loop의 source of truth는
-`methods/adaptation/peft_text_encoder/federated_ssl/`다. 기존
-`methods/adaptation/lora_classifier/federated_ssl/` direct import path는 삭제됐다.
-FedMatch 원본 의미와 policy는 이 폴더가 계속 소유한다.
+## Key Concepts
 
-현재 상태는 `partitioned_trainable_state_slice_v1`이다. 이 상태는 LoRA concrete
-runtime 위에서 FedMatch 의미를 실행하지만, 최종 목표는 adapter 종류가 LoRA/DoRA로
-바뀌어도 `sigma/psi` method 의미가 유지되는 `partitioned_trainable_state`
-capability다. 원본 FedMatch snapshot은
-`https://github.com/wyjeong/FedMatch.git`
-`4947aa255d59bd37915e25a719763aaaf5d7e067`로 고정한다.
+FedMatch에서 보존해야 하는 핵심 의미는 특정 LoRA 구현이 아니라 parameter
+decomposition이다.
 
-완료된 것:
+| Concept | Meaning |
+| --- | --- |
+| `sigma` | labeled/supervised objective가 업데이트하는 partition |
+| `psi` | unlabeled agreement, helper consistency, L1/L2 regularization이 업데이트하는 partition |
+| `lambda_l1` | `psi` partition에만 적용되는 sparsity regularization |
+| `lambda_l2` | 같은 trainable scope의 `sigma`와 `psi` 차이에 적용되는 regularization |
+| helper context | 이전 round client snapshot과 probe output 기반 nearest-neighbor helper signal |
+| partitioned update | merged delta가 아니라 partition별 trainable adapter/head delta를 server가 해석하는 update |
 
-- 원본 labels-at-client/server 설정값 보존
-- confidence filter와 agreement-based pseudo labeling의 framework 독립 helper
-- `loss_fn_s`의 supervised CE를 `sigma` partition loss로 계산
-- `loss_fn_u`의 confident row filter, helper KL, agreement CE, psi L1,
-  sigma/psi L2 regularization을 PyTorch tensor core로 계산
-- PEFT encoder FedMatch step은 원본 `loss_fn_u` 순서에 맞춰 weak/original view를
-  full unlabeled batch로 먼저 평가하고, confidence를 통과한 row에 대해서만
-  strong/backtranslated view forward와 helper weak-view probability를 계산한다.
-- PEFT encoder trainable tensor에 supervised step과 unsupervised step을 순차
-  적용하고, sub-step delta를 각각 logical `sigma`/`psi` partition으로 기록
-- PEFT text encoder family slice에서 FedMatch local objective를 호출하고, 기존
-  merged PEFT encoder delta와 logical `sigma`/`psi` partition delta를 함께 제출
-- main fair comparison의 local budget은 `local_budget_policy=iteration_capped`를
-  기본으로 하며 `training_task.max_steps`를 따른다. 원본 labels-at-client budget은
-  `local_budget_policy=original_method`를 명시할 때만 공통 labeled-anchored SSL
-  budget primitive로 계산한다. 이때 입력값은 FedMatch `effective_parameters`의 원본
-  `client_batch_size/client_epochs`에서 읽는다.
-- report 검증은 `implementation_status`, `scenario`, `local_budget_policy`,
-  `parameter_override_status`를 함께 고정해, FedMatch가 metadata-only placeholder나
-  원본 budget ablation으로 잘못 실행된 경우를 즉시 실패 처리한다.
-- helper refresh와 KDTree 우선 nearest-neighbor helper selection
-- 공통 `peer_context=fixed_probe_output_knn` mechanism은
-  `methods/federated_ssl/hooks/peer_context.py`가 실행하고, FedMatch
-  `effective_parameters`의 `num_helpers`/`helper_refresh_interval` 해석은
-  method-owned parameter surface로 보존
-- 이전 round client-local LoRA snapshot과 validation probe vector 기반 helper
-  weak-view probability provider
-- `labels-at-server` client-local slice: client labeled rows를 금지하고 unlabeled
-  batch로 `psi` objective만 학습해 `psi` partition만 업로드
-- `labels-at-server` supervised seed server step: `server_only_seed` bootstrap rows를
-  round open 전에 server-side supervised 학습으로 반영하고 다음 active state를 발행
-- full ResNet9 sigma/psi decomposition을 frozen backbone을 제외한 trainable
-  adapter + classifier head의 logical sigma/psi partition으로 매핑하는 metadata
-- `server_update_policy`와 `local_ssl_policy` 축에서 FedMatch-style partitioned
-  server update와 FixMatch local SSL policy 조합을 표현/검증하는 capability surface
-- PEFT-backed physical partition model builder와 partitioned global state 보존.
-  서버는 merged published state와 함께 partition별 trainable adapter/head snapshot을
-  artifact metadata에 보존하고, 다음 round client는 해당 partition state에서 시작한다.
-- C2S sparse upload projection. 원본 `cal_c2s`의 `delta_threshold` cut과 `psi`
-  `l1_threshold` sparsify 의미를 PEFT encoder partition delta에 적용한다.
-- S2C sparse download projection. 원본 `cal_s2c`의 sparse mask는 transport 여부만
-  결정하고, 적용 값은 raw server partition value로 유지한다.
-- round 사이 client-local previous partition snapshot accounting. C2S 후 snapshot은
-  `server partition + uploaded sparse delta` 상태로 저장해 upload되지 않은 local
-  변화가 다음 round 기준으로 새지 않게 한다.
-- C2S/S2C sparse projection은 client metric과 report summary에 non-zero transport
-  value count로 남겨 실제 sparse path 사용 여부를 관측한다.
-- Helper context는 선택된 helper 수, 실제 provider에 들어간 helper snapshot 수,
-  missing snapshot 수, lazy materialized helper model 수를 report에 남겨 peer context
-  drift를 관측한다.
+physical forward는 `psi` 단독 logits가 아니라 trainable parameter를 `sigma + psi`로
+합성한 effective state를 기준으로 계산한다. optimizer 대상만 supervised step은
+`sigma`, unsupervised step은 `psi`로 제한한다.
 
-Live main_server는 `fssl_method=fedmatch` method identity와 `peer_context`
-warmup/previous-round summary를 `TrainingTaskPayload`에 싣고, finalize 때
-descriptor의 `fedmatch_partitioned` server update policy를 PEFT encoder
-`partitioned_delta_average` backend로 해석한다. Live agent는 같은 payload의
-`fssl_method`를 보고 method-owned FedMatch local runtime으로 분기하며,
-`fedmatch_agreement` local SSL policy와 peer context를 method descriptor/config
-surface에서 해석한다.
+## Current Runtime Surface
 
-아직 원본 FedMatch의 full server/runtime 동작은 열지 않는다. helper weak-view
-probability provider, `labels-at-server` client-local `psi` upload slice,
-`server_step_policy=supervised_seed_step` simulation path, sparse S2C/C2S projection,
-client-local previous partition snapshot accounting은 simulation slice로 열렸지만
-실제 네트워크 packet 측정은 artifact estimate로 남긴다.
-현재 실행 server path는 `server_step_policy=none`에서 manual
-`server_update_policy=fedavg_merged_delta`면 PEFT encoder FedAvg가 merged delta를
-aggregation한다. FedMatch method-owned 실행에서는 descriptor가 파생한
-`fedmatch_partitioned` 정책에 따라 runtime adapter가 PEFT encoder
-`partitioned_delta_average` backend로 `partitioned_deltas`를 소비한다. 이 backend는
-client sparse projection 이후 제출된 PEFT encoder partition delta를 평균한다.
-`fedmatch_agreement`는 원본 FedMatch agreement objective 의미다. generic
-`local_ssl_policy` leaf로 고르지 않고 `fssl_method=fedmatch`와
-`ssl_method.scenario` 조합에서 파생한다. 이 기본 선택과
-`fedmatch_partitioned` server update policy는 `descriptor.py`의 method-owned
-metadata가 소유한다.
-`server_step_policy=supervised_seed_step`은 round open 전에 server bootstrap rows로
-PEFT encoder active state를 한 번 더 발행한 뒤 client round를 시작한다.
+현재 실행 surface는 PEFT text encoder update family 위에서 FedMatch partition 의미를
+해석한다.
 
-## Partitioned State Direction
+- family-specific bridge와 partitioned optimizer loop는
+  `methods/adaptation/peft_text_encoder/federated_ssl/`가 소유한다.
+- FedMatch method package는 partition 이름, objective, helper/server policy 의미를
+  계속 소유한다.
+- original FedMatch snapshot은 `wyjeong/FedMatch`
+  `4947aa255d59bd37915e25a719763aaaf5d7e067` 기준으로 해석한다.
+- `method_owned` 실행에서는 descriptor가 파생한 `fedmatch_partitioned` policy에 따라
+  runtime adapter가 PEFT encoder `partitioned_delta_average` backend로
+  `partitioned_deltas`를 소비한다.
+- `fedmatch_agreement` local SSL policy는 generic Hydra leaf로 직접 고르지 않고
+  `fssl_method=fedmatch`와 `ssl_method.scenario` 조합에서 파생한다.
 
-FedMatch에서 보존해야 하는 의미는 특정 LoRA 구현이 아니라 parameter decomposition이다.
+Simulation에는 helper weak-view probability provider, `labels-at-server` client-local
+`psi` upload slice, supervised seed server step, sparse S2C/C2S projection, previous
+partition snapshot accounting이 연결되어 있다. 실제 네트워크 packet 측정은 아직
+artifact estimate로 남긴다.
 
-- `sigma`는 labeled/supervised objective가 업데이트하는 partition이다.
-- `psi`는 unlabeled agreement, helper consistency, L1/L2 regularization이 업데이트하는
-  partition이다.
-- `lambda_l1`은 `psi` partition에만 적용한다.
-- `lambda_l2`는 같은 trainable adapter/head scope의 `sigma`와 `psi` 차이에 적용한다.
-- `sigma/psi`는 한 local step 안의 delta label만이 아니라 round를 넘어 보존되는 global
-  partitioned state가 되어야 한다.
-- physical partition forward는 `psi` 단독 logits가 아니라 trainable parameter를
-  `sigma + psi`로 합성한 effective state를 기준으로 weak/strong confidence,
-  pseudo-label, helper agreement를 계산한다. optimizer 대상만 supervised는 `sigma`,
-  unsupervised는 `psi`로 제한한다.
-- partition별 server state가 아직 없는 첫 physical round에서 published state가
-  `sigma + psi`라고 해석되면 원본 `psi_factor`에 따라
-  `sigma = published / (1 + psi_factor)`,
-  `psi = published * psi_factor / (1 + psi_factor)`로 초기 분해한다.
+## Boundaries
 
-TraceMind에서 이 의미는 frozen backbone + partitioned trainable adapter/head state로
-해석한다. FedMatch package는 partition 이름, loss routing, 원본 parameter snapshot,
-helper/server policy를 소유한다. Adapter-family package는 LoRA/DoRA 같은 concrete
-PEFT mechanism의 physical partition materialization과 composed forward를 소유한다.
-runner, agent, main_server는 FedMatch 이름이 아니라 capability를 통해 이 상태를
-전달해야 한다.
-
-## Stepwise Parity Plan
-
-FedMatch 원본 의미 보존은 한 번에 열지 않는다.
-
-1. Update-family guard를 먼저 세운다. `sigma/psi` 이름은 FedMatch package가
-   소유하고, LoRA/DoRA 같은 PEFT 구현은 update-family partition mechanism으로
-   격리한다.
-2. Local physical partition을 연다. client 안에서 `sigma`와 `psi` adapter/head
-   parameter를 실제로 분리하고, supervised objective는 `sigma`, unsupervised objective와
-   L1/L2는 `psi`로 routing한다.
-3. Global partitioned state를 연다. server는 `sigma`와 `psi`를 round 간 따로 보존하고,
-   다음 round client materialization도 partitioned state에서 시작한다.
-4. Sparse C2S upload projection을 연다. client upload는 원본 `delta_threshold`와
-   `psi` `l1_threshold`를 반영해 의미 있게 변한 partition delta만 남긴다.
-5. Composition policy를 연결한다. evaluation, pseudo-label diagnostics, UMAP은
-   method가 선언한 partition 조합을 update-family composed forward로 실행한다.
-6. Sparse S2C sync와 communication accounting을 연다. server-to-client transport는
-   client-local previous partition snapshot 대비 changed element ratio를 기록하고,
-   helper payload까지 포함한 S2C 비용을 report에 남긴다.
-
-각 단계는 unit/integration/reduced run으로 닫은 뒤 다음 단계로 넘어간다. 특히 global
-state 단계에서 shared contract를 열더라도 `shared`에는 `sigma/psi`나 `fedmatch` 의미를
-넣지 않고, partition mapping과 artifact reference 같은 canonical shape만 둔다.
+- PEFT/LoRA/DoRA physical adapter materialization은
+  `methods/adaptation/peft_text_encoder/`와 `methods/adaptation/peft_adapters/`가
+  소유한다.
+- FL round lifecycle, update acceptance, publication은 `main_server`가 소유한다.
+- Simulation orchestration과 report artifact 저장은
+  `scripts/experiments/fl_ssl/`가 소유한다.
+- shared contract에는 `sigma`, `psi`, `fedmatch` 같은 method-local 의미를 넣지 않는다.
+  필요한 경우 partition mapping과 artifact reference 같은 canonical shape만 둔다.
+- `server_step_policy`는 server-side 추가 학습 여부이고, `server_update_policy`는
+  client delta를 server가 어떤 의미로 해석할지다. 둘은 같은 축이 아니다.
