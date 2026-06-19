@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -114,6 +114,7 @@ def train_query_ssl_classifier(
     resume_checkpoint_output_dir: str | Path | None = None,
     resume_checkpoint_every_epochs: int = 0,
     proximal_mu: float = 0.0,
+    before_restore_best: Callable[[TextEncoderWithLinearHead], None] | None = None,
 ) -> tuple[TextEncoderWithLinearHead, list[dict[str, Any]], dict[str, Any]]:
     """Query SSL algorithm을 epoch-based query adaptation scaffold에 얹어 학습한다."""
 
@@ -436,6 +437,7 @@ def train_query_ssl_classifier(
         initial_best_checkpoint_state=initial_best_checkpoint_state,
         include_selection_report=True,
         after_epoch=save_resume_checkpoint_after_epoch,
+        before_restore_best=before_restore_best,
     )
     return model, history, best_selection_report
 

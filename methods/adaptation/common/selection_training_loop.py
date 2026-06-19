@@ -38,6 +38,7 @@ def run_selection_tracked_training_loop(
     include_selection_report: bool = False,
     after_epoch: Callable[[int, list[dict[str, Any]], dict[str, Any]], None]
     | None = None,
+    before_restore_best: Callable[[nn.Module], None] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """epoch 학습 결과를 selection 평가, history, best checkpoint로 닫는다.
 
@@ -76,6 +77,8 @@ def run_selection_tracked_training_loop(
         if after_epoch is not None:
             after_epoch(epoch_number, history, best_checkpoint.state_dict())
 
+    if before_restore_best is not None:
+        before_restore_best(model)
     best_selection_report = best_checkpoint.restore_best(
         model=model,
         error_message=best_checkpoint_error_message,

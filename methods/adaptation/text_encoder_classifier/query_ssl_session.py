@@ -42,6 +42,7 @@ class QuerySslTextEncoderLocalTrainerOptions:
     resume_checkpoint_path: str | Path | None = None
     resume_checkpoint_output_dir: str | Path | None = None
     resume_checkpoint_every_epochs: int = 0
+    capture_final_model_state: bool = False
 
 
 @dataclass(frozen=True, slots=True)

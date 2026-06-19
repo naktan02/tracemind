@@ -30,12 +30,9 @@ def test_merge_results_final_adds_detail_from_selection_set() -> None:
 
     assert merged["best"] == results["validation"]
     assert merged["final"]["macro_f1"] == 0.77
+    assert merged["final"]["per_category"] == results["validation"]["per_category"]
     assert (
-        merged["final"]["per_category"] == results["validation"]["per_category"]
-    )
-    assert (
-        merged["final"]["confusion_matrix"]
-        == results["validation"]["confusion_matrix"]
+        merged["final"]["confusion_matrix"] == results["validation"]["confusion_matrix"]
     )
 
 
@@ -60,6 +57,26 @@ def test_merge_results_final_falls_back_when_selection_set_missing() -> None:
 
     assert merged["best"] == results["validation"]
     assert merged["final"] == final_selection_report
+
+
+def test_merge_results_can_drop_selection_set_alias() -> None:
+    results = {
+        "test": {
+            "accuracy_top_1": 0.91,
+            "macro_f1": 0.81,
+        }
+    }
+
+    merged = merge_results_with_best_and_final(
+        results=results,
+        selection_set="test",
+        final_selection_report={"macro_f1": 0.77},
+        include_selection_set_result=False,
+    )
+
+    assert set(merged) == {"best", "final"}
+    assert merged["best"] == results["test"]
+    assert merged["final"] == {"macro_f1": 0.77}
 
 
 def test_extract_final_selection_report_maps_selection_fields() -> None:

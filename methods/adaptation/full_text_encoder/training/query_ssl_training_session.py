@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
+
+import torch
 
 from methods.adaptation.query_text_views.data import build_dataloader
 from methods.adaptation.query_text_views.local_training_budget import (
@@ -52,6 +55,7 @@ class QuerySslFullTextEncoderLocalSslResult:
     local_step_plan: QuerySslLocalStepPlan
     history: tuple[dict[str, Any], ...]
     best_selection_report: Mapping[str, Any]
+    final_model_state_dict: Mapping[str, Any] | None
     pseudo_label_quality: PseudoLabelQualitySummary
     diagnostic_client_metrics: Mapping[str, float]
     tokenization_cache_namespace: str
@@ -87,6 +91,15 @@ def run_query_ssl_full_text_encoder_local_session(
         else request.trainer_options
     )
     runtime = _prepare_query_ssl_local_runtime(request)
+    final_model_state_dict: dict[str, Any] | None = None
+
+    def capture_final_model_state(model: TextEncoderWithLinearHead) -> None:
+        nonlocal final_model_state_dict
+        final_model_state_dict = _clone_model_state_dict(model)
+
+    before_restore_best = (
+        capture_final_model_state if trainer_options.capture_final_model_state else None
+    )
     model, history, best_selection_report = train_query_ssl_classifier(
         model=runtime.model,
         train_loader=runtime.train_loader,
@@ -117,6 +130,7 @@ def run_query_ssl_full_text_encoder_local_session(
         resume_checkpoint_every_epochs=int(
             trainer_options.resume_checkpoint_every_epochs
         ),
+        before_restore_best=before_restore_best,
     )
 
     diagnostic_threshold = resolve_fixed_pseudo_label_diagnostic_threshold(
@@ -150,10 +164,21 @@ def run_query_ssl_full_text_encoder_local_session(
         local_step_plan=runtime.step_plan,
         history=tuple(history),
         best_selection_report=dict(best_selection_report),
+        final_model_state_dict=final_model_state_dict,
         pseudo_label_quality=pseudo_label_quality,
         diagnostic_client_metrics=diagnostic_threshold.to_client_metrics(),
         tokenization_cache_namespace=runtime.tokenization_cache_namespace,
     )
+
+
+def _clone_model_state_dict(model: TextEncoderWithLinearHead) -> dict[str, Any]:
+    state: dict[str, Any] = {}
+    for key, value in model.state_dict().items():
+        if isinstance(value, torch.Tensor):
+            state[key] = value.detach().cpu().clone()
+        else:
+            state[key] = copy.deepcopy(value)
+    return state
 
 
 def _prepare_query_ssl_local_runtime(

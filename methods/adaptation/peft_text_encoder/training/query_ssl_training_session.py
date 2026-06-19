@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import copy
 import random
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Any
+
+import torch
 
 from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
@@ -80,6 +83,7 @@ class QuerySslPeftEncoderLocalSslResult:
     local_step_plan: QuerySslLocalStepPlan
     history: tuple[dict[str, Any], ...]
     best_selection_report: Mapping[str, Any]
+    final_model_state_dict: Mapping[str, Any] | None
     pseudo_label_quality: PseudoLabelQualitySummary
     diagnostic_client_metrics: Mapping[str, float]
     tokenization_cache: TextTokenizationCache | None
@@ -145,6 +149,18 @@ def run_query_ssl_peft_encoder_local_ssl(
         timing_recorder=timing_recorder,
     )
 
+    final_model_state_dict: dict[str, Any] | None = None
+
+    def capture_final_model_state(model: PeftTextEncoderWithLinearHead) -> None:
+        nonlocal final_model_state_dict
+        final_model_state_dict = _clone_model_state_dict(model)
+
+    before_restore_best = (
+        capture_final_model_state
+        if effective_trainer_options.capture_final_model_state
+        else None
+    )
+
     with _measure(timing_recorder, "core_training_loop_seconds"):
         model, history, _best_selection_report = train_query_ssl_classifier(
             model=runtime.model,
@@ -174,6 +190,7 @@ def run_query_ssl_peft_encoder_local_ssl(
             resume_checkpoint_every_epochs=int(
                 effective_trainer_options.resume_checkpoint_every_epochs
             ),
+            before_restore_best=before_restore_best,
         )
 
     diagnostic_threshold = resolve_fixed_pseudo_label_diagnostic_threshold(
@@ -208,6 +225,7 @@ def run_query_ssl_peft_encoder_local_ssl(
         local_step_plan=runtime.step_plan,
         history=tuple(history),
         best_selection_report=dict(_best_selection_report),
+        final_model_state_dict=final_model_state_dict,
         pseudo_label_quality=pseudo_label_quality,
         diagnostic_client_metrics=diagnostic_threshold.to_client_metrics(),
         tokenization_cache=runtime.tokenization_cache,
@@ -295,8 +313,23 @@ def run_central_query_ssl_peft_encoder_session(
                 if request.trainer_options is None
                 else request.trainer_options.resume_checkpoint_every_epochs
             ),
+            capture_final_model_state=(
+                False
+                if request.trainer_options is None
+                else request.trainer_options.capture_final_model_state
+            ),
         ),
     )
+
+
+def _clone_model_state_dict(model: PeftTextEncoderWithLinearHead) -> dict[str, Any]:
+    state: dict[str, Any] = {}
+    for key, value in model.state_dict().items():
+        if isinstance(value, torch.Tensor):
+            state[key] = value.detach().cpu().clone()
+        else:
+            state[key] = copy.deepcopy(value)
+    return state
 
 
 def _build_central_peft_config(

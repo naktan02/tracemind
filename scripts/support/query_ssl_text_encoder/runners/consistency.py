@@ -143,9 +143,19 @@ def run_consistency_query_ssl_control(
     history = list(local_ssl_result.history)
     final_selection_report = extract_final_selection_report(history=history)
     final_results = merge_results_with_best_and_final(
-        results=results,
+        results=_checkpoint_alias_results(
+            model=local_ssl_result.model,
+            raw_best_results=results,
+            final_model_state_dict=getattr(
+                local_ssl_result,
+                "final_model_state_dict",
+                None,
+            ),
+            context=context,
+        ),
         selection_set=context.effective_selection_set,
         final_selection_report=final_selection_report,
+        include_selection_set_result=False,
     )
     effective_extra_manifest = _build_query_ssl_extra_manifest(
         cfg=cfg,
@@ -170,6 +180,11 @@ def run_consistency_query_ssl_control(
         final_selection_report=(
             dict(final_selection_report) if final_selection_report is not None else None
         ),
+        final_model_state_dict=getattr(
+            local_ssl_result,
+            "final_model_state_dict",
+            None,
+        ),
         results=final_results,
         extra_manifest=effective_extra_manifest,
         eval_loaders=context.eval_loaders,
@@ -177,6 +192,69 @@ def run_consistency_query_ssl_control(
     for key, value in outputs.items():
         print(f"{key}={value}")
     return outputs
+
+
+def _checkpoint_alias_results(
+    *,
+    model: Any,
+    raw_best_results: Mapping[str, Any],
+    final_model_state_dict: Mapping[str, Any] | None,
+    context: QuerySslRunContext,
+) -> dict[str, Any]:
+    """selection dataset 평가 결과를 checkpoint alias 기준으로 정규화한다."""
+
+    results: dict[str, Any] = {}
+    best_report = _selection_report(
+        results=raw_best_results,
+        selection_set=context.effective_selection_set,
+    )
+    if best_report is not None:
+        results["best"] = dict(best_report)
+
+    if final_model_state_dict is None:
+        return results
+
+    current_state = _clone_model_state_dict(model)
+    model.load_state_dict(dict(final_model_state_dict))
+    try:
+        raw_final_results = evaluate_query_ssl_run_context(
+            model=model,
+            eval_loaders=context.eval_loaders,
+            categories=context.categories,
+            device=context.training_device,
+        )
+    finally:
+        model.load_state_dict(current_state)
+
+    final_report = _selection_report(
+        results=raw_final_results,
+        selection_set=context.effective_selection_set,
+    )
+    if final_report is not None:
+        results["final"] = dict(final_report)
+    return results
+
+
+def _selection_report(
+    *,
+    results: Mapping[str, Any],
+    selection_set: str,
+) -> Mapping[str, Any] | None:
+    report = results.get(selection_set)
+    if isinstance(report, Mapping):
+        return report
+    if len(results) == 1:
+        only_report = next(iter(results.values()))
+        if isinstance(only_report, Mapping):
+            return only_report
+    return None
+
+
+def _clone_model_state_dict(model: Any) -> dict[str, Any]:
+    return {
+        key: value.detach().cpu().clone() if hasattr(value, "detach") else value
+        for key, value in model.state_dict().items()
+    }
 
 
 def run_query_ssl_peft_baseline(*args: Any, **kwargs: Any) -> dict[str, str]:
@@ -326,6 +404,7 @@ def _build_central_local_session_request(
             resume_checkpoint_every_epochs=int(
                 getattr(cfg, "resume_checkpoint_every_epochs", 0)
             ),
+            capture_final_model_state=True,
         ),
     )
 

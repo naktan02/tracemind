@@ -51,6 +51,21 @@ class _ProjectionModel:
     def eval(self) -> None:
         self.classifier.eval()
 
+    def state_dict(self) -> dict[str, torch.Tensor]:
+        return {
+            f"classifier.{key}": value.detach().clone()
+            for key, value in self.classifier.state_dict().items()
+        }
+
+    def load_state_dict(self, state_dict: dict[str, torch.Tensor]) -> None:
+        self.classifier.load_state_dict(
+            {
+                key.removeprefix("classifier."): value
+                for key, value in state_dict.items()
+                if key.startswith("classifier.")
+            }
+        )
+
     def extract_pooled_features(self, *, input_ids, attention_mask):
         del attention_mask
         return input_ids.float()
@@ -174,11 +189,14 @@ def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None
         batch_size=2,
     )
 
+    model = _ProjectionModel()
+    final_state = model.state_dict()
+
     outputs = write_run_artifacts(
         cfg=cfg,
         trainer_version="run-002",
         created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
-        model=_ProjectionModel(),
+        model=model,
         tokenizer=_DummySaver("tokenizer.txt"),
         categories=["alpha", "beta"],
         eval_set_map={"validation": tmp_path / "validation.jsonl"},
@@ -188,25 +206,37 @@ def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None
         best_selection_report={"macro_f1": 1.0},
         final_selection_report=None,
         results={"validation": {"accuracy_top_1": 1.0}},
+        final_model_state_dict=final_state,
         eval_loaders={"validation": eval_loader},
     )
 
     manifest = json.loads(Path(outputs["manifest"]).read_text(encoding="utf-8"))
+    report = json.loads(Path(outputs["report_json"]).read_text(encoding="utf-8"))
     projection_manifest_path = Path(outputs["projection_manifest"])
     projection_manifest = json.loads(
         projection_manifest_path.read_text(encoding="utf-8")
     )
-    validation_projection = projection_manifest["datasets"]["validation"]
+    best_projection = projection_manifest["datasets"]["best"]
 
     assert manifest["projection_artifacts"]["enabled"] is True
+    assert set(report["results"]) == {"best", "final"}
     assert (
         projection_manifest["projection_space"]
         == "final_peft_encoder_pooled_backbone_features"
     )
     assert projection_manifest["mark_incorrect"] is False
-    assert validation_projection["row_count"] == 2
-    assert Path(validation_projection["points_jsonl"]).exists()
-    assert Path(validation_projection["figure_png"]).exists()
+    assert best_projection["row_count"] == 2
+    assert Path(best_projection["points_jsonl"]).exists()
+    assert Path(best_projection["figure_png"]).exists()
+    final_projection_manifest = json.loads(
+        Path(outputs["final_projection_manifest"]).read_text(encoding="utf-8")
+    )
+    final_projection = final_projection_manifest["datasets"]["final"]
+    assert Path(outputs["final_adapter_dir"]).is_dir()
+    assert Path(outputs["final_classifier_path"]).exists()
+    assert final_projection["row_count"] == 2
+    assert Path(final_projection["points_jsonl"]).exists()
+    assert Path(final_projection["figure_png"]).exists()
 
 
 def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
@@ -317,11 +347,14 @@ def test_write_full_text_encoder_run_artifacts_writes_projection_artifacts(
         batch_size=2,
     )
 
+    model = _ProjectionModel()
+    final_state = model.state_dict()
+
     outputs = write_full_text_encoder_run_artifacts(
         cfg=cfg,
         trainer_version="full-run-002",
         created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
-        model=_ProjectionModel(),
+        model=model,
         tokenizer=_DummySaver("tokenizer.txt"),
         categories=["alpha", "beta"],
         eval_set_map={"test": tmp_path / "test.jsonl"},
@@ -337,22 +370,34 @@ def test_write_full_text_encoder_run_artifacts_writes_projection_artifacts(
         best_selection_report={"macro_f1": 1.0},
         final_selection_report={"macro_f1": 1.0},
         results={"test": {"accuracy_top_1": 1.0}},
+        final_model_state_dict=final_state,
         eval_loaders={"test": eval_loader},
     )
 
     manifest = json.loads(Path(outputs["manifest"]).read_text(encoding="utf-8"))
+    report = json.loads(Path(outputs["report_json"]).read_text(encoding="utf-8"))
     projection_manifest_path = Path(outputs["projection_manifest"])
     projection_manifest = json.loads(
         projection_manifest_path.read_text(encoding="utf-8")
     )
-    test_projection = projection_manifest["datasets"]["test"]
+    best_projection = projection_manifest["datasets"]["best"]
 
     assert manifest["projection_artifacts"]["enabled"] is True
+    assert set(report["results"]) == {"best", "final"}
     assert (
         projection_manifest["projection_space"]
         == "final_full_text_encoder_pooled_backbone_features"
     )
     assert projection_manifest["mark_incorrect"] is False
-    assert test_projection["row_count"] == 2
-    assert Path(test_projection["points_jsonl"]).exists()
-    assert Path(test_projection["figure_png"]).exists()
+    assert best_projection["row_count"] == 2
+    assert Path(best_projection["points_jsonl"]).exists()
+    assert Path(best_projection["figure_png"]).exists()
+    final_projection_manifest = json.loads(
+        Path(outputs["final_projection_manifest"]).read_text(encoding="utf-8")
+    )
+    final_projection = final_projection_manifest["datasets"]["final"]
+    assert Path(outputs["final_model_dir"]).is_dir()
+    assert Path(outputs["final_classifier_path"]).exists()
+    assert final_projection["row_count"] == 2
+    assert Path(final_projection["points_jsonl"]).exists()
+    assert Path(final_projection["figure_png"]).exists()
