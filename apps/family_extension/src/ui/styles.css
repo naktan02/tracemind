@@ -295,6 +295,45 @@ button:disabled {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.parent-hero {
+  align-items: stretch;
+}
+
+.parent-hero-main {
+  min-width: 0;
+}
+
+.parent-hero-status {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: min(320px, 100%);
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper-soft);
+}
+
+.compact-status-list {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-800);
+}
+
+.compact-status-list li {
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line);
+  line-height: 1.45;
+}
+
+.compact-status-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
 .role-card,
 .setup-card {
   display: flex;

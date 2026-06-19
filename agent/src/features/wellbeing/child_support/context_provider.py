@@ -275,7 +275,14 @@ def _build_observed_patterns(
             f"추세 {summary.trend.value}로 관측됨"
         )
     for note in notes:
-        if note.startswith(("반복 주제:", "최근 근거의 주요 카테고리:", "최근 7일")):
+        if note.startswith(
+            (
+                "반복 주제:",
+                "최근 사건 단서:",
+                "최근 근거의 주요 카테고리:",
+                "최근 7일",
+            )
+        ):
             patterns.append(_shorten_context_line(note))
         if len(patterns) >= 5:
             break

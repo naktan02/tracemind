@@ -95,6 +95,9 @@ def _build_conversation_system_prompt() -> str:
         "이어 말할 질문을 덧붙인다.\n"
         "- 아이가 자신의 상태나 상황을 묻는다면 질문으로 되돌리지 말고, 최근 "
         "대화와 로컬 context를 바탕으로 질문에 맞게 먼저 답한다.\n"
+        "- 아이가 최근에 무슨 일을 당했는지, 겪었는지, 알고 있는지 묻는다면 "
+        "로컬 context에서 확인되는 범위를 먼저 말하고, 확인되지 않은 부분은 "
+        "모른다고 분리해서 말한다.\n"
         "- 이번 턴의 response_policy가 질문을 금지하면 마지막 문장을 질문으로 "
         "끝내지 않는다.\n"
         "- 답변은 근거 목록이나 요약문 형식이 아니라 자연스러운 대화여야 한다.\n"
@@ -228,6 +231,36 @@ def is_child_support_self_state_question(message: str) -> bool:
         and any(marker in compact for marker in ask_markers)
     ):
         return True
+    recent_incident_markers = (
+        "최근에무슨일",
+        "최근무슨일",
+        "무슨일을당",
+        "무슨일당",
+        "무슨일이있",
+        "어떤일을당",
+        "어떤일당",
+        "어떤일이있",
+        "일을당했",
+        "당했는지",
+        "겪었는지",
+        "있었는지",
+    )
+    incident_ask_markers = (
+        "알고",
+        "알아",
+        "기억",
+        "봤",
+        "보여",
+        "말해",
+        "알려",
+        "생각",
+    )
+    if (
+        any(marker in compact for marker in self_markers)
+        and any(marker in compact for marker in recent_incident_markers)
+        and any(marker in compact for marker in incident_ask_markers)
+    ):
+        return True
     if any(marker in compact for marker in self_markers) and any(
         phrase in compact for phrase in ("어떤것같", "어떤거같", "어떻게보")
     ):
@@ -346,8 +379,9 @@ def _build_message_intent_block(
             "turn_goal: reflect_known_state\n"
             "response_policy: answer_first_no_followup_question\n"
             "intent_rule: 아이가 자기 상태나 감정에 대한 판단을 요청했다. "
-            "답변은 질문이 아니라 현재 이해를 먼저 말하고, 마지막 문장을 "
-            "질문으로 끝내지 않는다."
+            "또는 최근에 무슨 일을 겪었는지 로컬 context가 아는 범위를 물었다. "
+            "답변은 질문이 아니라 현재 이해와 확인되는 최근 일을 먼저 말하고, "
+            "마지막 문장을 질문으로 끝내지 않는다."
         )
     if is_child_support_answer_first_request(message):
         return (

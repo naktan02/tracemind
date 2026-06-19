@@ -271,6 +271,9 @@ def test_child_support_detects_natural_self_state_questions() -> None:
         "나에게 질문하지 말고 내 상태에 대해서 말해줘"
     )
     assert is_child_support_self_state_question("너가 볼 때 나는 어떤 상태야?")
+    assert is_child_support_self_state_question(
+        "내가 최근에 무슨 일을 당했는지 넌 알고 있어?"
+    )
     assert not is_child_support_self_state_question("파이썬 for문 알려줘")
 
 
@@ -279,6 +282,9 @@ def test_child_support_detects_answer_first_requests() -> None:
         "나에게 질문하지 말고 네 생각을 먼저 말해줘"
     )
     assert is_child_support_answer_first_request("너가 볼 때 지금 나는 어때?")
+    assert is_child_support_answer_first_request(
+        "내가 최근에 무슨 일을 당했는지 넌 알고 있어?"
+    )
     assert not is_child_support_answer_first_request("파이썬 for문 알려줘")
 
 
@@ -937,7 +943,56 @@ def test_child_support_evidence_topic_detects_bullying_text(
     ).build()
 
     assert "친구/관계 갈등" in summary.topics
+    assert any(
+        "친구/관계에서 괴롭힘이나 폭력이 있었을 가능성" in summary
+        for summary in summary.incident_summaries
+    )
+    assert any("왕따 당하고 있어" in summary for summary in summary.incident_summaries)
     assert any("왕따 당하고 있어" in line for line in summary.to_prompt_lines())
+
+
+def test_child_support_evidence_summary_scales_probability_scores_and_incidents(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "agent_local.db"
+    analysis_repository = AnalysisEventRepository(db_path=db_path)
+    captured_repository = CapturedTextRepository(db_path=db_path)
+    occurred_at = datetime(2026, 6, 14, 9, 0, tzinfo=timezone.utc)
+    captured_repository.save(
+        CapturedTextRecord(
+            event_id="captured-probability-score-1",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="친구한테 맞았어. 너무 불안하고 집에 가기 무서워.",
+            locale="ko",
+            source_type="browser",
+            surface_type="rich_editor",
+        )
+    )
+    analysis_repository.save(
+        AnalysisEvent(
+            query_id="captured-probability-score-1",
+            occurred_at=occurred_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.01, "anxiety": 0.91},
+        ),
+        source_event_id="captured-probability-score-1",
+        scorer_name="test_scorer",
+        model_revision="test-revision",
+    )
+
+    summary = ChildSupportEvidenceSummaryBuilder(
+        analysis_event_repository=analysis_repository,
+        captured_text_repository=captured_repository,
+    ).build()
+    prompt_lines = "\n".join(summary.to_prompt_lines())
+
+    assert "anxiety" in summary.top_categories
+    assert any("친구한테 맞았어" in incident for incident in summary.incident_summaries)
+    assert "최근 사건 단서:" in prompt_lines
+    assert "친구한테 맞았어" in prompt_lines
 
 
 def test_child_support_proactive_prompt_uses_high_risk_local_evidence(

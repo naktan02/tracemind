@@ -66,6 +66,41 @@ _TOPIC_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("신체/식사 걱정", ("몸", "체중", "먹기", "식사", "살", "다이어트")),
 )
 _HIGH_RISK_TOPIC_LABEL = "자해/죽음 관련 표현"
+_INCIDENT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "친구/관계에서 괴롭힘이나 폭력이 있었을 가능성",
+        (
+            "맞았",
+            "맞아",
+            "때렸",
+            "때려",
+            "괴롭",
+            "왕따",
+            "따돌",
+            "싸움",
+            "싸워",
+            "폭행",
+            "bully",
+            "hit me",
+        ),
+    ),
+    (
+        "죽음이나 자해 생각이 반복됐을 가능성",
+        ("죽고", "죽어", "자살", "자해", "극단", "suicide", "selfharm"),
+    ),
+    (
+        "가족이나 보호자와 갈등이 있었을 가능성",
+        ("가족", "부모", "엄마", "아빠", "보호자", "혼났", "싸웠"),
+    ),
+    (
+        "학교나 성적 부담이 있었을 가능성",
+        ("학교", "시험", "성적", "공부", "숙제", "teacher", "exam"),
+    ),
+    (
+        "수면이나 생활 리듬이 무너졌을 가능성",
+        ("잠", "수면", "불면", "못 자", "못자", "sleep"),
+    ),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +113,8 @@ class ChildSupportEvidenceSummaryConfig:
     category_limit: int = 4
     topic_limit: int = 6
     keyword_limit: int = 8
+    incident_limit: int = 5
+    incident_max_chars: int = 160
     snippet_limit: int = 4
     snippet_max_chars: int = 140
 
@@ -100,6 +137,7 @@ class ChildSupportEvidenceSummary:
     selected_event_count: int
     top_categories: tuple[str, ...] = field(default_factory=tuple)
     topics: tuple[str, ...] = field(default_factory=tuple)
+    incident_summaries: tuple[str, ...] = field(default_factory=tuple)
     keywords: tuple[str, ...] = field(default_factory=tuple)
     snippets: tuple[str, ...] = field(default_factory=tuple)
 
@@ -110,11 +148,13 @@ class ChildSupportEvidenceSummary:
             f"{self.observed_event_count}건 중 관련도 높은 "
             f"{self.selected_event_count}건"
         )
-        lines = [(f"최근 캡처/검색 근거: {evidence_count}을 원문 없이 요약함")]
+        lines = [(f"최근 캡처/검색 근거: {evidence_count}을 요약/일부 단서로 제공함")]
         if self.top_categories:
             lines.append("최근 근거의 주요 카테고리: " + ", ".join(self.top_categories))
         if self.topics:
             lines.append("반복 주제: " + ", ".join(self.topics))
+        if self.incident_summaries:
+            lines.append("최근 사건 단서: " + " / ".join(self.incident_summaries))
         if self.keywords:
             lines.append("반복 표현 힌트: " + ", ".join(self.keywords))
         if self.snippets:
@@ -152,18 +192,25 @@ class HeuristicChildSupportEvidenceSummarizer:
         category_counter: Counter[str] = Counter()
         topic_counter: Counter[str] = Counter()
         token_counter: Counter[str] = Counter()
+        incident_summaries: list[str] = []
 
         for item in selected:
             for category, score in item.category_scores.items():
                 if category == _NORMAL_CATEGORY:
                     continue
-                if float(score) >= self.config.min_relevant_score:
+                if _score_reaches_threshold(
+                    score,
+                    min_relevant_score=self.config.min_relevant_score,
+                ):
                     category_counter[category] += 1
             normalized_text = _sanitize_for_local_summary(item.text)
             lowered = normalized_text.lower()
             for label, keywords in _TOPIC_KEYWORDS:
                 if any(keyword in lowered for keyword in keywords):
                     topic_counter[label] += 1
+            incident_summaries.extend(
+                _extract_incident_summaries(normalized_text, self.config)
+            )
             token_counter.update(_extract_tokens(normalized_text))
 
         return ChildSupportEvidenceSummary(
@@ -177,6 +224,11 @@ class HeuristicChildSupportEvidenceSummarizer:
             ),
             topics=tuple(
                 topic for topic, _ in topic_counter.most_common(self.config.topic_limit)
+            ),
+            incident_summaries=tuple(
+                _dedupe_preserving_order(incident_summaries)[
+                    : self.config.incident_limit
+                ]
             ),
             keywords=tuple(
                 token
@@ -256,12 +308,33 @@ def _select_relevant_items(
     relevant = [
         item
         for item in scored
-        if _max_non_normal_score(item.category_scores) >= min_relevant_score
+        if _has_relevant_non_normal_score(
+            item.category_scores,
+            min_relevant_score=min_relevant_score,
+        )
         or _contains_high_risk_topic(item.text)
     ]
     if not relevant:
         relevant = scored
     return relevant[:limit]
+
+
+def _has_relevant_non_normal_score(
+    category_scores: dict[str, float],
+    *,
+    min_relevant_score: float,
+) -> bool:
+    return any(
+        category != _NORMAL_CATEGORY
+        and _score_reaches_threshold(score, min_relevant_score=min_relevant_score)
+        for category, score in category_scores.items()
+    )
+
+
+def _score_reaches_threshold(score: float, *, min_relevant_score: float) -> bool:
+    value = float(score)
+    comparable = value * 100.0 if min_relevant_score > 1.0 and value <= 1.0 else value
+    return comparable >= min_relevant_score
 
 
 def _max_non_normal_score(category_scores: dict[str, float]) -> float:
@@ -293,6 +366,55 @@ def _shorten_snippet(
     if len(text) <= config.snippet_max_chars:
         return text
     return f"{text[: config.snippet_max_chars].rstrip()}..."
+
+
+def _extract_incident_summaries(
+    text: str,
+    config: ChildSupportEvidenceSummaryConfig,
+) -> list[str]:
+    if not text:
+        return []
+    lowered = text.lower()
+    summaries: list[str] = []
+    for label, keywords in _INCIDENT_KEYWORDS:
+        if not any(keyword in lowered for keyword in keywords):
+            continue
+        sentence = _select_incident_sentence(text, keywords)
+        summaries.append(
+            f"{label}: {_shorten_text(sentence, max_chars=config.incident_max_chars)}"
+        )
+    return summaries
+
+
+def _select_incident_sentence(text: str, keywords: tuple[str, ...]) -> str:
+    sentences = [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?。！？])\s+|\n+", text)
+        if sentence.strip()
+    ]
+    lowered_keywords = tuple(keyword.lower() for keyword in keywords)
+    for sentence in sentences:
+        lowered_sentence = sentence.lower()
+        if any(keyword in lowered_sentence for keyword in lowered_keywords):
+            return sentence
+    return text
+
+
+def _shorten_text(text: str, *, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    return f"{text[:max_chars].rstrip()}..."
+
+
+def _dedupe_preserving_order(values: Sequence[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped
 
 
 def _extract_tokens(text: str) -> list[str]:
