@@ -7,6 +7,7 @@ defaults:
   - /strategy_axes/model_architecture/trainable_surface: full_text_encoder
   - /run_controls/central_ssl/budget: main
   - /execution_context/query_data_source: default
+  - /execution_context/query_labeled_budget: per_class1024
   - /strategy_axes/model_architecture/initial_checkpoint: none
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
@@ -28,7 +29,6 @@ classifier_learning_rate: 0.0002
 weight_decay: 0.01
 max_grad_norm: 1.0
 log_every_steps: 100
-query_ssl_strong_view_policy: first_aug
 epoch_artifact_kind: none
 epoch_artifact_every_epochs: 0
 trainer_version: ""

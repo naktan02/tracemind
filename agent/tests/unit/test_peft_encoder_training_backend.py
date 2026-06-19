@@ -9,12 +9,15 @@ from pathlib import Path
 
 import pytest
 
-from agent.src.infrastructure.repositories.training_artifact_repository import (
-    TrainingArtifactRepository,
+from agent.src.config.paths import (
+    DEFAULT_AGENT_STATE_DIR,
 )
-from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (
+from agent.src.features.training_runtime.query_ssl_peft.local_training_service import (
     QuerySslLocalTrainingService,
     QuerySslPeftEncoderLocalTrainingRequest,
+)
+from agent.src.features.training_runtime.storage.training_artifact_repository import (
+    TrainingArtifactRepository,
 )
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
@@ -384,6 +387,12 @@ def test_query_ssl_local_training_service_runs_peft_backend(
         result.update_envelope.update_id
     )
     assert loaded_payload == update_payload
+
+
+def test_training_artifact_repository_default_uses_agent_state_dir() -> None:
+    repository = TrainingArtifactRepository()
+
+    assert repository.state_root == DEFAULT_AGENT_STATE_DIR
 
 
 def test_query_ssl_local_training_service_can_skip_local_update_persistence(

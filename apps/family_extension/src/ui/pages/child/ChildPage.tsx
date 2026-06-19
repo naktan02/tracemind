@@ -1,8 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import type {
+  ChildSupportProactivePromptPayload,
+  WellbeingSignalRange,
+} from "../../../contracts/generated";
+import {
+  claimChildSupportProactivePrompt,
+  getChildSupportProactivePrompt,
+} from "../../api/childSupport";
 import { ChildSupportCoachPanel } from "../../components/ChildSupportCoachPanel";
+import { ProactiveCoachPopup } from "../../components/ProactiveCoachPopup";
+import { WellbeingSpaceWebGraph } from "../../components/WellbeingSpaceWebGraph";
 import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
 import { WellbeingSignalTrendChart } from "../../components/WellbeingSignalTrendChart";
+import { useWellbeingSpaceWeb } from "../../hooks/useWellbeingSpaceWeb";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
 import { useWellbeingTimeseries } from "../../hooks/useWellbeingTimeseries";
 
@@ -11,17 +22,102 @@ type ChildPageProps = {
 };
 
 export type ChildTab = "ai" | "analysis" | "checkin";
+const PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY =
+  "tracemind.childSupport.proactivePromptDismissedUntil";
+const PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS = 30 * 60 * 1000;
+
+type ProactivePromptDismissalRecord = {
+  prompt_id: string;
+  dismissed_until: string;
+};
 
 export function ChildPage({ activeTab }: ChildPageProps) {
-  const [selectedRange, setSelectedRange] = useState<"7d" | "14d" | "30d">("7d");
+  const [selectedRange, setSelectedRange] = useState<WellbeingSignalRange>("7d");
+  const [proactivePrompt, setProactivePrompt] =
+    useState<ChildSupportProactivePromptPayload | null>(null);
+  const [dismissedPromptId, setDismissedPromptId] = useState<string | null>(null);
   const summaryState = useWellbeingSummary();
   const timeseriesState = useWellbeingTimeseries({
     enabled: activeTab === "analysis",
     requestedRange: selectedRange,
   });
+  const spaceWebState = useWellbeingSpaceWeb({
+    enabled: activeTab === "analysis",
+    requestedRange: selectedRange,
+  });
+  useEffect(() => {
+    setProactivePrompt(null);
+    setDismissedPromptId(readDismissedPromptId());
+  }, [summaryState.status]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPrompt() {
+      if (
+        activeTab !== "analysis" ||
+        proactivePrompt !== null ||
+        summaryState.status !== "loaded" ||
+        summaryState.summary.low_data
+      ) {
+        return;
+      }
+      try {
+        const prompt = await getChildSupportProactivePrompt();
+        if (
+          cancelled ||
+          !prompt.should_prompt ||
+          prompt.prompt_id === null ||
+          isPromptDismissed(prompt.prompt_id)
+        ) {
+          if (prompt.prompt_id !== null && isPromptDismissed(prompt.prompt_id)) {
+            setDismissedPromptId(prompt.prompt_id);
+          }
+          return;
+        }
+        const claimedPrompt = await claimChildSupportProactivePrompt({
+          schema_version: "child_support_proactive_prompt_claim.v1",
+          prompt_id: prompt.prompt_id,
+        });
+        if (
+          cancelled ||
+          !claimedPrompt.should_prompt ||
+          claimedPrompt.prompt_text === null
+        ) {
+          return;
+        }
+        setProactivePrompt(claimedPrompt);
+      } catch {
+        // 선제 질문은 실패해도 분석 화면을 막지 않는다.
+      }
+    }
+
+    void loadPrompt();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, proactivePrompt, summaryState]);
+
+  function dismissProactivePrompt() {
+    if (proactivePrompt?.prompt_id === null || proactivePrompt?.prompt_id == null) {
+      return;
+    }
+    savePromptDismissal(proactivePrompt.prompt_id);
+    setDismissedPromptId(proactivePrompt.prompt_id);
+  }
 
   return (
     <div className="page-stack">
+      {activeTab === "analysis" &&
+        proactivePrompt != null &&
+        proactivePrompt.prompt_text != null &&
+        proactivePrompt.prompt_id !== dismissedPromptId && (
+          <ProactiveCoachPopup
+            prompt={proactivePrompt}
+            onDismiss={dismissProactivePrompt}
+          />
+        )}
+
       {summaryState.status === "loaded" && (
         <WellbeingSignalCard summary={summaryState.summary} />
       )}
@@ -93,6 +189,35 @@ export function ChildPage({ activeTab }: ChildPageProps) {
             </section>
           )}
 
+          {spaceWebState.status === "loaded" && (
+            <WellbeingSpaceWebGraph spaceWeb={spaceWebState.spaceWeb} />
+          )}
+          {spaceWebState.status === "loading" && (
+            <section className="surface-card trend-card">
+              <div className="trend-card-header">
+                <div>
+                  <p className="card-label">내 공간웹</p>
+                  <p className="section-copy">
+                    공간웹 데이터를 준비하고 있습니다.
+                  </p>
+                </div>
+              </div>
+              <div className="trend-chart-loading">
+                공간웹 데이터를 불러오는 중입니다.
+              </div>
+            </section>
+          )}
+          {spaceWebState.status === "error" && (
+            <section className="surface-card trend-card">
+              <div className="trend-card-header">
+                <div>
+                  <p className="card-label">내 공간웹</p>
+                  <p className="section-copy">{spaceWebState.errorMessage}</p>
+                </div>
+              </div>
+            </section>
+          )}
+
           {summaryState.status === "loaded" && (
             <section className="card-grid">
               <article className="surface-card">
@@ -128,5 +253,55 @@ export function ChildPage({ activeTab }: ChildPageProps) {
         </section>
       )}
     </div>
+  );
+}
+
+function savePromptDismissal(promptId: string): void {
+  const record: ProactivePromptDismissalRecord = {
+    prompt_id: promptId,
+    dismissed_until: new Date(
+      Date.now() + PROACTIVE_PROMPT_DISMISS_COOLDOWN_MS,
+    ).toISOString(),
+  };
+  window.localStorage.setItem(
+    PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY,
+    JSON.stringify(record),
+  );
+}
+
+function readDismissedPromptId(): string | null {
+  const raw = window.localStorage.getItem(PROACTIVE_PROMPT_DISMISSED_STORAGE_KEY);
+  if (raw === null) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isPromptDismissalRecord(parsed)) {
+      return null;
+    }
+    const dismissedUntilTime = Date.parse(parsed.dismissed_until);
+    if (!Number.isFinite(dismissedUntilTime) || Date.now() >= dismissedUntilTime) {
+      return null;
+    }
+    return parsed.prompt_id;
+  } catch {
+    return null;
+  }
+}
+
+function isPromptDismissed(promptId: string): boolean {
+  return readDismissedPromptId() === promptId;
+}
+
+function isPromptDismissalRecord(
+  value: unknown,
+): value is ProactivePromptDismissalRecord {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Partial<ProactivePromptDismissalRecord>;
+  return (
+    typeof candidate.prompt_id === "string" &&
+    typeof candidate.dismissed_until === "string"
   );
 }

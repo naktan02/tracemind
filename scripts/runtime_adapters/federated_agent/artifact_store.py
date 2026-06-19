@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from agent.src.infrastructure.repositories.training_artifact_repository import (
+from agent.src.features.training_runtime.storage.training_artifact_repository import (
     TrainingArtifactRepository,
 )
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (

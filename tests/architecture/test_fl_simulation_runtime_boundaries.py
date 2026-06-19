@@ -188,7 +188,7 @@ def test_peft_update_family_runtime_callables_use_simulation_bridge() -> None:
     )
     source = update_family_path.read_text(encoding="utf-8")
 
-    assert "agent.src.services.training_runtime.query_ssl_peft" not in source, (
+    assert "agent.src.features.training_runtime.query_ssl_peft" not in source, (
         "FL simulation은 agent skeleton을 재사용하더라도 update_family config에서 "
         "agent.src를 직접 가리키지 않는다. agent runtime 연결은 "
         "scripts/runtime_adapters/federated_agent bridge가 소유한다.\n"

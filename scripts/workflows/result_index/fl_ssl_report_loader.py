@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +22,9 @@ from scripts.workflows.result_index.record_builders import (
 from scripts.workflows.result_index.report_parsing import (
     as_mapping,
     infer_created_at,
+    infer_label_budget_count_from_texts,
     json_object_snapshot,
+    label_budget_name_from_count,
     optional_float,
     optional_int,
     optional_str,
@@ -54,6 +57,7 @@ def load_fl_ssl_result_index_records(
     embedding_adapter = as_mapping(protocol.get("embedding_adapter"))
     local_trainer_runtime = as_mapping(protocol.get("local_trainer_runtime"))
     run_control = as_mapping(protocol.get("run_control"))
+    initial_checkpoint = as_mapping(protocol.get("initial_checkpoint"))
     split_summary = as_mapping(protocol.get("labeled_unlabeled_split"))
 
     run_id = infer_fl_ssl_run_id(report_path)
@@ -77,6 +81,13 @@ def load_fl_ssl_result_index_records(
     if algorithm_name is None and method_name != "unknown":
         algorithm_name = method_name
     local_regularizer_name, local_regularizer_mu = infer_local_regularizer(objective)
+    selection_slug = infer_selection_slug(fl_data_source)
+    source_jsonl = as_mapping(fl_data_source.get("source_jsonl"))
+    label_budget_count = infer_label_budget_count_from_texts(
+        selection_slug,
+        source_jsonl.get("labeled"),
+    )
+    train_batch_size = optional_int(local_update_budget.get("batch_size"))
     run = ExperimentRunRecord(
         run_id=run_id,
         track=optional_str(payload.get("track")) or "fl_ssl_main_comparison",
@@ -87,19 +98,31 @@ def load_fl_ssl_result_index_records(
         ),
         method_name=method_name,
         algorithm_name=algorithm_name,
-        selection_slug=optional_str(fl_data_source.get("split_id")),
+        selection_slug=selection_slug,
         labeled_dataset_name=optional_str(source_selection.get("labeled")),
         unlabeled_dataset_name=optional_str(source_selection.get("unlabeled")),
         validation_dataset_name=optional_str(source_selection.get("validation")),
         test_dataset_name=optional_str(source_selection.get("test")),
+        label_budget_name=label_budget_name_from_count(label_budget_count),
+        label_budget_count_per_class=label_budget_count,
         seed=optional_int(protocol.get("seed")),
         learning_rate=optional_float(local_update_budget.get("learning_rate")),
         classifier_learning_rate=None,
         epochs=optional_int(local_update_budget.get("local_epochs")),
         max_train_steps=optional_int(local_update_budget.get("max_steps")),
-        train_batch_size=optional_int(local_update_budget.get("batch_size")),
+        train_batch_size=train_batch_size,
+        labeled_batch_size=optional_int(local_update_budget.get("labeled_batch_size"))
+        or train_batch_size,
+        unlabeled_batch_size=optional_int(
+            objective.get("query_ssl.unlabeled_batch_size")
+            or local_update_budget.get("unlabeled_batch_size")
+        ),
         eval_batch_size=None,
-        initial_checkpoint_name=None,
+        initial_checkpoint_name=_initial_checkpoint_name(initial_checkpoint),
+        backbone_model_id=optional_str(
+            _trainable_state_objective_value(objective, "backbone_model_id")
+            or embedding_adapter.get("model_id")
+        ),
         unlabeled_row_count=optional_int(split_summary.get("actual_unlabeled_count")),
         total_row_exposure_count=optional_int(
             split_summary.get("actual_total_exposure_count")
@@ -275,6 +298,18 @@ def _load_fl_ssl_projection_artifacts(
     }
 
 
+def _initial_checkpoint_name(initial_checkpoint: dict[str, Any]) -> str | None:
+    """FL run이 시작한 checkpoint를 dashboard/index용 짧은 이름으로 정규화한다."""
+
+    for key in ("reference_id", "preset_name", "resolved_kind", "mode"):
+        value = optional_str(initial_checkpoint.get(key))
+        if value and value != "none":
+            return value
+    if optional_str(initial_checkpoint.get("mode")) == "none":
+        return "none"
+    return None
+
+
 def _projection_artifacts_have_existing_figures(
     projection_artifacts: dict[str, Any],
 ) -> bool:
@@ -336,6 +371,35 @@ def infer_local_regularizer(objective: dict[str, Any]) -> tuple[str, float | Non
     if proximal_mu is not None and proximal_mu > 0:
         return "fedprox", proximal_mu
     return "none", None
+
+
+def infer_selection_slug(fl_data_source: dict[str, Any]) -> str | None:
+    split_id = optional_str(fl_data_source.get("split_id"))
+    if split_id:
+        return split_id
+    source_jsonl = as_mapping(fl_data_source.get("source_jsonl"))
+    label_budget = infer_label_budget_slug(optional_str(source_jsonl.get("labeled")))
+    if label_budget is None:
+        return None
+    source_selection = as_mapping(fl_data_source.get("source_selection"))
+    parts = []
+    for key in ("labeled", "unlabeled", "test"):
+        value = optional_str(source_selection.get(key))
+        if value:
+            parts.append(f"{key}-{value}")
+    parts.append(label_budget)
+    return "_".join(parts)
+
+
+def infer_label_budget_slug(value: str | None) -> str | None:
+    text = str(value or "")
+    legacy_match = re.search(r"(?:^|_)labels_pc(\d+)(?:_|$)", text)
+    if legacy_match:
+        return f"labels_pc{legacy_match.group(1)}"
+    split_match = re.search(r"(?:^|/)labeled(\d+)_per_class(?:_|/)", text)
+    if split_match:
+        return f"labels_pc{split_match.group(1)}"
+    return None
 
 
 def _trainable_state_objective_value(objective: dict[str, Any], key: str) -> object:

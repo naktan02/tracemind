@@ -14,14 +14,35 @@ export const DEFAULT_SERIES_PALETTE = [
 ];
 
 export function seriesColors(series, overrides = {}) {
-  return new Map(
-    series.map((item, index) => {
-      const colorKey = item.colorKey ?? item.label;
-      return [
-        item.label,
-        overrides[colorKey] ??
-          DEFAULT_SERIES_PALETTE[index % DEFAULT_SERIES_PALETTE.length],
-      ];
-    }),
-  );
+  const colors = new Map();
+  const usedDefaults = new Set();
+  for (const item of series) {
+    const colorKey = item.colorKey ?? item.label;
+    const override = overrides[colorKey];
+    if (override) {
+      colors.set(colorKey, override);
+      continue;
+    }
+    const color = defaultColorForKey(colorKey, usedDefaults);
+    usedDefaults.add(color);
+    colors.set(colorKey, color);
+  }
+  return colors;
+}
+
+function defaultColorForKey(colorKey, usedDefaults) {
+  const offset = stableIndex(colorKey, DEFAULT_SERIES_PALETTE.length);
+  for (let index = 0; index < DEFAULT_SERIES_PALETTE.length; index += 1) {
+    const color = DEFAULT_SERIES_PALETTE[(offset + index) % DEFAULT_SERIES_PALETTE.length];
+    if (!usedDefaults.has(color)) return color;
+  }
+  return DEFAULT_SERIES_PALETTE[offset];
+}
+
+function stableIndex(value, modulo) {
+  let hash = 0;
+  for (const char of String(value)) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return hash % modulo;
 }

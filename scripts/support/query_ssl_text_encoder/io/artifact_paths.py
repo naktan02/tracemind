@@ -63,7 +63,7 @@ def build_query_peft_run_artifact_paths(
         output_dir=output_dir,
         adapter_output_dir=adapter_output_dir,
         classifier_output_dir=classifier_output_dir,
-        classifier_path=classifier_output_dir / "classifier_head.pt",
+        classifier_path=classifier_output_dir / "classifier_head.safetensors",
         classifier_manifest_path=classifier_output_dir
         / "classifier_head.manifest.json",
         report_path=output_dir / "reports" / "report.json",

@@ -10,11 +10,11 @@ from fastapi import HTTPException
 
 import agent.src.api.sync as sync_api
 from agent.src.api.main import app
+from agent.src.features.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
 from agent.src.infrastructure.repositories.shared_adapter_state_repository import (
     SharedAdapterStateRepository,
-)
-from agent.src.services.assets.shared_adapters.runtime_service import (
-    SharedAdapterRuntimeService,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_state_payload,
@@ -45,14 +45,16 @@ def _peft_state(*, model_revision: str):
 
 def test_sync_api_reads_current_local_shared_adapter_state(tmp_path: Path) -> None:
     repository = SharedAdapterStateRepository(state_root=tmp_path / "shared_states")
+    state = _peft_state(model_revision="rev_001")
     repository.save_current(
         manifest=make_embedding_manifest(
             model_id="model",
             model_revision="rev_001",
             auxiliary_artifact_versions={},
             artifact_ref="/server/state/rev_001.json",
+            training_scope=state.training_scope,
         ),
-        state=_peft_state(model_revision="rev_001"),
+        state=state,
     )
 
     response = sync_api.get_current_local_shared_adapter_state(

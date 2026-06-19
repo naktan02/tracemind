@@ -1,0 +1,47 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/runtime_env: gpu_local
+  - /strategy_axes/model_architecture/backbone: mxbai_encoder
+  - /strategy_axes/model_architecture/trainable_surface: peft_text_encoder
+  - /strategy_axes/model_architecture/peft: default
+  - /run_controls/central_ssl/budget: main
+  - /execution_context/query_data_source: default
+  - /execution_context/query_labeled_budget: per_class1024
+  - /strategy_axes/ssl_objective/consistency_method: fixmatch_usb_v1
+  - /strategy_axes/model_architecture/initial_checkpoint: none
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+group_by_query_ssl_method: true
+
+output_dir: ${central_ssl_budget.output_root}/central/ssl/${trainable_surface.name}/${query_data_selection_slug}
+fixed_categories: ${dataset.label_categories}
+initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
+initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
+selection_set: test
+seed: 42
+train_batch_size: ${central_ssl_budget.train_batch_size}
+eval_batch_size: ${central_ssl_budget.eval_batch_size}
+drop_last_train_batches: true
+drop_last_unlabeled_batches: true
+epochs: ${central_ssl_budget.epochs}
+max_train_steps: ${central_ssl_budget.max_train_steps}
+learning_rate: ${trainable_surface.central_training.learning_rate}
+classifier_learning_rate: ${trainable_surface.central_training.classifier_learning_rate}
+weight_decay: ${trainable_surface.central_training.weight_decay}
+max_grad_norm: ${trainable_surface.central_training.max_grad_norm}
+log_every_steps: ${trainable_surface.central_training.log_every_steps}
+resume_checkpoint_path: null
+resume_checkpoint_output_dir: ${output_dir}/checkpoints
+resume_checkpoint_every_epochs: ${central_ssl_budget.resume_checkpoint_every_epochs}
+trainer_version: ""
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

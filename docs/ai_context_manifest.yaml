@@ -13,8 +13,8 @@ source_of_truth_priority:
   - shared/src/contracts/*.py
   - agent/src/contracts/*.py
   - shared/src/domain/entities/*
-  - agent/src/services/inference/state.py
-  - agent/src/services/inference/result.py
+  - agent/src/features/inference/interpretation/state.py
+  - agent/src/features/inference/interpretation/result.py
   - shared/src/contracts/README.md
   - agent/src/contracts/README.md
   - plan.md
@@ -46,6 +46,7 @@ path_specific_instructions:
   - apps/family_extension/AGENTS.md
 
 active_entrypoints:
+  - docs/README.md
   - docs/execution_index.md
   - .codex/skills/tracemind-research-loop/SKILL.md
   - plan.md

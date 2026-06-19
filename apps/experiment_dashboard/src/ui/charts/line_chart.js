@@ -51,20 +51,21 @@ export function drawLineChart({
 
   const lines = series
     .map((item) => {
-      const color = colors.get(item.label);
+      const colorKey = item.colorKey ?? item.label;
+      const color = colors.get(colorKey);
       const path = item.points
         .map((point) => `${xForPoint(point)},${yForValue(point.value)}`)
         .join(" ");
       const dots = item.points
         .map(
           (point) => `
-            <circle cx="${xForPoint(point)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}" data-series-color-key="${escapeHtml(item.colorKey ?? item.label)}">
+            <circle cx="${xForPoint(point)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}" data-series-color-key="${escapeHtml(colorKey)}">
               <title>${escapeHtml(item.label)} · ${escapeHtml(xLabel(point))} · ${formatMetric(point.value)}</title>
             </circle>
           `,
         )
         .join("");
-      return `<polyline points="${path}" fill="none" style="--series-color:${color}" data-series-color-key="${escapeHtml(item.colorKey ?? item.label)}" />${dots}`;
+      return `<polyline points="${path}" fill="none" style="--series-color:${color}" data-series-color-key="${escapeHtml(colorKey)}" />${dots}`;
     })
     .join("");
 

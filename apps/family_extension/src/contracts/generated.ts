@@ -74,9 +74,16 @@ export interface ChildSupportConversationResponsePayload {
 export interface ChildSupportProactivePromptPayload {
   schema_version: string;
   should_prompt: boolean;
+  prompt_id: string | null;
+  conversation_id: string | null;
   safety_level: ChildSupportSafetyLevel | null;
   prompt_text: string | null;
   suggested_prompts: ChildSupportSuggestionPayload[];
+}
+
+export interface ChildSupportProactivePromptClaimRequestPayload {
+  schema_version: string;
+  prompt_id: string;
 }
 
 export type WellbeingSignalLevel = "low" | "moderate" | "high" | "very_high";
@@ -85,7 +92,13 @@ export type WellbeingSignalTrend = "rising" | "steady" | "falling" | "volatile" 
 
 export type WellbeingSignalConfidence = "low" | "medium" | "high";
 
-export type WellbeingSignalRange = "7d" | "14d" | "30d";
+export type WellbeingSignalRange = "1d" | "7d" | "14d" | "30d";
+
+export interface ParentWellbeingGuidancePayload {
+  response_priority: string;
+  conversation_starter: string;
+  caution_note: string;
+}
 
 export interface WellbeingSignalSummaryPayload {
   schema_version: string;
@@ -96,6 +109,7 @@ export interface WellbeingSignalSummaryPayload {
   trend: WellbeingSignalTrend;
   summary: string;
   action_tip: string;
+  parent_guidance: ParentWellbeingGuidancePayload;
   confidence: WellbeingSignalConfidence;
   low_data: boolean;
 }
@@ -110,6 +124,36 @@ export interface WellbeingSignalTimeseriesPayload {
   computed_at: string;
   range: WellbeingSignalRange;
   points: WellbeingSignalTimeseriesPointPayload[];
+}
+
+export type WellbeingSpaceWebRelationType = "coactivation" | "transition";
+
+export interface WellbeingSpaceWebNodePayload {
+  id: string;
+  label: string;
+  intensity: number;
+  level: WellbeingSignalLevel;
+  trend: WellbeingSignalTrend;
+  observed_event_count: number;
+}
+
+export interface WellbeingSpaceWebEdgePayload {
+  source: string;
+  target: string;
+  weight: number;
+  relation_type: WellbeingSpaceWebRelationType;
+  evidence_count: number;
+}
+
+export interface WellbeingSpaceWebPayload {
+  schema_version: string;
+  computed_at: string;
+  range: WellbeingSignalRange;
+  strategy_name: string;
+  strategy_version: string;
+  nodes: WellbeingSpaceWebNodePayload[];
+  edges: WellbeingSpaceWebEdgePayload[];
+  low_data: boolean;
 }
 
 export interface ParentUnlockRequestPayload {
@@ -245,10 +289,50 @@ export interface CapturedTextDebugJobStatusPayload {
   strong_text_provider_name: string;
   weak_text_identity_fallback: boolean;
   strong_text_identity_fallback: boolean;
+  analysis_pipeline_configured: boolean;
+  scorer_backend_name: string | null;
+  embedding_model_id: string | null;
+  model_revision: string | null;
   captured_text_event_count: number;
   generated_view_count: number;
   view_generation_status_counts: Record<string, number>;
   analysis_status_counts: Record<string, number>;
   last_run_at: string | null;
   last_run_result: CapturedTextDebugJobRunResultPayload | null;
+}
+
+export interface AgentRuntimeProfilePayload {
+  schema_version: string;
+  profile_id: string;
+  profile_revision: string;
+  payload_checksum: string;
+  model_id: string;
+  model_revision: string;
+  runtime_family: string;
+  adapter_mechanism: string | null;
+  scorer_backend_name: string;
+  embedding_backend: string;
+  embedding_model_id: string;
+  training_scope: string;
+  required_state_kind: string | null;
+  updated_at: string;
+}
+
+export interface RuntimeProfileStatusPayload {
+  has_active_profile: boolean;
+  profile: AgentRuntimeProfilePayload | null;
+  source: string | null;
+  received_at: string | null;
+  activated_at: string | null;
+  server_validated_at: string | null;
+}
+
+export interface RuntimeProfileSyncRequest {
+  server_base_url: string;
+}
+
+export interface RuntimeProfileSyncResponse {
+  status: string;
+  message: string;
+  active_profile: RuntimeProfileStatusPayload;
 }

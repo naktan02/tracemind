@@ -37,6 +37,9 @@ def test_wellbeing_signal_summary_payload_accepts_canonical_fields() -> None:
     assert payload.schema_version == "wellbeing_signal_summary.v1"
     assert payload.signal_level == WellbeingSignalLevel.HIGH
     assert payload.trend == WellbeingSignalTrend.RISING
+    assert payload.parent_guidance.response_priority
+    assert payload.parent_guidance.conversation_starter
+    assert payload.parent_guidance.caution_note
 
 
 def test_wellbeing_signal_summary_payload_rejects_out_of_range_score() -> None:
@@ -57,7 +60,7 @@ def test_wellbeing_signal_timeseries_payload_accepts_points() -> None:
     payload = WellbeingSignalTimeseriesPayload.model_validate(
         {
             "computed_at": "2026-04-24T10:30:00Z",
-            "range": "7d",
+            "range": "1d",
             "points": [
                 {"ts": "2026-04-22T00:00:00Z", "signal_score": 51.0},
                 {"ts": "2026-04-23T00:00:00Z", "signal_score": 61.0},
@@ -66,7 +69,7 @@ def test_wellbeing_signal_timeseries_payload_accepts_points() -> None:
         }
     )
 
-    assert payload.range == WellbeingSignalRange.LAST_7_DAYS
+    assert payload.range == WellbeingSignalRange.LAST_1_DAY
     assert len(payload.points) == 3
     assert payload.points[-1].signal_score == 72.0
 

@@ -17,14 +17,19 @@ class ExperimentRunRecord:
     unlabeled_dataset_name: str | None
     validation_dataset_name: str | None
     test_dataset_name: str | None
+    label_budget_name: str | None
+    label_budget_count_per_class: int | None
     seed: int | None
     learning_rate: float | None
     classifier_learning_rate: float | None
     epochs: int | None
     max_train_steps: int | None
     train_batch_size: int | None
+    labeled_batch_size: int | None
+    unlabeled_batch_size: int | None
     eval_batch_size: int | None
     initial_checkpoint_name: str | None
+    backbone_model_id: str | None
     unlabeled_row_count: int | None
     total_row_exposure_count: int | None
     labeled_row_exposure_count: int | None

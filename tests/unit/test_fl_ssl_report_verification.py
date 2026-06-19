@@ -294,10 +294,7 @@ def _write_report_run_with_server_update_artifacts(
     snapshot_dir = artifact_root / snapshot_family / str(final_round["model_revision"])
     snapshot_dir.mkdir(parents=True)
     (snapshot_dir / adapter_snapshot_name).write_bytes(b"placeholder")
-    (snapshot_dir / "classifier_head.json").write_text(
-        json.dumps({"classifier_head_weights": {"normal": [1.0]}}),
-        encoding="utf-8",
-    )
+    (snapshot_dir / "classifier_head.safetensors").write_bytes(b"placeholder")
     return report_path
 
 

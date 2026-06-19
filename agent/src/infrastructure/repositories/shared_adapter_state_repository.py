@@ -9,6 +9,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
+from agent.src.config.paths import DEFAULT_AGENT_STATE_DIR
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterStatePayload,
 )
@@ -21,8 +22,6 @@ from shared.src.contracts.model_contracts import (
     dump_model_manifest_payload,
     load_model_manifest_payload,
 )
-
-AGENT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class SharedAdapterStateActivationPointer(BaseModel):
@@ -39,7 +38,7 @@ class SharedAdapterStateRepository:
     """agent의 shared adapter state 버전 캐시와 active pointer를 관리한다."""
 
     state_root: Path = field(
-        default_factory=lambda: AGENT_ROOT / "state" / "shared_adapter_states"
+        default_factory=lambda: DEFAULT_AGENT_STATE_DIR / "shared_adapter_states"
     )
 
     @property

@@ -9,6 +9,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from agent.src.api.dependencies import (
+    CapturedTextLifecycleServiceDep,
+    CapturedTextRepositoryDep,
+    CapturedTextViewGenerationServiceDep,
+    OptionalPipelineServiceDep,
+    get_or_create_app_state,
+)
 from agent.src.contracts.captured_text_contracts import (
     CapturedTextBatchIngestRequestPayload,
     CapturedTextBatchIngestResponsePayload,
@@ -19,22 +26,22 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextEventPayload,
     CapturedTextIngestResponsePayload,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
-    CapturedTextRepository,
-)
-from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.ingest.captured_text_debug_job_service import (
+from agent.src.features.captured_text.debug_jobs import (
     CapturedTextDebugJobService,
 )
-from agent.src.services.ingest.captured_text_ingest_service import (
+from agent.src.features.captured_text.ingest import (
     CapturedTextIngestService,
 )
-from agent.src.services.ingest.captured_text_lifecycle_service import (
+from agent.src.features.captured_text.lifecycle import (
     CapturedTextLifecycleService,
 )
-from agent.src.services.ingest.captured_text_view_generation_service import (
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
+)
+from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
+from agent.src.features.inference.pipeline_service import InferencePipelineService
 
 router = APIRouter(prefix="/api/v1/captured-text", tags=["captured-text"])
 
@@ -53,136 +60,38 @@ class CapturedTextDebugJobState:
 
 def get_captured_text_ingest_service(
     request: Request,
+    repository: CapturedTextRepositoryDep,
+    lifecycle_service: CapturedTextLifecycleServiceDep,
 ) -> CapturedTextIngestService:
     """app.state에서 captured text ingest service를 읽거나 조립한다."""
 
-    service = getattr(request.app.state, "captured_text_ingest_service", None)
-    if service is not None:
-        return service
-    captured_text_repository = getattr(
-        request.app.state,
-        "captured_text_repository",
-        None,
-    )
-    if captured_text_repository is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "CapturedTextIngestService를 만들 captured_text_repository가 "
-                "없습니다. 앱 시작 시 app.state.captured_text_repository를 "
-                "설정하세요."
-            ),
-        )
-    service = CapturedTextIngestService(
-        captured_text_repository=captured_text_repository,
-        lifecycle_service=getattr(
-            request.app.state,
-            "captured_text_lifecycle_service",
-            None,
+    return get_or_create_app_state(
+        request,
+        "captured_text_ingest_service",
+        lambda: CapturedTextIngestService(
+            captured_text_repository=repository,
+            lifecycle_service=lifecycle_service,
         ),
     )
-    request.app.state.captured_text_ingest_service = service
-    return service
-
-
-def get_captured_text_repository(request: Request) -> CapturedTextRepository:
-    """app.state에서 captured text repository를 읽는다."""
-
-    repository = getattr(request.app.state, "captured_text_repository", None)
-    if repository is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "captured_text_repository가 없습니다. 앱 시작 시 "
-                "app.state.captured_text_repository를 설정하세요."
-            ),
-        )
-    return repository
-
-
-def get_captured_text_lifecycle_service(
-    request: Request,
-) -> CapturedTextLifecycleService:
-    """app.state에서 captured text lifecycle service를 읽는다."""
-
-    service = getattr(request.app.state, "captured_text_lifecycle_service", None)
-    if service is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "captured_text_lifecycle_service가 없습니다. 앱 시작 시 "
-                "app.state.captured_text_lifecycle_service를 설정하세요."
-            ),
-        )
-    return service
-
-
-def get_captured_text_view_generation_service(
-    request: Request,
-) -> CapturedTextViewGenerationService:
-    """app.state에서 view generation service를 읽거나 조립한다."""
-
-    service = getattr(request.app.state, "captured_text_view_generation_service", None)
-    if service is not None:
-        return service
-    repository = get_captured_text_repository(request)
-    service = CapturedTextViewGenerationService(
-        repository=repository,
-        translation_provider=getattr(
-            request.app.state,
-            "captured_text_translation_service",
-            None,
-        ),
-        strong_view_provider=getattr(
-            request.app.state,
-            "captured_text_strong_view_service",
-            None,
-        ),
-    )
-    request.app.state.captured_text_view_generation_service = service
-    return service
 
 
 def get_captured_text_debug_job_state(request: Request) -> CapturedTextDebugJobState:
     """app.state에서 debug job state를 읽거나 생성한다."""
 
-    job_state = getattr(request.app.state, "captured_text_debug_job_state", None)
-    if job_state is None:
-        job_state = CapturedTextDebugJobState()
-        request.app.state.captured_text_debug_job_state = job_state
-    return job_state
-
-
-def get_optional_pipeline_service(request: Request) -> InferencePipelineService | None:
-    """app.state에서 pipeline service를 읽되, 없으면 view-only debug를 허용한다."""
-
-    service = getattr(request.app.state, "pipeline_service", None)
-    return service if isinstance(service, InferencePipelineService) else service
+    return get_or_create_app_state(
+        request,
+        "captured_text_debug_job_state",
+        CapturedTextDebugJobState,
+    )
 
 
 CapturedTextIngestServiceDep = Annotated[
     CapturedTextIngestService,
     Depends(get_captured_text_ingest_service),
 ]
-CapturedTextRepoDep = Annotated[
-    CapturedTextRepository,
-    Depends(get_captured_text_repository),
-]
-CapturedTextViewGenerationServiceDep = Annotated[
-    CapturedTextViewGenerationService,
-    Depends(get_captured_text_view_generation_service),
-]
-CapturedTextLifecycleServiceDep = Annotated[
-    CapturedTextLifecycleService,
-    Depends(get_captured_text_lifecycle_service),
-]
 CapturedTextDebugJobStateDep = Annotated[
     CapturedTextDebugJobState,
     Depends(get_captured_text_debug_job_state),
-]
-OptionalPipelineServiceDep = Annotated[
-    InferencePipelineService | None,
-    Depends(get_optional_pipeline_service),
 ]
 
 
@@ -250,9 +159,10 @@ def captured_text_status(
 )
 def captured_text_debug_job_status(
     request: Request,
-    repository: CapturedTextRepoDep,
+    repository: CapturedTextRepositoryDep,
     service: CapturedTextViewGenerationServiceDep,
     job_state: CapturedTextDebugJobStateDep,
+    pipeline_service: OptionalPipelineServiceDep,
 ) -> CapturedTextDebugJobStatusPayload:
     """debug page가 읽는 captured text pipeline 상태."""
 
@@ -261,6 +171,7 @@ def captured_text_debug_job_status(
         repository=repository,
         service=service,
         job_state=job_state,
+        pipeline_service=pipeline_service,
     )
 
 
@@ -272,7 +183,7 @@ def captured_text_debug_job_status(
 async def configure_captured_text_debug_job(
     config: CapturedTextDebugJobConfigRequestPayload,
     request: Request,
-    repository: CapturedTextRepoDep,
+    repository: CapturedTextRepositoryDep,
     service: CapturedTextViewGenerationServiceDep,
     lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,
@@ -304,6 +215,7 @@ async def configure_captured_text_debug_job(
         repository=repository,
         service=service,
         job_state=job_state,
+        pipeline_service=pipeline_service,
     )
 
 
@@ -314,13 +226,44 @@ async def configure_captured_text_debug_job(
 )
 async def run_captured_text_view_generation_once(
     run_request: CapturedTextDebugJobRunRequestPayload,
-    request: Request,
+    service: CapturedTextViewGenerationServiceDep,
+    lifecycle_service: CapturedTextLifecycleServiceDep,
+    job_state: CapturedTextDebugJobStateDep,
+) -> CapturedTextDebugJobRunResultPayload:
+    """pending captured text view generation만 즉시 실행한다."""
+
+    if job_state.run_lock.locked():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="captured text debug job이 이미 실행 중입니다.",
+        )
+
+    async with job_state.run_lock:
+        result = await asyncio.to_thread(
+            _run_view_generation_only,
+            service,
+            lifecycle_service,
+            limit=run_request.limit,
+        )
+        job_state.last_run_at = datetime.now(tz=timezone.utc)
+        job_state.last_run_result = result
+        return job_state.last_run_result
+
+
+@router.post(
+    "/debug-job/run-analysis",
+    response_model=CapturedTextDebugJobRunResultPayload,
+    status_code=status.HTTP_200_OK,
+)
+async def run_captured_text_analysis_once(
+    run_request: CapturedTextDebugJobRunRequestPayload,
+    repository: CapturedTextRepositoryDep,
     service: CapturedTextViewGenerationServiceDep,
     lifecycle_service: CapturedTextLifecycleServiceDep,
     job_state: CapturedTextDebugJobStateDep,
     pipeline_service: OptionalPipelineServiceDep,
 ) -> CapturedTextDebugJobRunResultPayload:
-    """pending captured text view generation과 weak text 분석을 즉시 실행한다."""
+    """ready generated view의 weak text 분석만 즉시 실행한다."""
 
     if job_state.run_lock.locked():
         raise HTTPException(
@@ -331,11 +274,11 @@ async def run_captured_text_view_generation_once(
     async with job_state.run_lock:
         result = await asyncio.to_thread(
             _debug_job_service(
-                repository=service.repository,
+                repository=repository,
                 view_generation_service=service,
                 lifecycle_service=lifecycle_service,
                 pipeline_service=pipeline_service,
-            ).run_once,
+            ).run_pending_analysis,
             limit=run_request.limit,
         )
         job_state.last_run_at = datetime.now(tz=timezone.utc)
@@ -365,6 +308,7 @@ def _build_debug_job_status(
     repository: CapturedTextRepository,
     service: CapturedTextViewGenerationService,
     job_state: CapturedTextDebugJobState,
+    pipeline_service: InferencePipelineService | None,
 ) -> CapturedTextDebugJobStatusPayload:
     task = getattr(request.app.state, "captured_text_debug_job_task", None)
     is_running = (
@@ -379,6 +323,20 @@ def _build_debug_job_status(
         strong_text_provider_name=service.strong_text_provider_name,
         weak_text_identity_fallback=service.weak_text_identity_fallback,
         strong_text_identity_fallback=service.strong_text_identity_fallback,
+        analysis_pipeline_configured=pipeline_service is not None,
+        scorer_backend_name=(
+            pipeline_service.scoring_service.backend_name
+            if pipeline_service is not None
+            else None
+        ),
+        embedding_model_id=(
+            pipeline_service.embedding_model_id
+            if pipeline_service is not None
+            else None
+        ),
+        model_revision=(
+            pipeline_service.model_revision if pipeline_service is not None else None
+        ),
         captured_text_event_count=repository.count(),
         generated_view_count=repository.count_generated_views(),
         view_generation_status_counts=repository.count_by_view_generation_status(),
@@ -401,3 +359,13 @@ def _debug_job_service(
         lifecycle_service=lifecycle_service,
         pipeline_service=pipeline_service,
     )
+
+
+def _run_view_generation_only(
+    service: CapturedTextViewGenerationService,
+    lifecycle_service: CapturedTextLifecycleService,
+    *,
+    limit: int,
+) -> CapturedTextDebugJobRunResultPayload:
+    lifecycle_service.purge(repository=service.repository)
+    return service.generate_pending_views(limit=limit)

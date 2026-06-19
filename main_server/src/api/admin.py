@@ -7,12 +7,18 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from main_server.src.services.agent_runtime_profile_service import (
+    AgentRuntimeProfileService,
+)
 from main_server.src.services.federation.strategy.active_strategy_service import (
     ActiveStrategyService,
     StrategyValidationError,
 )
 from main_server.src.services.federation.strategy.models import ActiveStrategyConfig
 from methods.federated_ssl.registry import list_federated_ssl_method_descriptors
+from shared.src.contracts.agent_runtime_profile_contracts import (
+    AgentRuntimeProfilePayload,
+)
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -94,8 +100,23 @@ def get_active_strategy_service(request: Request) -> ActiveStrategyService:
     return service
 
 
+def get_agent_runtime_profile_service(request: Request) -> AgentRuntimeProfileService:
+    """app.state에서 AgentRuntimeProfileService를 읽는다."""
+
+    service = getattr(request.app.state, "agent_runtime_profile_service", None)
+    if service is None:
+        raise RuntimeError(
+            "AgentRuntimeProfileService가 app.state에 설정되지 않았습니다."
+        )
+    return service
+
+
 ActiveStrategyServiceDep = Annotated[
     ActiveStrategyService, Depends(get_active_strategy_service)
+]
+AgentRuntimeProfileServiceDep = Annotated[
+    AgentRuntimeProfileService,
+    Depends(get_agent_runtime_profile_service),
 ]
 
 
@@ -157,6 +178,37 @@ def switch_strategy(
 )
 def get_current_strategy(service: ActiveStrategyServiceDep) -> StrategyResponse:
     return _config_to_response(service.get_active_strategy())
+
+
+@router.post(
+    "/runtime-profile",
+    response_model=AgentRuntimeProfilePayload,
+    status_code=status.HTTP_200_OK,
+    summary="Agent runtime profile 전환",
+)
+def switch_runtime_profile(
+    profile: AgentRuntimeProfilePayload,
+    service: AgentRuntimeProfileServiceDep,
+) -> AgentRuntimeProfilePayload:
+    return service.save_active_profile(profile)
+
+
+@router.get(
+    "/runtime-profile/current",
+    response_model=AgentRuntimeProfilePayload,
+    status_code=status.HTTP_200_OK,
+    summary="현재 agent runtime profile 조회",
+)
+def get_current_runtime_profile(
+    service: AgentRuntimeProfileServiceDep,
+) -> AgentRuntimeProfilePayload:
+    try:
+        return service.get_current_profile()
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
 
 
 @router.get(

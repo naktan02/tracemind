@@ -7,7 +7,9 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
-from agent.src.infrastructure.runtime import resolve_runtime_device
+from agent.src.infrastructure.model_adapters.runtime_device import (
+    resolve_runtime_device,
+)
 
 
 @dataclass(slots=True)

@@ -1,0 +1,30 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/runtime_env: gpu_local
+  - /strategy_axes/model_architecture/backbone: mxbai_encoder
+  - /run_controls/central_ssl/budget: main
+  - /execution_context/query_data_source: default
+  - /execution_context/query_labeled_budget: per_class1024
+  - /strategy_axes/classification/feature_space: tfidf_word
+  - /strategy_axes/classification/estimator: logistic_regression
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+train_jsonl: ${query_source.train_jsonl}
+output_dir: ${central_ssl_budget.output_root}/central/supervised/fixed_feature/${fixed_feature_space.name}/${fixed_feature_estimator.name}/${query_data_selection_slug}
+fixed_categories: ${dataset.label_categories}
+selection_set: test
+seed: 42
+train_batch_size: ${central_ssl_budget.train_batch_size}
+eval_batch_size: ${central_ssl_budget.eval_batch_size}
+trainer_version: ""
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

@@ -2,7 +2,14 @@ import { escapeHtml } from "../../../shared/formatting/html.js";
 import { metricLabel } from "../../../shared/formatting/metrics.js";
 import { formatMetric, numberOrNull } from "../../../shared/formatting/numbers.js";
 import { drawLineChart } from "../../../ui/charts/line_chart.js";
-import { algorithmName, compareDisplayLabel, runDescriptor } from "../logic/labels.js";
+import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
+import {
+  algorithmName,
+  compareDisplayLabel,
+  runDescriptor,
+  runDetail,
+} from "../logic/labels.js";
 import {
   centralEpochMetricKeys,
   centralEpochPoints,
@@ -16,17 +23,13 @@ export function normalizeCompareSelection(rows, state, bundle) {
   if (!metrics.includes(state.compareMetric)) {
     state.compareMetric = metrics[0] ?? "selection_macro_f1";
   }
-  const visibleRunIds = new Set(rows.map((row) => row.run_id));
-  state.compareRunIds = state.compareRunIds.filter((runId) =>
-    visibleRunIds.has(runId),
-  );
 }
 
-export function renderComparePage(elements, rows, state, bundle) {
+export function renderComparePage(elements, rows, state, bundle, selectionRows = rows) {
   renderMetricPicker(elements, state, bundle);
   renderRunPicker(elements, rows, state);
-  renderSelectedRunCards(elements, rows, state);
-  renderComparisonChart(elements, rows, state, bundle);
+  renderSelectedRunCards(elements, selectionRows, state);
+  renderComparisonChart(elements, selectionRows, state, bundle);
 }
 
 function renderMetricPicker(elements, state, bundle) {
@@ -53,12 +56,14 @@ function renderMetricPicker(elements, state, bundle) {
 
 function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.compareRunIds);
+  const peerDetails = rows.map(runDetail);
   elements.comparisonRunCheckboxes.innerHTML =
     rows.length === 0
       ? `<p class="empty">현재 필터에 해당하는 run이 없습니다.</p>`
       : rows
-          .map(
-            (row) => `
+          .map((row) => {
+            const detail = runDetail(row);
+            return `
               <label class="run-option">
                 <input
                   type="checkbox"
@@ -69,9 +74,10 @@ function renderRunPicker(elements, rows, state) {
                   <strong>${escapeHtml(algorithmName(row))}</strong>
                   <small>${escapeHtml(runDescriptor(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
-            `,
-          )
+            `;
+          })
           .join("");
 }
 
@@ -85,28 +91,23 @@ function renderSelectedRunCards(elements, rows, state) {
       `<p class="empty">선택된 비교 run이 없습니다.</p>`;
     return;
   }
+  const peerDetails = selectedRows.map(runDetail);
   elements.selectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const label = algorithmName(row);
-      const detail = [algorithmName(row), runDescriptor(row)].join(" · ");
-      return `
-        <article class="selected-run-card alias-run-card">
-          <strong>${escapeHtml(label)}</strong>
-          <input
-            type="text"
-            data-comparison-alias-run-id="${escapeHtml(row.run_id)}"
-            value="${escapeHtml(state.compareRunAliases[row.run_id] ?? "")}"
-            placeholder="legend alias"
-            aria-label="${escapeHtml(algorithmName(row))} 범례 alias"
-          />
-          <button
-            type="button"
-            data-remove-run-id="${escapeHtml(row.run_id)}"
-            aria-label="${escapeHtml(label)} 제거"
-          >x</button>
-          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(detail)}</span>
-        </article>
-      `;
+      const detail = runDetail(row);
+      return renderSelectedRunCard({
+        id: row.run_id,
+        label,
+        detail,
+        peerDetails,
+        aliasValue: state.compareRunAliases[row.run_id],
+        aliasPlaceholder: "legend alias",
+        aliasDataAttribute: "comparison-alias-run-id",
+        aliasAriaLabel: `${algorithmName(row)} 범례 alias`,
+        removeDataAttribute: "remove-run-id",
+        removeAriaLabel: `${label} 제거`,
+      });
     })
     .join("");
 }

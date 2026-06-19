@@ -3,15 +3,25 @@ import { createDashboardState } from "./app_shell/state.js";
 import { loadDashboardBundle } from "./data/load_bundle.js";
 import {
   CENTRAL_FILTER_AXES,
+  DEFAULT_CENTRAL_FILTER_AXIS_IDS,
   applyCentralFilters,
   centralEvalSets,
+  centralPerClassEvalSets,
   centralMetricRows,
   isAllComparisonTrack,
   isCentralResultTrack,
+  isCentralSslResultTrack,
   isCentralSupervisedTrack,
   pruneCentralFilters,
 } from "./features/central_ssl/index.js";
-import { applyFlFilters, flFilterAxes, flSslRows, pruneFlFilters, sortedFlRows } from "./features/fl_ssl/index.js";
+import {
+  DEFAULT_FL_FILTER_AXIS_IDS,
+  applyFlFilters,
+  flFilterAxes,
+  flSslRows,
+  pruneFlFilters,
+  sortedFlRows,
+} from "./features/fl_ssl/index.js";
 import { renderFilterPanel } from "./ui/controls/filter_panel.js";
 import { fillSelect, checkedValues } from "./ui/controls/form_controls.js";
 import { storeRunAliases, storeSeriesColors } from "./state/preferences.js";
@@ -50,7 +60,11 @@ async function init() {
 }
 
 function hydrateEvalFilters() {
-  const centralEvalValues = centralEvalSets(state.bundle, resolveCentralTrackPredicate());
+  const centralEvalValues = centralEvalSets(
+    state.bundle,
+    resolveCentralTrackPredicate(),
+    { hideTest: state.activeTrack !== "supervised" && state.activeTrack !== "central_ssl" },
+  );
   const centralEvalDefault = resolveCentralDefaultEvalSet(centralEvalValues, state.activeTrack);
   const forceTrackDefaults = state.previousActiveTrack !== state.activeTrack;
   for (const key of [
@@ -81,8 +95,8 @@ function hydrateEvalFilters() {
 }
 
 function resolveCentralDefaultEvalSet(centralEvalValues, activeTrack) {
-  const ordered = activeTrack === "supervised"
-    ? ["validation", "best", "final", "final_validation", "initial_validation"]
+  const ordered = activeTrack === "supervised" || activeTrack === "central_ssl"
+    ? ["test", "best", "final", "validation", "final_validation", "initial_validation"]
     : ["best", "final", "validation", "final_validation", "initial_validation"];
   for (const evalSet of ordered) {
     if (centralEvalValues.includes(evalSet)) return evalSet;
@@ -141,7 +155,6 @@ function bindCentralEvents() {
         delete state.central.filterValues[axisId];
       }
     }
-    resetCentralSelections();
     render();
   });
   elements.centralActiveFilters.addEventListener("change", (event) => {
@@ -153,13 +166,11 @@ function bindCentralEvents() {
       axisId,
       "centralFilterValue",
     );
-    resetCentralSelections();
     render();
   });
   elements.centralFilterReset.addEventListener("click", () => {
-    state.central.filterAxisIds = [];
+    state.central.filterAxisIds = [...DEFAULT_CENTRAL_FILTER_AXIS_IDS];
     state.central.filterValues = {};
-    resetCentralSelections();
     render();
   });
   elements.overviewEvalFilter.addEventListener("change", (event) => {
@@ -184,8 +195,9 @@ function bindCentralEvents() {
     render();
   });
   elements.overviewRunCheckboxes.addEventListener("change", () => {
-    syncCentralRunSelection(
-      checkedValues(elements.overviewRunCheckboxes, "overviewRunId"),
+    syncCentralRunSelectionFromVisible(
+      elements.overviewRunCheckboxes,
+      "overviewRunId",
     );
     render();
   });
@@ -215,8 +227,9 @@ function bindCentralEvents() {
     render();
   });
   elements.comparisonRunCheckboxes.addEventListener("change", () => {
-    syncCentralRunSelection(
-      checkedValues(elements.comparisonRunCheckboxes, "runId"),
+    syncCentralRunSelectionFromVisible(
+      elements.comparisonRunCheckboxes,
+      "runId",
     );
     render();
   });
@@ -273,7 +286,7 @@ function bindFlEvents() {
     for (const axisId of Object.keys(state.fl.filterValues)) {
       if (!state.fl.filterAxisIds.includes(axisId)) delete state.fl.filterValues[axisId];
     }
-    resetFlSelectionsAfterFilterChange();
+    resetFlSingleSelectionsAfterFilterChange();
     render();
   });
   elements.flActiveFilters.addEventListener("change", (event) => {
@@ -285,13 +298,13 @@ function bindFlEvents() {
       axisId,
       "flFilterValue",
     );
-    resetFlSelectionsAfterFilterChange();
+    resetFlSingleSelectionsAfterFilterChange();
     render();
   });
   elements.flFilterReset.addEventListener("click", () => {
-    state.fl.filterAxisIds = [];
+    state.fl.filterAxisIds = [...DEFAULT_FL_FILTER_AXIS_IDS];
     state.fl.filterValues = {};
-    resetFlSelectionsAfterFilterChange();
+    resetFlSingleSelectionsAfterFilterChange();
     render();
   });
   elements.flRunColumnTabButtons.forEach((button) => {
@@ -312,23 +325,23 @@ function bindFlEvents() {
     render();
   });
   elements.flRunCheckboxes.addEventListener("change", () => {
-    state.fl.runIds = checkedValues(elements.flRunCheckboxes, "flRunId");
+    syncFlMultiRunSelectionFromVisible(elements.flRunCheckboxes, "flRunId");
     render();
   });
   elements.flRunSelectedRunCards.addEventListener("click", (event) => {
     const runId = event.target.dataset.removeFlRunId;
     if (!runId) return;
-    state.fl.runIds = state.fl.runIds.filter((id) => id !== runId);
+    syncFlMultiRunSelection(state.fl.runIds.filter((id) => id !== runId));
     render();
   });
   elements.flRoundRunCheckboxes.addEventListener("change", () => {
-    state.fl.roundRunIds = checkedValues(elements.flRoundRunCheckboxes, "flRoundRunId");
+    syncFlMultiRunSelectionFromVisible(elements.flRoundRunCheckboxes, "flRoundRunId");
     render();
   });
   elements.flRoundSelectedRunCards.addEventListener("click", (event) => {
     const runId = event.target.dataset.removeFlRoundRunId;
     if (!runId) return;
-    state.fl.roundRunIds = state.fl.roundRunIds.filter((id) => id !== runId);
+    syncFlMultiRunSelection(state.fl.roundRunIds.filter((id) => id !== runId));
     render();
   });
   elements.flRoundIncludeInitial.addEventListener("change", (event) => {
@@ -362,16 +375,13 @@ function bindFlEvents() {
     render();
   });
   elements.flProjectionRunCheckboxes.addEventListener("change", () => {
-    state.fl.projectionRunIds = checkedValues(
-      elements.flProjectionRunCheckboxes,
-      "flProjectionRunId",
-    );
+    syncFlMultiRunSelectionFromVisible(elements.flProjectionRunCheckboxes, "flProjectionRunId");
     render();
   });
   elements.flProjectionGallery.addEventListener("click", (event) => {
     const runId = event.target.dataset.removeFlProjectionRunId;
     if (!runId) return;
-    state.fl.projectionRunIds = state.fl.projectionRunIds.filter((id) => id !== runId);
+    syncFlMultiRunSelection(state.fl.projectionRunIds.filter((id) => id !== runId));
     render();
   });
 }
@@ -381,22 +391,18 @@ function handleLiveInput(event) {
   const input = event.target;
   if (input.dataset.overviewAliasRunId) {
     updateAlias(state.central.overviewRunAliases, "central_overview", input.dataset.overviewAliasRunId, input.value);
-    render();
     return;
   }
   if (input.dataset.comparisonAliasRunId) {
     updateAlias(state.central.compareRunAliases, "central_compare", input.dataset.comparisonAliasRunId, input.value);
-    render();
     return;
   }
   if (input.dataset.flRunAliasRunId) {
     updateAlias(state.fl.runAliases, "fl_runs", input.dataset.flRunAliasRunId, input.value);
-    render();
     return;
   }
   if (input.dataset.flRoundAliasRunId) {
     updateAlias(state.fl.roundRunAliases, "fl_round", input.dataset.flRoundAliasRunId, input.value);
-    render();
     return;
   }
   if (input.dataset.chartAxisLabelScope) {
@@ -414,10 +420,11 @@ function render() {
   renderShell();
   renderCentral();
   renderFl();
+  bindRunOptionDetailPositioning();
 }
 
 function resetCentralTrackState() {
-  state.central.filterAxisIds = [];
+  state.central.filterAxisIds = [...DEFAULT_CENTRAL_FILTER_AXIS_IDS];
   state.central.filterValues = {};
   state.central.overviewMetricIds = [];
 }
@@ -485,11 +492,25 @@ function resolveCentralTrackPredicate() {
   if (state.activeTrack === "all") {
     return isAllComparisonTrack;
   }
+  if (state.activeTrack === "central_ssl") {
+    return isCentralSslResultTrack;
+  }
   return isCentralResultTrack;
 }
 
 function renderCentral() {
   const trackPredicate = resolveCentralTrackPredicate();
+  const classEvalValues = centralPerClassEvalSets(state.bundle, trackPredicate);
+  if (classEvalValues.length > 0 && !classEvalValues.includes(state.central.classEvalSet)) {
+    state.central.classEvalSet = resolveCentralDefaultEvalSet(classEvalValues, state.activeTrack);
+    fillSelect(
+      elements.classEvalFilter,
+      classEvalValues,
+      state.central.classEvalSet,
+      "eval 없음",
+      centralEvalSetLabel,
+    );
+  }
   const overviewRowsAll = centralMetricRows(
     state.bundle,
     state.central.overviewEvalSet,
@@ -498,18 +519,14 @@ function renderCentral() {
   );
   pruneCentralFilters(overviewRowsAll, state.central);
   const overviewRows = applyCentralFilters(overviewRowsAll, state.central);
-  const compareRows = applyCentralFilters(
-    centralMetricRows(state.bundle, state.central.compareEvalSet, "macro_f1", trackPredicate),
-    state.central,
-  );
+  const compareRowsAll = centralMetricRows(state.bundle, state.central.compareEvalSet, "macro_f1", trackPredicate);
+  const compareRows = applyCentralFilters(compareRowsAll, state.central);
   const classRows = applyCentralFilters(
     centralMetricRows(state.bundle, state.central.classEvalSet, "macro_f1", trackPredicate),
     state.central,
   );
-  const projectionRows = applyCentralFilters(
-    centralMetricRows(state.bundle, state.central.projectionEvalSet, "macro_f1", trackPredicate),
-    state.central,
-  );
+  const projectionRowsAll = centralMetricRows(state.bundle, state.central.projectionEvalSet, "macro_f1", trackPredicate);
+  const projectionRows = applyCentralFilters(projectionRowsAll, state.central);
   renderFilterPanel({
     axisPicker: elements.centralFilterAxisPicker,
     activeFilters: elements.centralActiveFilters,
@@ -524,9 +541,9 @@ function renderCentral() {
   normalizeOverviewSelection(overviewRows, state.central);
   normalizeCompareSelection(compareRows, state.central, state.bundle);
   normalizeDetailSelection(classRows, state.central);
-  normalizeProjectionSelection(state.bundle, projectionRows, state.central);
-  renderOverviewPage(elements, overviewRows, state.central, state.bundle, render);
-  renderComparePage(elements, compareRows, state.central, state.bundle);
+  normalizeProjectionSelection(state.bundle, projectionRowsAll, state.central);
+  renderOverviewPage(elements, overviewRows, state.central, state.bundle, render, overviewRowsAll);
+  renderComparePage(elements, compareRows, state.central, state.bundle, compareRowsAll);
   renderDetailPage(elements, classRows, state.central, state.bundle, render);
   renderProjectionPage(elements, projectionRows, state.central, state.bundle);
 }
@@ -550,13 +567,88 @@ function renderFl() {
   normalizeRoundSelection(rows, state.fl);
   normalizeClientSelections(rows, state.fl, state.bundle);
   normalizeSplitSelection(rows, state.fl, state.bundle);
-  normalizeFlProjectionSelection(state.bundle, rows, state.fl);
+  normalizeFlProjectionSelection(state.bundle, allRows, state.fl);
   elements.flRoundIncludeInitial.checked = state.fl.roundIncludeInitial;
-  renderFlRunsPage(elements, rows, state.fl, state.bundle, render);
-  renderRoundsPage(elements, rows, state.fl, state.bundle, render);
+  renderFlRunsPage(elements, rows, state.fl, state.bundle, render, allRows);
+  renderRoundsPage(elements, rows, state.fl, state.bundle, render, allRows);
   renderClientsPage(elements, rows, state.fl, state.bundle, render);
   renderSplitsPage(elements, rows, state.fl, state.bundle, render);
-  renderFlProjectionPage(elements, rows, state.fl, state.bundle);
+  renderFlProjectionPage(elements, rows, state.fl, state.bundle, allRows);
+}
+
+function bindRunOptionDetailPositioning() {
+  document.querySelectorAll(".run-option").forEach((option) => {
+    if (option.dataset.detailPositionBound === "true") return;
+    option.dataset.detailPositionBound = "true";
+    option.addEventListener("mouseenter", () => showRunOptionDetail(option));
+    option.addEventListener("mouseleave", hideRunOptionDetail);
+    option.addEventListener("focusin", () => showRunOptionDetail(option));
+    option.addEventListener("focusout", (event) => {
+      if (!option.contains(event.relatedTarget)) {
+        hideRunOptionDetail();
+      }
+    });
+  });
+}
+
+function showRunOptionDetail(option) {
+  const detail = option.querySelector(".run-option-detail");
+  if (!detail) return;
+  const overlay = runOptionDetailOverlay();
+  overlay.innerHTML = detail.innerHTML;
+  overlay.style.visibility = "hidden";
+  overlay.style.display = "block";
+  overlay.style.left = "0";
+  overlay.style.top = "0";
+  overlay.style.maxWidth = "";
+  overlay.style.maxHeight = "";
+
+  const viewportPadding = 16;
+  const optionRect = option.getBoundingClientRect();
+  const rect = overlay.getBoundingClientRect();
+  let nextLeft = optionRect.left + 28;
+
+  const overflowRight = nextLeft + rect.width - (window.innerWidth - viewportPadding);
+  if (overflowRight > 0) {
+    nextLeft -= overflowRight;
+  }
+  const minLeft = viewportPadding;
+  if (nextLeft < minLeft) {
+    nextLeft = minLeft;
+    overlay.style.maxWidth = `${window.innerWidth - viewportPadding * 2}px`;
+  }
+
+  let nextTop = optionRect.bottom + 8;
+  const overflowBottom = nextTop + rect.height - (window.innerHeight - viewportPadding);
+  if (overflowBottom > 0) {
+    nextTop = optionRect.top - rect.height - 8;
+  }
+  if (nextTop < viewportPadding) {
+    nextTop = viewportPadding;
+  }
+  if (rect.height > window.innerHeight - viewportPadding * 2) {
+    overlay.style.maxHeight = `${window.innerHeight - viewportPadding * 2}px`;
+  }
+  overlay.style.left = `${Math.round(nextLeft)}px`;
+  overlay.style.top = `${Math.round(nextTop)}px`;
+  overlay.style.visibility = "visible";
+}
+
+function hideRunOptionDetail() {
+  const overlay = document.querySelector(".run-option-detail-overlay");
+  if (!overlay) return;
+  overlay.style.display = "none";
+  overlay.innerHTML = "";
+}
+
+function runOptionDetailOverlay() {
+  const existing = document.querySelector(".run-option-detail-overlay");
+  if (existing) return existing;
+  const overlay = document.createElement("div");
+  overlay.className = "run-option-detail-overlay";
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.appendChild(overlay);
+  return overlay;
 }
 
 function checkedValuesForAxis(container, axisDatasetKey, axisId, valueDatasetKey) {
@@ -646,13 +738,10 @@ function resetCentralSelections() {
   state.central.projectionRunIds = [];
 }
 
-function resetFlSelectionsAfterFilterChange() {
-  state.fl.runIds = [];
-  state.fl.roundRunIds = state.fl.roundRunIds.filter(Boolean);
+function resetFlSingleSelectionsAfterFilterChange() {
   state.fl.clientValidationRunId = null;
   state.fl.clientRoundRunId = null;
   state.fl.splitRunId = null;
-  state.fl.projectionRunIds = [];
 }
 
 function updateAlias(aliasMap, scope, runId, value) {
@@ -666,6 +755,48 @@ function syncCentralRunSelection(runIds = []) {
   const uniqueRunIds = Array.from(new Set(runIds));
   state.central.overviewRunIds = uniqueRunIds;
   state.central.compareRunIds = uniqueRunIds;
+}
+
+function syncCentralRunSelectionFromVisible(container, datasetKey) {
+  syncCentralRunSelection(
+    mergeVisibleRunSelection(
+      state.central.compareRunIds,
+      checkedValues(container, datasetKey),
+      availableValues(container, datasetKey),
+    ),
+  );
+}
+
+function syncFlMultiRunSelection(runIds = []) {
+  const uniqueRunIds = Array.from(new Set(runIds));
+  state.fl.runIds = uniqueRunIds;
+  state.fl.roundRunIds = uniqueRunIds;
+  state.fl.projectionRunIds = uniqueRunIds;
+}
+
+function syncFlMultiRunSelectionFromVisible(container, datasetKey) {
+  syncFlMultiRunSelection(
+    mergeVisibleRunSelection(
+      state.fl.runIds,
+      checkedValues(container, datasetKey),
+      availableValues(container, datasetKey),
+    ),
+  );
+}
+
+function mergeVisibleRunSelection(previousRunIds = [], checkedRunIds = [], visibleRunIds = []) {
+  const visible = new Set(visibleRunIds);
+  const next = previousRunIds.filter((runId) => !visible.has(runId));
+  for (const runId of checkedRunIds) {
+    if (!next.includes(runId)) next.push(runId);
+  }
+  return next;
+}
+
+function availableValues(container, datasetKey) {
+  return Array.from(container.querySelectorAll("input[type='checkbox']"))
+    .map((input) => input.dataset[datasetKey])
+    .filter(Boolean);
 }
 
 function updateAxisLabel(scope, value) {

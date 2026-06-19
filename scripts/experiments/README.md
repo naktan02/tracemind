@@ -1,90 +1,100 @@
 # Experiments
 
-이 디렉터리는 코어 runtime을 조합해서 연구/검증을 수행하는 entrypoint layer다.
+`scripts/experiments/`는 TraceMind의 실험 entrypoint 계층이다. Hydra
+config를 compose하고, dataset/runtime resource를 준비한 뒤 `methods`,
+`shared`, `agent`, `main_server`의 core를 호출해 중앙 실험과 FL SSL simulation을
+실행한다.
 
-원칙:
+알고리즘 의미와 계약은 이 디렉터리가 소유하지 않는다. 실행 조합은 `conf/`,
+method core는 `methods/`, payload 의미는 `shared/`, 운영 runtime adapter는
+`agent`와 `main_server`가 소유한다.
 
-- 운영 후보 algorithm/method core는 `methods`에 둔다.
-- 공통 contract/domain은 `shared`, runtime adapter는 `agent`와 `main_server`에 둔다.
-- 이 디렉터리는 그 코어를 조합하는 실험 CLI와 실험 전용 helper만 둔다.
-- Hydra entrypoint config는 `conf/entrypoints/**/*.yaml`이 source of truth다.
+## What You Can Run
 
-전략 축 전체와 현재 override 가능 여부는 `conf/README.md`와 관련
-`conf/strategy_axes/**` leaf를 먼저 보는 편이 빠르다.
+| 목적 | 시작점 | 자세한 안내 |
+| --- | --- | --- |
+| 중앙 SSL pooled/offline control | `central/ssl_control/run_query_ssl_control.py` | [central/ssl_control/README.md](central/ssl_control/README.md) |
+| 중앙 PEFT/full text encoder 지도학습 control | `central/ssl_control/run_peft_supervised_control.py`, `central/ssl_control/run_full_text_encoder_supervised_control.py` | [central/ssl_control/README.md](central/ssl_control/README.md) |
+| fixed-feature 지도학습 baseline | `central/fixed_feature_control/run_fixed_feature_baseline.py` | [central/fixed_feature_control/README.md](central/fixed_feature_control/README.md) |
+| fixed-feature self-training baseline | `central/fixed_feature_control/run_fixed_feature_self_training_baseline.py` | [central/fixed_feature_control/README.md](central/fixed_feature_control/README.md) |
+| FL SSL client split materialization | `fl_ssl/materialize_fl_client_split.py` | [fl_ssl/README.md](fl_ssl/README.md) |
+| FL SSL simulation | `fl_ssl/run_federated_simulation.py` | [fl_ssl/README.md](fl_ssl/README.md), [fl_ssl/federated_simulation/README.md](fl_ssl/federated_simulation/README.md) |
 
-## 구조
+## Common Commands
 
-- `central/`
-  - 중앙 pooled/offline SSL control entrypoint를 둔다.
-- `fl_ssl/`
-  - client split, round loop, aggregation, per-client metric 같은 FL SSL orchestration을 둔다.
+설치:
 
-공용 text encoder SSL runner/helper는 `scripts/support/query_ssl_text_encoder/`,
-dataset/result index 같은 작업형 CLI는 `scripts/workflows/`가 소유한다.
+```bash
+uv sync --extra dev --extra experiments
+```
 
-## 직접 실행하는 entrypoint
+Hydra가 실제로 compose한 job 확인:
 
-- `fl_ssl/run_federated_simulation.py`
-  - agent/main_server 코어를 조합한 synthetic FL loop.
-  - runtime/task/validation/report shape는
-    `conf/entrypoints/fl_ssl/run_federated_simulation.yaml` 안의
-    `round_runtime`, `training_task`, `validation`, `report` section이다.
-  - `strategy_axes/ssl_objective/local_update_profile`은 local update backend,
-    scoring/evidence, privacy 조합을 소유한다.
-  - `strategy_axes/model_architecture/update_family`가 update family와 v1 payload adapter
-    compatibility alias를 선언하고, `round_runtime.aggregation_backend_name`은
-    aggregation backend를 직접 고른다.
-  - `strategy_axes/fssl_method`는 method identity/report metadata를
-    소유하고, 실제 runtime 구현이 완료된 method만 열어야 한다.
-- `central/ssl_control/run_peft_supervised_control.py`
-  - query-domain 적응 단계의 `frozen backbone + PEFT text encoder + linear head` canonical supervised baseline entrypoint.
-- `central/ssl_control/run_full_text_encoder_supervised_control.py`
-  - 중앙 실험용 `full mxbai encoder + linear head` supervised-only transfer baseline entrypoint.
-- `central/ssl_control/run_peft_ssl_control.py`
-  - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT text encoder scaffold에 얹는
-    consistency family SSL entrypoint.
-  - method/source/strong-view/initial checkpoint source of truth는
-    `strategy_axes/ssl_objective/consistency_method`,
-    `execution_context/query_data_source`,
-    `query_ssl_strong_view_policy`,
-    `strategy_axes/model_architecture/initial_checkpoint` selector다.
-    현재 augmentation reader는 entrypoint의 `query_ssl_augmenter` 고정 설정으로
-    precomputed USB candidates만 사용한다.
-- `scripts/support/query_ssl_text_encoder/`
-  - `runners/{supervised,full_text_encoder_supervised,consistency}.py`가 query-domain
-    central supervised/SSL scaffold를 실행한다.
-  - Query SSL family run context scaffolding은 `query_ssl/run_context.py`, strict USB NLP
-    view preparation/cache는 `query_ssl/view_preparation.py`가 담당한다.
-  - bootstrap teacher, pseudo-label replay, agent-local query adaptation export
-    helper는 중앙 지도/중앙 SSL/FSSL canonical experiment surface가 아니므로
-    제거했다.
+```bash
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py --cfg job
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation --cfg job
+```
 
-## 공통 Helper
+중앙 SSL control 실행:
 
+```bash
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py
+```
 
-## 먼저 읽을 파일
+fixed-feature 지도학습 baseline 실행:
 
-federated simulation:
+```bash
+uv run python scripts/experiments/central/fixed_feature_control/run_fixed_feature_baseline.py
+```
 
-1. `fl_ssl/run_federated_simulation.py`
-2. `fl_ssl/federated_simulation/README.md`
+FL SSL split materialization:
 
-central PEFT / SSL control:
+```bash
+uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split
+```
 
-1. `central/ssl_control/run_peft_supervised_control.py`
-2. `central/ssl_control/run_peft_ssl_control.py`
-3. `../support/query_ssl_text_encoder/runners/supervised.py`
-4. 필요하면 `../support/query_ssl_text_encoder/runners/consistency.py`
+FL SSL simulation 실행:
 
-중앙 PEFT/SSL warm-start와 method별 실행 명령은
-`central/ssl_control/README.md`와 각 entrypoint의 `--cfg job` preview를 기준으로 본다.
+```bash
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation
+```
 
-## 주의할 점
+트랙별 method, seed, dataset, output 조합 예시는 하위 README에 둔다. 이 파일은
+실험 layer의 시작점과 경계만 설명한다.
 
-- 이 디렉터리의 helper는 실험용 canonical shape를 만들 수는 있지만,
-  `shared` 계약의 source of truth를 대체하지는 않는다.
-- 실험에서 잘 된 로직을 운영 경로로 올릴 때는 해당 소유 경계
-  (`methods`, `shared`, `agent`, `main_server`, 필요 시 `conf`)로 옮겨야 한다.
-- config에 field가 있다고 곧바로 runtime 구현이 있다는 뜻은 아니다.
-  secure aggregation/encryption 계열은 현재 typed contract는 있지만
-  실제 runtime은 아직 붙지 않았다.
+## How Execution Is Split
+
+| 계층 | 소유 책임 |
+| --- | --- |
+| `conf/entrypoints/**` | entrypoint별 기본 실행 조합 |
+| `conf/strategy_axes/**` | method, model architecture, local update, data source 같은 교체 축 |
+| `scripts/experiments/**` | Hydra compose, resource 준비, run context 구성, artifact 저장 |
+| `scripts/support/**` | 실험 entrypoint가 공유하는 runner/helper |
+| `scripts/workflows/**` | dataset 준비, cache, report, index 같은 작업형 CLI |
+| `methods/**` | SSL, FSSL, aggregation, adaptation, prototype core |
+| `shared/**` | 경계 payload와 canonical contract |
+| `agent/**`, `main_server/**` | production/runtime adapter와 round lifecycle |
+
+## Read Path
+
+처음 보는 사람은 아래 순서로 읽으면 된다.
+
+1. 실행하려는 트랙의 README를 고른다.
+   - 중앙 SSL/지도학습: [central/ssl_control/README.md](central/ssl_control/README.md)
+   - fixed-feature baseline: [central/fixed_feature_control/README.md](central/fixed_feature_control/README.md)
+   - FL SSL: [fl_ssl/README.md](fl_ssl/README.md)
+2. 같은 entrypoint를 `--cfg job`으로 preview한다.
+3. `conf/entrypoints/**`와 `conf/strategy_axes/**`에서 조합 가능한 축을 확인한다.
+4. 실제 algorithm 의미는 `methods/README.md`에서 해당 method package로 따라간다.
+5. 산출물 확인은 `apps/experiment_dashboard/README.md` 또는 `scripts/workflows/`의
+   report/index CLI를 본다.
+
+## Boundary Rules
+
+- 이 디렉터리에 새 method core를 두지 않는다.
+- shared schema, contract 의미, runtime policy의 source of truth를 만들지 않는다.
+- script-local preset으로 `conf/`의 기본값을 복제하지 않는다.
+- 실험 helper가 운영 경로에서도 필요해지면 `methods`, `shared`, `agent`,
+  `main_server` 중 실제 소유 경계로 옮긴다.
+- secure aggregation/encryption처럼 config와 contract만 있고 runtime이 아직 붙지
+  않은 축은 실행 가능 기능으로 문서화하지 않는다.

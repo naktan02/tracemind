@@ -58,6 +58,9 @@ from methods.adaptation.query_text_views.local_training_budget import (
     build_labeled_anchored_query_ssl_batch_plan,
     build_query_ssl_local_step_plan,
 )
+from methods.adaptation.text_encoder_classifier import (
+    classifier_head_tensor_artifact as head_state_artifacts,
+)
 from methods.evaluation.classification_payload import (
     build_classification_evaluation_payload,
 )
@@ -2931,7 +2934,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "versions"
         / "peft_text_encoder"
         / "sim_rev_0001"
-        / "classifier_head.json"
+        / "classifier_head.safetensors"
     )
     assert peft_aggregate_path.exists()
     assert head_aggregate_path.exists()
@@ -2939,9 +2942,10 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         output_dir,
         "server-aggregate://peft_text_encoder/sim_rev_0001/peft_adapter",
     )
-    assert json.loads(head_aggregate_path.read_text(encoding="utf-8"))[
-        "classifier_head_weights"
-    ]
+    assert _load_head_state_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0001/classifier_head",
+    ).classifier_head_weights
     second_peft_aggregate_path = (
         output_dir
         / "main_server"
@@ -2958,7 +2962,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "versions"
         / "peft_text_encoder"
         / "sim_rev_0002"
-        / "classifier_head.json"
+        / "classifier_head.safetensors"
     )
     assert second_peft_aggregate_path.exists()
     assert second_head_aggregate_path.exists()
@@ -2970,7 +2974,10 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         output_dir,
         "server-aggregate://peft_text_encoder/sim_rev_0001/peft_adapter",
     )
-    first_head_artifact = json.loads(head_aggregate_path.read_text(encoding="utf-8"))
+    first_head_artifact = _load_head_state_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0001/classifier_head",
+    )
     second_peft_artifact = _load_peft_state_safetensors_artifact(
         output_dir,
         "server-aggregate://peft_text_encoder/sim_rev_0002/peft_adapter",
@@ -2979,8 +2986,13 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         output_dir,
         "server-aggregate://peft_text_encoder/sim_rev_0002/peft_adapter",
     )
-    second_head_artifact = json.loads(
-        second_head_aggregate_path.read_text(encoding="utf-8")
+    second_head_artifact = _load_head_state_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0002/classifier_head",
+    )
+    second_applied_head_deltas = _load_applied_head_deltas_safetensors_artifact(
+        output_dir,
+        "server-aggregate://peft_text_encoder/sim_rev_0002/classifier_head",
     )
     assert second_peft_artifact != first_peft_artifact
     assert first_applied_peft_deltas
@@ -2990,14 +3002,14 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         after=second_peft_artifact,
     )
     _assert_vector_mapping_accumulates(
-        before=first_head_artifact["classifier_head_weights"],
-        delta=second_head_artifact["applied_classifier_head_weight_deltas"],
-        after=second_head_artifact["classifier_head_weights"],
+        before=first_head_artifact.classifier_head_weights,
+        delta=second_applied_head_deltas[0],
+        after=second_head_artifact.classifier_head_weights,
     )
     _assert_scalar_mapping_accumulates(
-        before=first_head_artifact["classifier_head_biases"],
-        delta=second_head_artifact["applied_classifier_head_bias_deltas"],
-        after=second_head_artifact["classifier_head_biases"],
+        before=first_head_artifact.classifier_head_biases,
+        delta=second_applied_head_deltas[1],
+        after=second_head_artifact.classifier_head_biases,
     )
 
 
@@ -3074,7 +3086,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
         / "versions"
         / "peft_text_encoder"
         / "sim_rev_0001"
-        / "classifier_head.json"
+        / "classifier_head.safetensors"
     )
     assert peft_aggregate_path.exists()
     assert head_aggregate_path.exists()
@@ -3481,6 +3493,34 @@ def _load_applied_peft_deltas_safetensors_artifact(
     )
     tensors, metadata = store.load_safetensors_artifact(artifact_ref=artifact_ref)
     return merged_artifacts.parse_applied_peft_parameter_deltas_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _load_head_state_safetensors_artifact(
+    output_dir: Path,
+    artifact_ref: str,
+) -> head_state_artifacts.LinearClassifierHeadState:
+    store = AggregationArtifactStore(
+        state_root=output_dir / "main_server" / "aggregation_artifacts"
+    )
+    tensors, metadata = store.load_safetensors_artifact(artifact_ref=artifact_ref)
+    return head_state_artifacts.parse_classifier_head_state_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _load_applied_head_deltas_safetensors_artifact(
+    output_dir: Path,
+    artifact_ref: str,
+) -> tuple[dict[str, list[float]], dict[str, float]]:
+    store = AggregationArtifactStore(
+        state_root=output_dir / "main_server" / "aggregation_artifacts"
+    )
+    tensors, metadata = store.load_safetensors_artifact(artifact_ref=artifact_ref)
+    return head_state_artifacts.parse_applied_classifier_head_deltas_tensor_artifact(
         tensors=tensors,
         metadata=metadata,
     )

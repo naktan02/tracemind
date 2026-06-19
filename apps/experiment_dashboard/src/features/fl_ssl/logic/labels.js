@@ -1,5 +1,9 @@
 import { formatMetric } from "../../../shared/formatting/numbers.js";
-import { shortRun } from "../../../shared/formatting/text.js";
+import {
+  compactDate,
+  compactDateTime,
+  shortRun,
+} from "../../../shared/formatting/text.js";
 
 export function runId(row) {
   return row.run_id ?? row.id ?? "-";
@@ -25,10 +29,7 @@ export function localRegularizerLabel(row) {
 
 export function adapterKind(row) {
   return displayAdapterKind(
-    row.payload_adapter_kind ??
-      row.protocol?.round_runtime?.payload_adapter_kind ??
-      row.peft_adapter_name ??
-      "-",
+    row.payload_adapter_kind ?? row.protocol?.round_runtime?.payload_adapter_kind,
   );
 }
 
@@ -48,8 +49,32 @@ export function dataSourceLabel(row) {
 }
 
 export function labelBudgetLabel(row) {
-  const match = String(row.selection_slug ?? runId(row)).match(/labels_pc(\d+)/);
-  return match ? `pc${match[1]}` : "pc?";
+  if (row.label_budget_name) return row.label_budget_name;
+  if (row.label_budget_count_per_class) return `pc${row.label_budget_count_per_class}`;
+  const source = [
+    row.selection_slug,
+    row.run_id,
+    row.report_path,
+    row.labeled_dataset_name,
+  ].join(" ");
+  const labelsPcMatch = source.match(/labels_pc(\d+)/);
+  if (labelsPcMatch) return `pc${labelsPcMatch[1]}`;
+  const perClassMatch = source.match(/labeled(\d+)_per_class/);
+  if (perClassMatch) return `pc${perClassMatch[1]}`;
+  const inferred = inferLabelBudgetFromUniqueRows(row);
+  return inferred ? `pc${inferred}` : "pc?";
+}
+
+export function initialCheckpointLabel(row) {
+  return checkpointDisplayValue(row.initial_checkpoint_name);
+}
+
+export function backboneModelLabel(row) {
+  return row.backbone_model_id ?? row.embedding_model_id ?? "-";
+}
+
+export function runCreatedDateLabel(row) {
+  return compactDate(row.created_at);
 }
 
 export function runDescriptor(row) {
@@ -57,11 +82,15 @@ export function runDescriptor(row) {
   const costValue = typeof cost === "object" && cost !== null ? cost.value : cost;
   return [
     dataSourceLabel(row),
-    labelBudgetLabel(row),
+    `label_budget=${labelBudgetLabel(row)}`,
+    `model=${backboneModelLabel(row)}`,
     adapterConfigLabel(row),
     `payload=${adapterKind(row)}`,
     `agg=${row.aggregation_backend_name ?? "-"}`,
     `regularizer=${localRegularizerLabel(row)}`,
+    `checkpoint=${initialCheckpointLabel(row)}`,
+    batchConfigLabel(row),
+    `created=${compactDateTime(row.created_at)}`,
     `clients=${row.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? "-"}/${row.round_budget ?? "-"}`,
     `updates=${costValue ?? "-"}`,
@@ -69,11 +98,33 @@ export function runDescriptor(row) {
   ].join(" · ");
 }
 
+export function runHoverDetail(row) {
+  return [
+    algorithmName(row),
+    runDescriptor(row),
+    `run_id=${runId(row)}`,
+  ].join(" · ");
+}
+
 function displayAdapterKind(value) {
-  const raw = String(value ?? "-");
-  if (raw === "peft_classifier") return "classifier";
+  const raw = String(value ?? "").trim();
+  if (!raw) return "unrecorded";
+  if (raw === "peft_classifier") return "peft classifier";
   if (raw === "peft_text_encoder_lora") return "lora text encoder";
   return raw.replace(/^peft_/, "");
+}
+
+function batchConfigLabel(row) {
+  const labeled = row.labeled_batch_size ?? row.train_batch_size ?? "-";
+  return [
+    `labeled_batch=${labeled}`,
+    `unlabeled_batch=${row.unlabeled_batch_size ?? "-"}`,
+  ].join(" · ");
+}
+
+function checkpointDisplayValue(value) {
+  const raw = String(value ?? "").trim();
+  return raw || "unrecorded";
 }
 
 export function compactRunLabel(row) {
@@ -90,11 +141,13 @@ export function runDisplayLabel(row, aliases) {
 }
 
 export function compactRunSubLabel(row) {
+  const created = compactDateTime(row.created_at);
   return [
-    labelBudgetLabel(row),
+    `label_budget=${labelBudgetLabel(row)}`,
     `clients=${row.client_count ?? "-"}`,
     `rank=${row.peft_adapter_rank ?? "-"}`,
-    runSuffix(row),
+    `ckpt=${initialCheckpointLabel(row)}`,
+    created !== "-" ? created : runSuffix(row),
   ].join(" · ");
 }
 
@@ -106,9 +159,13 @@ export function runDetailLabel(row) {
   return [
     algorithmName(row),
     localRegularizerLabel(row),
+    `label_budget=${labelBudgetLabel(row)}`,
+    `model=${backboneModelLabel(row)}`,
     `clients=${row.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? "-"}/${row.round_budget ?? "-"}`,
     `alpha=${formatMetric(row.shard_alpha)}`,
+    `checkpoint=${initialCheckpointLabel(row)}`,
+    `created=${compactDateTime(row.created_at)}`,
     `seed=${row.seed ?? "-"}`,
     runSuffix(row),
   ].join(" · ");
@@ -136,4 +193,27 @@ function extractRunIdPart(row, prefix) {
   const next = prefix === "labeled" ? "unlabeled" : "labels_pc";
   const match = source.match(new RegExp(`${prefix}-(.+?)_${next}`));
   return match ? match[1] : null;
+}
+
+function inferLabelBudgetFromUniqueRows(row) {
+  const uniqueLabeledRows = Number(row.unique_labeled_row_count);
+  if (!Number.isFinite(uniqueLabeledRows) || uniqueLabeledRows <= 0) return null;
+  const labelCount = labelCountFromSchema(row);
+  if (!labelCount || uniqueLabeledRows % labelCount !== 0) return null;
+  return Math.round(uniqueLabeledRows / labelCount);
+}
+
+function labelCountFromSchema(row) {
+  const rawParameters = row.peft_adapter_parameters_json;
+  if (typeof rawParameters !== "string" || !rawParameters.trim()) return null;
+  try {
+    const parameters = JSON.parse(rawParameters);
+    const labels = String(parameters.label_schema ?? "")
+      .split(",")
+      .map((label) => label.trim())
+      .filter(Boolean);
+    return labels.length > 0 ? labels.length : null;
+  } catch (_error) {
+    return null;
+  }
 }

@@ -9,6 +9,10 @@ from typing import Any
 import torch
 from torch import nn
 
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    load_classifier_head_state_tensor_artifact,
+)
+
 
 class TextEncoderWithLinearHead(nn.Module):
     """Transformer text encoder와 linear classifier head 묶음."""
@@ -182,16 +186,22 @@ def load_classifier_head_state_if_configured(
     normalized_path = str(classifier_path or "").strip()
     if not normalized_path:
         return
-    classifier_bundle = torch.load(normalized_path, map_location="cpu")
-    checkpoint_categories = [
-        str(category) for category in classifier_bundle["categories"]
-    ]
+    if Path(normalized_path).suffix == ".safetensors":
+        classifier_state = load_classifier_head_state_tensor_artifact(normalized_path)
+        checkpoint_categories = list(classifier_state.label_schema)
+        classifier_state_dict = classifier_state.to_state_dict()
+    else:
+        classifier_bundle = torch.load(normalized_path, map_location="cpu")
+        checkpoint_categories = [
+            str(category) for category in classifier_bundle["categories"]
+        ]
+        classifier_state_dict = classifier_bundle["classifier_state_dict"]
     if checkpoint_categories != categories:
         raise ValueError(
             "initial classifier categories do not match current categories: "
             f"{checkpoint_categories} != {categories}"
         )
-    model.classifier.load_state_dict(classifier_bundle["classifier_state_dict"])
+    model.classifier.load_state_dict(classifier_state_dict)
 
 
 def _required_str(value: object, *, field_name: str) -> str:

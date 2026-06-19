@@ -7,11 +7,11 @@
 ## 먼저 읽을 것
 
 1. `agent/README.md`
-2. `agent/src/services/README.md`
-3. 작업 축에 맞는 서비스 경로
-   - 추론: `agent/src/services/inference/`
-   - 학습: `agent/src/services/training_runtime/`
-   - FL 참여: `agent/src/services/federation/`
+2. `agent/src/features/README.md`
+3. 작업 축에 맞는 feature 경로
+   - 추론: `agent/src/features/inference/`
+   - 학습: `agent/src/features/training_runtime/`
+   - FL 참여: `agent/src/features/federation/`
 4. 관련 shared contract와 domain entity
 
 ## 변경 규칙

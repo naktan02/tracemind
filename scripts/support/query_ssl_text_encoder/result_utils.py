@@ -87,6 +87,7 @@ def merge_results_with_best_and_final(
     results: Mapping[str, Any],
     selection_set: str,
     final_selection_report: Mapping[str, Any] | None = None,
+    include_selection_set_result: bool = True,
 ) -> dict[str, Any]:
     """results에 best/final alias를 보강해 report 하위 호환성을 유지한다."""
 
@@ -121,7 +122,11 @@ def merge_results_with_best_and_final(
         )
         if final_report is not None:
             merged.setdefault("final", dict(final_report))
+        if not include_selection_set_result and selection_key not in {"best", "final"}:
+            merged.pop(selection_key, None)
         return merged
     if selection_set_report is not None:
         merged.setdefault("final", dict(selection_set_report))
+    if not include_selection_set_result and selection_key not in {"best", "final"}:
+        merged.pop(selection_key, None)
     return merged

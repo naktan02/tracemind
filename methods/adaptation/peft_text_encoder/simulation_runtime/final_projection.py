@@ -15,7 +15,6 @@ from methods.adaptation.peft_text_encoder.projection_artifacts import (
 from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
-from methods.adaptation.peft_text_encoder.training.loops import set_seed
 from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftEncoderModelRuntimeConfig,
     build_peft_text_encoder_with_linear_head_from_config,
@@ -33,6 +32,7 @@ from methods.adaptation.query_text_views.data import build_dataloader
 from methods.adaptation.query_text_views.tokenization import (
     resolve_text_tokenization_cache,
 )
+from methods.adaptation.text_encoder_classifier.query_ssl_training import set_seed
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated.aggregation.base import FederatedAggregationContext
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

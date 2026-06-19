@@ -1,0 +1,43 @@
+import { escapeHtml } from "../../shared/formatting/html.js";
+import { renderRunOptionDetail } from "./run_option_detail.js";
+
+export function renderSelectedRunCard({
+  id,
+  label,
+  detail,
+  peerDetails = null,
+  aliasValue,
+  aliasPlaceholder,
+  aliasDataAttribute,
+  aliasAriaLabel,
+  removeDataAttribute,
+  removeAriaLabel,
+}) {
+  const detailHtml = Array.isArray(peerDetails)
+    ? renderRunOptionDetail(detail, peerDetails)
+    : escapeHtml(detail);
+  return `
+    <article class="selected-run-card alias-run-card">
+      <span class="selected-run-label-wrap">
+        <strong>${escapeHtml(label)}</strong>
+        <span class="selected-run-detail" aria-hidden="true">${detailHtml}</span>
+      </span>
+      <input
+        type="text"
+        ${renderDataAttribute(aliasDataAttribute, id)}
+        value="${escapeHtml(aliasValue ?? "")}"
+        placeholder="${escapeHtml(aliasPlaceholder)}"
+        aria-label="${escapeHtml(aliasAriaLabel)}"
+      />
+      <button
+        type="button"
+        ${renderDataAttribute(removeDataAttribute, id)}
+        aria-label="${escapeHtml(removeAriaLabel)}"
+      >x</button>
+    </article>
+  `;
+}
+
+function renderDataAttribute(name, value) {
+  return `data-${name}="${escapeHtml(value)}"`;
+}

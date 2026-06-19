@@ -33,6 +33,9 @@ from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
     InMemoryRuntimeResourceCache,
     RoundBaseSnapshotCache,
 )
+from scripts.runtime_adapters.federated_server.initial_checkpoint_artifacts import (
+    publish_initial_checkpoint_artifacts_for_request,
+)
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
 )
@@ -80,13 +83,18 @@ def bootstrap_simulation(
 
     initial_model_revision = INITIAL_SIMULATION_MODEL_REVISION
     now = datetime.now(timezone.utc)
+    labels = _category_labels(request)
+    publish_initial_checkpoint_artifacts_for_request(
+        request=request,
+        labels=labels,
+    )
     initial_state = build_initial_shared_state(
         round_runtime_config=request.round_runtime_config,
         model_id=request.model_id,
         model_revision=initial_model_revision,
         training_scope=request.training_scope,
         embedding_dim=0,
-        labels=_category_labels(request),
+        labels=labels,
         updated_at=now,
     )
     run_artifact_writer = RunArtifactWriter()

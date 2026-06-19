@@ -2,38 +2,20 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from fastapi import APIRouter, HTTPException, status
 
-from fastapi import APIRouter, Depends, Request
-
+from agent.src.api.dependencies import ChildSupportCoachServiceDep
 from agent.src.contracts.child_support_contracts import (
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,
+    ChildSupportProactivePromptClaimRequestPayload,
     ChildSupportProactivePromptPayload,
 )
-from agent.src.services.wellbeing.child_support_service import (
-    ChildSupportCoachService,
+from agent.src.features.wellbeing.child_support.service import (
+    ChildSupportReplyUnavailable,
 )
 
 router = APIRouter(prefix="/api/v1/child-support", tags=["child-support"])
-
-
-def get_child_support_coach_service(request: Request) -> ChildSupportCoachService:
-    """app.state에서 ChildSupportCoachService를 읽는다."""
-
-    service = getattr(request.app.state, "child_support_coach_service", None)
-    if service is None:
-        raise RuntimeError(
-            "ChildSupportCoachService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.child_support_coach_service를 설정하세요."
-        )
-    return service
-
-
-ChildSupportCoachServiceDep = Annotated[
-    ChildSupportCoachService,
-    Depends(get_child_support_coach_service),
-]
 
 
 @router.post(
@@ -46,7 +28,13 @@ def create_child_support_message(
 ) -> ChildSupportConversationResponsePayload:
     """아이용 지원 대화 단일 turn 응답을 만든다."""
 
-    return service.create_response(request)
+    try:
+        return service.create_response(request)
+    except ChildSupportReplyUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(
@@ -59,3 +47,16 @@ def get_child_support_proactive_prompt(
     """아이 화면 진입 시 먼저 건넬 말이 필요한지 반환한다."""
 
     return service.build_proactive_prompt()
+
+
+@router.post(
+    "/proactive-prompt/claim",
+    response_model=ChildSupportProactivePromptPayload,
+)
+def claim_child_support_proactive_prompt(
+    request: ChildSupportProactivePromptClaimRequestPayload,
+    service: ChildSupportCoachServiceDep,
+) -> ChildSupportProactivePromptPayload:
+    """선제 발화를 실제 표시 직전에 대화로 claim한다."""
+
+    return service.claim_proactive_prompt(request)

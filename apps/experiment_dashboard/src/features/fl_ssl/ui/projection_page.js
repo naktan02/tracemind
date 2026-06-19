@@ -1,29 +1,37 @@
 import { escapeHtml } from "../../../shared/formatting/html.js";
 import { fillSelect } from "../../../ui/controls/form_controls.js";
-import { algorithmName, dataSourceLabel, labelBudgetLabel, runDescriptor, runId } from "../logic/labels.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
+import {
+  algorithmName,
+  dataSourceLabel,
+  labelBudgetLabel,
+  runDescriptor,
+  runHoverDetail,
+  runId,
+} from "../logic/labels.js";
 import { flProjectionEvalSets, flRowsWithProjection } from "../logic/selectors.js";
 
 export function normalizeFlProjectionSelection(bundle, rows, state) {
   const evalSets = flProjectionEvalSets(bundle, rows);
   if (!evalSets.includes(state.projectionEvalSet)) {
-    state.projectionEvalSet = evalSets.includes("validation") ? "validation" : evalSets[0] ?? "validation";
+    state.projectionEvalSet = evalSets.includes("test") ? "test" : evalSets[0] ?? "test";
     state.projectionRunIds = [];
   }
-  const visibleRunIds = new Set(flRowsWithProjection(bundle, rows, state.projectionEvalSet).map(runId));
-  state.projectionRunIds = state.projectionRunIds.filter((id) => visibleRunIds.has(id));
 }
 
-export function renderFlProjectionPage(elements, rows, state, bundle) {
-  const evalSets = flProjectionEvalSets(bundle, rows);
+export function renderFlProjectionPage(elements, rows, state, bundle, selectionRows = rows) {
+  const evalSets = flProjectionEvalSets(bundle, selectionRows);
   fillSelect(elements.flProjectionEvalFilter, evalSets, state.projectionEvalSet, "eval 없음");
   const candidateRows = flRowsWithProjection(bundle, rows, state.projectionEvalSet);
   const selectedRunIds = new Set(state.projectionRunIds);
+  const peerDetails = candidateRows.map(runHoverDetail);
   elements.flProjectionRunCheckboxes.innerHTML =
     candidateRows.length === 0
       ? `<p class="empty">projection 이미지가 있는 FL run이 없습니다.</p>`
       : candidateRows
           .map((row) => {
             const id = runId(row);
+            const detail = runHoverDetail(row);
             return `
               <label class="run-option">
                 <input
@@ -35,11 +43,12 @@ export function renderFlProjectionPage(elements, rows, state, bundle) {
                   <strong>${escapeHtml(algorithmName(row))}</strong>
                   <small>${escapeHtml(runDescriptor(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
             `;
           })
           .join("");
-  renderGallery(elements, rows, state, bundle);
+  renderGallery(elements, selectionRows, state, bundle);
 }
 
 function renderGallery(elements, rows, state, bundle) {

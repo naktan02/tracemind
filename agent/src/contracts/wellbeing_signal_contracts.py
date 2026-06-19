@@ -54,9 +54,29 @@ class WellbeingSignalConfidence(StrEnum):
 class WellbeingSignalRange(StrEnum):
     """부모용 추이 화면이 요청하는 기간."""
 
+    LAST_1_DAY = "1d"
     LAST_7_DAYS = "7d"
     LAST_14_DAYS = "14d"
     LAST_30_DAYS = "30d"
+
+
+class ParentWellbeingGuidancePayload(BaseModel):
+    """부모 화면이 표시하는 규칙 기반 대응 안내."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    response_priority: str = Field(min_length=1)
+    conversation_starter: str = Field(min_length=1)
+    caution_note: str = Field(min_length=1)
+
+
+DEFAULT_PARENT_WELLBEING_GUIDANCE = ParentWellbeingGuidancePayload(
+    response_priority="짧은 안부 확인부터 시작하세요.",
+    conversation_starter=(
+        "오늘 하루 중 가장 힘들었던 순간이 있었는지 가볍게 물어보세요."
+    ),
+    caution_note="원문을 확인하려 하기보다 현재 필요한 도움을 먼저 물어보세요.",
+)
 
 
 class WellbeingSignalSummaryPayload(BaseModel):
@@ -72,6 +92,9 @@ class WellbeingSignalSummaryPayload(BaseModel):
     trend: WellbeingSignalTrend
     summary: str = Field(min_length=1)
     action_tip: str = Field(min_length=1)
+    parent_guidance: ParentWellbeingGuidancePayload = Field(
+        default_factory=lambda: DEFAULT_PARENT_WELLBEING_GUIDANCE.model_copy()
+    )
     confidence: WellbeingSignalConfidence
     low_data: bool = False
 

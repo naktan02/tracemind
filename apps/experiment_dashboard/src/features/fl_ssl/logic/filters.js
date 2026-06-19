@@ -3,9 +3,12 @@ import { applyFacetedFilters, optionsForAxis } from "../../../shared/filters/fac
 import {
   adapterKind,
   algorithmName,
+  backboneModelLabel,
   dataSourceLabel,
+  initialCheckpointLabel,
   labelBudgetLabel,
   localRegularizerLabel,
+  runCreatedDateLabel,
 } from "./labels.js";
 import { flRoundCountForRun } from "./selectors.js";
 
@@ -18,6 +21,15 @@ export function flFilterAxes(bundle) {
     axis("peft_adapter", "Adapter", (row) => row.peft_adapter_name ?? "-"),
     axis("peft_adapter_rank", "Adapter Rank", (row) => row.peft_adapter_rank ?? "-", (row) => `rank ${row.peft_adapter_rank ?? "-"}`),
     axis("data_pair", "Labeled / Unlabeled", dataSourceLabel),
+    axis("initial_checkpoint", "Initial Checkpoint", initialCheckpointLabel, null, {
+      alwaysVisible: true,
+    }),
+    axis("backbone_model", "Model", backboneModelLabel, null, {
+      alwaysVisible: true,
+    }),
+    axis("created_date", "Run Date", runCreatedDateLabel, null, {
+      alwaysVisible: true,
+    }),
     axis("label_budget", "Label Budget", labelBudgetLabel),
     axis("round_count", "Round Count", (row) => flRoundCountForRun(bundle, row) ?? "-", (row) => `${flRoundCountForRun(bundle, row) ?? "-"} rounds`),
     axis("local_epochs", "Local Epochs", (row) => row.epochs ?? "-", (row) => `${row.epochs ?? "-"} local epochs`),
@@ -29,6 +41,8 @@ export function flFilterAxes(bundle) {
     axis("learning_rate", "Learning Rate", (row) => row.learning_rate ?? "-", (row) => formatMetric(row.learning_rate)),
     axis("classifier_learning_rate", "Classifier LR", (row) => row.classifier_learning_rate ?? "-", (row) => formatMetric(row.classifier_learning_rate)),
     axis("max_train_steps", "Max Steps", (row) => row.max_train_steps ?? "-", (row) => `${row.max_train_steps ?? "-"} steps`),
+    axis("labeled_batch_size", "Labeled Batch", labeledBatchSize, (row) => `labeled batch ${labeledBatchSize(row)}`),
+    axis("unlabeled_batch_size", "Unlabeled Batch", unlabeledBatchSize, (row) => `unlabeled batch ${unlabeledBatchSize(row)}`),
     axis("train_batch_size", "Train Batch", (row) => row.train_batch_size ?? "-", (row) => `batch ${row.train_batch_size ?? "-"}`),
   ];
 }
@@ -39,17 +53,9 @@ export function applyFlFilters(bundle, rows, flState) {
 
 export function pruneFlFilters(bundle, rows, flState) {
   const axes = flFilterAxes(bundle);
-  const visibleAxisIds = new Set(
-    axes
-      .filter(
-        (axisDef) =>
-          optionsForAxis(rows, axisDef, axes, flState.filterAxisIds, flState.filterValues)
-            .length > 1,
-      )
-      .map((axisDef) => axisDef.id),
-  );
+  const existingAxisIds = new Set(axes.map((axisDef) => axisDef.id));
   flState.filterAxisIds = flState.filterAxisIds.filter((axisId) =>
-    visibleAxisIds.has(axisId),
+    existingAxisIds.has(axisId),
   );
   for (const axisId of Object.keys(flState.filterValues)) {
     if (!flState.filterAxisIds.includes(axisId)) {
@@ -73,11 +79,20 @@ export function pruneFlFilters(bundle, rows, flState) {
   }
 }
 
-function axis(id, label, value, labelForValue = null) {
+function axis(id, label, value, labelForValue = null, options = {}) {
   return {
     id,
     label,
     value: (row) => String(value(row)),
     labelForValue: labelForValue ? (row) => labelForValue(row) : null,
+    alwaysVisible: Boolean(options.alwaysVisible),
   };
+}
+
+function labeledBatchSize(row) {
+  return row.labeled_batch_size ?? row.train_batch_size ?? "-";
+}
+
+function unlabeledBatchSize(row) {
+  return row.unlabeled_batch_size ?? "-";
 }

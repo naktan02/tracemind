@@ -5,7 +5,11 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-DEFAULT_AGENT_LOCAL_DB_PATH = Path(__file__).parents[3] / "data" / "agent_local.db"
+from agent.src.config.paths import (
+    DEFAULT_AGENT_DATA_DIR,
+)
+
+DEFAULT_AGENT_LOCAL_DB_PATH = DEFAULT_AGENT_DATA_DIR / "agent_local.db"
 
 
 def connect_agent_local_db(db_path: Path) -> sqlite3.Connection:

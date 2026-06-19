@@ -6,9 +6,6 @@ import torch
 from omegaconf import OmegaConf
 from torch import nn
 
-from methods.adaptation.peft_text_encoder.update.materialization import (
-    PeftEncoderMaterializedState,
-)
 from methods.adaptation.query_text_views.local_training_budget import (
     QuerySslLocalStepPlan,
 )
@@ -19,8 +16,8 @@ from methods.ssl.base import (
 )
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from scripts.support.query_ssl_text_encoder.runners.consistency import (
-    run_consistency_query_ssl_peft_baseline,
-    run_query_ssl_peft_baseline,
+    run_consistency_query_ssl_control,
+    run_query_ssl_control,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -80,7 +77,11 @@ def _build_cfg() -> object:
                     "local_session_runner": (
                         "methods.adaptation.peft_text_encoder.training."
                         "query_ssl_training_session."
-                        "run_query_ssl_peft_encoder_local_session"
+                        "run_central_query_ssl_peft_encoder_session"
+                    ),
+                    "artifact_writer": (
+                        "scripts.support.query_ssl_text_encoder.io.artifacts."
+                        "write_run_artifacts"
                     ),
                     "trainer_version_prefix": "peft",
                 },
@@ -120,7 +121,7 @@ def _build_cfg() -> object:
             "weight_decay": 0.01,
             "max_grad_norm": 1.0,
             "log_every_steps": 10,
-            "output_dir": "runs/run_peft_ssl_control/consistency",
+            "output_dir": "runs/run_query_ssl_control/consistency",
         }
     )
 
@@ -167,25 +168,6 @@ def _patch_central_local_session(
             },
         ),
     )
-    monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency."
-        "extract_peft_encoder_materialized_state",
-        lambda **_kwargs: PeftEncoderMaterializedState(
-            peft_parameters={"adapter.weight": [0.0]},
-            classifier_head_weights={
-                "anxiety": [0.0, 0.0],
-                "depression": [0.0, 0.0],
-                "normal": [0.0, 0.0],
-                "suicidal": [0.0, 0.0],
-            },
-            classifier_head_biases={
-                "anxiety": 0.0,
-                "depression": 0.0,
-                "normal": 0.0,
-                "suicidal": 0.0,
-            },
-        ),
-    )
 
     def _fake_local_session_runner(request):
         captured["local_session_request"] = request
@@ -228,7 +210,7 @@ def _patch_central_local_session(
 
     monkeypatch.setattr(
         "methods.adaptation.peft_text_encoder.training.query_ssl_training_session."
-        "run_query_ssl_peft_encoder_local_session",
+        "run_central_query_ssl_peft_encoder_session",
         _fake_local_session_runner,
     )
 
@@ -265,7 +247,7 @@ def _usb_unlabeled_row(query_id: str, label: str, text: str) -> LabeledQueryRow:
     )
 
 
-def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
+def test_run_query_ssl_control_wires_fixmatch_method_manifest(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -293,11 +275,11 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.io.artifacts.write_run_artifacts",
         _fake_write_run_artifacts,
     )
 
-    outputs = run_query_ssl_peft_baseline(
+    outputs = run_query_ssl_control(
         cfg=_build_cfg(),
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[_usb_unlabeled_row("u1", "depression", "우울해요")],
@@ -350,7 +332,7 @@ def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
     assert runtime_metrics["trainable_param_ratio"] == 0.5
 
 
-def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
+def test_run_query_ssl_control_uses_methods_descriptor(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -369,14 +351,14 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.io.artifacts.write_run_artifacts",
         lambda **_kwargs: {
             "output_dir": "runs/fake_fixmatch",
             "report_json": "runs/fake_fixmatch/report.json",
         },
     )
 
-    run_query_ssl_peft_baseline(
+    run_query_ssl_control(
         cfg=_build_cfg(),
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[_usb_unlabeled_row("u1", "depression", "우울해요")],
@@ -391,7 +373,7 @@ def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
     assert query_ssl_config.parameters["require_multiview"] is True
 
 
-def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
+def test_run_query_ssl_control_wires_flexmatch_descriptor(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -426,14 +408,14 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.io.artifacts.write_run_artifacts",
         lambda **_kwargs: {
             "output_dir": "runs/fake_flexmatch",
             "report_json": "runs/fake_flexmatch/report.json",
         },
     )
 
-    run_query_ssl_peft_baseline(
+    run_query_ssl_control(
         cfg=cfg,
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[
@@ -454,7 +436,139 @@ def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
     assert local_request.unlabeled_rows[1]["aug_1"] == "fr::괜찮아요"
 
 
-def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
+def test_run_query_ssl_control_wires_full_text_encoder_surface(
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+    cfg = _build_cfg()
+    cfg.trainable_surface = OmegaConf.create(
+        {
+            "name": "full_text_encoder",
+            "trainable_state": "full_encoder_and_classifier_head",
+            "central_ssl": {
+                "model_builder": (
+                    "methods.adaptation.full_text_encoder.training.modeling.build_model"
+                ),
+                "local_session_runner": (
+                    "methods.adaptation.full_text_encoder.training."
+                    "query_ssl_training_session."
+                    "run_query_ssl_full_text_encoder_local_session"
+                ),
+                "artifact_writer": (
+                    "scripts.support.query_ssl_text_encoder.io."
+                    "full_text_encoder_artifacts."
+                    "write_full_text_encoder_run_artifacts"
+                ),
+                "trainer_version_prefix": "full_text_encoder",
+                "training_backend_name": "full_text_encoder_trainer",
+            },
+        }
+    )
+    cfg.query_ssl_method = OmegaConf.create(
+        {
+            "name": "flexmatch_usb_v1",
+            "algorithm_name": "flexmatch",
+            "temperature": 0.5,
+            "p_cutoff": 0.95,
+            "hard_label": True,
+            "thresh_warmup": True,
+            "lambda_u": 1.0,
+            "supervised_loss_weight": 1.0,
+            "unlabeled_batch_size": 4,
+            "require_multiview": True,
+        }
+    )
+    session_model = _DummyFeatureModel()
+    tokenizer = _DummyTokenizer()
+
+    monkeypatch.setattr(
+        "methods.adaptation.full_text_encoder.training.modeling.build_model",
+        lambda **_kwargs: (
+            session_model,
+            tokenizer,
+            {
+                "backbone_model_id": "dummy-backbone",
+                "backbone_revision": "main",
+                "parameter_counts": {"trainable": 20, "total": 20},
+            },
+        ),
+    )
+
+    def _fake_full_session_runner(request):
+        captured["local_session_request"] = request
+        algorithm = resolve_query_ssl_algorithm_descriptor(
+            request.query_ssl_config.algorithm_name
+        ).build_algorithm(request.query_ssl_config.parameters)
+        return SimpleNamespace(
+            model=session_model,
+            tokenizer=tokenizer,
+            algorithm=algorithm,
+            history=({"epoch": 1, "train_loss": 0.1},),
+            best_selection_report={
+                "loss": 0.2,
+                "accuracy_top_1": 0.75,
+                "rows_total": 2,
+                "mean_true_label_probability": 0.7,
+                "mean_top_1_probability": 0.8,
+                "mean_margin_top1_top2": 0.3,
+                "confusion_matrix": {},
+                "per_category": {},
+            },
+        )
+
+    def _fake_full_artifact_writer(**kwargs):
+        captured["artifact_writer_backbone"] = kwargs["backbone_summary"]
+        return {
+            "output_dir": "runs/fake_full_flexmatch",
+            "report_json": "runs/fake_full_flexmatch/report.json",
+        }
+
+    monkeypatch.setattr(
+        "methods.adaptation.full_text_encoder.training."
+        "query_ssl_training_session.run_query_ssl_full_text_encoder_local_session",
+        _fake_full_session_runner,
+    )
+    monkeypatch.setattr(
+        "scripts.support.query_ssl_text_encoder.io.full_text_encoder_artifacts."
+        "write_full_text_encoder_run_artifacts",
+        _fake_full_artifact_writer,
+    )
+    monkeypatch.setattr(
+        "scripts.support.query_ssl_text_encoder.text_encoder_run_context.evaluate_text_encoder_classifier",
+        lambda **_kwargs: {
+            "loss": 0.1,
+            "accuracy_top_1": 0.8,
+            "rows_total": 2,
+            "mean_true_label_probability": 0.75,
+            "mean_top_1_probability": 0.85,
+            "mean_margin_top1_top2": 0.4,
+            "confusion_matrix": {},
+            "per_category": {},
+        },
+    )
+
+    outputs = run_query_ssl_control(
+        cfg=cfg,
+        train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
+        unlabeled_rows=[
+            _usb_unlabeled_row("u1", "depression", "우울해요"),
+            _usb_unlabeled_row("u2", "normal", "괜찮아요"),
+        ],
+        eval_rows_by_name={
+            "validation": [_labeled_row("v1", "anxiety", "검증")],
+            "test": [_labeled_row("t1", "depression", "테스트")],
+        },
+    )
+
+    assert outputs["output_dir"] == "runs/fake_full_flexmatch"
+    local_request = captured["local_session_request"]
+    assert local_request.model is session_model
+    assert local_request.training_task.training_scope == "full_encoder"
+    assert local_request.query_ssl_config.algorithm_name == "flexmatch"
+    assert captured["artifact_writer_backbone"]["parameter_counts"]["trainable"] == 20
+
+
+def test_run_query_ssl_control_wires_comatch_descriptor(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -498,14 +612,14 @@ def test_run_query_ssl_peft_baseline_wires_comatch_descriptor(
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.io.artifacts.write_run_artifacts",
         lambda **_kwargs: {
             "output_dir": "runs/fake_comatch",
             "report_json": "runs/fake_comatch/report.json",
         },
     )
 
-    run_query_ssl_peft_baseline(
+    run_query_ssl_control(
         cfg=cfg,
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[
@@ -563,7 +677,7 @@ def test_query_ssl_peft_runner_rejects_unsupported_descriptor_capability(
     )
 
     try:
-        run_consistency_query_ssl_peft_baseline(
+        run_consistency_query_ssl_control(
             cfg=cfg,
             descriptor=descriptor,
             train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
@@ -579,7 +693,7 @@ def test_query_ssl_peft_runner_rejects_unsupported_descriptor_capability(
         raise AssertionError("Unsupported descriptor capability should fail early.")
 
 
-def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmentation(
+def test_run_query_ssl_control_uses_pseudolabel_weak_text_without_augmentation(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -620,11 +734,11 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
         },
     )
     monkeypatch.setattr(
-        "scripts.support.query_ssl_text_encoder.runners.consistency.write_run_artifacts",
+        "scripts.support.query_ssl_text_encoder.io.artifacts.write_run_artifacts",
         _fake_write_run_artifacts,
     )
 
-    outputs = run_query_ssl_peft_baseline(
+    outputs = run_query_ssl_control(
         cfg=cfg,
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[_labeled_row("u1", "depression", "우울해요")],
@@ -650,7 +764,7 @@ def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmenta
     assert "query_ssl_augmenter" not in captured["extra_manifest"]
 
 
-def test_run_query_ssl_peft_baseline_rejects_unlabeled_rows_without_usb_candidates_when_precomputed_only() -> (  # noqa: E501
+def test_run_query_ssl_control_rejects_unlabeled_rows_without_usb_candidates_when_precomputed_only() -> (  # noqa: E501
     None
 ):
     cfg = _build_cfg()
@@ -665,7 +779,7 @@ def test_run_query_ssl_peft_baseline_rejects_unlabeled_rows_without_usb_candidat
     unlabeled_rows = [_labeled_row("u1", "depression", "우울해요")]
 
     try:
-        run_query_ssl_peft_baseline(
+        run_query_ssl_control(
             cfg=cfg,
             train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
             unlabeled_rows=unlabeled_rows,

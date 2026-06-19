@@ -129,7 +129,7 @@ def test_training_update_submission_parses_peft_classifier_update_payload() -> N
     submission = make_training_update_submission(
         envelope=_envelope(
             payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
-            training_scope=TrainingScope.ADAPTER_ONLY,
+            training_scope=TrainingScope.ADAPTER_AND_HEAD,
         ),
         update_payload=update_payload,
     )
@@ -140,3 +140,4 @@ def test_training_update_submission_parses_peft_classifier_update_payload() -> N
 
     assert parsed.update_payload.adapter_kind == "peft_classifier"
     assert parsed.envelope.payload_format == "peft_classifier_update"
+    assert parsed.envelope.training_scope == TrainingScope.ADAPTER_AND_HEAD

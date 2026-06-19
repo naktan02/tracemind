@@ -2,22 +2,46 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from agent.src.contracts.wellbeing_signal_contracts import WellbeingSignalRange
+import pytest
+
+from agent.src.contracts.wellbeing_signal_contracts import (
+    WellbeingSignalConfidence,
+    WellbeingSignalLevel,
+    WellbeingSignalRange,
+    WellbeingSignalSummaryPayload,
+    WellbeingSignalTrend,
+)
+from agent.src.features.captured_text.storage.records import CapturedTextRecord
+from agent.src.features.captured_text.storage.repository import CapturedTextRepository
+from agent.src.features.wellbeing.range_window import cutoff_for_range
+from agent.src.features.wellbeing.signal.projection_service import (
+    WellbeingSignalProjectionService,
+)
+from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.signal.timeseries_service import (
+    WellbeingTimeseriesService,
+)
+from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
+    WellbeingSnapshotRepository,
+)
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
-    WellbeingSnapshotRepository,
-)
-from agent.src.services.wellbeing.projection_service import (
-    WellbeingSignalProjectionService,
-)
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
 from shared.src.domain.entities.inference.events import AnalysisEvent
+
+
+def test_wellbeing_range_cutoff_uses_last_24_hours_for_one_day() -> None:
+    anchor = datetime(2026, 6, 13, 9, tzinfo=timezone.utc)
+
+    assert cutoff_for_range(anchor, WellbeingSignalRange.LAST_1_DAY) == anchor - (
+        timedelta(days=1)
+    )
+    assert cutoff_for_range(anchor, WellbeingSignalRange.LAST_7_DAYS) == anchor - (
+        timedelta(days=6)
+    )
 
 
 def _build_analysis_event(
@@ -87,6 +111,207 @@ def test_projection_service_replays_analysis_events_into_snapshots(
         )
         == 3
     )
+
+
+def test_projection_service_skips_replay_when_snapshots_are_current(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    analysis_event_repository = AnalysisEventRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+    projection_service = WellbeingSignalProjectionService(
+        analysis_event_repository=analysis_event_repository,
+        snapshot_repository=snapshot_repository,
+        lookback_days=60,
+    )
+    analysis_event_repository.save(
+        _build_analysis_event(
+            query_id="q1",
+            occurred_at=datetime(2026, 4, 24, 9, tzinfo=timezone.utc),
+            score=0.73,
+        )
+    )
+    projection_service.refresh_from_runtime()
+
+    def fail_get_recent(*args, **kwargs):
+        raise AssertionError("current snapshots should not replay analysis events")
+
+    monkeypatch.setattr(AnalysisEventRepository, "get_recent", fail_get_recent)
+
+    projection_service.refresh_from_runtime()
+
+
+def test_projection_service_replays_when_projection_version_is_legacy(
+    tmp_path: Path,
+) -> None:
+    analysis_event_repository = AnalysisEventRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+    projection_service = WellbeingSignalProjectionService(
+        analysis_event_repository=analysis_event_repository,
+        snapshot_repository=snapshot_repository,
+        lookback_days=60,
+    )
+    occurred_at = datetime(2026, 4, 24, 9, tzinfo=timezone.utc)
+    analysis_event_repository.save(
+        _build_analysis_event(query_id="q1", occurred_at=occurred_at, score=0.73)
+    )
+    snapshot_repository.save_summary(
+        WellbeingSignalSummaryPayload(
+            computed_at=occurred_at,
+            signal_score=1.0,
+            signal_level=WellbeingSignalLevel.LOW,
+            signal_label="안정",
+            trend=WellbeingSignalTrend.UNKNOWN,
+            summary="legacy snapshot",
+            action_tip="legacy tip",
+            confidence=WellbeingSignalConfidence.LOW,
+            low_data=True,
+        )
+    )
+
+    projection_service.refresh_from_runtime()
+
+    latest_summary = snapshot_repository.load_latest_summary()
+    assert latest_summary is not None
+    assert latest_summary.summary != "legacy snapshot"
+    assert (
+        snapshot_repository.load_latest_projection_version()
+        == "wellbeing_projection.evidence_signal.v2"
+    )
+
+
+def test_projection_service_uses_direct_risk_source_text_as_evidence(
+    tmp_path: Path,
+) -> None:
+    analysis_event_repository = AnalysisEventRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    captured_text_repository = CapturedTextRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+    projection_service = WellbeingSignalProjectionService(
+        analysis_event_repository=analysis_event_repository,
+        snapshot_repository=snapshot_repository,
+        captured_text_repository=captured_text_repository,
+        lookback_days=60,
+    )
+    occurred_at = datetime(2026, 6, 14, 9, tzinfo=timezone.utc)
+    captured_text_repository.save(
+        CapturedTextRecord(
+            event_id="captured-risk-1",
+            occurred_at=occurred_at,
+            received_at=occurred_at,
+            text="자살 어떻게 할 수 있지",
+            locale="ko",
+            source_type="browser",
+            surface_type="rich_editor",
+        )
+    )
+    analysis_event_repository.save(
+        AnalysisEvent(
+            query_id="captured-risk-1",
+            occurred_at=occurred_at,
+            translated_text="How can I commit suicide?",
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.80, "suicidal": 0.09},
+        ),
+        source_event_id="captured-risk-1",
+        scorer_name="test-scorer",
+        model_revision="test-revision",
+    )
+
+    projection_service.refresh_from_runtime()
+
+    latest_summary = snapshot_repository.load_latest_summary()
+    assert latest_summary is not None
+    assert latest_summary.signal_level == WellbeingSignalLevel.VERY_HIGH
+    assert latest_summary.signal_score == 95.0
+    assert latest_summary.low_data is False
+    assert "혼자 두지 말고" in latest_summary.parent_guidance.response_priority
+    assert "안전한 곳" in latest_summary.parent_guidance.conversation_starter
+
+
+def test_projection_service_keeps_recent_direct_risk_from_dropping_to_low(
+    tmp_path: Path,
+) -> None:
+    analysis_event_repository = AnalysisEventRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    captured_text_repository = CapturedTextRepository(
+        db_path=tmp_path / "analysis_events.db"
+    )
+    snapshot_repository = WellbeingSnapshotRepository(db_path=tmp_path / "wellbeing.db")
+    projection_service = WellbeingSignalProjectionService(
+        analysis_event_repository=analysis_event_repository,
+        snapshot_repository=snapshot_repository,
+        captured_text_repository=captured_text_repository,
+        lookback_days=60,
+    )
+    direct_risk_at = datetime(2026, 6, 14, 9, tzinfo=timezone.utc)
+    followup_at = datetime(2026, 6, 14, 9, 5, tzinfo=timezone.utc)
+    captured_text_repository.save(
+        CapturedTextRecord(
+            event_id="captured-risk-1",
+            occurred_at=direct_risk_at,
+            received_at=direct_risk_at,
+            text="죽고싶어",
+            locale="ko",
+            source_type="browser",
+            surface_type="rich_editor",
+        )
+    )
+    captured_text_repository.save(
+        CapturedTextRecord(
+            event_id="captured-followup-1",
+            occurred_at=followup_at,
+            received_at=followup_at,
+            text="내 상황 어떤지 알아?",
+            locale="ko",
+            source_type="browser",
+            surface_type="rich_editor",
+        )
+    )
+    analysis_event_repository.save(
+        AnalysisEvent(
+            query_id="captured-risk-1",
+            occurred_at=direct_risk_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.01, "suicidal": 0.02},
+        ),
+        source_event_id="captured-risk-1",
+        scorer_name="test-scorer",
+        model_revision="test-revision",
+    )
+    analysis_event_repository.save(
+        AnalysisEvent(
+            query_id="captured-followup-1",
+            occurred_at=followup_at,
+            translated_text=None,
+            embedding_model_id="test-embedding",
+            translation_model_id=None,
+            category_scores={"normal": 0.90, "suicidal": 0.01},
+        ),
+        source_event_id="captured-followup-1",
+        scorer_name="test-scorer",
+        model_revision="test-revision",
+    )
+
+    projection_service.refresh_from_runtime()
+
+    latest_summary = snapshot_repository.load_latest_summary()
+    assert latest_summary is not None
+    assert latest_summary.computed_at == followup_at
+    assert latest_summary.signal_level == WellbeingSignalLevel.VERY_HIGH
+    assert latest_summary.signal_score == 95.0
+    assert "직접적인 자해나 자살 관련 표현 이후" in latest_summary.summary
 
 
 def test_wellbeing_services_refresh_projection_before_read(

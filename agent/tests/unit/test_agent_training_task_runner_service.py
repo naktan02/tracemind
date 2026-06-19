@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import MagicMock
 
-from agent.src.services.training_runtime.current_task.agent_training_task_runner_service import (  # noqa: E501
-    AgentTrainingTaskRunnerService,
-    AgentTrainingTaskRunRequest,
-)
-from agent.src.services.training_runtime.current_task.result import (
+from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
+from agent.src.features.training_runtime.current_task.result import (
     TrainingTaskRunResult,
     TrainingTaskRunStatus,
 )
+from agent.src.features.training_runtime.current_task.runner import (  # noqa: E501
+    AgentTrainingTaskRunnerService,
+    AgentTrainingTaskRunRequest,
+)
 from shared.src.contracts.adapter_contract_families.factories import (
     make_peft_classifier_state_payload,
+)
+from shared.src.contracts.agent_runtime_profile_contracts import (
+    make_agent_runtime_profile_payload,
 )
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.contracts.training_contracts import (
@@ -115,6 +121,7 @@ def _build_service(
     shared_adapter_runtime_service: MagicMock,
     shared_adapter_sync_service: MagicMock,
     round_client_factory: MagicMock,
+    runtime_profile_repository: RuntimeProfileRepository | None = None,
     query_ssl_task_service: object | None = None,
 ) -> AgentTrainingTaskRunnerService:
     kwargs = {}
@@ -125,6 +132,7 @@ def _build_service(
         shared_adapter_runtime_service=shared_adapter_runtime_service,
         shared_adapter_sync_service=shared_adapter_sync_service,
         round_client_factory=round_client_factory,
+        runtime_profile_repository=runtime_profile_repository,
         **kwargs,
     )
 
@@ -364,6 +372,61 @@ def test_runner_rejects_legacy_non_query_ssl_task_without_runtime_contract() -> 
 
     assert response.status == TrainingTaskRunStatus.UNSUPPORTED_RUNTIME
     shared_adapter_sync_service.pull_current.assert_not_called()
+
+
+def test_runner_rejects_task_when_active_runtime_profile_is_stale(
+    tmp_path: Path,
+) -> None:
+    repository = RuntimeProfileRepository(db_path=tmp_path / "agent_local.db")
+    repository.save_profile(
+        make_agent_runtime_profile_payload(
+            profile_id="profile_peft_classifier_lora",
+            profile_revision="runtime_rev_001",
+            model_id="mixedbread-ai/mxbai-embed-large-v1",
+            model_revision="stale_runtime_rev",
+            runtime_family="peft_classifier",
+            adapter_mechanism="lora",
+            scorer_backend_name="classifier_head_logits",
+            embedding_backend="transformers_mxbai",
+            embedding_model_id="mixedbread-ai/mxbai-embed-large-v1",
+            training_scope="adapter_and_head",
+            required_state_kind="peft_classifier_state.v2",
+            updated_at=datetime(2026, 6, 13, tzinfo=timezone.utc),
+        ),
+        source="server",
+        activate=True,
+    )
+    repo = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    active_manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_query_ssl",
+        artifact_ref="/server/state/rev_query_ssl.json",
+    )
+    active_state = _build_peft_state(model_revision="rev_query_ssl")
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
+    shared_adapter_runtime_service.get_active_state.return_value = active_state
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_query_ssl_task_payload()
+    round_client_factory = MagicMock(return_value=round_client)
+    query_ssl_task_service = MagicMock()
+    service = _build_service(
+        repo=repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+        runtime_profile_repository=repository,
+        query_ssl_task_service=query_ssl_task_service,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == TrainingTaskRunStatus.STALE_RUNTIME_PROFILE
+    assert "active runtime profile model_revision" in response.message
+    query_ssl_task_service.run_current_task.assert_not_called()
 
 
 def _fedmatch_capability_plan_payload() -> dict[str, object]:

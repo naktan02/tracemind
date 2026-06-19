@@ -45,8 +45,15 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.run.unlabeled_dataset_name == "szegeelim_general4"
     assert records.run.validation_dataset_name is None
     assert records.run.test_dataset_name == "ourafla_reddit"
+    assert records.run.label_budget_name == "pc1024"
+    assert records.run.label_budget_count_per_class == 1024
+    assert records.run.train_batch_size == 12
+    assert records.run.labeled_batch_size == 12
+    assert records.run.unlabeled_batch_size == 24
+    assert records.run.eval_batch_size == 32
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs"
+    assert records.run.backbone_model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert records.run.peft_adapter_name == "lora"
     assert records.run.peft_adapter_rank == 8
     assert records.run.peft_adapter_alpha == 16
@@ -80,6 +87,41 @@ def test_load_result_index_records_keeps_peft_track(
     assert records.run.track == "central_peft_ssl"
     assert records.run.method_family == "peft_classifier"
     assert records.run.method_name == "fixmatch"
+
+
+def test_load_result_index_records_recognizes_peft_text_encoder_ssl_path(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_peft_text_encoder_ssl_report(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.track == "central_peft_ssl"
+    assert records.run.method_family == "peft_classifier"
+    assert records.run.method_name == "fixmatch"
+    assert records.run.initial_checkpoint_name == "none"
+
+
+def test_load_result_index_records_derives_supervised_selection_from_manifest(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_supervised_report_without_selection_path(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.track == "central_peft_supervised"
+    assert records.run.method_family == "peft_classifier"
+    assert records.run.method_name == "supervised"
+    assert records.run.selection_slug == (
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit_labels_pc100"
+    )
+    assert records.run.labeled_dataset_name == "szegeelim_general4"
+    assert records.run.unlabeled_dataset_name == "ourafla_reddit"
+    assert records.run.validation_dataset_name == "ourafla_reddit"
+    assert records.run.test_dataset_name == "ourafla_reddit"
+    assert records.run.label_budget_name == "pc100"
+    assert records.run.label_budget_count_per_class == 100
 
 
 def test_load_result_index_records_keeps_legacy_peft_entrypoint_track(
@@ -129,6 +171,14 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
     assert bundle["filters"]["methods"] == ["fixmatch"]
     assert bundle["filters"]["run_control_budget_names"] == ["main"]
     assert bundle["filters"]["run_control_output_dirs"] == ["runs"]
+    assert bundle["filters"]["initial_checkpoints"] == ["none"]
+    assert bundle["filters"]["created_dates"] == ["2026-05-13"]
+    assert bundle["filters"]["label_budgets"] == ["pc1024"]
+    assert bundle["filters"]["label_budget_counts_per_class"] == [1024]
+    assert bundle["filters"]["train_batch_sizes"] == [12]
+    assert bundle["filters"]["labeled_batch_sizes"] == [12]
+    assert bundle["filters"]["unlabeled_batch_sizes"] == [24]
+    assert bundle["filters"]["eval_batch_sizes"] == [32]
     assert bundle["runs"][0]["selection_slug"] == (
         "labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit"
     )
@@ -185,6 +235,11 @@ def test_result_index_schema_migration_adds_run_control_columns(
     assert "peft_adapter_rank" in columns
     assert "peft_adapter_parameters_json" in columns
     assert "update_family_name" in columns
+    assert "label_budget_name" in columns
+    assert "label_budget_count_per_class" in columns
+    assert "labeled_batch_size" in columns
+    assert "unlabeled_batch_size" in columns
+    assert "backbone_model_id" in columns
 
 
 def test_load_result_index_records_normalizes_fl_ssl_report_shape(
@@ -209,11 +264,16 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.labeled_dataset_name == "ourafla_reddit"
     assert records.run.unlabeled_dataset_name == "ourafla_reddit"
     assert records.run.seed == 42
+    assert records.run.train_batch_size == 16
+    assert records.run.labeled_batch_size == 16
+    assert records.run.unlabeled_batch_size == 24
     assert records.run.client_count == 10
     assert records.run.round_budget == 50
     assert records.run.completed_rounds == 50
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs/fl_ssl"
+    assert records.run.initial_checkpoint_name == "central_seed_20260612"
+    assert records.run.backbone_model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert records.run.total_row_exposure_count == 40960
     assert records.run.labeled_row_exposure_count == 405
     assert records.run.unlabeled_row_exposure_count == 40555
@@ -235,6 +295,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.peft_adapter_dropout == 0.1
     assert records.run.peft_adapter_target_modules == "all-linear"
     assert records.run.peft_adapter_parameters_json == PEFT_ADAPTER_PARAMETERS_JSON
+    assert records.run.backbone_model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert records.run.embedding_backend == "transformers_mxbai"
     assert records.run.embedding_device == "cuda"
     assert records.eval_metrics[1].eval_set == "final_validation"
@@ -243,6 +304,39 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.confusion_matrix_cells[0].actual_category == "anxiety"
     assert records.artifacts[0].artifact_kind == "fl_ssl_report"
     assert records.artifacts[1].artifact_kind == "fl_client_split_manifest"
+
+
+def test_load_result_index_records_infers_fl_label_budget_from_source_path(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_fl_ssl_report(tmp_path)
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    fl_data_source = payload["protocol"]["fl_data_source"]
+    fl_data_source["split_id"] = None
+    fl_data_source["source_jsonl"] = {
+        "labeled": (
+            "data/datasets/szegeelim_mental_health/views/"
+            "labeled1024_per_class_seed42_v1/"
+            "backtranslation_nllb_en_de_fr_usb_v1/"
+            "labeled_train.with_views.jsonl"
+        )
+    }
+    fl_data_source["source_selection"] = {
+        "labeled": "szegeelim_general4",
+        "unlabeled": "ourafla_reddit",
+        "validation": "ourafla_reddit",
+        "test": "ourafla_reddit",
+    }
+    report_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.selection_slug == (
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "test-ourafla_reddit_labels_pc1024"
+    )
+    assert records.run.label_budget_name == "pc1024"
+    assert records.run.label_budget_count_per_class == 1024
 
 
 def test_load_result_index_records_reads_peft_classifier_objective(
@@ -418,8 +512,17 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["fl_descriptors"] == []
     assert bundle["filters"]["run_control_budget_names"] == ["main"]
     assert bundle["filters"]["run_control_output_dirs"] == ["runs/fl_ssl"]
+    assert bundle["filters"]["initial_checkpoints"] == ["central_seed_20260612"]
+    assert bundle["filters"]["backbone_model_ids"] == [
+        "mixedbread-ai/mxbai-embed-large-v1"
+    ]
+    assert bundle["filters"]["created_dates"] == ["2026-05-17"]
     assert bundle["filters"]["client_counts"] == [10]
     assert bundle["filters"]["round_budgets"] == [50]
+    assert bundle["filters"]["train_batch_sizes"] == [16]
+    assert bundle["filters"]["labeled_batch_sizes"] == [16]
+    assert bundle["filters"]["unlabeled_batch_sizes"] == [24]
+    assert bundle["filters"]["eval_batch_sizes"] == []
     assert bundle["filters"]["shard_alphas"] == [0.3]
     assert bundle["filters"]["payload_adapter_kinds"] == ["peft_classifier"]
     assert bundle["filters"]["peft_adapter_names"] == ["lora"]
@@ -437,6 +540,9 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["embedding_devices"] == ["cuda"]
     assert bundle["filters"]["local_trainer_devices"] == ["cuda"]
     assert bundle["fl_ssl_runs"][0]["macro_f1"] == 0.78
+    assert bundle["fl_ssl_runs"][0]["initial_checkpoint_name"] == (
+        "central_seed_20260612"
+    )
     assert bundle["fl_ssl_runs"][0]["worst_client_macro_f1"] == 0.41
     assert bundle["fl_ssl_runs"][0]["expected_calibration_error"] == 0.12
     assert bundle["fl_ssl_runs"][0]["labeled_row_exposure_count"] == 405
@@ -542,6 +648,65 @@ def _write_peft_report(tmp_path: Path) -> Path:
     projection_dir.mkdir(parents=True, exist_ok=True)
     payload = _sample_report(projection_dir)
     payload["schema_version"] = "central_peft_classifier_eval.v1"
+    report_path.write_text(
+        json.dumps(payload, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _write_peft_text_encoder_ssl_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "central"
+        / "ssl"
+        / "peft_text_encoder"
+        / ("labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit")
+        / "fixmatch_usb_v1"
+        / "peft_fixmatch_2026_06_16_031154"
+        / "reports"
+        / "report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    projection_dir = report_path.parent.parent / "projections"
+    projection_dir.mkdir(parents=True, exist_ok=True)
+    payload = _sample_report(projection_dir)
+    payload["schema_version"] = "central_peft_classifier_eval.v1"
+    payload["trainer_version"] = "peft_fixmatch_2026_06_16_031154"
+    payload["manifest"]["trainer_version"] = "peft_fixmatch_2026_06_16_031154"
+    report_path.write_text(
+        json.dumps(payload, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _write_supervised_report_without_selection_path(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "central"
+        / "supervised"
+        / "peft_classifier"
+        / "peft_clf_2026_06_15_031353"
+        / "reports"
+        / "report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    projection_dir = report_path.parent.parent / "projections"
+    projection_dir.mkdir(parents=True, exist_ok=True)
+    payload = _sample_report(projection_dir)
+    payload["trainer_version"] = "peft_clf_2026_06_15_031353"
+    manifest = payload["manifest"]
+    manifest["trainer_version"] = "peft_clf_2026_06_15_031353"
+    manifest.pop("query_ssl_method")
+    manifest["train_jsonl"] = (
+        "data/datasets/fl_client_splits/shared_client_labeled/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit_labels_pc100/"
+        "shared_client_labeled.jsonl"
+    )
     report_path.write_text(
         json.dumps(payload, indent=2) + "\n",
         encoding="utf-8",
@@ -775,7 +940,10 @@ def _sample_report(projection_dir: Path) -> dict:
         "trainer_version": "peft_fixmatch_2026_05_13_143419",
         "manifest": {
             "trainer_version": "peft_fixmatch_2026_05_13_143419",
-            "train_jsonl": "data/datasets/source/labeled.jsonl",
+            "train_jsonl": (
+                "data/datasets/ourafla_mental_health/query_ssl/"
+                "labeled1024_per_class_seed42_v1/labeled_train.jsonl"
+            ),
             "eval_sets": {
                 "validation": "data/datasets/source/validation.jsonl",
             },
@@ -794,6 +962,7 @@ def _sample_report(projection_dir: Path) -> dict:
             "classifier_learning_rate": 0.0002,
             "categories": ["anxiety", "normal"],
             "backbone": {
+                "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
                 "peft_adapter_config": {
                     "adapter_name": "lora",
                     "rank": 8,
@@ -850,6 +1019,10 @@ def _sample_report(projection_dir: Path) -> dict:
             "query_ssl_method": {
                 "preset_name": "fixmatch_usb_v1",
                 "algorithm_name": "fixmatch",
+                "parameters": {
+                    "unlabeled_batch_size": 24,
+                },
+                "unlabeled_batch_size": 24,
             },
             "projection_artifacts": {
                 "enabled": True,
@@ -1046,6 +1219,27 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
                 "update_family_name": "peft_text_encoder",
                 "aggregation_backend_name": "fedavg",
             },
+            "initial_checkpoint": {
+                "metadata_status": "recorded",
+                "preset_name": "required",
+                "mode": "required",
+                "source": "manifest",
+                "resolved_kind": "central_peft_classifier_checkpoint",
+                "manifest_path": "runs/central/supervised/seed/manifest.json",
+                "reference_id": "central_seed_20260612",
+                "adapter_dir": "runs/central/supervised/seed/adapter",
+                "classifier_path": (
+                    "runs/central/supervised/seed/classifier_head.safetensors"
+                ),
+                "peft_adapter_artifact_ref": (
+                    "server-aggregate://initial-checkpoint/central_seed_20260612/"
+                    "peft-adapter-state"
+                ),
+                "classifier_head_artifact_ref": (
+                    "server-aggregate://initial-checkpoint/central_seed_20260612/"
+                    "classifier-head-state"
+                ),
+            },
             "ssl_method": {
                 "metadata_status": "not_applicable",
                 "reason": "manual_composition",
@@ -1064,6 +1258,7 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
             "objective": {
                 "query_ssl.method_name": "fixmatch_usb_v1",
                 "query_ssl.algorithm_name": "fixmatch",
+                "query_ssl.unlabeled_batch_size": 24,
                 "peft_classifier.peft_adapter_name": "lora",
                 "peft_classifier.rank": 8,
                 "peft_classifier.alpha": 16,

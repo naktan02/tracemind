@@ -1,0 +1,8 @@
+# @package fixed_feature_estimator
+
+name: logistic_regression
+c: 1.0
+max_iter: 1000
+solver: lbfgs
+class_weight: balanced
+random_state: 42

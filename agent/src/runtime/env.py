@@ -1,0 +1,34 @@
+"""Agent runtime 환경값 정규화."""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Mapping
+
+FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV = "FAMILY_EXTENSION_ALLOWED_ORIGINS"
+RUNTIME_PROFILE_SERVER_BASE_URL_ENV = "TRACEMIND_AGENT_RUNTIME_PROFILE_SERVER_BASE_URL"
+DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS = (
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+)
+
+
+def load_family_extension_allowed_origins_from_env(
+    environ: Mapping[str, str] | None = None,
+) -> tuple[str, ...]:
+    """family_extension dev server가 접근할 수 있는 origin 목록을 읽는다."""
+
+    effective_environ = os.environ if environ is None else environ
+    raw_value = effective_environ.get(FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV, "")
+    origins = tuple(origin.strip() for origin in raw_value.split(",") if origin.strip())
+    return origins or DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS
+
+
+def load_runtime_profile_server_base_url_from_env(
+    environ: Mapping[str, str] | None = None,
+) -> str | None:
+    """startup runtime profile sync에 사용할 중앙 서버 URL을 읽는다."""
+
+    effective_environ = os.environ if environ is None else environ
+    value = effective_environ.get(RUNTIME_PROFILE_SERVER_BASE_URL_ENV, "").strip()
+    return value.rstrip("/") or None

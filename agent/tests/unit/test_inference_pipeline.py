@@ -10,17 +10,28 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from agent.src.features.inference.pipeline_factory import (
+    AGENT_SCORING_BACKEND_ENV,
+    build_default_pipeline_service,
+    build_pipeline_service_from_runtime_profile,
+)
+from agent.src.features.inference.pipeline_service import (
+    InferencePipelineService,
+)
+from agent.src.features.language.preprocess_service import PreprocessService
+from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
 from agent.src.infrastructure.repositories.analysis_event_repository import (
     AnalysisEventRepository,
 )
-from agent.src.services.inference.pipeline_factory import (
-    AGENT_SCORING_BACKEND_ENV,
-    build_default_pipeline_service,
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    build_classifier_head_state_tensor_artifact,
 )
-from agent.src.services.inference.pipeline_service import (
-    InferencePipelineService,
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_peft_classifier_state_payload,
 )
-from agent.src.services.language.preprocess_service import PreprocessService
+from shared.src.contracts.agent_runtime_profile_contracts import (
+    make_agent_runtime_profile_payload,
+)
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.domain.entities.inference.events import AnalysisEvent, QueryEvent
 
@@ -206,6 +217,84 @@ def test_repo_drops_legacy_confidence_kind_column(tmp_path: Path) -> None:
     assert score_rows == [("q1", "anxiety", 0.9)]
 
 
+def test_repo_repairs_category_scores_legacy_fk(tmp_path: Path) -> None:
+    """기존 score table FK가 analysis_events_legacy를 보지 않게 복구한다."""
+
+    db_path = tmp_path / "legacy_score_fk.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE analysis_events (
+                analysis_id          TEXT PRIMARY KEY,
+                source_event_id      TEXT NOT NULL,
+                occurred_at          TEXT NOT NULL,
+                translated_text      TEXT,
+                scorer_family        TEXT NOT NULL,
+                scorer_name          TEXT NOT NULL,
+                model_revision       TEXT NOT NULL,
+                top_category         TEXT,
+                top_score            REAL,
+                embedding_model_id   TEXT,
+                translation_model_id TEXT,
+                base_embedding       TEXT,
+                metadata             TEXT NOT NULL
+            );
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE analysis_category_scores (
+                analysis_id TEXT NOT NULL,
+                category    TEXT NOT NULL,
+                score       REAL NOT NULL,
+                PRIMARY KEY (analysis_id, category),
+                FOREIGN KEY (analysis_id)
+                    REFERENCES analysis_events_legacy (analysis_id)
+                    ON DELETE CASCADE
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO analysis_events
+                (analysis_id, source_event_id, occurred_at, translated_text,
+                 scorer_family, scorer_name, model_revision, top_category, top_score,
+                 embedding_model_id, translation_model_id, base_embedding, metadata)
+            VALUES (
+                'q1', 'q1', '2026-03-29T00:00:00+00:00', NULL,
+                'classifier', 'classifier_head_logits', 'rev_001',
+                'anxiety', 0.9, 'embed_001', NULL, NULL, '{}'
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO analysis_category_scores (analysis_id, category, score)
+            VALUES ('q1', 'anxiety', 0.9);
+            """
+        )
+
+    repo = AnalysisEventRepository(db_path=db_path)
+    repo.save(_make_analysis_event(query_id="q2"))
+
+    with sqlite3.connect(repo.db_path) as conn:
+        fk_parent_tables = {
+            row[2]
+            for row in conn.execute("PRAGMA foreign_key_list(analysis_category_scores)")
+        }
+        score_rows = conn.execute(
+            """
+            SELECT analysis_id, category, score
+            FROM analysis_category_scores
+            ORDER BY analysis_id, category
+            """
+        ).fetchall()
+
+    assert fk_parent_tables == {"analysis_events"}
+    assert ("q1", "anxiety", 0.9) in score_rows
+    assert ("q2", "anxiety", 0.9) in score_rows
+
+
 def test_repo_get_recent_filters_old_events(tmp_repo: AnalysisEventRepository) -> None:
     """기간 밖의 이벤트는 get_recent에서 제외된다."""
     old_event = _make_analysis_event(
@@ -244,7 +333,7 @@ def test_default_pipeline_uses_configured_scoring_backend(
 
     monkeypatch.setenv(AGENT_SCORING_BACKEND_ENV, "classifier_head_logits")
     monkeypatch.setattr(
-        "agent.src.services.inference.pipeline_factory.EmbeddingAdapterFactory.create",
+        "agent.src.features.inference.pipeline_factory.EmbeddingAdapterFactory.create",
         lambda _spec: _FakeEmbeddingAdapter(),
     )
 
@@ -294,6 +383,7 @@ def _make_pipeline(
     with_scoring_asset_provider: bool = True,
     shared_adapter_provider=None,
     local_adapter_provider=None,
+    runtime_profile_repository: RuntimeProfileRepository | None = None,
 ) -> InferencePipelineService:
     """모킹된 서비스들로 파이프라인을 조립한다."""
     embedding_service = MagicMock()
@@ -321,6 +411,7 @@ def _make_pipeline(
         scoring_service=scoring_service,
         event_repository=repo,
         scoring_asset_provider=scoring_asset_provider,
+        runtime_profile_repository=runtime_profile_repository,
         shared_adapter_provider=shared_adapter_provider,
         local_adapter_provider=local_adapter_provider,
         preprocess_service=PreprocessService(),
@@ -412,6 +503,164 @@ def test_pipeline_stores_analysis_event_metadata(tmp_path: Path) -> None:
     assert row["model_revision"] == "seed_rev_001"
     assert row["metadata"]["embedding_model_id"] == "test-embed"
     assert row["metadata"]["was_translated"] is False
+
+
+def test_pipeline_stores_runtime_profile_metadata(tmp_path: Path) -> None:
+    """active runtime profile snapshot을 analysis metadata에 남긴다."""
+    repository = RuntimeProfileRepository(db_path=tmp_path / "agent_local.db")
+    profile = make_agent_runtime_profile_payload(
+        profile_id="profile_peft_classifier_lora",
+        profile_revision="runtime_rev_001",
+        model_id="mixedbread-ai/mxbai-embed-large-v1",
+        model_revision="clf_2026_04_11_143138",
+        runtime_family="peft_classifier",
+        adapter_mechanism="lora",
+        scorer_backend_name="peft_classifier_head_logits",
+        embedding_backend="transformers_mxbai",
+        embedding_model_id="mixedbread-ai/mxbai-embed-large-v1",
+        training_scope="adapter_and_head",
+        required_state_kind="peft_classifier_state.v2",
+        updated_at=datetime(2026, 6, 13, tzinfo=timezone.utc),
+    )
+    repository.save_profile(
+        profile,
+        source="server",
+        activate=True,
+        server_validated_at=datetime(2026, 6, 13, 1, 0, tzinfo=timezone.utc),
+    )
+    pipeline = _make_pipeline(
+        tmp_path,
+        runtime_profile_repository=repository,
+    )
+    event = _make_query_event(text="I feel anxious", locale="en")
+
+    pipeline.process(event)
+
+    row = _get_analysis_metadata_row(pipeline, event.query_id)
+    assert row["metadata"]["runtime_profile_id"] == profile.profile_id
+    assert row["metadata"]["runtime_profile_revision"] == profile.profile_revision
+    assert row["metadata"]["runtime_family"] == "peft_classifier"
+    assert row["metadata"]["adapter_mechanism"] == "lora"
+    assert "runtime_profile_server_validated_at" in row["metadata"]
+
+
+def test_pipeline_factory_uses_active_runtime_profile(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    tmp_repo: AnalysisEventRepository,
+) -> None:
+    """active profile의 scorer/embedding backend로 pipeline을 만든다."""
+
+    class _FakeEmbeddingAdapter:
+        def embed_texts(self, texts: list[str]) -> list[list[float]]:
+            return [[0.0] for _text in texts]
+
+    created_specs = []
+    runtime_profile_repository = RuntimeProfileRepository(
+        db_path=tmp_path / "agent_local.db"
+    )
+    profile = make_agent_runtime_profile_payload(
+        profile_id="profile_peft_classifier_lora",
+        profile_revision="runtime_rev_001",
+        model_id="mixedbread-ai/mxbai-embed-large-v1",
+        model_revision="clf_2026_04_11_143138",
+        runtime_family="peft_classifier",
+        adapter_mechanism="lora",
+        scorer_backend_name="peft_classifier_head_logits",
+        embedding_backend="hashing",
+        embedding_model_id="runtime-profile-embedding",
+        training_scope="adapter_and_head",
+        required_state_kind="peft_classifier_state.v2",
+        updated_at=datetime(2026, 6, 13, tzinfo=timezone.utc),
+    )
+    runtime_profile_repository.save_profile(
+        profile,
+        source="server",
+        activate=True,
+    )
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_runtime_service.get_active_manifest.return_value = (
+        make_embedding_manifest(
+            model_id=profile.model_id,
+            model_revision=profile.model_revision,
+            artifact_ref="shared_adapter_state::clf_2026_04_11_143138",
+        )
+    )
+    active_state = make_peft_classifier_state_payload(
+        model_id=profile.model_id,
+        model_revision=profile.model_revision,
+        backbone={
+            "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "tokenizer_revision": "main",
+            "max_length": 256,
+        },
+        peft_adapter_config={
+            "peft_adapter_name": "lora",
+            "parameters": {"rank": 8},
+        },
+        label_schema=("anxiety", "normal"),
+        classifier_head_artifact_ref=(
+            "server-aggregate://peft_classifier/clf_2026_04_11_143138/classifier_head"
+        ),
+    )
+    shared_adapter_runtime_service.get_active_state.return_value = active_state
+    monkeypatch.setattr(
+        "agent.src.features.inference.pipeline_factory.EmbeddingAdapterFactory.create",
+        lambda spec: created_specs.append(spec) or _FakeEmbeddingAdapter(),
+    )
+    loaded_refs = []
+
+    class _FakeRoundArtifactClient:
+        def __init__(self, *, server_base_url: str) -> None:
+            assert server_base_url == "http://server.test"
+
+        def load_safetensors_artifact(self, *, artifact_ref: str):
+            loaded_refs.append(artifact_ref)
+            return build_classifier_head_state_tensor_artifact(
+                classifier_head_weights={
+                    "anxiety": [0.2],
+                    "normal": [-0.1],
+                },
+                classifier_head_biases={
+                    "anxiety": 0.01,
+                    "normal": -0.02,
+                },
+                label_schema=("anxiety", "normal"),
+            )
+
+        def load_json_artifact(self, *, artifact_ref: str) -> dict[str, object]:
+            raise AssertionError(f"unexpected JSON fallback: {artifact_ref}")
+
+    monkeypatch.setattr(
+        "agent.src.features.inference.pipeline_factory.RoundArtifactClient",
+        _FakeRoundArtifactClient,
+    )
+
+    pipeline = build_pipeline_service_from_runtime_profile(
+        runtime_profile_repository=runtime_profile_repository,
+        analysis_event_repository=tmp_repo,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        translation_service=None,
+        server_base_url="http://server.test",
+    )
+
+    assert pipeline is not None
+    assert pipeline.embedding_model_id == "runtime-profile-embedding"
+    assert pipeline.model_revision == "clf_2026_04_11_143138"
+    assert pipeline.scoring_service.backend_name == "peft_classifier_head_logits"
+    assert created_specs[0].revision == "main"
+    assert loaded_refs == [
+        "server-aggregate://peft_classifier/clf_2026_04_11_143138/classifier_head"
+    ]
+    assert pipeline.scoring_asset_provider is not None
+    assets = pipeline.scoring_asset_provider.get_scoring_assets()
+    weights = assets["classifier_head_weights"]
+    assert len(weights) == 2
+    assert weights[0] == pytest.approx([0.2])
+    assert weights[1] == pytest.approx([-0.1])
+    assert assets["classifier_head_biases"] == pytest.approx([0.01, -0.02])
 
 
 def test_pipeline_uses_active_shared_adapter_state_for_scoring(

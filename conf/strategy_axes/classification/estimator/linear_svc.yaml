@@ -1,0 +1,7 @@
+# @package fixed_feature_estimator
+
+name: linear_svc
+c: 1.0
+max_iter: 5000
+class_weight: balanced
+random_state: 42

@@ -5,23 +5,25 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.features.captured_text.storage.records import (
     CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
+)
+from agent.src.features.captured_text.storage.repository import (
     CapturedTextRepository,
 )
-from agent.src.infrastructure.repositories.training_usage_ledger_repository import (
+from agent.src.features.training_runtime.query_ssl.task_service import (  # noqa: E501
+    AgentQuerySslTrainingTaskRunRequest,
+    AgentQuerySslTrainingTaskService,
+)
+from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
     TRAINING_USAGE_ROLE_LABELED_ANCHOR,
     TRAINING_USAGE_ROLE_UNLABELED_GENERATED_VIEW,
     TrainingUsageLedgerRepository,
 )
-from agent.src.services.training_runtime.current_task.query_ssl_training_task_service import (  # noqa: E501
-    AgentQuerySslTrainingTaskRunRequest,
-    AgentQuerySslTrainingTaskService,
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
 )
 from methods.adaptation.peft_text_encoder import config as peft_config
 from methods.adaptation.peft_text_encoder.training import (

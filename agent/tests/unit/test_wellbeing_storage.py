@@ -5,28 +5,40 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agent.src.config.paths import (
+    DEFAULT_AGENT_DATA_DIR,
+)
 from agent.src.contracts.family_access_contracts import FamilyAccessRole
 from agent.src.contracts.wellbeing_signal_contracts import (
+    ParentWellbeingGuidancePayload,
     WellbeingSignalConfidence,
     WellbeingSignalLevel,
     WellbeingSignalRange,
     WellbeingSignalSummaryPayload,
     WellbeingSignalTrend,
 )
-from agent.src.infrastructure.repositories.family_access_repository import (
+from agent.src.features.wellbeing.family_access.service import FamilyAccessService
+from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.signal.timeseries_service import (
+    WellbeingTimeseriesService,
+)
+from agent.src.features.wellbeing.storage.child_support_repository import (
+    ChildSupportConversationRepository,
+)
+from agent.src.features.wellbeing.storage.family_access_repository import (
     FamilyAccessRepository,
     FamilyAccessState,
 )
-from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
+from agent.src.features.wellbeing.storage.wellbeing_settings_repository import (
     WellbeingSettingsRecord,
     WellbeingSettingsRepository,
 )
-from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
+from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
-from agent.src.services.wellbeing.family_access_service import FamilyAccessService
-from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
-from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
+from agent.src.features.wellbeing.storage.wellbeing_storage import (
+    DEFAULT_WELLBEING_DB_PATH,
+)
 
 
 def _build_summary_payload(
@@ -42,6 +54,11 @@ def _build_summary_payload(
         trend=WellbeingSignalTrend.STEADY,
         summary="최근 상태가 비교적 안정적으로 유지되고 있습니다.",
         action_tip="오늘 저녁에 짧게 안부를 물어보세요.",
+        parent_guidance=ParentWellbeingGuidancePayload(
+            response_priority="오늘 저녁에 바로 짧은 안부를 확인하세요.",
+            conversation_starter="요즘 신경 쓰이는 일이 있는지 물어보세요.",
+            caution_note="답을 재촉하지 말고 먼저 들어주세요.",
+        ),
         confidence=WellbeingSignalConfidence.MEDIUM,
         low_data=False,
     )
@@ -64,9 +81,21 @@ def test_wellbeing_snapshot_repository_round_trips_latest_and_since(
     repository.save_summary(latest)
 
     assert repository.load_latest_summary() == latest
+    assert repository.load_latest_projection_version() == "legacy"
     assert repository.list_summaries_since(
         cutoff=datetime(2026, 4, 23, tzinfo=timezone.utc)
     ) == (latest,)
+
+
+def test_wellbeing_default_storage_paths_use_agent_data_dir() -> None:
+    child_support_repository = ChildSupportConversationRepository()
+    wellbeing_repository = WellbeingSnapshotRepository()
+
+    assert DEFAULT_WELLBEING_DB_PATH == DEFAULT_AGENT_DATA_DIR / "wellbeing_signal.db"
+    assert child_support_repository.db_path == (
+        DEFAULT_AGENT_DATA_DIR / "child_support_conversations.db"
+    )
+    assert wellbeing_repository.db_path == DEFAULT_WELLBEING_DB_PATH
 
 
 def test_family_access_repository_round_trips_state(tmp_path: Path) -> None:
@@ -168,9 +197,7 @@ def test_family_access_service_persists_failed_attempts_in_repository(
     assert first_failure.granted is False
     assert second_failure.remaining_attempts == 1
     assert auth_repository.load_state(FamilyAccessRole.PARENT) is not None
-    assert (
-        auth_repository.load_state(FamilyAccessRole.PARENT).failed_attempt_count == 2
-    )
+    assert auth_repository.load_state(FamilyAccessRole.PARENT).failed_attempt_count == 2
 
     locked_response = service.unlock(role=FamilyAccessRole.PARENT, pin="9999")
     assert locked_response.remaining_attempts == 0

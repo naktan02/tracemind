@@ -7,10 +7,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    load_classifier_head_state_tensor_artifact,
+)
 from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
 from scripts.support.query_ssl_text_encoder.io.full_text_encoder_artifacts import (
     write_full_text_encoder_run_artifacts,
@@ -29,8 +33,11 @@ class _DummySaver:
 class _DummyClassifier:
     in_features = 384
 
-    def state_dict(self) -> dict[str, list[float]]:
-        return {"weights": [0.1, 0.2, 0.3]}
+    def state_dict(self) -> dict[str, torch.Tensor]:
+        return {
+            "weight": torch.tensor([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]),
+            "bias": torch.tensor([0.01, -0.01]),
+        }
 
 
 class _ProjectionModel:
@@ -43,6 +50,21 @@ class _ProjectionModel:
 
     def eval(self) -> None:
         self.classifier.eval()
+
+    def state_dict(self) -> dict[str, torch.Tensor]:
+        return {
+            f"classifier.{key}": value.detach().clone()
+            for key, value in self.classifier.state_dict().items()
+        }
+
+    def load_state_dict(self, state_dict: dict[str, torch.Tensor]) -> None:
+        self.classifier.load_state_dict(
+            {
+                key.removeprefix("classifier."): value
+                for key, value in state_dict.items()
+                if key.startswith("classifier.")
+            }
+        )
 
     def extract_pooled_features(self, *, input_ids, attention_mask):
         del attention_mask
@@ -101,21 +123,23 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
     report_path = Path(outputs["report_json"])
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    classifier_payload = torch.load(classifier_path, weights_only=False)
+    classifier_payload = load_classifier_head_state_tensor_artifact(classifier_path)
 
     assert Path(outputs["output_dir"]) == tmp_path / "runs" / "run-001"
     assert (Path(outputs["output_dir"]) / "logs").is_dir()
     assert adapter_dir == Path(outputs["output_dir"]) / "artifacts" / "adapter"
     assert classifier_path == (
-        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.pt"
+        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.safetensors"
     )
     assert (adapter_dir / "backbone.txt").read_text(encoding="utf-8") == "saved\n"
     assert (adapter_dir / "tokenizer.txt").read_text(encoding="utf-8") == "saved\n"
-    assert classifier_payload == {
-        "classifier_state_dict": {"weights": [0.1, 0.2, 0.3]},
-        "categories": ["alpha", "beta"],
-        "hidden_size": 384,
-    }
+    assert classifier_payload.label_schema == ("alpha", "beta")
+    assert classifier_payload.classifier_head_weights["alpha"] == pytest.approx(
+        [0.1, 0.2, 0.3]
+    )
+    assert classifier_payload.classifier_head_biases == pytest.approx(
+        {"alpha": 0.01, "beta": -0.01}
+    )
     assert manifest["adapter_dir"] == str(adapter_dir)
     assert manifest["classifier_path"] == str(classifier_path)
     assert manifest["run_control"] == {
@@ -165,11 +189,14 @@ def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None
         batch_size=2,
     )
 
+    model = _ProjectionModel()
+    final_state = model.state_dict()
+
     outputs = write_run_artifacts(
         cfg=cfg,
         trainer_version="run-002",
         created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
-        model=_ProjectionModel(),
+        model=model,
         tokenizer=_DummySaver("tokenizer.txt"),
         categories=["alpha", "beta"],
         eval_set_map={"validation": tmp_path / "validation.jsonl"},
@@ -179,25 +206,37 @@ def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None
         best_selection_report={"macro_f1": 1.0},
         final_selection_report=None,
         results={"validation": {"accuracy_top_1": 1.0}},
+        final_model_state_dict=final_state,
         eval_loaders={"validation": eval_loader},
     )
 
     manifest = json.loads(Path(outputs["manifest"]).read_text(encoding="utf-8"))
+    report = json.loads(Path(outputs["report_json"]).read_text(encoding="utf-8"))
     projection_manifest_path = Path(outputs["projection_manifest"])
     projection_manifest = json.loads(
         projection_manifest_path.read_text(encoding="utf-8")
     )
-    validation_projection = projection_manifest["datasets"]["validation"]
+    best_projection = projection_manifest["datasets"]["best"]
 
     assert manifest["projection_artifacts"]["enabled"] is True
+    assert set(report["results"]) == {"best", "final"}
     assert (
         projection_manifest["projection_space"]
         == "final_peft_encoder_pooled_backbone_features"
     )
     assert projection_manifest["mark_incorrect"] is False
-    assert validation_projection["row_count"] == 2
-    assert Path(validation_projection["points_jsonl"]).exists()
-    assert Path(validation_projection["figure_png"]).exists()
+    assert best_projection["row_count"] == 2
+    assert Path(best_projection["points_jsonl"]).exists()
+    assert Path(best_projection["figure_png"]).exists()
+    final_projection_manifest = json.loads(
+        Path(outputs["final_projection_manifest"]).read_text(encoding="utf-8")
+    )
+    final_projection = final_projection_manifest["datasets"]["final"]
+    assert Path(outputs["final_adapter_dir"]).is_dir()
+    assert Path(outputs["final_classifier_path"]).exists()
+    assert final_projection["row_count"] == 2
+    assert Path(final_projection["points_jsonl"]).exists()
+    assert Path(final_projection["figure_png"]).exists()
 
 
 def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
@@ -258,11 +297,11 @@ def test_write_full_text_encoder_run_artifacts_writes_model_manifest_and_report(
     assert (Path(outputs["output_dir"]) / "logs").is_dir()
     assert model_dir == Path(outputs["output_dir"]) / "artifacts" / "model"
     assert classifier_path == (
-        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.pt"
+        Path(outputs["output_dir"]) / "artifacts" / "classifier_head.safetensors"
     )
     assert (model_dir / "model.txt").read_text(encoding="utf-8") == "saved\n"
     assert (model_dir / "tokenizer.txt").read_text(encoding="utf-8") == "saved\n"
-    assert torch.load(classifier_path, weights_only=False)["hidden_size"] == 384
+    assert load_classifier_head_state_tensor_artifact(classifier_path).hidden_size == 3
     assert manifest["model_dir"] == str(model_dir)
     assert manifest["classifier_path"] == str(classifier_path)
     assert manifest["trainable_surface"] == {
@@ -308,11 +347,14 @@ def test_write_full_text_encoder_run_artifacts_writes_projection_artifacts(
         batch_size=2,
     )
 
+    model = _ProjectionModel()
+    final_state = model.state_dict()
+
     outputs = write_full_text_encoder_run_artifacts(
         cfg=cfg,
         trainer_version="full-run-002",
         created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
-        model=_ProjectionModel(),
+        model=model,
         tokenizer=_DummySaver("tokenizer.txt"),
         categories=["alpha", "beta"],
         eval_set_map={"test": tmp_path / "test.jsonl"},
@@ -328,22 +370,34 @@ def test_write_full_text_encoder_run_artifacts_writes_projection_artifacts(
         best_selection_report={"macro_f1": 1.0},
         final_selection_report={"macro_f1": 1.0},
         results={"test": {"accuracy_top_1": 1.0}},
+        final_model_state_dict=final_state,
         eval_loaders={"test": eval_loader},
     )
 
     manifest = json.loads(Path(outputs["manifest"]).read_text(encoding="utf-8"))
+    report = json.loads(Path(outputs["report_json"]).read_text(encoding="utf-8"))
     projection_manifest_path = Path(outputs["projection_manifest"])
     projection_manifest = json.loads(
         projection_manifest_path.read_text(encoding="utf-8")
     )
-    test_projection = projection_manifest["datasets"]["test"]
+    best_projection = projection_manifest["datasets"]["best"]
 
     assert manifest["projection_artifacts"]["enabled"] is True
+    assert set(report["results"]) == {"best", "final"}
     assert (
         projection_manifest["projection_space"]
         == "final_full_text_encoder_pooled_backbone_features"
     )
     assert projection_manifest["mark_incorrect"] is False
-    assert test_projection["row_count"] == 2
-    assert Path(test_projection["points_jsonl"]).exists()
-    assert Path(test_projection["figure_png"]).exists()
+    assert best_projection["row_count"] == 2
+    assert Path(best_projection["points_jsonl"]).exists()
+    assert Path(best_projection["figure_png"]).exists()
+    final_projection_manifest = json.loads(
+        Path(outputs["final_projection_manifest"]).read_text(encoding="utf-8")
+    )
+    final_projection = final_projection_manifest["datasets"]["final"]
+    assert Path(outputs["final_model_dir"]).is_dir()
+    assert Path(outputs["final_classifier_path"]).exists()
+    assert final_projection["row_count"] == 2
+    assert Path(final_projection["points_jsonl"]).exists()
+    assert Path(final_projection["figure_png"]).exists()

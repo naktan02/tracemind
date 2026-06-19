@@ -8,11 +8,11 @@ from typing import Any, Protocol
 
 import torch
 
+from methods.adaptation.common.batching import (
+    move_tensor_batch_to_device,
+)
 from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
-)
-from methods.adaptation.peft_text_encoder.training.loops import (
-    move_tensor_batch_to_device,
 )
 from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftTextEncoderWithLinearHead,

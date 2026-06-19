@@ -11,6 +11,7 @@ defaults:
   - /strategy_axes/model_architecture/backbone: mxbai_encoder
   - /strategy_axes/model_architecture/peft: default
   - /strategy_axes/model_architecture/update_family: peft_text_encoder
+  - /strategy_axes/model_architecture/initial_checkpoint: none
   - /run_controls/fl_ssl/budget: smoke
   - /run_controls/fl_ssl/safety_and_sweeps: default
   # fl_topology: FL split/topology와 공통 round capability 축
@@ -22,16 +23,14 @@ defaults:
   - /strategy_axes/fl_topology/peer_context: null
   - /strategy_axes/fl_topology/update_partition: null
   - /strategy_axes/fl_topology/aggregation_weight: null
-  - /strategy_axes/fl_topology/server_update: fedavg_merged_delta
   # ssl_objective: SSL 학습 목적 함수 축
   - /strategy_axes/ssl_objective/consistency_method: fixmatch_usb_v1
-  - /strategy_axes/ssl_objective/multiview_source: materialized_rows
   - /strategy_axes/ssl_objective/local_ssl_policy: query_ssl_method
   - /strategy_axes/ssl_objective/local_update_profile: peft_classifier_update_v1
   # fssl_method: FL+SSL 결합 방법론
   - /strategy_axes/fssl_method: null
   - _self_
-  - /execution_context/fl_client_split: null
+  - /execution_context/fl_client_split: shared_general_reddit_pc1024_alpha03_clients10
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
 
@@ -42,8 +41,9 @@ published_model_id: tracemind-embed-sim
 seed: 42
 
 fl_data:
-  # 기본값은 기존 smoke/debug용 runtime split이다.
-  # 논문 비교는 materialize_fl_client_split 산출 manifest를 지정해서 고정 split을 쓴다.
+  # 기본값은 논문 비교용 materialized pc1024 shared labeled split이다.
+  # smoke/debug에서 즉석 split이 필요하면 execution_context/fl_client_split=null로
+  # 되돌리고 아래 값을 override한다.
   source_mode: runtime_split_from_train
   split_manifest: null
 
@@ -60,7 +60,6 @@ client_pool_split:
   unlabeled_ratio: 0.9
 
 train_batch_size: ${training_task.batch_size}
-query_ssl_strong_view_policy: first_aug
 
 # `local_update_profile`은 agent local SSL update 정책을 소유한다.
 # server round의 update family는 strategy_axes/model_architecture/update_family가
@@ -68,21 +67,16 @@ query_ssl_strong_view_policy: first_aug
 round_runtime:
   aggregation_backend_name: fedavg
 training_task:
-  local_epochs: 1
-  batch_size: 8
-  learning_rate: 0.0001
-  max_steps: 50
+  local_epochs: ${federated_run_budget.local_epochs}
+  batch_size: ${federated_run_budget.train_batch_size}
+  learning_rate: ${federated_run_budget.learning_rate}
+  max_steps: ${federated_run_budget.max_train_steps}
   min_required_examples: ${federated_run_budget.min_required_examples}
-  gradient_clip_norm: 0.5
+  gradient_clip_norm: ${federated_run_budget.gradient_clip_norm}
   objective:
     algorithm_profile_name: ${local_update_profile.algorithm_profile_name}
     training_backend_name: ${local_update_profile.training_backend_name}
     privacy_guard_name: ${local_update_profile.privacy_guard_name}
-    query_ssl:
-      method_name: ${query_ssl_method.name}
-      algorithm_name: ${query_ssl_method.algorithm_name}
-      strong_view_policy: ${query_ssl_strong_view_policy}
-      unlabeled_batch_size: ${query_ssl_method.unlabeled_batch_size}
   selection_policy:
     max_examples: ${federated_run_budget.max_examples}
 

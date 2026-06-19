@@ -676,7 +676,9 @@ code {
 
 .check-row,
 .run-option {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: flex-start;
   gap: 10px;
   border: 1px solid var(--line);
@@ -720,6 +722,47 @@ code {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.run-option .run-option-detail {
+  display: none;
+}
+
+.run-option-detail-overlay {
+  position: fixed;
+  z-index: 35;
+  display: none;
+  width: max-content;
+  max-width: min(760px, calc(100vw - 64px));
+  border: 1px solid rgba(0, 158, 115, 0.22);
+  border-radius: 12px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 16px 36px rgba(35, 55, 64, 0.18);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  pointer-events: none;
+  white-space: normal;
+}
+
+.run-option-detail-overlay span {
+  display: inline;
+}
+
+.run-option-detail-diff {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--teal);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.run-option-detail-separator {
+  color: var(--muted);
 }
 
 .selected-run-cards {
@@ -782,7 +825,15 @@ code {
   line-height: 1;
 }
 
+.selected-run-label-wrap {
+  position: relative;
+  display: inline-grid;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .selected-run-card strong {
+  display: block;
   min-width: 0;
   overflow: hidden;
   color: var(--ink);
@@ -798,7 +849,7 @@ code {
   left: 0;
   display: none;
   width: max-content;
-  max-width: 320px;
+  max-width: min(720px, calc(100vw - 48px));
   border: 1px solid rgba(0, 158, 115, 0.22);
   border-radius: 12px;
   padding: 9px 10px;
@@ -807,11 +858,11 @@ code {
   box-shadow: 0 16px 36px rgba(35, 55, 64, 0.18);
   font-size: 0.78rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
   white-space: normal;
 }
 
-.selected-run-card:hover .selected-run-detail,
-.selected-run-card:focus-within .selected-run-detail {
+.selected-run-label-wrap:hover .selected-run-detail {
   display: block;
 }
 
@@ -1136,6 +1187,49 @@ td button {
 #confusion-matrix {
   max-width: 100%;
   overflow-x: auto;
+}
+
+.matrix-grid {
+  display: grid;
+  grid-template-columns: minmax(128px, 1.15fr) repeat(var(--matrix-category-count), minmax(92px, 1fr));
+  gap: 6px;
+  min-width: 620px;
+  align-items: stretch;
+}
+
+.matrix-corner,
+.matrix-column-label,
+.matrix-row-label,
+.matrix-cell {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  line-height: 1.25;
+}
+
+.matrix-corner,
+.matrix-column-label,
+.matrix-row-label {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.matrix-column-label,
+.matrix-cell {
+  text-align: center;
+}
+
+.matrix-row-label {
+  color: var(--ink);
+}
+
+.matrix-cell {
+  color: var(--ink);
+  background: rgba(0, 114, 178, calc(0.08 + var(--cell-alpha) * 0.48));
+  font-size: 0.82rem;
+  font-weight: 850;
 }
 
 .matrix {

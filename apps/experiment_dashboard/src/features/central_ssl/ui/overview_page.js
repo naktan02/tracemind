@@ -7,8 +7,9 @@ import {
   renderColumnCheckboxes,
   renderSortableTableHeader,
   resolveTableColumns,
-  setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
+import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
 import { CENTRAL_FILTER_AXES } from "../logic/filters.js";
 import { centralOverviewMetricKeys } from "../logic/metrics.js";
 import {
@@ -18,7 +19,9 @@ import {
   runDetail,
 } from "../logic/labels.js";
 
-const DEFAULT_VISIBLE_COLUMNS = ["axis:algorithm"];
+const DEFAULT_VISIBLE_COLUMNS = [
+  "axis:algorithm",
+];
 
 const OVERVIEW_AXIS_COLUMNS = [
   {
@@ -66,13 +69,10 @@ export function normalizeOverviewSelection(rows, state) {
   state.overviewMetricIds = state.overviewMetricIds.filter((metric) =>
     availableMetrics.includes(metric),
   );
-  state.overviewRunIds = state.overviewRunIds.filter((runId) =>
-    rows.some((row) => row.run_id === runId),
-  );
   normalizeOverviewColumns(state, availableColumnIds);
 }
 
-export function renderOverviewPage(elements, rows, state, _bundle, rerender = () => {}) {
+export function renderOverviewPage(elements, rows, state, _bundle, rerender = () => {}, selectionRows = rows) {
   const columns = buildOverviewColumns(rows);
   const { visibleColumns, allColumns, state: columnState } = resolveTableColumns(
     state.overviewTableColumns,
@@ -97,20 +97,22 @@ export function renderOverviewPage(elements, rows, state, _bundle, rerender = ()
     "overviewTableColumn",
   );
   renderRunPicker(elements, rows, state);
-  renderSelectedRunCards(elements, rows, state);
-  renderOverviewTable(elements, visibleColumns, rows, state, rerender);
+  renderSelectedRunCards(elements, selectionRows, state);
+  renderOverviewTable(elements, visibleColumns, selectionRows, state, rerender);
 }
 
 function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.overviewRunIds);
+  const peerDetails = rows.map(runDetail);
   elements.overviewRunCheckboxes.innerHTML =
     rows.length === 0
       ? `<p class="empty">선택 가능한 run이 없습니다.</p>`
       : rows
           .map((row) => {
             const label = overviewRunLabel(row);
+            const detail = runDetail(row);
             return `
-              <label class="run-option" title="${escapeHtml(runDetail(row))}">
+              <label class="run-option">
                 <input
                   type="checkbox"
                   data-overview-run-id="${escapeHtml(row.run_id)}"
@@ -120,6 +122,7 @@ function renderRunPicker(elements, rows, state) {
                   <strong>${escapeHtml(label)}</strong>
                   <small>${escapeHtml(overviewRunSubLabel(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
             `;
           })
@@ -136,27 +139,23 @@ function renderSelectedRunCards(elements, rows, state) {
       `<p class="empty">선택된 run이 없습니다.</p>`;
     return;
   }
+  const peerDetails = selectedRows.map(runDetail);
   elements.overviewSelectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const label = overviewRunLabel(row);
-      return `
-        <article class="selected-run-card alias-run-card">
-          <strong>${escapeHtml(label)}</strong>
-          <input
-            type="text"
-            data-overview-alias-run-id="${escapeHtml(row.run_id)}"
-            value="${escapeHtml(state.overviewRunAliases[row.run_id] ?? "")}"
-            placeholder="run alias"
-            aria-label="${escapeHtml(overviewRunLabel(row))} 표시명 alias"
-          />
-          <button
-            type="button"
-            data-remove-overview-run-id="${escapeHtml(row.run_id)}"
-            aria-label="${escapeHtml(label)} 제거"
-          >x</button>
-          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(runDetail(row))}</span>
-        </article>
-      `;
+      const detail = runDetail(row);
+      return renderSelectedRunCard({
+        id: row.run_id,
+        label,
+        detail,
+        peerDetails,
+        aliasValue: state.overviewRunAliases[row.run_id],
+        aliasPlaceholder: "run alias",
+        aliasDataAttribute: "overview-alias-run-id",
+        aliasAriaLabel: `${overviewRunLabel(row)} 표시명 alias`,
+        removeDataAttribute: "remove-overview-run-id",
+        removeAriaLabel: `${label} 제거`,
+      });
     })
     .join("");
 }
@@ -213,16 +212,20 @@ function buildOverviewAxisColumns() {
 
 function normalizeOverviewColumns(state, availableColumnIds) {
   const availableSet = new Set(availableColumnIds);
-  const filteredVisible = (state.overviewMetricIds ?? [])
-    .map((metric) => `metric:${metric}`)
-    .filter((id) => availableSet.has(id));
-  const fallback = state.overviewTableColumns.visible.length > 0
-    ? state.overviewTableColumns.visible
-    : DEFAULT_VISIBLE_COLUMNS;
-  setTableColumnVisibility(
-    state.overviewTableColumns,
-    availableColumnIds.map((id) => ({ id })),
-    filteredVisible.length > 0 ? filteredVisible : fallback,
-    DEFAULT_VISIBLE_COLUMNS,
+  const tableState = state.overviewTableColumns;
+  const visible = (tableState.visible ?? []).filter((id) => availableSet.has(id));
+  const visibleSet = new Set(visible);
+  const ordered = (tableState.order ?? []).filter(
+    (id) => availableSet.has(id) && visibleSet.has(id),
   );
+  for (const id of visible) {
+    if (!ordered.includes(id)) {
+      ordered.push(id);
+    }
+  }
+  tableState.visible = visible;
+  tableState.order = ordered;
+  state.overviewMetricIds = visible
+    .filter((id) => id.startsWith("metric:"))
+    .map((id) => id.replace(/^metric:/, ""));
 }

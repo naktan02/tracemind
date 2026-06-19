@@ -1,0 +1,14 @@
+# @package fixed_feature_space
+
+name: frozen_embedding_mxbai
+feature_kind: dense_embedding
+backend: sentence_transformers
+model_id: ${paper_backbone.model_id}
+revision: ${paper_backbone.revision}
+device: ${runtime.device}
+batch_size: ${eval_batch_size}
+cache_dir: ${paper_backbone.cache_dir}
+task_prefix: ${paper_backbone.task_prefix}
+normalize_embeddings: true
+local_files_only: ${runtime.local_files_only}
+show_progress_bar: true

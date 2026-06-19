@@ -1,0 +1,104 @@
+"""Agent runtime state 설치 규칙."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass, fields
+
+from agent.src.features.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
+from agent.src.features.assets.shared_adapters.sync_service import (
+    SharedAdapterSyncService,
+)
+from agent.src.features.captured_text.lifecycle import (
+    CapturedTextLifecycleService,
+)
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
+)
+from agent.src.features.captured_text.view_generation.service import (
+    CapturedTextViewGenerationService,
+)
+from agent.src.features.federation.rounds.round_client import RoundClient
+from agent.src.features.inference.pipeline_service import InferencePipelineService
+from agent.src.features.runtime_profile.repository import RuntimeProfileRepository
+from agent.src.features.runtime_profile.sync_service import RuntimeProfileSyncService
+from agent.src.features.training_runtime.storage.training_usage_ledger_repository import (  # noqa: E501
+    TrainingUsageLedgerRepository,
+)
+from agent.src.features.wellbeing.child_support.service import (
+    ChildSupportCoachService,
+)
+from agent.src.features.wellbeing.family_access.parent_auth_adapter import (
+    ParentAuthService,
+)
+from agent.src.features.wellbeing.family_access.service import FamilyAccessService
+from agent.src.features.wellbeing.signal.projection_service import (
+    WellbeingSignalProjectionService,
+)
+from agent.src.features.wellbeing.signal.summary_service import WellbeingSummaryService
+from agent.src.features.wellbeing.signal.timeseries_service import (
+    WellbeingTimeseriesService,
+)
+from agent.src.features.wellbeing.space_web.projection_service import (
+    WellbeingSpaceWebProjectionService,
+)
+from agent.src.features.wellbeing.storage.child_support_repository import (
+    ChildSupportConversationRepository,
+)
+from agent.src.features.wellbeing.storage.family_access_repository import (
+    FamilyAccessRepository,
+)
+from agent.src.features.wellbeing.storage.wellbeing_settings_repository import (
+    WellbeingSettingsRepository,
+)
+from agent.src.features.wellbeing.storage.wellbeing_snapshot_repository import (
+    WellbeingSnapshotRepository,
+)
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
+
+RoundClientFactory = Callable[[str], RoundClient]
+
+
+@dataclass(slots=True)
+class AgentRuntimeState:
+    """FastAPI app.state에 설치할 agent runtime object 묶음."""
+
+    analysis_event_repository: AnalysisEventRepository
+    captured_text_repository: CapturedTextRepository
+    training_usage_ledger_repository: TrainingUsageLedgerRepository
+    captured_text_lifecycle_service: CapturedTextLifecycleService
+    captured_text_view_generation_service: CapturedTextViewGenerationService
+    runtime_profile_repository: RuntimeProfileRepository
+    runtime_profile_sync_service: RuntimeProfileSyncService
+    child_support_conversation_repository: ChildSupportConversationRepository
+    wellbeing_snapshot_repository: WellbeingSnapshotRepository
+    family_access_repository: FamilyAccessRepository
+    wellbeing_settings_repository: WellbeingSettingsRepository
+    shared_adapter_runtime_service: SharedAdapterRuntimeService
+    shared_adapter_sync_service: SharedAdapterSyncService
+    wellbeing_projection_service: WellbeingSignalProjectionService
+    wellbeing_summary_service: WellbeingSummaryService
+    wellbeing_timeseries_service: WellbeingTimeseriesService
+    wellbeing_space_web_service: WellbeingSpaceWebProjectionService
+    family_access_service: FamilyAccessService
+    parent_auth_service: ParentAuthService
+    child_support_coach_service: ChildSupportCoachService
+    round_client_factory: RoundClientFactory
+    pipeline_service: InferencePipelineService | None = None
+
+
+def install_agent_runtime_state(
+    app_state: object,
+    runtime_state: AgentRuntimeState,
+) -> None:
+    """AgentRuntimeState 필드를 FastAPI app.state에 설치한다."""
+
+    for field in fields(runtime_state):
+        value = getattr(runtime_state, field.name)
+        if value is None:
+            continue
+        setattr(app_state, field.name, value)

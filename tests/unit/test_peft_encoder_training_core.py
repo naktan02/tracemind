@@ -26,19 +26,19 @@ from methods.adaptation.peft_text_encoder.training import (
 from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     extract_peft_parameter_deltas,
 )
-from methods.adaptation.peft_text_encoder.training.loops import (
-    evaluate_classifier,
-    train_classifier,
-    train_query_ssl_classifier,
-)
 from methods.adaptation.peft_text_encoder.training.modeling import (
     PeftTextEncoderWithLinearHead,
 )
 from methods.adaptation.peft_text_encoder.training.query_ssl_local_training import (
     _build_bounded_label_balanced_selection_rows,
 )
-from methods.adaptation.peft_text_encoder.training.ssl_model_extensions import (
-    build_peft_query_ssl_model_extensions,
+from methods.adaptation.text_encoder_classifier.query_ssl_model_extensions import (
+    build_query_ssl_model_extensions as build_peft_query_ssl_model_extensions,
+)
+from methods.adaptation.text_encoder_classifier.query_ssl_training import (
+    evaluate_classifier,
+    train_classifier,
+    train_query_ssl_classifier,
 )
 
 resolve_fixed_pseudo_label_diagnostic_threshold = (

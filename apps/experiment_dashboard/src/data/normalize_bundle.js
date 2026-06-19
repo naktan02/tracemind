@@ -46,6 +46,15 @@ function normalizeRunRecord(row) {
 function normalizeDashboardFilters(filters) {
   return {
     ...filters,
+    initial_checkpoints: filters.initial_checkpoints ?? [],
+    backbone_model_ids: filters.backbone_model_ids ?? [],
+    created_dates: filters.created_dates ?? [],
+    label_budgets: filters.label_budgets ?? [],
+    label_budget_counts_per_class: filters.label_budget_counts_per_class ?? [],
+    train_batch_sizes: filters.train_batch_sizes ?? [],
+    labeled_batch_sizes: filters.labeled_batch_sizes ?? [],
+    unlabeled_batch_sizes: filters.unlabeled_batch_sizes ?? [],
+    eval_batch_sizes: filters.eval_batch_sizes ?? [],
     peft_adapter_ranks: filters.peft_adapter_ranks ?? filters.lora_ranks ?? [],
     peft_adapter_alphas: filters.peft_adapter_alphas ?? filters.lora_alphas ?? [],
     peft_adapter_use_rslora_values:

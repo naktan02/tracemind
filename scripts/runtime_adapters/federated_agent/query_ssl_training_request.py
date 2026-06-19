@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (
+from agent.src.features.training_runtime.query_ssl_peft.local_training_service import (
     QuerySslLocalTrainingService,
     QuerySslPeftEncoderLocalTrainingRequest,
 )
-from agent.src.services.training_runtime.query_ssl_peft.local_training_service import (
+from agent.src.features.training_runtime.query_ssl_peft.local_training_service import (
     run_query_ssl_peft_encoder_local_training as run_agent_query_ssl_training,
 )
 

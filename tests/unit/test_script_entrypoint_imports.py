@@ -14,7 +14,7 @@ import pytest
         "scripts.experiments.fl_ssl.run_federated_simulation",
         "scripts.experiments.central.ssl_control.run_peft_supervised_control",
         "scripts.experiments.central.ssl_control.run_full_text_encoder_supervised_control",
-        "scripts.experiments.central.ssl_control.run_peft_ssl_control",
+        "scripts.experiments.central.ssl_control.run_query_ssl_control",
         "scripts.workflows.datasets.run_dataset_pipeline",
         "scripts.workflows.datasets.materialize_query_ssl_split",
         "scripts.workflows.datasets.materialize_query_ssl_views",

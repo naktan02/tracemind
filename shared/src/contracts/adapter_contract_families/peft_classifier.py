@@ -95,7 +95,10 @@ class PeftClassifierAdapterStatePayload(SharedAdapterStatePayload):
     )
     classifier_head_artifact_ref: str | None = Field(
         default=None,
-        description="Server-published classifier-head state artifact.",
+        description=(
+            "Server-published classifier-head state artifact. New artifacts use "
+            "safetensors; JSON is legacy/fallback only."
+        ),
     )
     artifact_format: str = "artifact_ref"
 

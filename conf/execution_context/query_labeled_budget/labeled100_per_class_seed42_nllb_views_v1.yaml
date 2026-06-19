@@ -1,0 +1,16 @@
+# @package _global_
+
+# 중앙 Query SSL의 pc100 labeled view source만 바꾼다. unlabeled/eval source
+# 선택은 query_data_source가 계속 소유한다.
+query_labeled_budget:
+  name: labeled100_per_class_seed42_nllb_views_v1
+  count_per_class: 100
+  source_artifact: query_ssl_labeled_views
+
+query_data_sources:
+  ourafla_reddit:
+    labeled_jsonl: data/datasets/ourafla_mental_health/views/labeled100_per_class_seed42_v1/backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl
+  szegeelim_general4:
+    labeled_jsonl: data/datasets/szegeelim_mental_health/views/labeled100_per_class_seed42_v1/backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl
+
+query_data_selection_slug: labeled-${query_data_selection.labeled}_labels-pc100_unlabeled-${query_data_selection.unlabeled}_test-${query_data_selection.test}

@@ -5,7 +5,7 @@
 세부 payload 필드의 source of truth는 문서가 아니라 `shared/src/contracts/*.py`,
 `shared/src/domain/entities/*`, agent-local API/UI payload의 경우
 `agent/src/contracts/*.py`, agent-local inference state/result의 경우
-`agent/src/services/inference/*`다.
+`agent/src/features/inference/interpretation/*`다.
 
 ## 1. 현재 목표
 
@@ -44,7 +44,7 @@ central fixed embedding + classifier seed
 | Shared contract/domain | agent, main_server, scripts가 함께 읽는 canonical payload와 domain entity | `shared/src/contracts/*`, `shared/src/domain/entities/*` |
 | Methods | SSL, adaptation, evaluation, FL aggregation의 교체 가능한 계산 core | `methods/*` |
 | Hydra config | 실행 조합, strategy axis, track preset | `conf/*` |
-| Agent API/runtime | 로컬 inference, captured text, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
+| Agent API/runtime | 로컬 inference, captured text, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/features/*`, `agent/src/runtime/*` |
 | Main server API/runtime | FL round, aggregation, publication | `main_server/src/api/*`, `main_server/src/services/*` |
 | Scripts | dataset/PEFT/FL simulation entrypoint와 thin wrapper | `scripts/experiments/*`, `scripts/workflows/*` |
 | Apps | family extension UI, experiment dashboard, future 제품 UI shell | `apps/family_extension/*`, `apps/experiment_dashboard/*` |
@@ -69,11 +69,20 @@ Raw Event
 | 책임 | 파일 |
 |---|---|
 | API 수집 | `agent/src/api/ingest.py` |
-| pipeline 조합 | `agent/src/services/inference/pipeline_service.py` |
-| scoring backend adapter | `agent/src/services/inference/scoring_backends/*` |
-| local baseline/time-series state | `agent/src/services/inference/state.py` |
-| final decision | `agent/src/services/inference/decision_service.py` |
-| wellbeing projection | `agent/src/services/wellbeing/*` |
+| pipeline 조합 | `agent/src/features/inference/pipeline_service.py` |
+| scoring backend adapter | `agent/src/features/inference/scoring_backends/*` |
+| local baseline/time-series state | `agent/src/features/inference/interpretation/state.py`, `agent/src/features/inference/interpretation/time_series.py` |
+| final decision | `agent/src/features/inference/interpretation/decision.py` |
+| wellbeing projection | `agent/src/features/wellbeing/signal/*`, `agent/src/features/wellbeing/space_web/*` |
+
+wellbeing projection은 classifier score를 기본 입력으로 쓰되,
+`agent/src/features/wellbeing/evidence_signal.py`의 로컬 evidence signal을 함께 본다.
+낮은 classifier score라도 원문에 직접적인 자해/자살 표현이 확인되면 agent-local
+summary는 `very_high`로 보수적으로 투영한다. projection logic이 바뀌면 snapshot
+저장소의 projection version으로 기존 snapshot을 stale 처리해 다음 조회 때 재계산한다.
+직접 위험 표현 직후의 짧은 일반 입력은 위험 상태를 즉시 `low`로 낮추지 않고,
+최근 위험 context를 일정 시간 유지해 child-support LLM context가 안정 상태로
+잘못 전달되지 않게 한다.
 
 ### 3.2 Child Support Rail
 
@@ -81,11 +90,10 @@ Raw Event
 Child Message
 -> Agent-local Conversation Store
 -> LocalContextProvider
--> ConversationState / SafetyIntent
--> SafetyPolicy / Scope Redirect
--> ResponsePolicy Plan / Required Moves
--> Local Guarded Reply or Local LLM Provider Execution
--> Plan Validation / Fallback
+-> Urgent Message Hint
+-> Local Context Prompt
+-> Local LLM Provider Execution
+-> LLM Reply Normalization
 -> Child UI Response
 ```
 
@@ -94,31 +102,31 @@ Child Message
 | 책임 | 파일 |
 |---|---|
 | API route | `agent/src/api/child_support.py` |
-| service 조합 | `agent/src/services/wellbeing/child_support_service.py` |
-| local conversation store | `agent/src/infrastructure/repositories/child_support_repository.py` |
-| local context provider | `agent/src/services/wellbeing/child_support_context_provider.py` |
-| conversation state extractor | `agent/src/services/wellbeing/child_support_conversation_state.py` |
-| agent-local safety intent | `agent/src/services/wellbeing/child_support_safety_intent.py` |
-| safety/scope policy | `agent/src/services/wellbeing/child_support_safety_policy.py` |
-| response plan/validation policy | `agent/src/services/wellbeing/child_support_response_policy.py` |
-| local LLM adapter | `agent/src/services/wellbeing/child_support_llm_provider.py` |
-| UI panel | `apps/family_extension/src/components/ChildSupportCoachPanel.tsx` |
+| service 조합 | `agent/src/features/wellbeing/child_support/service.py` |
+| local conversation store | `agent/src/features/wellbeing/storage/child_support_repository.py` |
+| local context provider | `agent/src/features/wellbeing/child_support/context_provider.py` |
+| local LLM prompt builder | `agent/src/features/wellbeing/child_support/llm_prompt.py` |
+| local evidence summary | `agent/src/features/wellbeing/child_support/evidence_summary.py` |
+| local LLM adapter | `agent/src/features/wellbeing/child_support/llm_provider.py` |
+| UI panel | `apps/family_extension/src/ui/components/ChildSupportCoachPanel.tsx` |
 
 중요:
 
 - child-support raw message와 query context는 agent-local boundary에 남긴다.
-- 같은 `conversation_id`에서는 agent-local conversation store의 최근 메시지를 읽어
-  폭력 사건 후속 대화를 감정 정리나 친구 대응 계획으로 이어간다.
-- 타인 위해 intent 직후의 일반 힘듦 표현은 일반 check-in으로 리셋하지 않고,
-  감정 수용과 위해 행동 경계를 함께 담은 de-escalation 응답으로 이어간다.
-- safety routing은 shared contract의 화면 노출용 `safety_level`과 agent 내부용
-  typed `SafetyIntent`를 분리해서, 타인 위해 의도 같은 새 케이스를 UI 계약 변경
-  없이 확장할 수 있게 한다.
-- 기본값은 deterministic `local_guarded`이고, Ollama를 켠 경우에도 agent가
-  `ResponsePolicy` plan과 required move를 먼저 정한다.
-- LLM은 plan의 required move를 순서대로 수행하는 실행 adapter이며, 응답이 필수
-  의미를 잃거나 종료/회피 문구로 흐르면 plan validation에서 버리고 guarded
-  fallback을 쓴다.
+- 같은 `conversation_id`에서는 agent-local conversation store의 최근 메시지를 prompt
+  history로 전달해 LLM이 대화 흐름을 이어가게 한다.
+- proactive prompt는 위험 신호나 높은 위험 수치가 있을 때만 생성하며, 생성된
+  첫 assistant turn도 같은 `conversation_id`에 저장해 아이의 첫 답변과 연결한다.
+  status 조회는 side effect 없이 prompt id만 계산하고, 실제 content tab에 표시할 수
+  있을 때 claim route가 첫 assistant turn을 만든다.
+- message safety hint는 직접적인 자해/타해 위험 표현만 `urgent`로 표시한다.
+  off-topic redirect, 괴롭힘, 폭력 경험, 불안, 우울, 관계 갈등 같은 상황 해석은
+  recent message, wellbeing summary, evidence summary를 받은 LLM이 처리한다.
+- child-support 답변 기본값은 LLM-first다. LLM provider가 없거나 LLM 응답을 만들지
+  못하면 agent API는 정적 상담 답변을 대신 만들지 않고 실패를 반환한다.
+- agent service는 wellbeing summary, recent conversation, evidence summary와
+  최근 원문 일부를 local context prompt로 묶어 LLM에 전달한다. 응답 문장 구조를
+  required move로 강제하지 않는다.
 - main_server는 child-support 원문을 읽지 않고 FL aggregation 경계만 소유한다.
 
 ### 3.3 Query Adaptation Rail
@@ -141,12 +149,12 @@ Reddit Labeled Data
 |---|---|
 | PEFT supervised entrypoint | `scripts/experiments/central/ssl_control/run_peft_supervised_control.py` |
 | Full text encoder supervised entrypoint | `scripts/experiments/central/ssl_control/run_full_text_encoder_supervised_control.py` |
-| PEFT SSL entrypoint | `scripts/experiments/central/ssl_control/run_peft_ssl_control.py` |
+| Query SSL control entrypoint | `scripts/experiments/central/ssl_control/run_query_ssl_control.py` |
 | 중앙/FL 공통 text encoder SSL runtime support | `scripts/support/query_ssl_text_encoder/*` |
 | trainer core | `methods/adaptation/query_text_views/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | evaluation metric core | `methods/evaluation/*` |
-| captured generated view source | `agent/src/services/training_runtime/training_sources/captured_text_source.py` |
-| training source usage ledger | `agent/src/infrastructure/repositories/training_usage_ledger_repository.py` |
+| captured generated view source | `agent/src/features/captured_text/training_source/service.py` |
+| training source usage ledger | `agent/src/features/training_runtime/storage/training_usage_ledger_repository.py` |
 
 주의:
 
@@ -182,8 +190,8 @@ Raw Event / Local Signal
 | FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/adapters/method_runtime.py` |
 | FL report/evaluation payload | `methods/evaluation/*`, `scripts/experiments/fl_ssl/federated_simulation/io/*` |
 | payload adapter wiring | `main_server/src/services/federation/rounds/payload_adapters/registry.py`, `payload_adapters/models.py` |
-| agent round client/runtime | `agent/src/services/federation/rounds/*` |
-| agent current-task application flow | `agent/src/services/training_runtime/current_task/agent_training_task_runner_service.py` |
+| agent round client/runtime | `agent/src/features/federation/rounds/*` |
+| agent current-task application flow | `agent/src/features/training_runtime/current_task/runner.py` |
 
 ## 4. 코드 계층과 소유권
 

@@ -73,8 +73,8 @@ def test_fl_ssl_single_run_output_dir_uses_layout_slug_and_run_id() -> None:
 
     assert output_dir.as_posix() == (
         "runs/_smoke/fl_ssl/"
-        "sz4_ourafla_shared_s42/"
-        "c4_r3_e1_b8_s50/"
+        "sz4_ourafla_lp1024_shared_s42/"
+        "c10_r3_e1_b8_s50/"
         "peft_text_encoder_lora/"
         "fixmatch_fedavg/"
         "20260605T123456Z"

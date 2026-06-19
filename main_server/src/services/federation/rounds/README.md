@@ -60,6 +60,10 @@
     server-owned state repository와 active manifest pointer에 publish
   - family 내부 payload 의미는 `methods/adaptation/<family>/`
     initial state builder가 소유한다
+- `initial_state_artifact_publication.py`
+  - bootstrap initial state가 참조할 auxiliary tensor artifact를 server-owned ref로
+    저장한다. artifact payload 의미는 caller/method가 만들고, 이 서비스는 ref 생성과
+    safetensors 저장 lifecycle만 소유한다
 - `active_manifest_service.py`
   - 서버 current `ModelManifest` 저장/활성화
 - `payload_adapters/`

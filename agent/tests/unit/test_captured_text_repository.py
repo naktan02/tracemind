@@ -13,26 +13,28 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextSourceType,
     CapturedTextSurfaceType,
 )
-from agent.src.infrastructure.repositories.captured_text_repository import (
+from agent.src.features.captured_text.lifecycle import (
+    CapturedTextLifecycleConfig,
+    CapturedTextLifecycleService,
+    build_captured_text_lifecycle_service_from_env,
+)
+from agent.src.features.captured_text.storage.records import (
     CAPTURED_TEXT_VIEW_STATUS_DUPLICATE,
     CAPTURED_TEXT_VIEW_STATUS_FAILED,
     CAPTURED_TEXT_VIEW_STATUS_PENDING,
     CAPTURED_TEXT_VIEW_STATUS_READY,
     CapturedTextGeneratedViewRecord,
     CapturedTextRecord,
-    CapturedTextRepository,
     captured_text_record_from_payload,
 )
-from agent.src.services.ingest.captured_text_lifecycle_service import (
-    CapturedTextLifecycleConfig,
-    CapturedTextLifecycleService,
-    build_captured_text_lifecycle_service_from_env,
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
 )
-from agent.src.services.ingest.captured_text_view_generation_service import (
-    CapturedTextViewGenerationService,
-)
-from agent.src.services.training_runtime.training_sources.captured_text_source import (
+from agent.src.features.captured_text.training_source.service import (
     CapturedTextTrainingSourceService,
+)
+from agent.src.features.captured_text.view_generation.service import (
+    CapturedTextViewGenerationService,
 )
 
 
@@ -95,7 +97,24 @@ def test_repo_initialization_migrates_existing_table(tmp_path: Path) -> None:
                 page_url          TEXT,
                 page_title        TEXT,
                 collector_version TEXT,
+                view_generation_status TEXT NOT NULL,
                 metadata          TEXT NOT NULL
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO captured_text_events
+                (event_id, schema_version, occurred_at, received_at, text, locale,
+                 source_type, surface_type, page_url, page_title, collector_version,
+                 view_generation_status, metadata)
+            VALUES (
+                'legacy_event', 'captured_text_event.v1',
+                '2026-06-08T16:25:42.944000+00:00',
+                '2026-06-08T16:25:48.034341+00:00',
+                '기존 캡처 텍스트', 'ko', 'typing', 'typing_segment',
+                'https://example.test', NULL, 'collector@legacy',
+                'pending', '{"legacy": true}'
             );
             """
         )
@@ -103,11 +122,16 @@ def test_repo_initialization_migrates_existing_table(tmp_path: Path) -> None:
     repository = CapturedTextRepository(db_path=db_path)
     repository.save(_make_record())
 
+    legacy = repository.get("legacy_event")
     loaded = repository.get("event_1")
+    assert legacy is not None
+    assert legacy.text == "기존 캡처 텍스트"
+    assert legacy.metadata == {"legacy": True}
     assert loaded is not None
     assert loaded.text_fingerprint
+    assert repository.count() == 2
     assert repository.count_by_view_generation_status() == {
-        CAPTURED_TEXT_VIEW_STATUS_PENDING: 1
+        CAPTURED_TEXT_VIEW_STATUS_PENDING: 2
     }
     with sqlite3.connect(db_path) as conn:
         event_columns = {
@@ -122,6 +146,117 @@ def test_repo_initialization_migrates_existing_table(tmp_path: Path) -> None:
     assert "view_generation_status" not in event_columns
     assert "captured_text_view_generation_jobs" in tables
     assert "captured_text_analysis_jobs" in tables
+
+
+def test_repo_repairs_analysis_job_legacy_fk(tmp_path: Path) -> None:
+    """기존 DB의 captured_text_analysis_jobs FK가 legacy table을 보지 않게 복구한다."""
+
+    db_path = tmp_path / "legacy_fk.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE analysis_events (
+                analysis_id          TEXT PRIMARY KEY,
+                source_event_id      TEXT NOT NULL,
+                occurred_at          TEXT NOT NULL,
+                translated_text      TEXT,
+                scorer_family        TEXT NOT NULL,
+                scorer_name          TEXT NOT NULL,
+                model_revision       TEXT NOT NULL,
+                top_category         TEXT,
+                top_score            REAL,
+                embedding_model_id   TEXT,
+                translation_model_id TEXT,
+                base_embedding       TEXT,
+                metadata             TEXT NOT NULL
+            );
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE captured_text_events (
+                event_id          TEXT PRIMARY KEY,
+                schema_version    TEXT NOT NULL,
+                occurred_at       TEXT NOT NULL,
+                received_at       TEXT NOT NULL,
+                text              TEXT NOT NULL,
+                locale            TEXT NOT NULL,
+                source_type       TEXT NOT NULL,
+                surface_type      TEXT NOT NULL,
+                page_url          TEXT,
+                page_title        TEXT,
+                collector_version TEXT,
+                text_fingerprint  TEXT NOT NULL DEFAULT '',
+                duplicate_of_event_id TEXT,
+                metadata          TEXT NOT NULL
+            );
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE captured_text_view_generation_jobs (
+                event_id      TEXT PRIMARY KEY,
+                status        TEXT NOT NULL,
+                updated_at    TEXT NOT NULL,
+                error_message TEXT,
+                metadata      TEXT NOT NULL DEFAULT '{}',
+                FOREIGN KEY (event_id)
+                    REFERENCES captured_text_events (event_id)
+                    ON DELETE CASCADE
+            );
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE captured_text_generated_views (
+                event_id                TEXT PRIMARY KEY,
+                schema_version          TEXT NOT NULL,
+                generated_at            TEXT NOT NULL,
+                weak_text               TEXT NOT NULL,
+                strong_text_0           TEXT NOT NULL,
+                strong_text_1           TEXT NOT NULL,
+                generator_name          TEXT NOT NULL,
+                generator_version       TEXT NOT NULL,
+                source_text_fingerprint TEXT NOT NULL,
+                metadata                TEXT NOT NULL,
+                FOREIGN KEY (event_id)
+                    REFERENCES captured_text_events (event_id)
+                    ON DELETE CASCADE
+            );
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE captured_text_analysis_jobs (
+                event_id      TEXT PRIMARY KEY,
+                status        TEXT NOT NULL,
+                updated_at    TEXT NOT NULL,
+                analysis_id   TEXT,
+                error_message TEXT,
+                metadata      TEXT NOT NULL DEFAULT '{}',
+                FOREIGN KEY (event_id)
+                    REFERENCES captured_text_events (event_id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (analysis_id)
+                    REFERENCES analysis_events_legacy (analysis_id)
+                    ON DELETE SET NULL
+            );
+            """
+        )
+
+    repository = CapturedTextRepository(db_path=db_path)
+    repository.save(_make_record(event_id="event_after_repair"))
+
+    with sqlite3.connect(db_path) as conn:
+        fk_parent_tables = {
+            row[2]
+            for row in conn.execute(
+                "PRAGMA foreign_key_list(captured_text_analysis_jobs)"
+            )
+        }
+
+    assert fk_parent_tables == {"analysis_events", "captured_text_events"}
+    assert repository.get("event_after_repair") is not None
 
 
 def test_repo_save_overwrites_same_event_id(

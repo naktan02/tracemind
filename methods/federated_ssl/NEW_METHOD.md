@@ -65,9 +65,8 @@ owner에서 드러낸다.
 - `local_update_profile`: local update backend/example/privacy recipe다. Manual
   baseline에는 필요하고, method-owned에서는 descriptor recipe가 지원 profile을 검증한다.
   새 method 이름별 profile을 기본으로 만들지 않는다.
-- `multiview_source=materialized_rows`: 현재 FL SSL simulation의 materialized row view source다.
-  live agent나 다른 view source가 실제 구현될 때만 새 leaf를 추가한다. Method 이름별
-  multiview source leaf는 만들지 않는다.
+- query multiview source는 현재 materialized row만 지원하므로 Hydra leaf로 직접
+  고르지 않는다. live agent나 다른 view source가 실제 구현될 때만 config 축을 연다.
 
 논문 method identity는 `conf/strategy_axes/fssl_method/<method>.yaml`과
 `methods/federated_ssl/<method>/`가 소유한다. 일반 실행값, split, budget, update family,

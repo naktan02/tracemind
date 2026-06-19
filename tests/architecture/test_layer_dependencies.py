@@ -24,6 +24,7 @@ CONF_FL_PEER_CONTEXT_POLICY_SRC = (
 AGENT_SRC = REPO_ROOT / "agent" / "src"
 AGENT_CONF = REPO_ROOT / "agent" / "conf"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
+APPS_SRC = REPO_ROOT / "apps"
 SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
 FL_SIMULATION_IO_SRC = (
@@ -82,6 +83,19 @@ def _iter_python_files(root: Path) -> list[Path]:
     )
 
 
+def _iter_app_source_files(root: Path) -> list[Path]:
+    suffixes = {".js", ".jsx", ".ts", ".tsx"}
+    ignored_parts = {"dist", "node_modules", ".tmp"}
+    return sorted(
+        path
+        for path in root.rglob("*")
+        if path.is_file()
+        and path.suffix in suffixes
+        and "src" in path.parts
+        and not any(part in ignored_parts for part in path.parts)
+    )
+
+
 def _collect_absolute_imports(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     imports: set[str] = set()
@@ -111,6 +125,20 @@ def _find_forbidden_imports(
         for imported_module in sorted(imports):
             if imported_module.startswith(forbidden_prefixes):
                 violations.append((_relative_repo_path(path), imported_module))
+    return violations
+
+
+def _find_forbidden_text_snippets(
+    *,
+    root: Path,
+    snippets: tuple[str, ...],
+) -> list[tuple[Path, str]]:
+    violations: list[tuple[Path, str]] = []
+    for path in _iter_app_source_files(root):
+        source = path.read_text(encoding="utf-8")
+        for snippet in snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
     return violations
 
 
@@ -147,7 +175,7 @@ def test_central_query_ssl_support_does_not_import_agent_runtime() -> None:
     )
 
 
-def test_central_peft_ssl_uses_methods_local_training_request_surface() -> None:
+def test_central_query_ssl_uses_surface_neutral_request_surface() -> None:
     trainable_surface_path = (
         CONF_SRC
         / "strategy_axes"
@@ -159,12 +187,14 @@ def test_central_peft_ssl_uses_methods_local_training_request_surface() -> None:
     trainable_surface_source = trainable_surface_path.read_text(encoding="utf-8")
     runner_source = runner_path.read_text(encoding="utf-8")
 
-    assert "run_query_ssl_peft_encoder_local_session" in trainable_surface_source
-    assert "QuerySslPeftEncoderLocalSessionRequest" in runner_source
+    assert "run_central_query_ssl_peft_encoder_session" in trainable_surface_source
+    assert "artifact_writer" in trainable_surface_source
+    assert "CentralQuerySslTextEncoderSessionRequest" in runner_source
+    assert "QuerySslPeftEncoderLocalSessionRequest" not in runner_source
     assert "**local_session_request" not in runner_source, (
-        "central SSL runner는 methods-owned dataclass request를 그대로 넘긴다. "
-        "dict/kwargs surface로 되돌리면 central/agent/FL training 의미 drift를 "
-        "테스트하기 어려워진다."
+        "central SSL runner는 surface-neutral dataclass request를 그대로 넘긴다. "
+        "surface별 PEFT/full 요청과 artifact writer는 trainable_surface callable이 "
+        "소유해야 한다."
     )
 
 
@@ -176,8 +206,8 @@ def test_method_owned_fssl_uses_request_training_surface() -> None:
         AGENT_SRC
         / "services"
         / "training_runtime"
-        / "current_task"
-        / "query_ssl_training_task_service.py"
+        / "query_ssl"
+        / "method_request_builder.py"
     )
     fedmatch_descriptor_path = METHODS_FEDERATED_SSL_SRC / "fedmatch" / "descriptor.py"
     method_owned_path = (
@@ -622,14 +652,14 @@ def test_central_ssl_consistency_entrypoint_imports_runner_directly() -> None:
         / "experiments"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.py"
+        / "run_query_ssl_control.py"
     )
     entrypoint_config = (
         CONF_SRC
         / "entrypoints"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.yaml"
+        / "run_query_ssl_control.yaml"
     )
     source = entrypoint_path.read_text(encoding="utf-8")
     forbidden_snippets = (
@@ -638,7 +668,7 @@ def test_central_ssl_consistency_entrypoint_imports_runner_directly() -> None:
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
-    assert "run_query_ssl_peft_baseline" in source
+    assert "run_query_ssl_control" in source
     assert "group_by_query_ssl_method: true" in entrypoint_config.read_text(
         encoding="utf-8"
     )
@@ -771,7 +801,7 @@ def test_central_ssl_entrypoint_does_not_compose_input_mode_strategy_axis() -> N
         / "entrypoints"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.yaml"
+        / "run_query_ssl_control.yaml"
     )
     source = path.read_text(encoding="utf-8")
 
@@ -1673,7 +1703,7 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         / "experiments"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.py",
+        / "run_query_ssl_control.py",
         SCRIPTS_SRC
         / "experiments"
         / "central"
@@ -1688,7 +1718,7 @@ def test_central_ssl_entrypoints_use_control_names() -> None:
         / "entrypoints"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.yaml",
+        / "run_query_ssl_control.yaml",
         CONF_SRC
         / "entrypoints"
         / "central"
@@ -1784,7 +1814,7 @@ def test_central_peft_entrypoints_do_not_write_lora_named_artifact_roots() -> No
         / "entrypoints"
         / "central"
         / "ssl_control"
-        / "run_peft_ssl_control.yaml",
+        / "run_query_ssl_control.yaml",
         CONF_SRC
         / "entrypoints"
         / "central"
@@ -2294,6 +2324,202 @@ def test_agent_does_not_keep_unused_hydra_conf_tree() -> None:
     )
 
 
+def test_captured_text_feature_owns_runtime_and_storage_paths() -> None:
+    legacy_paths = (
+        AGENT_SRC / "services" / "captured_text",
+        AGENT_SRC / "infrastructure" / "repositories" / "captured_text",
+    )
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (AGENT_SRC, REPO_ROOT / "agent" / "tests", REPO_ROOT / "tests"):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(
+                    "agent.src.services.captured_text",
+                    "agent.src.infrastructure.repositories.captured_text",
+                ),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "captured_text는 feature pilot으로 이동됐다. lifecycle/service는 "
+        "agent.src.features.captured_text, 전용 SQLite storage는 "
+        "agent.src.features.captured_text.storage를 직접 import한다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
+def test_wellbeing_feature_owns_runtime_and_storage_paths() -> None:
+    legacy_paths = (
+        AGENT_SRC / "services" / "wellbeing",
+        AGENT_SRC / "infrastructure" / "repositories" / "child_support_repository.py",
+        AGENT_SRC / "infrastructure" / "repositories" / "family_access_repository.py",
+        AGENT_SRC
+        / "infrastructure"
+        / "repositories"
+        / "wellbeing_settings_repository.py",
+        AGENT_SRC
+        / "infrastructure"
+        / "repositories"
+        / "wellbeing_snapshot_repository.py",
+        AGENT_SRC / "infrastructure" / "repositories" / "wellbeing_storage.py",
+    )
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (AGENT_SRC, REPO_ROOT / "agent" / "tests", REPO_ROOT / "tests"):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(
+                    "agent.src.services.wellbeing",
+                    "agent.src.infrastructure.repositories.child_support_repository",
+                    "agent.src.infrastructure.repositories.family_access_repository",
+                    "agent.src.infrastructure.repositories.wellbeing_settings_repository",
+                    "agent.src.infrastructure.repositories.wellbeing_snapshot_repository",
+                    "agent.src.infrastructure.repositories.wellbeing_storage",
+                ),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "wellbeing은 feature module로 이동됐다. signal/family/child-support runtime은 "
+        "agent.src.features.wellbeing, 전용 storage는 "
+        "agent.src.features.wellbeing.storage를 직접 import한다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
+def test_inference_feature_owns_pipeline_and_interpretation_paths() -> None:
+    legacy_paths = (AGENT_SRC / "services" / "inference",)
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (
+        AGENT_SRC,
+        REPO_ROOT / "agent" / "tests",
+        REPO_ROOT / "tests",
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
+    ):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=("agent.src.services.inference",),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "inference는 feature module로 이동됐다. pipeline/scoring/interpretation은 "
+        "agent.src.features.inference를 직접 import하고, model adapter mechanism은 "
+        "agent.src.infrastructure.model_adapters에 남긴다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
+def test_training_runtime_feature_owns_runtime_and_storage_paths() -> None:
+    legacy_paths = (
+        AGENT_SRC / "services" / "training_runtime",
+        AGENT_SRC
+        / "infrastructure"
+        / "repositories"
+        / "training_artifact_repository.py",
+        AGENT_SRC
+        / "infrastructure"
+        / "repositories"
+        / "training_usage_ledger_repository.py",
+    )
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (
+        AGENT_SRC,
+        REPO_ROOT / "agent" / "tests",
+        REPO_ROOT / "tests",
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
+    ):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(
+                    "agent.src.services.training_runtime",
+                    "agent.src.infrastructure.repositories.training_artifact_repository",
+                    "agent.src.infrastructure.repositories.training_usage_ledger_repository",
+                ),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "training_runtime은 feature module로 이동됐다. current task/query SSL "
+        "runtime은 agent.src.features.training_runtime, training 전용 storage는 "
+        "agent.src.features.training_runtime.storage를 직접 import한다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
+def test_cross_runtime_features_own_service_paths() -> None:
+    legacy_paths = (
+        AGENT_SRC / "services" / "assets",
+        AGENT_SRC / "services" / "federation",
+        AGENT_SRC / "services" / "language",
+        AGENT_SRC / "services" / "typing_segments",
+    )
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    forbidden_imports: list[tuple[Path, str]] = []
+    for root in (
+        AGENT_SRC,
+        REPO_ROOT / "agent" / "tests",
+        REPO_ROOT / "tests",
+        SCRIPTS_RUNTIME_ADAPTER_SRC,
+    ):
+        forbidden_imports.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(
+                    "agent.src.services.assets",
+                    "agent.src.services.federation",
+                    "agent.src.services.language",
+                    "agent.src.services.typing_segments",
+                ),
+            )
+        )
+
+    assert not existing_legacy_paths and not forbidden_imports, (
+        "cross-runtime agent feature도 feature module로 이동됐다. asset sync, "
+        "round client, language helper, typing segment ingest는 "
+        "agent.src.features 아래를 직접 import한다.\n"
+        f"legacy_paths={existing_legacy_paths}\n"
+        f"{_format_violations(forbidden_imports)}"
+    )
+
+
+def test_agent_services_source_package_is_removed() -> None:
+    package_root = AGENT_SRC / "services"
+    ignored_parts = {"__pycache__"}
+    violations = [
+        _relative_repo_path(path)
+        for path in package_root.rglob("*")
+        if path.is_file() and not any(part in ignored_parts for part in path.parts)
+    ]
+
+    assert not violations, (
+        "agent/src/services는 더 이상 source of truth가 아니다. runtime primitive는 "
+        "agent.src.runtime, 기능 구현은 agent.src.features 아래에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_main_server_layer_does_not_import_scripts() -> None:
     violations = _find_forbidden_imports(
         root=MAIN_SERVER_SRC,
@@ -2355,13 +2581,7 @@ def test_live_runtime_layers_do_not_import_concrete_fssl_method_packages() -> No
 
 
 def test_agent_current_task_runner_delegates_runtime_resolution() -> None:
-    path = (
-        AGENT_SRC
-        / "services"
-        / "training_runtime"
-        / "current_task"
-        / "agent_training_task_runner_service.py"
-    )
+    path = AGENT_SRC / "features" / "training_runtime" / "current_task" / "runner.py"
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "validate_federated_ssl_capability_compatibility",
@@ -2376,7 +2596,7 @@ def test_agent_current_task_runner_delegates_runtime_resolution() -> None:
     assert "resolve_current_task_runtime" in source
     assert not violations, (
         "agent current-task runner는 orchestration만 소유한다. runtime/profile/"
-        "capability 해석은 runtime_dispatch.py로 위임해 live task 경계가 runner에 "
+        "capability 해석은 dispatch.py로 위임해 live task 경계가 runner에 "
         "다시 누적되지 않게 한다.\n"
         f"violations={violations}"
     )
@@ -2385,10 +2605,10 @@ def test_agent_current_task_runner_delegates_runtime_resolution() -> None:
 def test_agent_query_ssl_service_delegates_live_fssl_context_parsing() -> None:
     path = (
         AGENT_SRC
-        / "services"
+        / "features"
         / "training_runtime"
-        / "current_task"
-        / "query_ssl_training_task_service.py"
+        / "query_ssl"
+        / "method_request_builder.py"
     )
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
@@ -2406,6 +2626,91 @@ def test_agent_query_ssl_service_delegates_live_fssl_context_parsing() -> None:
         "agent query SSL service는 학습 실행만 조립한다. live FSSL context payload "
         "해석은 methods/federated_ssl/live_task_context.py가 소유한다.\n"
         f"violations={violations}"
+    )
+
+
+def test_agent_api_does_not_import_methods_directly() -> None:
+    violations = _find_forbidden_imports(
+        root=AGENT_SRC / "api",
+        forbidden_prefixes=("methods.",),
+    )
+
+    assert not violations, (
+        "agent API layer는 HTTP request/response 변환만 소유한다. methods-owned "
+        "algorithm/runtime surface는 features/training_runtime 또는 inference "
+        "adapter 경계에서만 연결한다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_apps_do_not_import_agent_service_implementations() -> None:
+    violations = _find_forbidden_text_snippets(
+        root=APPS_SRC,
+        snippets=(
+            "agent.src.features",
+            "agent.src.services",
+            "agent.src.runtime",
+            "agent/src/features",
+            "agent/src/services",
+            "agent/src/runtime",
+        ),
+    )
+
+    assert not violations, (
+        "apps는 API/contract consumer다. agent feature/service implementation 경로를 "
+        "직접 참조하지 않고 generated contract/API client를 통해 통신한다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_shared_layer_does_not_import_agent_local_contracts() -> None:
+    violations = _find_forbidden_imports(
+        root=SHARED_SRC,
+        forbidden_prefixes=("agent.src",),
+    )
+
+    assert not violations, (
+        "shared는 공통 contract/domain source of truth다. agent-local contract나 "
+        "runtime에 의존하면 shared payload 의미가 local product 표면에 묶인다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_methods_do_not_import_agent_local_repositories() -> None:
+    violations = _find_forbidden_imports(
+        root=METHODS_SRC,
+        forbidden_prefixes=(
+            "agent.src.features.captured_text.storage",
+            "agent.src.features.training_runtime.storage",
+            "agent.src.features.wellbeing.storage",
+            "agent.src.infrastructure.repositories",
+        ),
+    )
+
+    assert not violations, (
+        "methods는 교체 가능한 algorithm core를 소유한다. raw text/private state "
+        "저장소 접근은 agent runtime adapter 경계에 남긴다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_method_owned_training_core_imports_stay_inside_training_runtime() -> None:
+    violations = _find_forbidden_imports(
+        root=AGENT_SRC,
+        forbidden_prefixes=(
+            "methods.adaptation.peft_text_encoder.federated_ssl",
+            "methods.adaptation.peft_text_encoder.training",
+            "methods.federated_ssl",
+            "methods.ssl.runtime",
+        ),
+        ignored_roots=(AGENT_SRC / "features" / "training_runtime",),
+    )
+
+    assert not violations, (
+        "agent에서 method-owned local training core를 직접 연결하는 곳은 "
+        "features/training_runtime이어야 한다. 다른 feature/runtime 모듈이 "
+        "method 의미를 흡수하면 새 method 추가 시 import drift가 생긴다.\n"
+        f"{_format_violations(violations)}"
     )
 
 
@@ -2673,7 +2978,6 @@ def test_peft_text_encoder_active_module_docs_use_peft_names() -> None:
         PEFT_TEXT_ENCODER_SRC / "training" / "optimizer_step.py",
         PEFT_TEXT_ENCODER_SRC / "training" / "partitioned_deltas.py",
         PEFT_TEXT_ENCODER_SRC / "training" / "pseudo_label_diagnostics.py",
-        PEFT_TEXT_ENCODER_SRC / "training" / "scalar_metrics.py",
         PEFT_TEXT_ENCODER_SRC / "training" / "step_budget.py",
         PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned" / "budget.py",
         PEFT_TEXT_ENCODER_SRC / "federated_ssl" / "partitioned" / "training_loop.py",
@@ -3551,7 +3855,7 @@ def test_agent_legacy_training_package_is_not_reintroduced() -> None:
 
     assert not package_root.exists(), (
         "agent/src/services/training은 stored-event pseudo-label self-training "
-        "legacy package다. 현재 runtime은 services/training_runtime에서 current "
+        "legacy package다. 현재 runtime은 features/training_runtime에서 current "
         "TrainingTask와 Query SSL/FSSL local objective adapter만 소유한다.\n"
         f"path={_relative_repo_path(package_root)}"
     )

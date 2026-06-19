@@ -7,5 +7,13 @@ requires_peft_adapter: true
 supports_initial_adapter: true
 central_ssl:
   model_builder: methods.adaptation.peft_text_encoder.training.modeling.build_model
-  local_session_runner: methods.adaptation.peft_text_encoder.training.query_ssl_training_session.run_query_ssl_peft_encoder_local_session
+  local_session_runner: methods.adaptation.peft_text_encoder.training.query_ssl_training_session.run_central_query_ssl_peft_encoder_session
+  artifact_writer: scripts.support.query_ssl_text_encoder.io.artifacts.write_run_artifacts
   trainer_version_prefix: peft
+  training_backend_name: peft_classifier_trainer
+central_training:
+  learning_rate: 0.0002
+  classifier_learning_rate: 0.0002
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  log_every_steps: 100

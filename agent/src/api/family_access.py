@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from fastapi import APIRouter, HTTPException, status
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-
+from agent.src.api.dependencies import FamilyAccessServiceDep
 from agent.src.contracts.family_access_contracts import (
     FamilySetupRequestPayload,
     FamilySetupResponsePayload,
@@ -13,28 +12,11 @@ from agent.src.contracts.family_access_contracts import (
     FamilyUnlockRequestPayload,
     FamilyUnlockResponsePayload,
 )
-from agent.src.services.wellbeing.family_access_service import (
-    FamilyAccessService,
+from agent.src.features.wellbeing.family_access.service import (
     FamilyAccessSetupAlreadyCompletedError,
 )
 
 router = APIRouter(prefix="/api/v1/family", tags=["family-access"])
-
-
-def get_family_access_service(request: Request) -> FamilyAccessService:
-    service = getattr(request.app.state, "family_access_service", None)
-    if service is None:
-        raise RuntimeError(
-            "FamilyAccessService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.family_access_service를 설정하세요."
-        )
-    return service
-
-
-FamilyAccessServiceDep = Annotated[
-    FamilyAccessService,
-    Depends(get_family_access_service),
-]
 
 
 @router.get(

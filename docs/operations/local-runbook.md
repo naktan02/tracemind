@@ -141,7 +141,7 @@ Ollama 자체는 별도 터미널에서 실행한다.
 
 ```bash
 ollama serve
-ollama pull exaone3.5:2.4b
+ollama pull exaone3.5:7.8b
 ```
 
 App build:
@@ -196,6 +196,17 @@ PEFT supervised baseline:
 uv run python scripts/experiments/central/ssl_control/run_peft_supervised_control.py
 ```
 
+PEFT supervised checkpoint에서 FSSL을 시작하려면 epoch checkpoint manifest를
+FL SSL initial checkpoint selector에 넘긴다. bootstrap은 중앙 `adapter/`와
+`classifier_head.safetensors`를 읽어 FSSL server-owned safetensors artifact로
+승격하고, 이후 round/client runtime은 `server-aggregate://...` ref만 소비한다.
+
+```bash
+uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
+  strategy_axes/model_architecture/initial_checkpoint=required \
+  query_adaptation_initial_checkpoint.manifest_path=<checkpoint_dir>/manifest.json
+```
+
 Full text encoder supervised-only baseline:
 
 ```bash
@@ -208,14 +219,14 @@ uv run python scripts/experiments/central/ssl_control/run_full_text_encoder_supe
 USB PseudoLabel baseline:
 
 ```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
   strategy_axes/ssl_objective/consistency_method=pseudolabel_usb_v1
 ```
 
 FixMatch baseline:
 
 ```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py
 ```
 
 중앙 SSL의 labeled/unlabeled source는 `query_data_selection.*`으로 바꾼다.
@@ -223,7 +234,7 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py
 Hydra group이 아니다.
 
 ```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py \
   query_data_selection.labeled=szegeelim_general4 \
   query_data_selection.unlabeled=ourafla_reddit \
   query_data_selection.validation=ourafla_reddit \
@@ -231,16 +242,19 @@ uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py \
 ```
 
 중앙 SSL smoke/test 실행은 `run_controls/central_ssl/budget=smoke`를 사용한다.
-이 경우 산출물은 `runs/_smoke/central/ssl/peft_classifier/...`,
+이 경우 산출물은 `runs/_smoke/central/ssl/peft_text_encoder/...`,
 `runs/_smoke/central/supervised/peft_classifier`,
 `runs/_smoke/central/supervised/full_text_encoder` 아래에 저장되어 main run과
 섞이지 않는다. 중앙 supervised/SSL의 best 모델 artifact도 해당 run 폴더의
 `artifacts/` 아래에 저장한다. PEFT는 `artifacts/adapter/`와
-`artifacts/classifier_head.pt`, full text encoder는 `artifacts/model/`과
-`artifacts/classifier_head.pt`를 쓴다. PEFT supervised baseline은 epoch마다
+`artifacts/classifier_head.safetensors`, full text encoder는 `artifacts/model/`과
+`artifacts/classifier_head.safetensors`를 쓴다. 기존 `.pt` classifier head는
+legacy warm-start reader에서만 해석한다. PEFT supervised baseline은 epoch마다
 `checkpoints/epoch_000N_step_XXXXXX/manifest.json`을 남기며, 이 manifest는
 central SSL warm-start의 `query_adaptation_initial_checkpoint.manifest_path`로
-사용할 수 있다.
+사용할 수 있다. FSSL warm-start도 같은 selector를 쓰지만, classifier head는
+canonical `classifier_head.safetensors`만 허용한다. 기존 `.pt` head는 중앙
+legacy reader 호환 경로에서만 해석한다.
 중앙 supervised/SSL main preset의 train batch 기본값은 `8`이다. 중앙 SSL 학습
 loader는 기본적으로 마지막 partial batch를 버린다
 (`drop_last_train_batches=true`, `drop_last_unlabeled_batches=true`). 이는
@@ -263,7 +277,7 @@ uv run python scripts/experiments/central/ssl_control/build_method_projection_fi
 
 ```bash
 uv run python scripts/experiments/central/ssl_control/build_method_projection_figure.py \
-  --run-dir runs/central/ssl/peft_classifier/labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit \
+  --run-dir runs/central/ssl/peft_text_encoder/labeled-szegeelim_general4_unlabeled-ourafla_reddit_test-ourafla_reddit \
   --split test \
   --output-root runs/figures/central_ssl/method_projection
 ```
@@ -370,7 +384,7 @@ GPU/mxbai 실행 결과만 사용한다.
 Hydra 설정 preview:
 
 ```bash
-uv run python scripts/experiments/central/ssl_control/run_peft_ssl_control.py --cfg job
+uv run python scripts/experiments/central/ssl_control/run_query_ssl_control.py --cfg job
 ```
 
 ## 7. Runtime Profiles

@@ -48,7 +48,7 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
         "peft_fixmatch_2026_05_10_155954/artifacts/adapter"
     )
     assert str(paths.classifier_path).endswith(
-        "peft_fixmatch_2026_05_10_155954/artifacts/classifier_head.pt"
+        "peft_fixmatch_2026_05_10_155954/artifacts/classifier_head.safetensors"
     )
 
 
@@ -82,7 +82,7 @@ def test_non_grouped_query_ssl_run_output_dir_skips_method_group() -> None:
 def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central/ssl_control/run_peft_ssl_control",
+            config_name="entrypoints/central/ssl_control/run_query_ssl_control",
             overrides=["run_controls/central_ssl/budget=smoke"],
         )
 
@@ -93,12 +93,14 @@ def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
     )
 
     assert str(paths.output_dir) == (
-        "runs/_smoke/central/ssl/peft_classifier/"
+        "runs/_smoke/central/ssl/peft_text_encoder/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
         "test-ourafla_reddit/"
         "fixmatch_usb_v1/peft_smoke_2026_05_10_155954"
     )
-    assert str(paths.report_path).startswith("runs/_smoke/central/ssl/peft_classifier/")
+    assert str(paths.report_path).startswith(
+        "runs/_smoke/central/ssl/peft_text_encoder/"
+    )
 
 
 def test_non_query_ssl_run_output_dir_keeps_flat_run_id() -> None:

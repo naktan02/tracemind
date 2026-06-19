@@ -4,13 +4,12 @@ import {
 import { algorithmName } from "./labels.js";
 import { compareMetricValues } from "../../../shared/formatting/metrics.js";
 
-const CENTRAL_SSL_TRACK_PREFIX = "supervised";
 const CENTRAL_TRACK_PREFIX = "central_";
 const HIDDEN_CENTRAL_EVAL_SETS = new Set(["test"]);
 
 function preferredCentralEvalSetOrder(evalSets) {
   const prioritized = [];
-  for (const key of ["validation", "best", "final"]) {
+  for (const key of ["test", "best", "final", "validation"]) {
     if (evalSets.delete(key)) {
       prioritized.push(key);
     }
@@ -36,7 +35,7 @@ export function isCentralSupervisedTrack(track) {
   }
   const methodName = resolveMethodName(track);
   const algorithm = resolveAlgorithmName(track);
-  return current.includes(CENTRAL_SSL_TRACK_PREFIX) || methodName === "supervised" || algorithm === "supervised";
+  return current.includes("supervised") || methodName === "supervised" || algorithm === "supervised";
 }
 
 export function isFlResultTrack(track) {
@@ -48,7 +47,11 @@ export function isAllComparisonTrack(track) {
   return isCentralResultTrack(current) || isFlResultTrack(current);
 }
 
-export function centralEvalSets(bundle, trackPredicate = isCentralResultTrack) {
+export function centralEvalSets(
+  bundle,
+  trackPredicate = isCentralResultTrack,
+  options = {},
+) {
   const allCandidateSets = new Set(
     (bundle.eval_metrics ?? [])
       .filter((row) =>
@@ -59,13 +62,31 @@ export function centralEvalSets(bundle, trackPredicate = isCentralResultTrack) {
       .map((row) => row.eval_set),
   );
   const candidateSets = new Set(allCandidateSets);
-  for (const hidden of HIDDEN_CENTRAL_EVAL_SETS) {
-    candidateSets.delete(hidden);
+  if (options.hideTest !== false) {
+    for (const hidden of HIDDEN_CENTRAL_EVAL_SETS) {
+      candidateSets.delete(hidden);
+    }
   }
   if (candidateSets.size === 0) {
     return preferredCentralEvalSetOrder(allCandidateSets);
   }
   return preferredCentralEvalSetOrder(candidateSets);
+}
+
+export function centralPerClassEvalSets(
+  bundle,
+  trackPredicate = isCentralResultTrack,
+) {
+  const runById = new Map((bundle.runs ?? []).map((run) => [run.run_id, run]));
+  const evalSets = new Set(
+    (bundle.per_class_metrics ?? [])
+      .filter((row) => {
+        const run = runById.get(row.run_id);
+        return run && trackPredicate(run);
+      })
+      .map((row) => row.eval_set),
+  );
+  return preferredCentralEvalSetOrder(evalSets);
 }
 
 export function centralMetricRows(bundle, evalSet, sortMetric = "macro_f1", trackPredicate = isCentralResultTrack) {

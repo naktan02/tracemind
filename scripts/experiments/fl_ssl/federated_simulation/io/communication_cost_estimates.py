@@ -6,6 +6,15 @@ import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from safetensors import safe_open
+from safetensors.torch import load_file
+
+from methods.adaptation.peft_text_encoder.update.merged_tensor_artifact import (
+    parse_partitioned_peft_adapter_state_tensor_artifact,
+)
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    parse_partitioned_classifier_head_state_tensor_artifact,
+)
 from scripts.experiments.fl_ssl.federated_simulation.model_revisions import (
     build_active_model_revision_for_round,
 )
@@ -76,9 +85,7 @@ def build_artifact_communication_estimate(
                 "c2s_artifact_bytes": round_c2s_artifact,
                 "c2s_total_bytes": round_c2s_payload + round_c2s_artifact,
                 "s2c_global_state_bytes_estimated": round_s2c_global,
-                "s2c_partitioned_sparse_transport_bytes_estimated": (
-                    round_s2c_sparse
-                ),
+                "s2c_partitioned_sparse_transport_bytes_estimated": (round_s2c_sparse),
                 "s2c_manifest_task_bytes_estimated": round_s2c_manifest_task,
                 "s2c_total_bytes_estimated": round_s2c_total,
             }
@@ -209,6 +216,8 @@ def _partitioned_artifact_nonzero_count(*, run_dir: Path, artifact_ref: str) -> 
     path = _server_aggregate_artifact_path(run_dir=run_dir, artifact_ref=artifact_ref)
     if not path.exists():
         return 0
+    if path.suffix == ".safetensors":
+        return _partitioned_safetensors_nonzero_count(path)
     try:
         artifact = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError, UnicodeDecodeError):
@@ -218,6 +227,35 @@ def _partitioned_artifact_nonzero_count(*, run_dir: Path, artifact_ref: str) -> 
     partitioned_values = [
         value for key, value in artifact.items() if str(key).startswith("partitioned_")
     ]
+    return sum(_nested_nonzero_float_count(value) for value in partitioned_values)
+
+
+def _partitioned_safetensors_nonzero_count(path: Path) -> int:
+    try:
+        with safe_open(path, framework="pt", device="cpu") as artifact:
+            metadata = dict(artifact.metadata() or {})
+        tensors = load_file(path, device="cpu")
+    except Exception:
+        return 0
+    partitioned_values: list[object] = []
+    try:
+        partitioned_peft = parse_partitioned_peft_adapter_state_tensor_artifact(
+            tensors=tensors,
+            metadata=metadata,
+        )
+        partitioned_values.append(partitioned_peft)
+    except Exception:
+        pass
+    try:
+        partitioned_head_weights, partitioned_head_biases = (
+            parse_partitioned_classifier_head_state_tensor_artifact(
+                tensors=tensors,
+                metadata=metadata,
+            )
+        )
+        partitioned_values.extend((partitioned_head_weights, partitioned_head_biases))
+    except Exception:
+        pass
     return sum(_nested_nonzero_float_count(value) for value in partitioned_values)
 
 

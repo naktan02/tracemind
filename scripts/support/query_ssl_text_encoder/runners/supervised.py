@@ -6,11 +6,11 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from methods.adaptation.peft_text_encoder.training.loops import (
-    train_classifier as train_query_peft_classifier,
-)
 from methods.adaptation.peft_text_encoder.training.modeling import (
     build_model as build_query_peft_model,
+)
+from methods.adaptation.text_encoder_classifier.query_ssl_training import (
+    train_classifier as train_query_peft_classifier,
 )
 from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
 from scripts.support.query_ssl_text_encoder.runners.supervised_text_encoder import (

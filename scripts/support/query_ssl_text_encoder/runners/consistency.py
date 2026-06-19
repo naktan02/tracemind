@@ -2,32 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from methods.adaptation.peft_text_encoder.config import (
-    PEFT_ENCODER_TRAINING_BACKEND_NAME,
-    PeftEncoderTrainingBackendConfig,
-)
-from methods.adaptation.peft_text_encoder.training.delta_extraction import (
-    extract_peft_encoder_materialized_state,
-)
-from methods.adaptation.peft_text_encoder.training.local_training_surface import (
-    QuerySslPeftEncoderLocalSessionRequest,
-)
-from methods.adaptation.peft_text_encoder.training.query_ssl_training_session import (
-    QuerySslPeftEncoderLocalSslResult,
-    QuerySslPeftEncoderLocalTrainerOptions,
-)
-from methods.adaptation.peft_text_encoder.update.materialization import (
-    PeftEncoderMaterializedState,
-)
 from methods.adaptation.query_text_views.data import DEFAULT_STRONG_VIEW_POLICY
 from methods.adaptation.query_text_views.unlabeled_preparation import (
     PreparedQuerySslUnlabeledRows,
+)
+from methods.adaptation.text_encoder_classifier.query_ssl_session import (
+    CentralQuerySslTextEncoderSessionRequest,
+    QuerySslTextEncoderLocalTrainerOptions,
 )
 from methods.ssl.base import (
     QUERY_SSL_INPUT_TRANSFORM_NONE,
@@ -45,7 +32,6 @@ from methods.ssl.model_capabilities import require_pooled_feature_classifier
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from methods.ssl.state import export_query_ssl_algorithm_report_state_summary
 from scripts.support.configured_callable import load_configured_callable
-from scripts.support.query_ssl_text_encoder.io.artifacts import write_run_artifacts
 from scripts.support.query_ssl_text_encoder.query_ssl.run_context import (
     QuerySslRunContext,
     build_query_ssl_method_manifest,
@@ -82,14 +68,12 @@ class _CentralSslSurfaceRuntime:
 
     surface_name: str
     model_builder: Callable[..., tuple[Any, Any, dict[str, Any]]]
-    local_session_runner: Callable[
-        [QuerySslPeftEncoderLocalSessionRequest],
-        QuerySslPeftEncoderLocalSslResult,
-    ]
+    local_session_runner: Callable[[CentralQuerySslTextEncoderSessionRequest], Any]
+    artifact_writer: Callable[..., dict[str, str]]
     trainer_version_prefix: str
 
 
-def run_query_ssl_peft_baseline(
+def run_query_ssl_control(
     cfg,
     *,
     train_rows: list[LabeledQueryRow] | None = None,
@@ -101,7 +85,7 @@ def run_query_ssl_peft_baseline(
 ) -> dict[str, str]:
     """query_ssl_method.algorithm_name에 맞는 중앙 Query SSL baseline을 실행한다."""
 
-    return run_consistency_query_ssl_peft_baseline(
+    return run_consistency_query_ssl_control(
         cfg=cfg,
         descriptor=resolve_query_ssl_algorithm_descriptor(
             str(cfg.query_ssl_method.algorithm_name)
@@ -115,7 +99,7 @@ def run_query_ssl_peft_baseline(
     )
 
 
-def run_consistency_query_ssl_peft_baseline(
+def run_consistency_query_ssl_control(
     cfg,
     *,
     descriptor: QuerySslAlgorithmDescriptor,
@@ -159,9 +143,19 @@ def run_consistency_query_ssl_peft_baseline(
     history = list(local_ssl_result.history)
     final_selection_report = extract_final_selection_report(history=history)
     final_results = merge_results_with_best_and_final(
-        results=results,
+        results=_checkpoint_alias_results(
+            model=local_ssl_result.model,
+            raw_best_results=results,
+            final_model_state_dict=getattr(
+                local_ssl_result,
+                "final_model_state_dict",
+                None,
+            ),
+            context=context,
+        ),
         selection_set=context.effective_selection_set,
         final_selection_report=final_selection_report,
+        include_selection_set_result=False,
     )
     effective_extra_manifest = _build_query_ssl_extra_manifest(
         cfg=cfg,
@@ -171,7 +165,7 @@ def run_consistency_query_ssl_peft_baseline(
         runtime_metrics=runtime_metrics,
         extra_manifest=extra_manifest,
     )
-    outputs = write_run_artifacts(
+    outputs = surface_runtime.artifact_writer(
         cfg=context.cfg,
         trainer_version=context.trainer_version,
         created_at=context.created_at,
@@ -186,6 +180,11 @@ def run_consistency_query_ssl_peft_baseline(
         final_selection_report=(
             dict(final_selection_report) if final_selection_report is not None else None
         ),
+        final_model_state_dict=getattr(
+            local_ssl_result,
+            "final_model_state_dict",
+            None,
+        ),
         results=final_results,
         extra_manifest=effective_extra_manifest,
         eval_loaders=context.eval_loaders,
@@ -193,6 +192,84 @@ def run_consistency_query_ssl_peft_baseline(
     for key, value in outputs.items():
         print(f"{key}={value}")
     return outputs
+
+
+def _checkpoint_alias_results(
+    *,
+    model: Any,
+    raw_best_results: Mapping[str, Any],
+    final_model_state_dict: Mapping[str, Any] | None,
+    context: QuerySslRunContext,
+) -> dict[str, Any]:
+    """selection dataset 평가 결과를 checkpoint alias 기준으로 정규화한다."""
+
+    results: dict[str, Any] = {}
+    best_report = _selection_report(
+        results=raw_best_results,
+        selection_set=context.effective_selection_set,
+    )
+    if best_report is not None:
+        results["best"] = dict(best_report)
+
+    if final_model_state_dict is None:
+        return results
+
+    current_state = _clone_model_state_dict(model)
+    model.load_state_dict(dict(final_model_state_dict))
+    try:
+        raw_final_results = evaluate_query_ssl_run_context(
+            model=model,
+            eval_loaders=context.eval_loaders,
+            categories=context.categories,
+            device=context.training_device,
+        )
+    finally:
+        model.load_state_dict(current_state)
+
+    final_report = _selection_report(
+        results=raw_final_results,
+        selection_set=context.effective_selection_set,
+    )
+    if final_report is not None:
+        results["final"] = dict(final_report)
+    return results
+
+
+def _selection_report(
+    *,
+    results: Mapping[str, Any],
+    selection_set: str,
+) -> Mapping[str, Any] | None:
+    report = results.get(selection_set)
+    if isinstance(report, Mapping):
+        return report
+    if len(results) == 1:
+        only_report = next(iter(results.values()))
+        if isinstance(only_report, Mapping):
+            return only_report
+    return None
+
+
+def _clone_model_state_dict(model: Any) -> dict[str, Any]:
+    return {
+        key: value.detach().cpu().clone() if hasattr(value, "detach") else value
+        for key, value in model.state_dict().items()
+    }
+
+
+def run_query_ssl_peft_baseline(*args: Any, **kwargs: Any) -> dict[str, str]:
+    """이전 PEFT 이름을 보존하는 중앙 Query SSL compatibility alias."""
+
+    return run_query_ssl_control(*args, **kwargs)
+
+
+def run_consistency_query_ssl_peft_baseline(
+    *args: Any,
+    **kwargs: Any,
+) -> dict[str, str]:
+    """이전 PEFT 이름을 보존하는 중앙 Query SSL compatibility alias."""
+
+    return run_consistency_query_ssl_control(*args, **kwargs)
 
 
 def _prepare_query_ssl_training_runtime(
@@ -263,7 +340,7 @@ def _train_query_ssl_context(
     algorithm: QuerySslAlgorithm,
     surface_runtime: _CentralSslSurfaceRuntime,
     max_train_steps: int | None,
-) -> tuple[QuerySslPeftEncoderLocalSslResult, dict[str, Any]]:
+) -> tuple[Any, dict[str, Any]]:
     """준비된 Query SSL context로 학습을 실행하고 runtime metric을 반환한다."""
 
     local_session_request = _build_central_local_session_request(
@@ -291,32 +368,30 @@ def _build_central_local_session_request(
     cfg: Any,
     context: QuerySslRunContext,
     max_train_steps: int | None,
-) -> QuerySslPeftEncoderLocalSessionRequest:
+) -> CentralQuerySslTextEncoderSessionRequest:
     """중앙 pooled SSL cfg/context를 공통 local session 입력으로 변환한다."""
 
-    return QuerySslPeftEncoderLocalSessionRequest(
+    return CentralQuerySslTextEncoderSessionRequest(
+        cfg=cfg,
         seed=int(cfg.seed),
         labeled_rows=list(context.effective_train_rows),
         unlabeled_rows=list(context.effective_unlabeled_rows),
         diagnostic_unlabeled_rows=list(context.effective_unlabeled_rows),
         selection_rows=_load_selection_rows(context),
         labels=list(context.categories),
-        base_parameters=_extract_central_base_parameters(context),
+        model=context.model,
+        tokenizer=context.tokenizer,
         training_task=_build_central_training_task(
             cfg=cfg,
             context=context,
             max_train_steps=max_train_steps,
         ),
         query_ssl_config=_build_central_query_ssl_config(cfg),
-        peft_config=_build_central_peft_config(
-            cfg=context.cfg,
-            labels=context.categories,
-        ),
         trainer_runtime_config=_build_central_trainer_runtime_config(
             cfg=context.cfg,
             device=context.training_device,
         ),
-        trainer_options=QuerySslPeftEncoderLocalTrainerOptions(
+        trainer_options=QuerySslTextEncoderLocalTrainerOptions(
             classifier_learning_rate=float(cfg.classifier_learning_rate),
             weight_decay=float(cfg.weight_decay),
             log_every_steps=int(cfg.log_every_steps),
@@ -329,16 +404,8 @@ def _build_central_local_session_request(
             resume_checkpoint_every_epochs=int(
                 getattr(cfg, "resume_checkpoint_every_epochs", 0)
             ),
+            capture_final_model_state=True,
         ),
-    )
-
-
-def _extract_central_base_parameters(
-    context: QuerySslRunContext,
-) -> PeftEncoderMaterializedState:
-    return extract_peft_encoder_materialized_state(
-        model=context.model,
-        labels=context.categories,
     )
 
 
@@ -363,13 +430,13 @@ def _build_central_training_task(
         model_id=str(context.backbone_summary["backbone_model_id"]),
         model_revision=str(context.backbone_summary["backbone_revision"]),
         task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
-        training_scope="adapter_only",
+        training_scope=_resolve_training_scope(cfg),
         local_epochs=int(cfg.epochs),
         batch_size=int(cfg.train_batch_size),
         learning_rate=float(cfg.learning_rate),
         max_steps=int(max_train_steps or int(cfg.epochs)),
         objective_config=TrainingObjectiveConfig.from_mapping(
-            {"training_backend_name": PEFT_ENCODER_TRAINING_BACKEND_NAME}
+            {"training_backend_name": _resolve_training_backend_name(cfg)}
         ),
         selection_policy=TrainingSelectionPolicy.from_mapping(
             {"max_examples": len(context.effective_train_rows)}
@@ -388,63 +455,6 @@ def _build_central_query_ssl_config(cfg: Any) -> SimpleNamespace:
         drop_last_unlabeled_batches=bool(
             getattr(cfg, "drop_last_unlabeled_batches", False)
         ),
-    )
-
-
-def _build_central_peft_config(
-    *,
-    cfg: Any,
-    labels: Sequence[str],
-) -> PeftEncoderTrainingBackendConfig:
-    defaults = PeftEncoderTrainingBackendConfig()
-    paper_backbone = getattr(cfg, "paper_backbone", None)
-    peft_adapter = getattr(cfg, "peft_adapter", None)
-    return PeftEncoderTrainingBackendConfig(
-        backbone_model_id=_optional_str_attr(
-            paper_backbone,
-            "model_id",
-            defaults.backbone_model_id,
-        ),
-        backbone_revision=_optional_str_attr(
-            paper_backbone,
-            "revision",
-            defaults.backbone_revision,
-        ),
-        tokenizer_model_id=_optional_str_attr(
-            paper_backbone,
-            "tokenizer_model_id",
-            defaults.tokenizer_model_id,
-        ),
-        tokenizer_revision=_optional_str_attr(
-            paper_backbone,
-            "tokenizer_revision",
-            defaults.tokenizer_revision,
-        ),
-        pooling=_optional_str_attr(paper_backbone, "pooling", defaults.pooling),
-        max_length=int(getattr(paper_backbone, "max_length", defaults.max_length)),
-        task_prefix=_optional_str_attr(
-            paper_backbone,
-            "task_prefix",
-            defaults.task_prefix,
-        ),
-        peft_adapter_name=_optional_str_attr(
-            peft_adapter,
-            "peft_adapter_name",
-            defaults.peft_adapter_name,
-        ),
-        rank=int(getattr(peft_adapter, "rank", defaults.rank)),
-        alpha=int(getattr(peft_adapter, "alpha", defaults.alpha)),
-        dropout=float(getattr(peft_adapter, "dropout", defaults.dropout)),
-        bias=_optional_str_attr(peft_adapter, "bias", defaults.bias),
-        target_modules=_optional_str_attr(
-            peft_adapter,
-            "target_modules",
-            defaults.target_modules,
-        ),
-        use_rslora=bool(getattr(peft_adapter, "use_rslora", defaults.use_rslora)),
-        delta_format=defaults.delta_format,
-        artifact_ref_prefix=defaults.artifact_ref_prefix,
-        label_schema=tuple(str(label) for label in labels),
     )
 
 
@@ -470,12 +480,30 @@ def _build_central_trainer_runtime_config(
     )
 
 
-def _optional_str_attr(source: Any, key: str, default: str) -> str:
-    value = getattr(source, key, None)
-    if value is None:
-        return default
-    normalized = str(value).strip()
-    return normalized if normalized else default
+def _resolve_training_backend_name(cfg: Any) -> str:
+    central_ssl = getattr(getattr(cfg, "trainable_surface", None), "central_ssl", None)
+    raw_value = getattr(central_ssl, "training_backend_name", None)
+    if raw_value is None:
+        return "text_encoder_classifier_trainer"
+    value = str(raw_value).strip()
+    return value or "text_encoder_classifier_trainer"
+
+
+def _resolve_training_scope(cfg: Any) -> str:
+    trainable_surface = getattr(cfg, "trainable_surface", None)
+    trainable_state = str(
+        getattr(
+            trainable_surface,
+            "trainable_state",
+            "peft_adapter_and_classifier_head",
+        )
+        or ""
+    ).strip()
+    if trainable_state == "full_encoder_and_classifier_head":
+        return "full_encoder"
+    if trainable_state == "peft_adapter_and_classifier_head":
+        return "adapter_and_head"
+    return "adapter_and_head"
 
 
 def _build_query_ssl_extra_manifest(
@@ -679,6 +707,14 @@ def _resolve_trainable_surface_runtime(cfg: Any) -> _CentralSslSurfaceRuntime:
                 field_name="trainable_surface.central_ssl.local_session_runner",
             ),
             field_name="trainable_surface.central_ssl.local_session_runner",
+        ),
+        artifact_writer=load_configured_callable(
+            _read_required_config_str(
+                central_ssl,
+                "artifact_writer",
+                field_name="trainable_surface.central_ssl.artifact_writer",
+            ),
+            field_name="trainable_surface.central_ssl.artifact_writer",
         ),
         trainer_version_prefix=_read_required_config_str(
             central_ssl,

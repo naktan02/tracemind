@@ -34,7 +34,9 @@ from scripts.workflows.result_index.report_parsing import (
     as_mapping,
     as_sequence,
     infer_created_at,
+    infer_label_budget_count_from_texts,
     json_object_snapshot,
+    label_budget_name_from_count,
     optional_float,
     optional_int,
     optional_str,
@@ -43,6 +45,7 @@ from scripts.workflows.result_index.report_parsing import (
 CENTRAL_PEFT_SSL_CONTROL_PATH_NAMES = frozenset(
     {
         "run_peft_ssl_control",
+        "run_query_ssl_control",
         "train_peft_ssl_classifier",
     }
 )
@@ -173,15 +176,20 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
     if not trainer_version:
         raise ValueError(f"Report is missing trainer_version: {report_path}")
 
-    selection_slug = _find_selection_slug(report_path)
+    selection_slug = _find_selection_slug(report_path=report_path, manifest=manifest)
     split_names = _parse_selection_slug(selection_slug)
+    label_budget_count = _infer_label_budget_count(
+        selection_slug=selection_slug,
+        manifest=manifest,
+    )
     query_ssl_method = as_mapping(manifest.get("query_ssl_method"))
+    query_ssl_parameters = as_mapping(query_ssl_method.get("parameters"))
     runtime_metrics = as_mapping(manifest.get("runtime_metrics"))
     initial_checkpoint = as_mapping(manifest.get("query_adaptation_initial_checkpoint"))
     run_control = as_mapping(manifest.get("run_control"))
-    peft_adapter_config = _peft_adapter_config_from_backbone(
-        as_mapping(manifest.get("backbone"))
-    )
+    backbone = as_mapping(manifest.get("backbone"))
+    peft_adapter_config = _peft_adapter_config_from_backbone(backbone)
+    train_batch_size = optional_int(manifest.get("train_batch_size"))
 
     run = ExperimentRunRecord(
         run_id=trainer_version,
@@ -197,6 +205,8 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         unlabeled_dataset_name=split_names.get("unlabeled"),
         validation_dataset_name=split_names.get("validation"),
         test_dataset_name=split_names.get("test"),
+        label_budget_name=label_budget_name_from_count(label_budget_count),
+        label_budget_count_per_class=label_budget_count,
         seed=optional_int(manifest.get("seed")),
         learning_rate=optional_float(manifest.get("learning_rate")),
         classifier_learning_rate=optional_float(
@@ -204,13 +214,21 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         ),
         epochs=optional_int(manifest.get("epochs")),
         max_train_steps=optional_int(manifest.get("max_train_steps")),
-        train_batch_size=optional_int(manifest.get("train_batch_size")),
+        train_batch_size=train_batch_size,
+        labeled_batch_size=optional_int(manifest.get("labeled_batch_size"))
+        or train_batch_size,
+        unlabeled_batch_size=optional_int(
+            manifest.get("unlabeled_batch_size")
+            or query_ssl_method.get("unlabeled_batch_size")
+            or query_ssl_parameters.get("unlabeled_batch_size")
+        ),
         eval_batch_size=optional_int(manifest.get("eval_batch_size")),
         initial_checkpoint_name=optional_str(
             initial_checkpoint.get("preset_name")
             or initial_checkpoint.get("resolved_kind")
             or initial_checkpoint.get("mode")
         ),
+        backbone_model_id=optional_str(backbone.get("backbone_model_id")),
         unlabeled_row_count=optional_int(manifest.get("unlabeled_row_count")),
         total_row_exposure_count=None,
         labeled_row_exposure_count=None,
@@ -347,11 +365,40 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
     )
 
 
-def _find_selection_slug(report_path: Path) -> str | None:
+def _find_selection_slug(
+    *,
+    report_path: Path,
+    manifest: dict[str, Any] | None = None,
+) -> str | None:
     for parent in report_path.parents:
         name = parent.name
         if name.startswith("labeled-") and "_unlabeled-" in name:
             return name
+    for value in _manifest_selection_slug_candidates(manifest or {}):
+        slug = _extract_selection_slug_from_text(value)
+        if slug:
+            return slug
+    return None
+
+
+def _manifest_selection_slug_candidates(manifest: dict[str, Any]) -> list[str]:
+    candidates: list[str] = []
+    for key in ("train_jsonl", "selection_slug", "split_id"):
+        value = optional_str(manifest.get(key))
+        if value:
+            candidates.append(value)
+    for value in as_mapping(manifest.get("eval_sets")).values():
+        text = optional_str(value)
+        if text:
+            candidates.append(text)
+    return candidates
+
+
+def _extract_selection_slug_from_text(value: str) -> str | None:
+    for raw_part in Path(value).parts:
+        part = raw_part.strip()
+        if part.startswith("labeled-") and "_unlabeled-" in part:
+            return part
     return None
 
 
@@ -382,10 +429,29 @@ def _parse_selection_slug(selection_slug: str | None) -> dict[str, str | None]:
             "labeled": labeled_part or None,
             "unlabeled": unlabeled_part or None,
             "validation": validation_part or None,
-            "test": test_part or None,
+            "test": _strip_label_budget_suffix(test_part) or None,
         }
     )
     return names
+
+
+def _infer_label_budget_count(
+    *,
+    selection_slug: str | None,
+    manifest: dict[str, Any],
+) -> int | None:
+    return infer_label_budget_count_from_texts(
+        selection_slug,
+        manifest.get("train_jsonl"),
+        *as_mapping(manifest.get("eval_sets")).values(),
+    )
+
+
+def _strip_label_budget_suffix(value: str) -> str:
+    for marker in ("_labels_pc", "_labels-pc"):
+        if marker in value:
+            return value.split(marker, 1)[0]
+    return value
 
 
 def _peft_adapter_config_from_backbone(backbone: dict[str, Any]) -> dict[str, Any]:
@@ -402,8 +468,14 @@ def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:
         return "central_peft_initial_eval"
     if {"central", "ssl", "peft_classifier"} <= parts:
         return "central_peft_ssl"
+    if {"central", "ssl", "peft_text_encoder"} <= parts:
+        return "central_peft_ssl"
     if {"central", "supervised", "peft_classifier"} <= parts:
         return "central_peft_supervised"
+    if {"central", "supervised", "peft_text_encoder"} <= parts:
+        return "central_peft_supervised"
+    if {"central", "ssl", "full_text_encoder"} <= parts:
+        return "central_full_text_encoder_ssl"
     if {"central", "supervised", "full_text_encoder"} <= parts:
         return "central_full_text_encoder_supervised"
     if CENTRAL_PEFT_SSL_CONTROL_PATH_NAMES & parts:

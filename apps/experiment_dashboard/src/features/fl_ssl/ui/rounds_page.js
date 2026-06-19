@@ -9,8 +9,16 @@ import {
   resolveTableColumns,
   setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
+import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
 import { FL_ROUND_METRICS } from "../logic/constants.js";
-import { algorithmName, roundLegendLabel, runDescriptor, runId } from "../logic/labels.js";
+import {
+  algorithmName,
+  roundLegendLabel,
+  runDescriptor,
+  runHoverDetail,
+  runId,
+} from "../logic/labels.js";
 import { roundPointValue } from "../logic/metrics.js";
 import { compareFlRoundRows, flRoundRows } from "../logic/selectors.js";
 
@@ -45,11 +53,9 @@ export function normalizeRoundSelection(rows, state) {
     .filter((id) => id.startsWith("metric:"))
     .map((id) => id.replace(/^metric:/, ""))[0] || ROUND_DEFAULT_METRIC;
   state.roundMetricIds = [state.roundMetric];
-  const visibleRunIds = new Set(rows.map(runId));
-  state.roundRunIds = state.roundRunIds.filter((id) => visibleRunIds.has(id));
 }
 
-export function renderRoundsPage(elements, rows, state, bundle, rerender = () => {}) {
+export function renderRoundsPage(elements, rows, state, bundle, rerender = () => {}, selectionRows = rows) {
   const columns = buildRoundColumns();
   const { visibleColumns, allColumns } = resolveTableColumns(
     state.roundTableColumns,
@@ -59,24 +65,26 @@ export function renderRoundsPage(elements, rows, state, bundle, rerender = () =>
   const metricColumns = allColumns.filter((column) => column.group === "metric");
   renderRoundMetricPicker(elements.flRoundTableMetricPicker, metricColumns, state.roundMetric);
   renderRunPicker(elements, rows, state);
-  renderSelectedRunCards(elements, rows, state);
+  renderSelectedRunCards(elements, selectionRows, state);
   const selectedRows = flRoundRows(bundle)
     .filter((row) => state.roundRunIds.includes(row.run_id))
     .filter((row) => state.roundIncludeInitial || numberOrNull(row.round_index) !== 0)
     .sort(compareFlRoundRows);
   renderFlatNote(elements, selectedRows, state);
-  renderRoundChart(elements, selectedRows, rows, state);
+  renderRoundChart(elements, selectedRows, selectionRows, state);
   renderRoundTable(elements, columns, selectedRows, visibleColumns, state, rerender);
 }
 
 function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.roundRunIds);
+  const peerDetails = rows.map(runHoverDetail);
   elements.flRoundRunCheckboxes.innerHTML =
     rows.length === 0
       ? `<p class="empty">선택 가능한 run이 없습니다.</p>`
       : rows
           .map((row) => {
             const id = runId(row);
+            const detail = runHoverDetail(row);
             return `
               <label class="run-option">
                 <input
@@ -88,6 +96,7 @@ function renderRunPicker(elements, rows, state) {
                   <strong>${escapeHtml(algorithmName(row))}</strong>
                   <small>${escapeHtml(runDescriptor(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
             `;
           })
@@ -102,28 +111,24 @@ function renderSelectedRunCards(elements, rows, state) {
       `<p class="empty">선택된 FL round run이 없습니다.</p>`;
     return;
   }
+  const peerDetails = selectedRows.map(runHoverDetail);
   elements.flRoundSelectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const id = runId(row);
       const label = roundLegendLabel(row, state.roundRunAliases);
-      return `
-        <article class="selected-run-card alias-run-card">
-          <strong>${escapeHtml(label)}</strong>
-          <input
-            type="text"
-            data-fl-round-alias-run-id="${escapeHtml(id)}"
-            value="${escapeHtml(state.roundRunAliases[id] ?? "")}"
-            placeholder="legend alias"
-            aria-label="${escapeHtml(algorithmName(row))} 범례 alias"
-          />
-          <button
-            type="button"
-            data-remove-fl-round-run-id="${escapeHtml(id)}"
-            aria-label="${escapeHtml(label)} 제거"
-          >x</button>
-          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(runDescriptor(row))}</span>
-        </article>
-      `;
+      const detail = runHoverDetail(row);
+      return renderSelectedRunCard({
+        id,
+        label,
+        detail,
+        peerDetails,
+        aliasValue: state.roundRunAliases[id],
+        aliasPlaceholder: "legend alias",
+        aliasDataAttribute: "fl-round-alias-run-id",
+        aliasAriaLabel: `${algorithmName(row)} 범례 alias`,
+        removeDataAttribute: "remove-fl-round-run-id",
+        removeAriaLabel: `${label} 제거`,
+      });
     })
     .join("");
 }

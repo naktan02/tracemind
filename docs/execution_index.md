@@ -14,6 +14,8 @@ central fixed embedding + classifier seed
 | 문서 | 역할 |
 |---|---|
 | `AGENTS.md` | repo-wide 작업 규칙과 소유 경계 |
+| `README.md` | 외부 독자용 프로젝트 개요와 빠른 실행 경로 |
+| `docs/README.md` | 공개 문서 인덱스 |
 | `docs/ai_context_manifest.yaml` | task route와 source-of-truth 우선순위 |
 | `plan.md` | 연구 비전과 global/local 경계 |
 | `docs/project_execution_plan.md` | 현재 활성 판단과 다음 검증 |
@@ -45,10 +47,18 @@ Central SSL:
 1. relevant `conf/**`
 2. `scripts/experiments/central/ssl_control/README.md`
 3. `scripts/experiments/central/ssl_control/run_peft_supervised_control.py`
-4. `scripts/experiments/central/ssl_control/run_peft_ssl_control.py`
+4. `scripts/experiments/central/ssl_control/run_query_ssl_control.py`
 5. `scripts/support/query_ssl_text_encoder/runners/**`
 6. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
 7. `methods/ssl/**`, `methods/adaptation/{peft_text_encoder,full_text_encoder}/**`
+
+Central fixed-feature supervised:
+
+1. `conf/entrypoints/central/fixed_feature_control/run_fixed_feature_baseline.yaml`
+2. `conf/strategy_axes/classification/**`
+3. `scripts/experiments/central/fixed_feature_control/README.md`
+4. `scripts/experiments/central/fixed_feature_control/run_fixed_feature_baseline.py`
+5. `methods/classification/fixed_feature/**`
 
 FL SSL:
 
@@ -63,11 +73,13 @@ FL SSL:
 Agent runtime:
 
 1. `agent/AGENTS.md`
-2. `agent/src/services/README.md`
-3. `agent/src/services/inference/**`
-4. `agent/src/services/training_runtime/**`
-5. `agent/src/services/federation/**`
-6. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
+2. `agent/README.md`
+3. `agent/src/api/README.md`
+4. `agent/src/runtime/README.md`
+5. `agent/src/runtime/composition.py` for process object graph wiring
+6. `agent/src/features/README.md`
+7. `agent/src/features/{assets,captured_text,federation,inference,language,training_runtime,typing_segments,wellbeing}/**`
+8. `docs/architecture/live-fssl-runtime-translation.md` for FL SSL live translation gaps
 
 Main server FL:
 

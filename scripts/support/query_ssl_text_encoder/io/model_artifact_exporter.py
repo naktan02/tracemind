@@ -6,6 +6,9 @@ from typing import Any
 
 import torch
 
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    save_classifier_head_state_tensor_artifact,
+)
 from scripts.support.query_ssl_text_encoder.io.artifact_paths import (
     QueryPeftRunArtifactPaths,
 )
@@ -37,7 +40,22 @@ def save_classifier_head_artifact(
     categories: list[str],
     classifier_path,
 ) -> None:
-    """linear classifier head checkpoint를 공통 shape로 저장한다."""
+    """linear classifier head checkpoint를 tensor artifact로 저장한다."""
+
+    save_classifier_head_state_tensor_artifact(
+        path=classifier_path,
+        classifier_state_dict=model.classifier.state_dict(),
+        label_schema=categories,
+    )
+
+
+def save_legacy_classifier_head_pt_artifact(
+    *,
+    model: Any,
+    categories: list[str],
+    classifier_path,
+) -> None:
+    """구버전 `.pt` classifier head bundle을 저장한다."""
 
     torch.save(
         {

@@ -15,10 +15,6 @@ from methods.adaptation.peft_text_encoder.training.delta_extraction import (
     extract_peft_encoder_parameter_deltas,
     load_peft_encoder_base_parameters_into_model,
 )
-from methods.adaptation.peft_text_encoder.training.loops import (
-    set_seed,
-    train_classifier,
-)
 from methods.adaptation.peft_text_encoder.training.modeling import (
     build_peft_text_encoder_with_linear_head_from_config,
 )
@@ -26,6 +22,10 @@ from methods.adaptation.peft_text_encoder.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.adaptation.query_text_views.data import build_dataloader
+from methods.adaptation.text_encoder_classifier.query_ssl_training import (
+    set_seed,
+    train_classifier,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 

@@ -1,15 +1,41 @@
 import { formatMetric } from "../../../shared/formatting/numbers.js";
 import { applyFacetedFilters, optionsForAxis } from "../../../shared/filters/faceted_filters.js";
-import { algorithmName, centralDataLabel, peftAdapterLabel } from "./labels.js";
+import {
+  algorithmName,
+  backboneModelLabel,
+  centralDataLabel,
+  evaluationDataLabel,
+  initialCheckpointLabel,
+  isCentralSupervisedRow,
+  labelBudgetLabel,
+  peftAdapterLabel,
+  runCreatedDateLabel,
+  trainingDataLabel,
+} from "./labels.js";
 
 export const CENTRAL_FILTER_AXES = [
   axis("track", "Track", (row) => row.track ?? "-"),
   axis("algorithm", "Algorithm", algorithmName),
   axis("method_family", "Family", (row) => row.method_family ?? "-"),
+  axis("training_data", "Training Data", trainingDataLabel),
+  axis("evaluation_data", "Evaluation Data", evaluationDataLabel),
+  axis("label_budget", "Label Budget", labelBudgetLabel),
   axis("data_pair", "Labeled / Unlabeled", centralDataLabel),
   axis("labeled_dataset", "Labeled Dataset", (row) => row.labeled_dataset_name ?? "-"),
-  axis("unlabeled_dataset", "Unlabeled Dataset", (row) => row.unlabeled_dataset_name ?? "-"),
+  axis("unlabeled_dataset", "Unlabeled Dataset", (row) =>
+    isCentralSupervisedRow(row) ? "-" : row.unlabeled_dataset_name ?? "-",
+  ),
+  axis("validation_dataset", "Validation Dataset", validationDatasetFilterValue),
   axis("test_dataset", "Test Dataset", (row) => row.test_dataset_name ?? "-"),
+  axis("initial_checkpoint", "Initial Checkpoint", initialCheckpointLabel, null, {
+    alwaysVisible: true,
+  }),
+  axis("backbone_model", "Model", backboneModelLabel, null, {
+    alwaysVisible: true,
+  }),
+  axis("created_date", "Run Date", runCreatedDateLabel, null, {
+    alwaysVisible: true,
+  }),
   axis("peft_adapter", "Adapter", peftAdapterLabel),
   axis("peft_adapter_rank", "Adapter Rank", (row) => row.peft_adapter_rank ?? "-", (row) => `rank ${row.peft_adapter_rank ?? "-"}`),
   axis("peft_adapter_alpha", "Adapter Alpha", (row) => row.peft_adapter_alpha ?? "-", (row) => `alpha ${row.peft_adapter_alpha ?? "-"}`),
@@ -18,6 +44,8 @@ export const CENTRAL_FILTER_AXES = [
   axis("classifier_learning_rate", "Classifier LR", (row) => row.classifier_learning_rate ?? "-", (row) => formatMetric(row.classifier_learning_rate)),
   axis("epochs", "Epochs", (row) => row.epochs ?? "-", (row) => `${row.epochs ?? "-"} epochs`),
   axis("max_train_steps", "Max Steps", (row) => row.max_train_steps ?? "-", (row) => `${row.max_train_steps ?? "-"} steps`),
+  axis("labeled_batch_size", "Labeled Batch", labeledBatchSize, (row) => `labeled batch ${labeledBatchSize(row)}`),
+  axis("unlabeled_batch_size", "Unlabeled Batch", unlabeledBatchSize, (row) => `unlabeled batch ${unlabeledBatchSize(row)}`),
   axis("train_batch_size", "Train Batch", (row) => row.train_batch_size ?? "-", (row) => `batch ${row.train_batch_size ?? "-"}`),
 ];
 
@@ -31,20 +59,9 @@ export function applyCentralFilters(rows, centralState) {
 }
 
 export function pruneCentralFilters(rows, centralState) {
-  const visibleAxisIds = new Set(
-    CENTRAL_FILTER_AXES.filter(
-      (axis) =>
-        optionsForAxis(
-          rows,
-          axis,
-          CENTRAL_FILTER_AXES,
-          centralState.filterAxisIds,
-          centralState.filterValues,
-        ).length > 1,
-    ).map((axis) => axis.id),
-  );
+  const existingAxisIds = new Set(CENTRAL_FILTER_AXES.map((axis) => axis.id));
   centralState.filterAxisIds = centralState.filterAxisIds.filter((axisId) =>
-    visibleAxisIds.has(axisId),
+    existingAxisIds.has(axisId),
   );
   for (const axisId of Object.keys(centralState.filterValues)) {
     if (!centralState.filterAxisIds.includes(axisId)) {
@@ -72,11 +89,28 @@ export function pruneCentralFilters(rows, centralState) {
   }
 }
 
-function axis(id, label, value, labelForValue = null) {
+function axis(id, label, value, labelForValue = null, options = {}) {
   return {
     id,
     label,
     value: (row) => String(value(row)),
     labelForValue: labelForValue ? (row) => labelForValue(row) : null,
+    alwaysVisible: Boolean(options.alwaysVisible),
   };
+}
+
+function labeledBatchSize(row) {
+  return row.labeled_batch_size ?? row.train_batch_size ?? "-";
+}
+
+function unlabeledBatchSize(row) {
+  if (isCentralSupervisedRow(row)) return "-";
+  return row.unlabeled_batch_size ?? "-";
+}
+
+function validationDatasetFilterValue(row) {
+  if (isCentralSupervisedRow(row)) return "-";
+  const validation = row.validation_dataset_name;
+  if (!validation || validation === row.test_dataset_name) return "-";
+  return validation;
 }

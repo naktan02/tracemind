@@ -6,16 +6,16 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
+from methods.adaptation.text_encoder_classifier.classifier_head_tensor_artifact import (
+    build_classifier_head_state_tensor_artifact,
+)
 from methods.federated.aggregation.base import build_safetensors_aggregated_artifact
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
 
 from ..update.materialization import (
-    CLASSIFIER_HEAD_STATE_BIASES_KEY,
     CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
-    PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
-    PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
     PEFT_STATE_PARAMETERS_KEY,
     PeftEncoderMaterializedState,
 )
@@ -67,27 +67,18 @@ def build_peft_encoder_state_projection(
         for key, values in peft_parameter_deltas.items()
     }
     partitioned_peft_parameters: dict[str, dict[str, list[float]]] = {}
-    classifier_head_artifact: dict[str, object] = {
-        CLASSIFIER_HEAD_STATE_WEIGHTS_KEY: next_classifier_head_weights,
-        CLASSIFIER_HEAD_STATE_BIASES_KEY: next_classifier_head_biases,
-        "applied_classifier_head_weight_deltas": {
-            key: [float(value) for value in values]
-            for key, values in classifier_head_weight_deltas.items()
-        },
-        "applied_classifier_head_bias_deltas": {
-            key: float(value) for key, value in classifier_head_bias_deltas.items()
-        },
-    }
+    partitioned_head_weights: dict[str, dict[str, list[float]]] = {}
+    partitioned_head_biases: dict[str, dict[str, float]] = {}
     if partitioned_parameters:
         partitioned_peft_parameters = {
             partition_name: _json_vector_mapping(partition.peft_parameters)
             for partition_name, partition in sorted(partitioned_parameters.items())
         }
-        classifier_head_artifact[PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY] = {
+        partitioned_head_weights = {
             partition_name: _json_vector_mapping(partition.classifier_head_weights)
             for partition_name, partition in sorted(partitioned_parameters.items())
         }
-        classifier_head_artifact[PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY] = {
+        partitioned_head_biases = {
             partition_name: partition.classifier_head_biases
             for partition_name, partition in sorted(partitioned_parameters.items())
         }
@@ -95,6 +86,22 @@ def build_peft_encoder_state_projection(
         peft_parameters=next_peft_parameters,
         applied_peft_parameter_deltas=applied_adapter_deltas,
         partitioned_peft_parameters=partitioned_peft_parameters,
+    )
+    head_state_tensors, head_state_metadata = (
+        build_classifier_head_state_tensor_artifact(
+            classifier_head_weights=next_classifier_head_weights,
+            classifier_head_biases=next_classifier_head_biases,
+            label_schema=base_state.label_schema,
+            applied_classifier_head_weight_deltas={
+                key: [float(value) for value in values]
+                for key, values in classifier_head_weight_deltas.items()
+            },
+            applied_classifier_head_bias_deltas={
+                key: float(value) for key, value in classifier_head_bias_deltas.items()
+            },
+            partitioned_classifier_head_weights=partitioned_head_weights,
+            partitioned_classifier_head_biases=partitioned_head_biases,
+        )
     )
 
     return PeftEncoderStateProjection(
@@ -111,9 +118,10 @@ def build_peft_encoder_state_projection(
                 tensors=peft_state_tensors,
                 metadata=peft_state_metadata,
             ),
-            classifier_head_artifact_ref: {
-                **classifier_head_artifact,
-            },
+            classifier_head_artifact_ref: build_safetensors_aggregated_artifact(
+                tensors=head_state_tensors,
+                metadata=head_state_metadata,
+            ),
         },
     )
 

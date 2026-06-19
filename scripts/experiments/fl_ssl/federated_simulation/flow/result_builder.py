@@ -101,6 +101,7 @@ def build_simulation_result(
             diagnostic_view_config=request.diagnostic_view_config,
             final_projection_artifacts=final_projection_artifacts,
             peer_probe_manifest=bootstrapped.peer_probe_manifest,
+            initial_checkpoint_config=request.initial_checkpoint_config,
             run_artifact_dir=request.output_dir,
         )
         result_timing["result_report_build_seconds"] = time.perf_counter() - started_at

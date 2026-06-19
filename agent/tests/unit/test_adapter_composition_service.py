@@ -8,7 +8,7 @@ from typing import Sequence
 
 import pytest
 
-from agent.src.services.assets.adapters.composition_service import (
+from agent.src.features.assets.adapters.composition_service import (
     AdapterCompositionService,
 )
 from shared.src.contracts.model_contracts import make_embedding_manifest

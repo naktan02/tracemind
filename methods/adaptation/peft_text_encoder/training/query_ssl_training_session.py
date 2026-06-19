@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import copy
 import random
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Any
+
+import torch
 
 from methods.adaptation.peft_text_encoder.config import (
     PeftEncoderTrainingBackendConfig,
@@ -31,6 +34,13 @@ from methods.adaptation.query_text_views.tokenization import (
 from methods.adaptation.query_text_views.view_rows import (
     validate_query_ssl_unlabeled_views,
 )
+from methods.adaptation.text_encoder_classifier.query_ssl_session import (
+    CentralQuerySslTextEncoderSessionRequest,
+)
+from methods.adaptation.text_encoder_classifier.query_ssl_training import (
+    set_seed,
+    train_query_ssl_classifier,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
@@ -38,14 +48,16 @@ from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingTask
 
-from .delta_extraction import load_peft_encoder_base_parameters_into_model
+from .delta_extraction import (
+    extract_peft_encoder_materialized_state,
+    load_peft_encoder_base_parameters_into_model,
+)
 from .local_training_surface import (
     PeftEncoderTrainerRuntimeConfig,
     QuerySslPeftEncoderLocalSessionRequest,
     QuerySslPeftEncoderLocalTrainerOptions,
     QuerySslPeftEncoderObjectiveRuntimeConfig,
 )
-from .loops import set_seed, train_query_ssl_classifier
 from .modeling import (
     PeftTextEncoderWithLinearHead,
     build_peft_text_encoder_with_linear_head_from_config,
@@ -71,6 +83,7 @@ class QuerySslPeftEncoderLocalSslResult:
     local_step_plan: QuerySslLocalStepPlan
     history: tuple[dict[str, Any], ...]
     best_selection_report: Mapping[str, Any]
+    final_model_state_dict: Mapping[str, Any] | None
     pseudo_label_quality: PseudoLabelQualitySummary
     diagnostic_client_metrics: Mapping[str, float]
     tokenization_cache: TextTokenizationCache | None
@@ -136,6 +149,18 @@ def run_query_ssl_peft_encoder_local_ssl(
         timing_recorder=timing_recorder,
     )
 
+    final_model_state_dict: dict[str, Any] | None = None
+
+    def capture_final_model_state(model: PeftTextEncoderWithLinearHead) -> None:
+        nonlocal final_model_state_dict
+        final_model_state_dict = _clone_model_state_dict(model)
+
+    before_restore_best = (
+        capture_final_model_state
+        if effective_trainer_options.capture_final_model_state
+        else None
+    )
+
     with _measure(timing_recorder, "core_training_loop_seconds"):
         model, history, _best_selection_report = train_query_ssl_classifier(
             model=runtime.model,
@@ -165,6 +190,7 @@ def run_query_ssl_peft_encoder_local_ssl(
             resume_checkpoint_every_epochs=int(
                 effective_trainer_options.resume_checkpoint_every_epochs
             ),
+            before_restore_best=before_restore_best,
         )
 
     diagnostic_threshold = resolve_fixed_pseudo_label_diagnostic_threshold(
@@ -199,6 +225,7 @@ def run_query_ssl_peft_encoder_local_ssl(
         local_step_plan=runtime.step_plan,
         history=tuple(history),
         best_selection_report=dict(_best_selection_report),
+        final_model_state_dict=final_model_state_dict,
         pseudo_label_quality=pseudo_label_quality,
         diagnostic_client_metrics=diagnostic_threshold.to_client_metrics(),
         tokenization_cache=runtime.tokenization_cache,
@@ -228,6 +255,146 @@ def run_query_ssl_peft_encoder_local_session(
         initial_query_ssl_algorithm_state=request.initial_query_ssl_algorithm_state,
         trainer_options=request.trainer_options,
     )
+
+
+def run_central_query_ssl_peft_encoder_session(
+    request: CentralQuerySslTextEncoderSessionRequest,
+) -> QuerySslPeftEncoderLocalSslResult:
+    """중앙 surface-neutral 요청을 PEFT local training core 입력으로 변환한다."""
+
+    labels = tuple(str(label) for label in request.labels)
+    return run_query_ssl_peft_encoder_local_ssl(
+        seed=request.seed,
+        labeled_rows=request.labeled_rows,
+        unlabeled_rows=request.unlabeled_rows,
+        diagnostic_unlabeled_rows=request.diagnostic_unlabeled_rows,
+        selection_rows=request.selection_rows,
+        labels=labels,
+        base_parameters=extract_peft_encoder_materialized_state(
+            model=request.model,
+            labels=labels,
+        ),
+        training_task=request.training_task,
+        query_ssl_config=request.query_ssl_config,
+        peft_config=_build_central_peft_config(
+            cfg=request.cfg,
+            labels=labels,
+        ),
+        trainer_runtime_config=request.trainer_runtime_config,
+        initial_query_ssl_algorithm_state=request.initial_query_ssl_algorithm_state,
+        trainer_options=QuerySslPeftEncoderLocalTrainerOptions(
+            classifier_learning_rate=(
+                None
+                if request.trainer_options is None
+                else request.trainer_options.classifier_learning_rate
+            ),
+            weight_decay=(
+                0.0
+                if request.trainer_options is None
+                else request.trainer_options.weight_decay
+            ),
+            log_every_steps=(
+                0
+                if request.trainer_options is None
+                else request.trainer_options.log_every_steps
+            ),
+            resume_checkpoint_path=(
+                None
+                if request.trainer_options is None
+                else request.trainer_options.resume_checkpoint_path
+            ),
+            resume_checkpoint_output_dir=(
+                None
+                if request.trainer_options is None
+                else request.trainer_options.resume_checkpoint_output_dir
+            ),
+            resume_checkpoint_every_epochs=(
+                0
+                if request.trainer_options is None
+                else request.trainer_options.resume_checkpoint_every_epochs
+            ),
+            capture_final_model_state=(
+                False
+                if request.trainer_options is None
+                else request.trainer_options.capture_final_model_state
+            ),
+        ),
+    )
+
+
+def _clone_model_state_dict(model: PeftTextEncoderWithLinearHead) -> dict[str, Any]:
+    state: dict[str, Any] = {}
+    for key, value in model.state_dict().items():
+        if isinstance(value, torch.Tensor):
+            state[key] = value.detach().cpu().clone()
+        else:
+            state[key] = copy.deepcopy(value)
+    return state
+
+
+def _build_central_peft_config(
+    *,
+    cfg: Any,
+    labels: Sequence[str],
+) -> PeftEncoderTrainingBackendConfig:
+    defaults = PeftEncoderTrainingBackendConfig()
+    paper_backbone = getattr(cfg, "paper_backbone", None)
+    peft_adapter = getattr(cfg, "peft_adapter", None)
+    return PeftEncoderTrainingBackendConfig(
+        backbone_model_id=_optional_str_attr(
+            paper_backbone,
+            "model_id",
+            defaults.backbone_model_id,
+        ),
+        backbone_revision=_optional_str_attr(
+            paper_backbone,
+            "revision",
+            defaults.backbone_revision,
+        ),
+        tokenizer_model_id=_optional_str_attr(
+            paper_backbone,
+            "tokenizer_model_id",
+            defaults.tokenizer_model_id,
+        ),
+        tokenizer_revision=_optional_str_attr(
+            paper_backbone,
+            "tokenizer_revision",
+            defaults.tokenizer_revision,
+        ),
+        pooling=_optional_str_attr(paper_backbone, "pooling", defaults.pooling),
+        max_length=int(getattr(paper_backbone, "max_length", defaults.max_length)),
+        task_prefix=_optional_str_attr(
+            paper_backbone,
+            "task_prefix",
+            defaults.task_prefix,
+        ),
+        peft_adapter_name=_optional_str_attr(
+            peft_adapter,
+            "peft_adapter_name",
+            defaults.peft_adapter_name,
+        ),
+        rank=int(getattr(peft_adapter, "rank", defaults.rank)),
+        alpha=int(getattr(peft_adapter, "alpha", defaults.alpha)),
+        dropout=float(getattr(peft_adapter, "dropout", defaults.dropout)),
+        bias=_optional_str_attr(peft_adapter, "bias", defaults.bias),
+        target_modules=_optional_str_attr(
+            peft_adapter,
+            "target_modules",
+            defaults.target_modules,
+        ),
+        use_rslora=bool(getattr(peft_adapter, "use_rslora", defaults.use_rslora)),
+        delta_format=defaults.delta_format,
+        artifact_ref_prefix=defaults.artifact_ref_prefix,
+        label_schema=tuple(str(label) for label in labels),
+    )
+
+
+def _optional_str_attr(source: Any, key: str, default: str) -> str:
+    value = getattr(source, key, None)
+    if value is None:
+        return default
+    normalized = str(value).strip()
+    return normalized if normalized else default
 
 
 def _prepare_query_ssl_local_runtime(

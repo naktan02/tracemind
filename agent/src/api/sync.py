@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 
+from agent.src.api.dependencies import (
+    SharedAdapterRuntimeServiceDep,
+    SharedAdapterSyncServiceDep,
+)
 from agent.src.infrastructure.repositories.shared_adapter_state_repository import (
     SharedAdapterStateActivationPointer,
-)
-from agent.src.services.assets.shared_adapters.runtime_service import (
-    SharedAdapterRuntimeService,
-)
-from agent.src.services.assets.shared_adapters.sync_service import (
-    SharedAdapterSyncService,
 )
 from shared.src.contracts.adapter_contract_families.base import (
     CurrentSharedAdapterStatePayload,
@@ -33,38 +29,6 @@ class AssetPullRequest(BaseModel):
 
 
 router = APIRouter(prefix="/api/v1/sync", tags=["sync"])
-
-
-def get_shared_adapter_runtime_service(request: Request) -> SharedAdapterRuntimeService:
-    """app.state에서 SharedAdapterRuntimeService를 읽는다."""
-    service = getattr(request.app.state, "shared_adapter_runtime_service", None)
-    if service is None:
-        raise RuntimeError(
-            "SharedAdapterRuntimeService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.shared_adapter_runtime_service를 설정하세요."
-        )
-    return service
-
-
-def get_shared_adapter_sync_service(request: Request) -> SharedAdapterSyncService:
-    """app.state에서 SharedAdapterSyncService를 읽는다."""
-    service = getattr(request.app.state, "shared_adapter_sync_service", None)
-    if service is None:
-        raise RuntimeError(
-            "SharedAdapterSyncService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.shared_adapter_sync_service를 설정하세요."
-        )
-    return service
-
-
-SharedAdapterRuntimeServiceDep = Annotated[
-    SharedAdapterRuntimeService,
-    Depends(get_shared_adapter_runtime_service),
-]
-SharedAdapterSyncServiceDep = Annotated[
-    SharedAdapterSyncService,
-    Depends(get_shared_adapter_sync_service),
-]
 
 
 @router.get(

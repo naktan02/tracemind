@@ -1,9 +1,30 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+
+function contentScriptBundleGuard(): Plugin {
+  return {
+    name: "tracemind-content-script-bundle-guard",
+    generateBundle(_options, bundle) {
+      const contentChunk = bundle["assets/content.js"];
+      if (contentChunk?.type !== "chunk") {
+        this.error("content script bundle was not emitted at assets/content.js");
+        return;
+      }
+      if (
+        contentChunk.imports.length > 0 ||
+        contentChunk.dynamicImports.length > 0
+      ) {
+        this.error(
+          "content script must be emitted as a standalone classic script",
+        );
+      }
+    },
+  };
+}
 
 export default defineConfig({
   base: "./",
-  plugins: [react()],
+  plugins: [react(), contentScriptBundleGuard()],
   build: {
     rollupOptions: {
       input: {

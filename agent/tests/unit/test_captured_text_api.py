@@ -20,31 +20,37 @@ from agent.src.contracts.captured_text_contracts import (
     CapturedTextSourceType,
     CapturedTextSurfaceType,
 )
-from agent.src.infrastructure.repositories.analysis_event_repository import (
-    AnalysisEventRepository,
-)
-from agent.src.infrastructure.repositories.captured_text_repository import (
-    CapturedTextRepository,
-    captured_text_record_from_payload,
-)
-from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.ingest.captured_text_ingest_service import (
+from agent.src.features.captured_text.ingest import (
     CapturedTextIngestService,
 )
-from agent.src.services.ingest.captured_text_lifecycle_service import (
+from agent.src.features.captured_text.lifecycle import (
     CapturedTextLifecycleConfig,
     CapturedTextLifecycleService,
 )
-from agent.src.services.ingest.captured_text_view_generation_service import (
+from agent.src.features.captured_text.storage.records import (
+    captured_text_record_from_payload,
+)
+from agent.src.features.captured_text.storage.repository import (
+    CapturedTextRepository,
+)
+from agent.src.features.captured_text.view_generation.service import (
     CapturedTextViewGenerationService,
 )
-from agent.src.services.language.preprocess_service import PreprocessService
+from agent.src.features.inference.pipeline_service import InferencePipelineService
+from agent.src.features.language.preprocess_service import PreprocessService
+from agent.src.infrastructure.repositories.analysis_event_repository import (
+    AnalysisEventRepository,
+)
 
 
-def _event(event_id: str = "event_1") -> CapturedTextEventPayload:
+def _event(
+    event_id: str = "event_1",
+    *,
+    occurred_at: datetime | None = None,
+) -> CapturedTextEventPayload:
     return CapturedTextEventPayload(
         event_id=event_id,
-        occurred_at=datetime(2026, 6, 6, 1, 0, tzinfo=timezone.utc),
+        occurred_at=occurred_at or datetime.now(tz=timezone.utc),
         text="오늘 너무 불안해",
         locale="ko",
         source_type=CapturedTextSourceType.SEARCH,
@@ -138,6 +144,7 @@ def test_captured_text_router_is_registered_on_agent_app() -> None:
     assert "/api/v1/captured-text/debug-job/status" in route_paths
     assert "/api/v1/captured-text/debug-job/config" in route_paths
     assert "/api/v1/captured-text/debug-job/run-view-generation" in route_paths
+    assert "/api/v1/captured-text/debug-job/run-analysis" in route_paths
 
 
 def test_agent_app_uses_captured_text_state_without_legacy_buffer() -> None:
@@ -228,6 +235,10 @@ def test_captured_text_debug_job_status_reports_pipeline_state(
     assert payload["strong_text_provider_name"] == "identity"
     assert payload["weak_text_identity_fallback"] is True
     assert payload["strong_text_identity_fallback"] is True
+    assert payload["analysis_pipeline_configured"] is False
+    assert payload["scorer_backend_name"] is None
+    assert payload["embedding_model_id"] is None
+    assert payload["model_revision"] is None
     assert payload["captured_text_event_count"] == 1
     assert payload["generated_view_count"] == 0
     assert payload["view_generation_status_counts"] == {"pending": 1}
@@ -239,27 +250,33 @@ def test_captured_text_debug_job_run_generates_views(
 ) -> None:
     repository = CapturedTextRepository(db_path=tmp_path / "captured_text.db")
     repository.save(captured_text_record_from_payload(_event("event_1")))
-    client = TestClient(
+    with TestClient(
         create_app(
             captured_text_repository=repository,
+            captured_text_view_generation_service=CapturedTextViewGenerationService(
+                repository=repository
+            ),
             auto_configure_pipeline=False,
         )
-    )
-
-    response = client.post(
-        "/api/v1/captured-text/debug-job/run-view-generation",
-        json=CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(mode="json"),
-    )
+    ) as client:
+        response = client.post(
+            "/api/v1/captured-text/debug-job/run-view-generation",
+            json=CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(
+                mode="json"
+            ),
+        )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["selected_count"] == 1
     assert payload["generated_count"] == 1
+    assert payload["analysis_selected_count"] == 0
+    assert payload["analysis_processed_count"] == 0
     assert payload["generated_view_count"] == 1
     assert repository.get_generated_view("event_1") is not None
 
 
-def test_captured_text_debug_job_generates_view_and_classifies_weak_text(
+def test_captured_text_debug_job_run_analysis_classifies_ready_weak_text(
     tmp_path: Path,
 ) -> None:
     db_path = tmp_path / "agent_local.db"
@@ -310,11 +327,20 @@ def test_captured_text_debug_job_generates_view_and_classifies_weak_text(
         "/api/v1/captured-text/debug-job/run-view-generation",
         json=CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(mode="json"),
     )
+    analysis_response = client.post(
+        "/api/v1/captured-text/debug-job/run-analysis",
+        json=CapturedTextDebugJobRunRequestPayload(limit=10).model_dump(mode="json"),
+    )
 
     assert ingest_response.status_code == 201
     assert run_response.status_code == 200
-    payload = run_response.json()
-    assert payload["generated_count"] == 1
+    assert analysis_response.status_code == 200
+    view_payload = run_response.json()
+    payload = analysis_response.json()
+    assert view_payload["generated_count"] == 1
+    assert view_payload["analysis_selected_count"] == 0
+    assert payload["selected_count"] == 0
+    assert payload["generated_count"] == 0
     assert payload["analysis_selected_count"] == 1
     assert payload["analysis_processed_count"] == 1
     assert payload["analysis_failed_count"] == 0

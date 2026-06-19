@@ -8,18 +8,23 @@ import {
   resolveTableColumns,
   setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
+import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
+import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
 import {
   algorithmName,
   compactRunSubLabel,
   labelBudgetLabel,
   runDescriptor,
   runDisplayLabel,
+  runHoverDetail,
   runId,
 } from "../logic/labels.js";
 import { flFilterAxes } from "../logic/filters.js";
 import { flRunMetricKeys, formatFlRunMetric } from "../logic/metrics.js";
 
-const DEFAULT_VISIBLE_COLUMNS = ["axis:algorithm"];
+const DEFAULT_VISIBLE_COLUMNS = [
+  "axis:algorithm",
+];
 
 const FL_RUN_AXIS_COLUMNS = [
   {
@@ -69,14 +74,10 @@ const FL_RUN_AXIS_COLUMNS = [
 export function normalizeFlRunSelection(rows, state) {
   const metrics = flRunMetricKeys(rows);
   state.runMetricIds = state.runMetricIds.filter((metric) => metrics.includes(metric));
-  const visibleRunIds = new Set(rows.map(runId));
-  state.runIds = state.runIds.filter((selectedRunId) =>
-    visibleRunIds.has(selectedRunId),
-  );
   normalizeRunColumns(state, rows);
 }
 
-export function renderFlRunsPage(elements, rows, state, _bundle = null, rerender = () => {}) {
+export function renderFlRunsPage(elements, rows, state, _bundle = null, rerender = () => {}, selectionRows = rows) {
   const columns = buildRunColumns(rows, _bundle ?? {});
   const { visibleColumns, allColumns, state: columnState } = resolveTableColumns(
     state.runTableColumns,
@@ -91,20 +92,22 @@ export function renderFlRunsPage(elements, rows, state, _bundle = null, rerender
   renderColumnCheckboxes(elements.flRunMetricPicker, metricColumns, visibleIds, "flRunTableColumn");
   renderColumnCheckboxes(elements.flRunAxisPicker, axisColumns, visibleIds, "flRunTableColumn");
   renderRunPicker(elements, rows, state);
-  renderSelectedRunCards(elements, rows, state);
-  renderRunTable(elements, visibleColumns, rows, state, rerender);
+  renderSelectedRunCards(elements, selectionRows, state);
+  renderRunTable(elements, visibleColumns, selectionRows, state, rerender);
 }
 
 function renderRunPicker(elements, rows, state) {
   const selectedRunIds = new Set(state.runIds);
+  const peerDetails = rows.map(runHoverDetail);
   elements.flRunCheckboxes.innerHTML =
     rows.length === 0
       ? `<p class="empty">선택 가능한 FL run이 없습니다.</p>`
       : rows
           .map((row) => {
             const id = runId(row);
+            const detail = runHoverDetail(row);
             return `
-              <label class="run-option" title="${escapeHtml(runDescriptor(row))}">
+              <label class="run-option">
                 <input
                   type="checkbox"
                   data-fl-run-id="${escapeHtml(id)}"
@@ -114,6 +117,7 @@ function renderRunPicker(elements, rows, state) {
                   <strong>${escapeHtml(runDisplayLabel(row, state.runAliases))}</strong>
                   <small>${escapeHtml(compactRunSubLabel(row))}</small>
                 </span>
+                <span class="run-option-detail" aria-hidden="true">${renderRunOptionDetail(detail, peerDetails)}</span>
               </label>
             `;
           })
@@ -128,28 +132,24 @@ function renderSelectedRunCards(elements, rows, state) {
       `<p class="empty">선택된 FL run이 없습니다.</p>`;
     return;
   }
+  const peerDetails = selectedRows.map(runHoverDetail);
   elements.flRunSelectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const id = runId(row);
       const label = runDisplayLabel(row, state.runAliases);
-      return `
-        <article class="selected-run-card alias-run-card">
-          <strong>${escapeHtml(label)}</strong>
-          <input
-            type="text"
-            data-fl-run-alias-run-id="${escapeHtml(id)}"
-            value="${escapeHtml(state.runAliases[id] ?? "")}"
-            placeholder="run alias"
-            aria-label="${escapeHtml(label)} 표시명 alias"
-          />
-          <button
-            type="button"
-            data-remove-fl-run-id="${escapeHtml(id)}"
-            aria-label="${escapeHtml(label)} 제거"
-          >x</button>
-          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(runDescriptor(row))}</span>
-        </article>
-      `;
+      const detail = runHoverDetail(row);
+      return renderSelectedRunCard({
+        id,
+        label,
+        detail,
+        peerDetails,
+        aliasValue: state.runAliases[id],
+        aliasPlaceholder: "run alias",
+        aliasDataAttribute: "fl-run-alias-run-id",
+        aliasAriaLabel: `${label} 표시명 alias`,
+        removeDataAttribute: "remove-fl-run-id",
+        removeAriaLabel: `${label} 제거`,
+      });
     })
     .join("");
 }
