@@ -186,6 +186,7 @@ def _build_filters(
         "initial_checkpoints": _unique(
             row.get("initial_checkpoint_name") for row in runs
         ),
+        "backbone_model_ids": _unique(row.get("backbone_model_id") for row in runs),
         "peft_adapter_names": _unique(row.get("peft_adapter_name") for row in runs),
         "peft_adapter_ranks": _unique(row.get("peft_adapter_rank") for row in runs),
         "peft_adapter_alphas": _unique(row.get("peft_adapter_alpha") for row in runs),

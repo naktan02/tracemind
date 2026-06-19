@@ -119,6 +119,10 @@ def load_fl_ssl_result_index_records(
         ),
         eval_batch_size=None,
         initial_checkpoint_name=_initial_checkpoint_name(initial_checkpoint),
+        backbone_model_id=optional_str(
+            _trainable_state_objective_value(objective, "backbone_model_id")
+            or embedding_adapter.get("model_id")
+        ),
         unlabeled_row_count=optional_int(split_summary.get("actual_unlabeled_count")),
         total_row_exposure_count=optional_int(
             split_summary.get("actual_total_exposure_count")

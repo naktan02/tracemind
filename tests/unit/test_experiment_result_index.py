@@ -53,6 +53,7 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.run.eval_batch_size == 32
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs"
+    assert records.run.backbone_model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert records.run.peft_adapter_name == "lora"
     assert records.run.peft_adapter_rank == 8
     assert records.run.peft_adapter_alpha == 16
@@ -86,6 +87,19 @@ def test_load_result_index_records_keeps_peft_track(
     assert records.run.track == "central_peft_ssl"
     assert records.run.method_family == "peft_classifier"
     assert records.run.method_name == "fixmatch"
+
+
+def test_load_result_index_records_recognizes_peft_text_encoder_ssl_path(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_peft_text_encoder_ssl_report(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.track == "central_peft_ssl"
+    assert records.run.method_family == "peft_classifier"
+    assert records.run.method_name == "fixmatch"
+    assert records.run.initial_checkpoint_name == "none"
 
 
 def test_load_result_index_records_derives_supervised_selection_from_manifest(
@@ -225,6 +239,7 @@ def test_result_index_schema_migration_adds_run_control_columns(
     assert "label_budget_count_per_class" in columns
     assert "labeled_batch_size" in columns
     assert "unlabeled_batch_size" in columns
+    assert "backbone_model_id" in columns
 
 
 def test_load_result_index_records_normalizes_fl_ssl_report_shape(
@@ -258,6 +273,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs/fl_ssl"
     assert records.run.initial_checkpoint_name == "central_seed_20260612"
+    assert records.run.backbone_model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert records.run.total_row_exposure_count == 40960
     assert records.run.labeled_row_exposure_count == 405
     assert records.run.unlabeled_row_exposure_count == 40555
@@ -279,6 +295,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.peft_adapter_dropout == 0.1
     assert records.run.peft_adapter_target_modules == "all-linear"
     assert records.run.peft_adapter_parameters_json == PEFT_ADAPTER_PARAMETERS_JSON
+    assert records.run.backbone_model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert records.run.embedding_backend == "transformers_mxbai"
     assert records.run.embedding_device == "cuda"
     assert records.eval_metrics[1].eval_set == "final_validation"
@@ -496,6 +513,9 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["run_control_budget_names"] == ["main"]
     assert bundle["filters"]["run_control_output_dirs"] == ["runs/fl_ssl"]
     assert bundle["filters"]["initial_checkpoints"] == ["central_seed_20260612"]
+    assert bundle["filters"]["backbone_model_ids"] == [
+        "mixedbread-ai/mxbai-embed-large-v1"
+    ]
     assert bundle["filters"]["created_dates"] == ["2026-05-17"]
     assert bundle["filters"]["client_counts"] == [10]
     assert bundle["filters"]["round_budgets"] == [50]
@@ -628,6 +648,33 @@ def _write_peft_report(tmp_path: Path) -> Path:
     projection_dir.mkdir(parents=True, exist_ok=True)
     payload = _sample_report(projection_dir)
     payload["schema_version"] = "central_peft_classifier_eval.v1"
+    report_path.write_text(
+        json.dumps(payload, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _write_peft_text_encoder_ssl_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "central"
+        / "ssl"
+        / "peft_text_encoder"
+        / ("labeled-ourafla_reddit_unlabeled-szegeelim_general4_test-ourafla_reddit")
+        / "fixmatch_usb_v1"
+        / "peft_fixmatch_2026_06_16_031154"
+        / "reports"
+        / "report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    projection_dir = report_path.parent.parent / "projections"
+    projection_dir.mkdir(parents=True, exist_ok=True)
+    payload = _sample_report(projection_dir)
+    payload["schema_version"] = "central_peft_classifier_eval.v1"
+    payload["trainer_version"] = "peft_fixmatch_2026_06_16_031154"
+    payload["manifest"]["trainer_version"] = "peft_fixmatch_2026_06_16_031154"
     report_path.write_text(
         json.dumps(payload, indent=2) + "\n",
         encoding="utf-8",
@@ -915,6 +962,7 @@ def _sample_report(projection_dir: Path) -> dict:
             "classifier_learning_rate": 0.0002,
             "categories": ["anxiety", "normal"],
             "backbone": {
+                "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
                 "peft_adapter_config": {
                     "adapter_name": "lora",
                     "rank": 8,

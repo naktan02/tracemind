@@ -76,7 +76,14 @@ export function evaluationDataLabel(row) {
 
 export function initialCheckpointLabel(row) {
   const raw = String(row.initial_checkpoint_name ?? "").trim();
+  if (isCentralSupervisedRow(row)) {
+    return raw || "-";
+  }
   return raw || "unrecorded";
+}
+
+export function backboneModelLabel(row) {
+  return row.backbone_model_id ?? row.embedding_model_id ?? "-";
 }
 
 export function runCreatedDateLabel(row) {
@@ -106,6 +113,7 @@ export function overviewRunSubLabel(row) {
   return [
     trainingDataLabel(row),
     evaluationDataLabel(row),
+    `model=${backboneModelLabel(row)}`,
     `ckpt=${initialCheckpointLabel(row)}`,
     `seed=${row.seed ?? "?"}`,
   ].join(" · ");
@@ -114,6 +122,7 @@ export function overviewRunSubLabel(row) {
 export function runDescriptor(row) {
   return [
     `family=${methodFamilyLabel(row)}`,
+    `model=${backboneModelLabel(row)}`,
     trainingDataLabel(row),
     evaluationDataLabel(row),
     peftAdapterConfigLabel(row),

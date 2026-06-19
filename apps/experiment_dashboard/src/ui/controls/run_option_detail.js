@@ -1,11 +1,13 @@
 import { escapeHtml } from "../../shared/formatting/html.js";
 
 export function renderRunOptionDetail(detail, peerDetails) {
-  const parts = splitDetail(detail);
-  const peerParts = peerDetails.map(splitDetail);
-  return parts
-    .map((part, index) => {
-      const content = renderPartContent(part, peerParts, index);
+  const entries = splitDetail(detail).map(parseDetailEntry);
+  const peerEntries = peerDetails.map((peerDetail) =>
+    splitDetail(peerDetail).map(parseDetailEntry),
+  );
+  return entries
+    .map((entry) => {
+      const content = renderPartContent(entry, peerEntries);
       return `<span class="run-option-detail-part">${content}</span>`;
     })
     .join(`<span class="run-option-detail-separator"> · </span>`);
@@ -18,32 +20,44 @@ function splitDetail(detail) {
     .filter(Boolean);
 }
 
-function hasDifferentPeerValue(peerParts, index) {
-  const values = new Set(
-    peerParts
-      .map((parts) => parts[index])
-      .filter((part) => part !== undefined && part !== ""),
-  );
-  return values.size > 1;
+function renderPartContent(entry, peerEntries) {
+  if (!hasDifferentPeerValue(entry, peerEntries)) {
+    return escapeHtml(entry.raw);
+  }
+  if (entry.key === null) {
+    return `<span class="run-option-detail-diff">${escapeHtml(entry.raw)}</span>`;
+  }
+  const value = `<span class="run-option-detail-diff">${escapeHtml(entry.value)}</span>`;
+  return `${escapeHtml(entry.key)}=${value}`;
 }
 
-function renderPartContent(part, peerParts, index) {
-  if (!hasDifferentPeerValue(peerParts, index)) {
-    return escapeHtml(part);
-  }
-  const parsed = parseKeyValue(part);
-  if (parsed === null) {
-    return `<span class="run-option-detail-diff">${escapeHtml(part)}</span>`;
-  }
-  const value = `<span class="run-option-detail-diff">${escapeHtml(parsed.value)}</span>`;
-  return `${escapeHtml(parsed.key)}=${value}`;
-}
-
-function parseKeyValue(part) {
+function parseDetailEntry(part) {
   const separatorIndex = part.indexOf("=");
-  if (separatorIndex <= 0 || separatorIndex === part.length - 1) return null;
+  if (separatorIndex <= 0 || separatorIndex === part.length - 1) {
+    return {
+      key: null,
+      raw: part,
+      value: part,
+    };
+  }
   return {
     key: part.slice(0, separatorIndex),
+    raw: part,
     value: part.slice(separatorIndex + 1),
   };
+}
+
+function hasDifferentPeerValue(entry, peerEntries) {
+  if (entry.key === null) {
+    return !peerEntries.every((entries) =>
+      entries.some((peerEntry) => peerEntry.key === null && peerEntry.raw === entry.raw),
+    );
+  }
+
+  const values = new Set();
+  for (const entries of peerEntries) {
+    const peerEntry = entries.find((candidate) => candidate.key === entry.key);
+    values.add(peerEntry ? peerEntry.value : "__missing__");
+  }
+  return values.size > 1;
 }

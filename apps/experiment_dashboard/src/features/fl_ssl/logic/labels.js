@@ -69,6 +69,10 @@ export function initialCheckpointLabel(row) {
   return checkpointDisplayValue(row.initial_checkpoint_name);
 }
 
+export function backboneModelLabel(row) {
+  return row.backbone_model_id ?? row.embedding_model_id ?? "-";
+}
+
 export function runCreatedDateLabel(row) {
   return compactDate(row.created_at);
 }
@@ -79,6 +83,7 @@ export function runDescriptor(row) {
   return [
     dataSourceLabel(row),
     `label_budget=${labelBudgetLabel(row)}`,
+    `model=${backboneModelLabel(row)}`,
     adapterConfigLabel(row),
     `payload=${adapterKind(row)}`,
     `agg=${row.aggregation_backend_name ?? "-"}`,
@@ -155,6 +160,7 @@ export function runDetailLabel(row) {
     algorithmName(row),
     localRegularizerLabel(row),
     `label_budget=${labelBudgetLabel(row)}`,
+    `model=${backboneModelLabel(row)}`,
     `clients=${row.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? "-"}/${row.round_budget ?? "-"}`,
     `alpha=${formatMetric(row.shard_alpha)}`,

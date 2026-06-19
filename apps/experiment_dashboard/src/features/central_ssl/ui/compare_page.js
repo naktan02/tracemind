@@ -91,6 +91,7 @@ function renderSelectedRunCards(elements, rows, state) {
       `<p class="empty">선택된 비교 run이 없습니다.</p>`;
     return;
   }
+  const peerDetails = selectedRows.map(runDetail);
   elements.selectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const label = algorithmName(row);
@@ -99,6 +100,7 @@ function renderSelectedRunCards(elements, rows, state) {
         id: row.run_id,
         label,
         detail,
+        peerDetails,
         aliasValue: state.compareRunAliases[row.run_id],
         aliasPlaceholder: "legend alias",
         aliasDataAttribute: "comparison-alias-run-id",

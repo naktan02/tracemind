@@ -187,9 +187,8 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
     runtime_metrics = as_mapping(manifest.get("runtime_metrics"))
     initial_checkpoint = as_mapping(manifest.get("query_adaptation_initial_checkpoint"))
     run_control = as_mapping(manifest.get("run_control"))
-    peft_adapter_config = _peft_adapter_config_from_backbone(
-        as_mapping(manifest.get("backbone"))
-    )
+    backbone = as_mapping(manifest.get("backbone"))
+    peft_adapter_config = _peft_adapter_config_from_backbone(backbone)
     train_batch_size = optional_int(manifest.get("train_batch_size"))
 
     run = ExperimentRunRecord(
@@ -229,6 +228,7 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
             or initial_checkpoint.get("resolved_kind")
             or initial_checkpoint.get("mode")
         ),
+        backbone_model_id=optional_str(backbone.get("backbone_model_id")),
         unlabeled_row_count=optional_int(manifest.get("unlabeled_row_count")),
         total_row_exposure_count=None,
         labeled_row_exposure_count=None,
@@ -468,8 +468,14 @@ def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:
         return "central_peft_initial_eval"
     if {"central", "ssl", "peft_classifier"} <= parts:
         return "central_peft_ssl"
+    if {"central", "ssl", "peft_text_encoder"} <= parts:
+        return "central_peft_ssl"
     if {"central", "supervised", "peft_classifier"} <= parts:
         return "central_peft_supervised"
+    if {"central", "supervised", "peft_text_encoder"} <= parts:
+        return "central_peft_supervised"
+    if {"central", "ssl", "full_text_encoder"} <= parts:
+        return "central_full_text_encoder_ssl"
     if {"central", "supervised", "full_text_encoder"} <= parts:
         return "central_full_text_encoder_supervised"
     if CENTRAL_PEFT_SSL_CONTROL_PATH_NAMES & parts:

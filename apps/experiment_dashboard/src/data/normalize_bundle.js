@@ -47,6 +47,7 @@ function normalizeDashboardFilters(filters) {
   return {
     ...filters,
     initial_checkpoints: filters.initial_checkpoints ?? [],
+    backbone_model_ids: filters.backbone_model_ids ?? [],
     created_dates: filters.created_dates ?? [],
     label_budgets: filters.label_budgets ?? [],
     label_budget_counts_per_class: filters.label_budget_counts_per_class ?? [],

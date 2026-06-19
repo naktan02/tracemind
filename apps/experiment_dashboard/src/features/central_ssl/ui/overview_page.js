@@ -7,7 +7,6 @@ import {
   renderColumnCheckboxes,
   renderSortableTableHeader,
   resolveTableColumns,
-  setTableColumnVisibility,
 } from "../../../ui/tables/table.js";
 import { renderSelectedRunCard } from "../../../ui/controls/selected_run_card.js";
 import { renderRunOptionDetail } from "../../../ui/controls/run_option_detail.js";
@@ -22,12 +21,6 @@ import {
 
 const DEFAULT_VISIBLE_COLUMNS = [
   "axis:algorithm",
-  "axis:method_family",
-  "axis:training_data",
-  "axis:evaluation_data",
-  "axis:label_budget",
-  "axis:created_date",
-  "axis:initial_checkpoint",
 ];
 
 const OVERVIEW_AXIS_COLUMNS = [
@@ -146,6 +139,7 @@ function renderSelectedRunCards(elements, rows, state) {
       `<p class="empty">선택된 run이 없습니다.</p>`;
     return;
   }
+  const peerDetails = selectedRows.map(runDetail);
   elements.overviewSelectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const label = overviewRunLabel(row);
@@ -154,6 +148,7 @@ function renderSelectedRunCards(elements, rows, state) {
         id: row.run_id,
         label,
         detail,
+        peerDetails,
         aliasValue: state.overviewRunAliases[row.run_id],
         aliasPlaceholder: "run alias",
         aliasDataAttribute: "overview-alias-run-id",
@@ -217,16 +212,20 @@ function buildOverviewAxisColumns() {
 
 function normalizeOverviewColumns(state, availableColumnIds) {
   const availableSet = new Set(availableColumnIds);
-  const filteredVisible = (state.overviewMetricIds ?? [])
-    .map((metric) => `metric:${metric}`)
-    .filter((id) => availableSet.has(id));
-  const fallback = state.overviewTableColumns.visible.length > 0
-    ? state.overviewTableColumns.visible
-    : DEFAULT_VISIBLE_COLUMNS;
-  setTableColumnVisibility(
-    state.overviewTableColumns,
-    availableColumnIds.map((id) => ({ id })),
-    filteredVisible.length > 0 ? filteredVisible : fallback,
-    DEFAULT_VISIBLE_COLUMNS,
+  const tableState = state.overviewTableColumns;
+  const visible = (tableState.visible ?? []).filter((id) => availableSet.has(id));
+  const visibleSet = new Set(visible);
+  const ordered = (tableState.order ?? []).filter(
+    (id) => availableSet.has(id) && visibleSet.has(id),
   );
+  for (const id of visible) {
+    if (!ordered.includes(id)) {
+      ordered.push(id);
+    }
+  }
+  tableState.visible = visible;
+  tableState.order = ordered;
+  state.overviewMetricIds = visible
+    .filter((id) => id.startsWith("metric:"))
+    .map((id) => id.replace(/^metric:/, ""));
 }

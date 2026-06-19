@@ -5,6 +5,7 @@ export {
 export { CENTRAL_FILTER_AXES, applyCentralFilters, pruneCentralFilters } from "./logic/filters.js";
 export {
   centralEvalSets,
+  centralPerClassEvalSets,
   centralMetricRows,
   isAllComparisonTrack,
   isCentralResultTrack,

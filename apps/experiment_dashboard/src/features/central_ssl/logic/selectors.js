@@ -73,6 +73,22 @@ export function centralEvalSets(
   return preferredCentralEvalSetOrder(candidateSets);
 }
 
+export function centralPerClassEvalSets(
+  bundle,
+  trackPredicate = isCentralResultTrack,
+) {
+  const runById = new Map((bundle.runs ?? []).map((run) => [run.run_id, run]));
+  const evalSets = new Set(
+    (bundle.per_class_metrics ?? [])
+      .filter((row) => {
+        const run = runById.get(row.run_id);
+        return run && trackPredicate(run);
+      })
+      .map((row) => row.eval_set),
+  );
+  return preferredCentralEvalSetOrder(evalSets);
+}
+
 export function centralMetricRows(bundle, evalSet, sortMetric = "macro_f1", trackPredicate = isCentralResultTrack) {
   const runById = new Map((bundle.runs ?? []).map((run) => [run.run_id, run]));
   return (bundle.eval_metrics ?? [])

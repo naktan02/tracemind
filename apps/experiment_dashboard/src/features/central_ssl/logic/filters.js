@@ -2,6 +2,7 @@ import { formatMetric } from "../../../shared/formatting/numbers.js";
 import { applyFacetedFilters, optionsForAxis } from "../../../shared/filters/faceted_filters.js";
 import {
   algorithmName,
+  backboneModelLabel,
   centralDataLabel,
   evaluationDataLabel,
   initialCheckpointLabel,
@@ -27,6 +28,9 @@ export const CENTRAL_FILTER_AXES = [
   axis("validation_dataset", "Validation Dataset", validationDatasetFilterValue),
   axis("test_dataset", "Test Dataset", (row) => row.test_dataset_name ?? "-"),
   axis("initial_checkpoint", "Initial Checkpoint", initialCheckpointLabel, null, {
+    alwaysVisible: true,
+  }),
+  axis("backbone_model", "Model", backboneModelLabel, null, {
     alwaysVisible: true,
   }),
   axis("created_date", "Run Date", runCreatedDateLabel, null, {
@@ -55,22 +59,9 @@ export function applyCentralFilters(rows, centralState) {
 }
 
 export function pruneCentralFilters(rows, centralState) {
-  const visibleAxisIds = new Set(
-    CENTRAL_FILTER_AXES.filter(
-      (axis) => {
-        const optionCount = optionsForAxis(
-          rows,
-          axis,
-          CENTRAL_FILTER_AXES,
-          centralState.filterAxisIds,
-          centralState.filterValues,
-        ).length;
-        return optionCount > 1 || (axis.alwaysVisible && optionCount > 0);
-      },
-    ).map((axis) => axis.id),
-  );
+  const existingAxisIds = new Set(CENTRAL_FILTER_AXES.map((axis) => axis.id));
   centralState.filterAxisIds = centralState.filterAxisIds.filter((axisId) =>
-    visibleAxisIds.has(axisId),
+    existingAxisIds.has(axisId),
   );
   for (const axisId of Object.keys(centralState.filterValues)) {
     if (!centralState.filterAxisIds.includes(axisId)) {

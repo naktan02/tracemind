@@ -725,10 +725,12 @@ code {
 }
 
 .run-option .run-option-detail {
-  position: absolute;
+  display: none;
+}
+
+.run-option-detail-overlay {
+  position: fixed;
   z-index: 35;
-  top: calc(100% + 8px);
-  left: 28px;
   display: none;
   width: max-content;
   max-width: min(760px, calc(100vw - 64px));
@@ -742,20 +744,12 @@ code {
   font-weight: 600;
   line-height: 1.45;
   overflow-wrap: anywhere;
+  overflow-y: auto;
   pointer-events: none;
   white-space: normal;
 }
 
-.run-option:hover .run-option-detail {
-  display: block;
-}
-
-.run-option .run-option-detail.align-right {
-  right: 0;
-  left: auto;
-}
-
-.run-option .run-option-detail span {
+.run-option-detail-overlay span {
   display: inline;
 }
 
@@ -1193,6 +1187,49 @@ td button {
 #confusion-matrix {
   max-width: 100%;
   overflow-x: auto;
+}
+
+.matrix-grid {
+  display: grid;
+  grid-template-columns: minmax(128px, 1.15fr) repeat(var(--matrix-category-count), minmax(92px, 1fr));
+  gap: 6px;
+  min-width: 620px;
+  align-items: stretch;
+}
+
+.matrix-corner,
+.matrix-column-label,
+.matrix-row-label,
+.matrix-cell {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  line-height: 1.25;
+}
+
+.matrix-corner,
+.matrix-column-label,
+.matrix-row-label {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.matrix-column-label,
+.matrix-cell {
+  text-align: center;
+}
+
+.matrix-row-label {
+  color: var(--ink);
+}
+
+.matrix-cell {
+  color: var(--ink);
+  background: rgba(0, 114, 178, calc(0.08 + var(--cell-alpha) * 0.48));
+  font-size: 0.82rem;
+  font-weight: 850;
 }
 
 .matrix {

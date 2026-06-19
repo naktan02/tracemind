@@ -24,8 +24,6 @@ import { flRunMetricKeys, formatFlRunMetric } from "../logic/metrics.js";
 
 const DEFAULT_VISIBLE_COLUMNS = [
   "axis:algorithm",
-  "axis:created_date",
-  "axis:initial_checkpoint",
 ];
 
 const FL_RUN_AXIS_COLUMNS = [
@@ -134,6 +132,7 @@ function renderSelectedRunCards(elements, rows, state) {
       `<p class="empty">선택된 FL run이 없습니다.</p>`;
     return;
   }
+  const peerDetails = selectedRows.map(runHoverDetail);
   elements.flRunSelectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const id = runId(row);
@@ -143,6 +142,7 @@ function renderSelectedRunCards(elements, rows, state) {
         id,
         label,
         detail,
+        peerDetails,
         aliasValue: state.runAliases[id],
         aliasPlaceholder: "run alias",
         aliasDataAttribute: "fl-run-alias-run-id",

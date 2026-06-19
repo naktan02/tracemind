@@ -29,6 +29,7 @@ class ExperimentRunRecord:
     unlabeled_batch_size: int | None
     eval_batch_size: int | None
     initial_checkpoint_name: str | None
+    backbone_model_id: str | None
     unlabeled_row_count: int | None
     total_row_exposure_count: int | None
     labeled_row_exposure_count: int | None

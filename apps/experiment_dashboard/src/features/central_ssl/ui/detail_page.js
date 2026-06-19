@@ -163,19 +163,27 @@ function renderConfusionMatrix(elements, row, state, bundle) {
     ]),
   );
   elements.confusionMatrix.innerHTML = `
-    <div class="matrix-grid" style="--matrix-size:${labels.length + 1}">
-      <span></span>
-      ${labels.map((label) => `<strong>${escapeHtml(label)}</strong>`).join("")}
+    <div class="matrix-grid" style="--matrix-category-count:${labels.length}">
+      <span class="matrix-corner">actual \\ predicted</span>
+      ${labels.map((label) => `<strong class="matrix-column-label">${escapeHtml(label)}</strong>`).join("")}
       ${labels
         .map(
           (trueLabel) => `
-            <strong>${escapeHtml(trueLabel)}</strong>
+            <strong class="matrix-row-label">${escapeHtml(trueLabel)}</strong>
             ${labels
               .map((predictedLabel) => {
                 const cell = byKey.get(`${trueLabel}::${predictedLabel}`);
                 const count = Number(cell?.count) || 0;
-                const intensity = count / max;
-                return `<span style="--cell-alpha:${intensity}">${formatMetric(count)}</span>`;
+                const intensity = Math.min(1, Math.max(0, count / max));
+                return `
+                  <span
+                    class="matrix-cell"
+                    style="--cell-alpha:${intensity}"
+                    title="${escapeHtml(trueLabel)} -> ${escapeHtml(predictedLabel)}: ${formatMetric(count)}"
+                  >
+                    ${formatMetric(count)}
+                  </span>
+                `;
               })
               .join("")}
           `,

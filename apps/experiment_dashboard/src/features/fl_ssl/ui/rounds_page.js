@@ -111,6 +111,7 @@ function renderSelectedRunCards(elements, rows, state) {
       `<p class="empty">선택된 FL round run이 없습니다.</p>`;
     return;
   }
+  const peerDetails = selectedRows.map(runHoverDetail);
   elements.flRoundSelectedRunCards.innerHTML = selectedRows
     .map((row) => {
       const id = runId(row);
@@ -120,6 +121,7 @@ function renderSelectedRunCards(elements, rows, state) {
         id,
         label,
         detail,
+        peerDetails,
         aliasValue: state.roundRunAliases[id],
         aliasPlaceholder: "legend alias",
         aliasDataAttribute: "fl-round-alias-run-id",

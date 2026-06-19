@@ -3,6 +3,7 @@ import { applyFacetedFilters, optionsForAxis } from "../../../shared/filters/fac
 import {
   adapterKind,
   algorithmName,
+  backboneModelLabel,
   dataSourceLabel,
   initialCheckpointLabel,
   labelBudgetLabel,
@@ -21,6 +22,9 @@ export function flFilterAxes(bundle) {
     axis("peft_adapter_rank", "Adapter Rank", (row) => row.peft_adapter_rank ?? "-", (row) => `rank ${row.peft_adapter_rank ?? "-"}`),
     axis("data_pair", "Labeled / Unlabeled", dataSourceLabel),
     axis("initial_checkpoint", "Initial Checkpoint", initialCheckpointLabel, null, {
+      alwaysVisible: true,
+    }),
+    axis("backbone_model", "Model", backboneModelLabel, null, {
       alwaysVisible: true,
     }),
     axis("created_date", "Run Date", runCreatedDateLabel, null, {
@@ -49,24 +53,9 @@ export function applyFlFilters(bundle, rows, flState) {
 
 export function pruneFlFilters(bundle, rows, flState) {
   const axes = flFilterAxes(bundle);
-  const visibleAxisIds = new Set(
-    axes
-      .filter(
-        (axisDef) => {
-          const optionCount = optionsForAxis(
-            rows,
-            axisDef,
-            axes,
-            flState.filterAxisIds,
-            flState.filterValues,
-          ).length;
-          return optionCount > 1 || (axisDef.alwaysVisible && optionCount > 0);
-        },
-      )
-      .map((axisDef) => axisDef.id),
-  );
+  const existingAxisIds = new Set(axes.map((axisDef) => axisDef.id));
   flState.filterAxisIds = flState.filterAxisIds.filter((axisId) =>
-    visibleAxisIds.has(axisId),
+    existingAxisIds.has(axisId),
   );
   for (const axisId of Object.keys(flState.filterValues)) {
     if (!flState.filterAxisIds.includes(axisId)) {

@@ -6,6 +6,7 @@ import {
   DEFAULT_CENTRAL_FILTER_AXIS_IDS,
   applyCentralFilters,
   centralEvalSets,
+  centralPerClassEvalSets,
   centralMetricRows,
   isAllComparisonTrack,
   isCentralResultTrack,
@@ -390,22 +391,18 @@ function handleLiveInput(event) {
   const input = event.target;
   if (input.dataset.overviewAliasRunId) {
     updateAlias(state.central.overviewRunAliases, "central_overview", input.dataset.overviewAliasRunId, input.value);
-    render();
     return;
   }
   if (input.dataset.comparisonAliasRunId) {
     updateAlias(state.central.compareRunAliases, "central_compare", input.dataset.comparisonAliasRunId, input.value);
-    render();
     return;
   }
   if (input.dataset.flRunAliasRunId) {
     updateAlias(state.fl.runAliases, "fl_runs", input.dataset.flRunAliasRunId, input.value);
-    render();
     return;
   }
   if (input.dataset.flRoundAliasRunId) {
     updateAlias(state.fl.roundRunAliases, "fl_round", input.dataset.flRoundAliasRunId, input.value);
-    render();
     return;
   }
   if (input.dataset.chartAxisLabelScope) {
@@ -503,6 +500,17 @@ function resolveCentralTrackPredicate() {
 
 function renderCentral() {
   const trackPredicate = resolveCentralTrackPredicate();
+  const classEvalValues = centralPerClassEvalSets(state.bundle, trackPredicate);
+  if (classEvalValues.length > 0 && !classEvalValues.includes(state.central.classEvalSet)) {
+    state.central.classEvalSet = resolveCentralDefaultEvalSet(classEvalValues, state.activeTrack);
+    fillSelect(
+      elements.classEvalFilter,
+      classEvalValues,
+      state.central.classEvalSet,
+      "eval 없음",
+      centralEvalSetLabel,
+    );
+  }
   const overviewRowsAll = centralMetricRows(
     state.bundle,
     state.central.overviewEvalSet,
@@ -572,27 +580,75 @@ function bindRunOptionDetailPositioning() {
   document.querySelectorAll(".run-option").forEach((option) => {
     if (option.dataset.detailPositionBound === "true") return;
     option.dataset.detailPositionBound = "true";
-    option.addEventListener("mouseenter", () => positionRunOptionDetail(option));
-    option.addEventListener("focusin", () => positionRunOptionDetail(option));
+    option.addEventListener("mouseenter", () => showRunOptionDetail(option));
+    option.addEventListener("mouseleave", hideRunOptionDetail);
+    option.addEventListener("focusin", () => showRunOptionDetail(option));
+    option.addEventListener("focusout", (event) => {
+      if (!option.contains(event.relatedTarget)) {
+        hideRunOptionDetail();
+      }
+    });
   });
 }
 
-function positionRunOptionDetail(option) {
+function showRunOptionDetail(option) {
   const detail = option.querySelector(".run-option-detail");
   if (!detail) return;
-  detail.classList.remove("align-right");
-  detail.style.maxWidth = "";
+  const overlay = runOptionDetailOverlay();
+  overlay.innerHTML = detail.innerHTML;
+  overlay.style.visibility = "hidden";
+  overlay.style.display = "block";
+  overlay.style.left = "0";
+  overlay.style.top = "0";
+  overlay.style.maxWidth = "";
+  overlay.style.maxHeight = "";
 
   const viewportPadding = 16;
-  const rect = detail.getBoundingClientRect();
-  if (rect.right > window.innerWidth - viewportPadding) {
-    detail.classList.add("align-right");
+  const optionRect = option.getBoundingClientRect();
+  const rect = overlay.getBoundingClientRect();
+  let nextLeft = optionRect.left + 28;
+
+  const overflowRight = nextLeft + rect.width - (window.innerWidth - viewportPadding);
+  if (overflowRight > 0) {
+    nextLeft -= overflowRight;
+  }
+  const minLeft = viewportPadding;
+  if (nextLeft < minLeft) {
+    nextLeft = minLeft;
+    overlay.style.maxWidth = `${window.innerWidth - viewportPadding * 2}px`;
   }
 
-  const adjustedRect = detail.getBoundingClientRect();
-  if (adjustedRect.left < viewportPadding) {
-    detail.style.maxWidth = `${window.innerWidth - viewportPadding * 2}px`;
+  let nextTop = optionRect.bottom + 8;
+  const overflowBottom = nextTop + rect.height - (window.innerHeight - viewportPadding);
+  if (overflowBottom > 0) {
+    nextTop = optionRect.top - rect.height - 8;
   }
+  if (nextTop < viewportPadding) {
+    nextTop = viewportPadding;
+  }
+  if (rect.height > window.innerHeight - viewportPadding * 2) {
+    overlay.style.maxHeight = `${window.innerHeight - viewportPadding * 2}px`;
+  }
+  overlay.style.left = `${Math.round(nextLeft)}px`;
+  overlay.style.top = `${Math.round(nextTop)}px`;
+  overlay.style.visibility = "visible";
+}
+
+function hideRunOptionDetail() {
+  const overlay = document.querySelector(".run-option-detail-overlay");
+  if (!overlay) return;
+  overlay.style.display = "none";
+  overlay.innerHTML = "";
+}
+
+function runOptionDetailOverlay() {
+  const existing = document.querySelector(".run-option-detail-overlay");
+  if (existing) return existing;
+  const overlay = document.createElement("div");
+  overlay.className = "run-option-detail-overlay";
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.appendChild(overlay);
+  return overlay;
 }
 
 function checkedValuesForAxis(container, axisDatasetKey, axisId, valueDatasetKey) {

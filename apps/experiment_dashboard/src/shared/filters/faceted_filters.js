@@ -9,6 +9,7 @@ export function applyFacetedFilters(rows, axisDefs, selectedAxisIds, selectedVal
 }
 
 export function visibleFacetedAxes(rows, axisDefs, selectedAxisIds, selectedValues) {
+  const selectedAxes = new Set(selectedAxisIds);
   return axisDefs.filter(
     (axis) => {
       const optionCount = optionsForAxis(
@@ -18,7 +19,11 @@ export function visibleFacetedAxes(rows, axisDefs, selectedAxisIds, selectedValu
         selectedAxisIds,
         selectedValues,
       ).length;
-      return optionCount > 1 || (axis.alwaysVisible && optionCount > 0);
+      return (
+        selectedAxes.has(axis.id) ||
+        optionCount > 1 ||
+        (axis.alwaysVisible && optionCount > 0)
+      );
     },
   );
 }
