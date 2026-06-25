@@ -23,6 +23,45 @@ The project is organized around two goals:
 - Compare central and federated experiment results, metrics, per-class results,
   and projection artifacts in the experiment dashboard.
 
+## Research Snapshot
+
+The current dashboard export is generated from run reports under `runs/`.
+Central SSL remains a pooled/offline control, while FL SSL is the main
+non-IID comparison rail. The FL SSL rows below use 10 clients, Dirichlet
+label-skew alpha `0.3`, seed `42`, PEFT text encoder LoRA updates, and 30
+rounds.
+
+Selected central PEFT SSL results on the `szegeelim_general4` labeled source
+and `ourafla_reddit` unlabeled/test source:
+
+| Method | Run | Macro-F1 | Accuracy | ECE | Worst-class F1 |
+|---|---|---:|---:|---:|---:|
+| AdaMatch | `peft_adamatch_2026_06_16_034721` | 0.788 | 0.788 | 0.101 | 0.690 |
+| FlexMatch | `peft_flexmatch_2026_06_04_130155` | 0.784 | 0.783 | 0.132 | 0.694 |
+| SimMatch | `peft_simmatch_2026_06_04_143519` | 0.781 | 0.782 | 0.126 | 0.662 |
+| ReMixMatch | `peft_remixmatch_2026_06_10_073507` | 0.780 | 0.779 | 0.081 | 0.664 |
+| FreeMatch | `peft_freematch_2026_06_04_134451` | 0.780 | 0.779 | 0.112 | 0.678 |
+| FixMatch | `peft_fixmatch_2026_06_04_120231` | 0.777 | 0.772 | 0.178 | 0.672 |
+
+Selected FL SSL simulation results:
+
+| Label budget | Method | Role | Macro-F1 | Accuracy | ECE |
+|---|---|---|---:|---:|---:|
+| 100/class | FedMatch | method-owned | 0.714 | 0.733 | 0.253 |
+| 100/class | FreeMatch | manual baseline | 0.712 | 0.729 | 0.223 |
+| 100/class | FlexMatch | manual baseline | 0.711 | 0.725 | 0.229 |
+| 100/class | AdaMatch | manual baseline | 0.692 | 0.710 | 0.253 |
+| 100/class | FixMatch | manual baseline | 0.680 | 0.694 | 0.272 |
+| 1024/class | FixMatch | manual baseline | 0.746 | 0.753 | 0.233 |
+| 1024/class | FreeMatch | manual baseline | 0.731 | 0.726 | 0.251 |
+| 1024/class | FedMatch | method-owned | 0.731 | 0.726 | 0.265 |
+
+These are selected orientation numbers, not a replacement for the full result
+index. Detailed metrics, per-client validation, calibration, communication
+cost, and projection artifacts come from the run reports under `runs/` and the
+static dashboard data generated at
+[apps/experiment_dashboard/data/experiment_dashboard.json](apps/experiment_dashboard/data/experiment_dashboard.json).
+
 ## Repository Layout
 
 | Path | Purpose |
